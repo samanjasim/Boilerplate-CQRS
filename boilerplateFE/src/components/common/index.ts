@@ -6,3 +6,4 @@ export * from './LanguageSwitcher';
 export * from './LoadingScreen';
 export * from './PageHeader';
 export * from './ThemeToggle';
+export * from './NotificationBell';

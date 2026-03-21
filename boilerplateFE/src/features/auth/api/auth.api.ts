@@ -1,5 +1,6 @@
 import { apiClient } from '@/lib/axios';
 import { API_ENDPOINTS } from '@/config';
+import { storage } from '@/utils';
 import type {
   LoginCredentials,
   RegisterData,
@@ -9,6 +10,13 @@ import type {
   AuthTokens,
   LoginResponse,
   ApiResponse,
+  Setup2FAResponse,
+  Verify2FAResponse,
+  Disable2FAData,
+  PaginatedResponse,
+  Session,
+  LoginHistoryEntry,
+  PaginationParams,
 } from '@/types';
 
 export const authApi = {
@@ -63,4 +71,82 @@ export const authApi = {
 
   registerTenant: (data: RegisterTenantData) =>
     apiClient.post(API_ENDPOINTS.AUTH.REGISTER_TENANT, data).then((r) => r.data),
+
+  setup2FA: async (): Promise<Setup2FAResponse> => {
+    const response = await apiClient.post<ApiResponse<Setup2FAResponse>>(
+      API_ENDPOINTS.AUTH.SETUP_2FA
+    );
+    return response.data.data;
+  },
+
+  verify2FA: async (data: { secret: string; code: string }): Promise<Verify2FAResponse> => {
+    const response = await apiClient.post<ApiResponse<Verify2FAResponse>>(
+      API_ENDPOINTS.AUTH.VERIFY_2FA,
+      data
+    );
+    return response.data.data;
+  },
+
+  disable2FA: async (data: Disable2FAData): Promise<void> => {
+    await apiClient.post(API_ENDPOINTS.AUTH.DISABLE_2FA, data);
+  },
+
+  inviteUser: (data: { email: string; roleId: string }) =>
+    apiClient.post<ApiResponse<string>>(API_ENDPOINTS.AUTH.INVITE_USER, data).then((r) => r.data.data),
+
+  acceptInvite: (data: {
+    token: string;
+    firstName: string;
+    lastName: string;
+    password: string;
+    confirmPassword: string;
+  }) => apiClient.post(API_ENDPOINTS.AUTH.ACCEPT_INVITE, data).then((r) => r.data),
+
+  getInvitations: async (): Promise<PaginatedResponse<Invitation>> => {
+    const response = await apiClient.get<PaginatedResponse<Invitation>>(
+      API_ENDPOINTS.AUTH.INVITATIONS,
+    );
+    return response.data;
+  },
+
+  revokeInvitation: (id: string) =>
+    apiClient.delete(API_ENDPOINTS.AUTH.REVOKE_INVITATION(id)).then((r) => r.data),
+
+  getSessions: async (): Promise<Session[]> => {
+    const refreshToken = storage.getRefreshToken();
+    const response = await apiClient.get<ApiResponse<Session[]>>(
+      API_ENDPOINTS.AUTH.SESSIONS,
+      { headers: refreshToken ? { 'X-Refresh-Token': refreshToken } : undefined }
+    );
+    return response.data.data;
+  },
+
+  revokeSession: async (id: string): Promise<void> => {
+    await apiClient.delete(API_ENDPOINTS.AUTH.SESSION(id));
+  },
+
+  revokeAllSessions: async (): Promise<void> => {
+    const refreshToken = storage.getRefreshToken();
+    await apiClient.delete(API_ENDPOINTS.AUTH.SESSIONS, {
+      headers: refreshToken ? { 'X-Refresh-Token': refreshToken } : undefined,
+    });
+  },
+
+  getLoginHistory: async (params?: PaginationParams): Promise<PaginatedResponse<LoginHistoryEntry>> => {
+    const response = await apiClient.get<PaginatedResponse<LoginHistoryEntry>>(
+      API_ENDPOINTS.AUTH.LOGIN_HISTORY,
+      { params }
+    );
+    return response.data;
+  },
 };
+
+export interface Invitation {
+  id: string;
+  email: string;
+  roleName: string;
+  invitedByName: string;
+  expiresAt: string;
+  isAccepted: boolean;
+  createdAt: string;
+}

@@ -1,5 +1,6 @@
 import { LogOut, User, Menu } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore, selectUser, useUIStore, selectSidebarCollapsed } from '@/stores';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,13 +13,15 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { useLogout } from '@/features/auth/api';
-import { LanguageSwitcher, ThemeToggle } from '@/components/common';
+import { LanguageSwitcher, ThemeToggle, NotificationBell } from '@/components/common';
+import { ROUTES } from '@/config';
 
 export function Header() {
   const { t } = useTranslation();
   const user = useAuthStore(selectUser);
   const isCollapsed = useUIStore(selectSidebarCollapsed);
   const toggleSidebar = useUIStore((state) => state.toggleSidebar);
+  const navigate = useNavigate();
   const handleLogout = useLogout();
 
   return (
@@ -39,6 +42,7 @@ export function Header() {
       <div className="flex items-center gap-2">
         <LanguageSwitcher />
         <ThemeToggle />
+        <NotificationBell />
 
         {/* User dropdown menu */}
         <DropdownMenu>
@@ -60,6 +64,10 @@ export function Header() {
               {user?.firstName} {user?.lastName}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate(ROUTES.PROFILE)}>
+              <User className="h-4 w-4" />
+              {t('profile.title')}
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
               <LogOut className="h-4 w-4" />
               {t('header.logout')}

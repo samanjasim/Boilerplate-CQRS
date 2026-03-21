@@ -67,6 +67,42 @@ public sealed class EmailTemplateService : IEmailTemplateService
         return new EmailMessage(recipientEmail, "Reset Your Password", body);
     }
 
+    public EmailMessage RenderInvitation(
+        string recipientEmail,
+        string inviterName,
+        string tenantName,
+        string roleName,
+        string acceptUrl)
+    {
+        var body = WrapInLayout("You've Been Invited!", $@"
+            <h1 style=""margin:0 0 24px;font-size:24px;font-weight:600;color:#1a1a1a;"">
+                You've Been Invited!
+            </h1>
+            <p style=""margin:0 0 16px;font-size:16px;color:#4a4a4a;line-height:1.5;"">
+                Hi there,
+            </p>
+            <p style=""margin:0 0 16px;font-size:16px;color:#4a4a4a;line-height:1.5;"">
+                <strong>{Escape(inviterName)}</strong> has invited you to join
+                <strong>{Escape(tenantName)}</strong> as a <strong>{Escape(roleName)}</strong>.
+            </p>
+            <p style=""margin:0 0 24px;font-size:16px;color:#4a4a4a;line-height:1.5;"">
+                Click the button below to accept the invitation and set up your account:
+            </p>
+            <div style=""margin:0 0 24px;text-align:center;"">
+                <a href=""{Escape(acceptUrl)}"" style=""display:inline-block;padding:14px 32px;background-color:#2563eb;color:#ffffff;text-decoration:none;font-size:16px;font-weight:600;border-radius:8px;"">
+                    Accept Invitation
+                </a>
+            </div>
+            <p style=""margin:0 0 8px;font-size:14px;color:#6b7280;line-height:1.5;"">
+                This invitation will expire in <strong>7 days</strong>.
+            </p>
+            <p style=""margin:0;font-size:14px;color:#6b7280;line-height:1.5;"">
+                If you did not expect this invitation, please ignore this email.
+            </p>");
+
+        return new EmailMessage(recipientEmail, $"You've been invited to join {tenantName}", body);
+    }
+
     private static string WrapInLayout(string title, string content)
     {
         return $@"<!DOCTYPE html>

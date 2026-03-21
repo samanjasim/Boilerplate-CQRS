@@ -25,6 +25,9 @@ public sealed class User : AggregateRoot
     public Guid? TenantId { get; private set; }
     public string? RefreshToken { get; private set; }
     public DateTime? RefreshTokenExpiresAt { get; private set; }
+    public bool TwoFactorEnabled { get; private set; }
+    public string? TwoFactorSecret { get; private set; }
+    public string? TwoFactorBackupCodes { get; private set; } // JSON array of hashed codes
 
     private readonly List<UserRole> _userRoles = [];
     public IReadOnlyCollection<UserRole> UserRoles => _userRoles.AsReadOnly();
@@ -158,6 +161,25 @@ public sealed class User : AggregateRoot
         return RefreshToken == refreshToken &&
                RefreshTokenExpiresAt.HasValue &&
                RefreshTokenExpiresAt.Value > DateTime.UtcNow;
+    }
+
+    public void EnableTwoFactor(string secret, string backupCodes)
+    {
+        TwoFactorSecret = secret;
+        TwoFactorBackupCodes = backupCodes;
+        TwoFactorEnabled = true;
+    }
+
+    public void DisableTwoFactor()
+    {
+        TwoFactorSecret = null;
+        TwoFactorBackupCodes = null;
+        TwoFactorEnabled = false;
+    }
+
+    public void UpdateTwoFactorBackupCodes(string backupCodes)
+    {
+        TwoFactorBackupCodes = backupCodes;
     }
 
     public void AddRole(Role role, Guid? assignedBy = null)

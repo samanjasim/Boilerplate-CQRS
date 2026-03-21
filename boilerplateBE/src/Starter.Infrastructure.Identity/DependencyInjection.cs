@@ -36,6 +36,7 @@ public static class DependencyInjection
         services.AddScoped<IPasswordService, PasswordService>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<IAuditContextProvider, AuditContextProvider>();
+        services.AddSingleton<ITotpService, TotpService>();
 
         // Authentication
         services.AddAuthentication(options =>

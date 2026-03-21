@@ -21,9 +21,12 @@ const RoleCreatePage = lazy(() => import('@/features/roles/pages/RoleCreatePage'
 const RoleEditPage = lazy(() => import('@/features/roles/pages/RoleEditPage'));
 const ForgotPasswordPage = lazy(() => import('@/features/auth/pages/ForgotPasswordPage'));
 const VerifyEmailPage = lazy(() => import('@/features/auth/pages/VerifyEmailPage'));
+const AcceptInvitePage = lazy(() => import('@/features/auth/pages/AcceptInvitePage'));
 const AuditLogsPage = lazy(() => import('@/features/audit-logs/pages/AuditLogsPage'));
 const TenantsListPage = lazy(() => import('@/features/tenants/pages/TenantsListPage'));
 const TenantDetailPage = lazy(() => import('@/features/tenants/pages/TenantDetailPage'));
+const ProfilePage = lazy(() => import('@/features/profile/pages/ProfilePage'));
+const NotificationsPage = lazy(() => import('@/features/notifications/pages/NotificationsPage'));
 const NotFoundPage = lazy(() => import('@/routes/NotFoundPage'));
 
 export const routes: RouteObject[] = [
@@ -48,6 +51,7 @@ export const routes: RouteObject[] = [
           { path: ROUTES.FORGOT_PASSWORD, element: <ForgotPasswordPage /> },
           { path: ROUTES.RESET_PASSWORD, element: <ForgotPasswordPage /> },
           { path: ROUTES.VERIFY_EMAIL, element: <VerifyEmailPage /> },
+          { path: ROUTES.ACCEPT_INVITE, element: <AcceptInvitePage /> },
         ],
       },
     ],
@@ -61,6 +65,8 @@ export const routes: RouteObject[] = [
         element: <MainLayout />,
         children: [
           { path: ROUTES.DASHBOARD, element: <DashboardPage /> },
+          { path: ROUTES.PROFILE, element: <ProfilePage /> },
+          { path: ROUTES.NOTIFICATIONS, element: <NotificationsPage /> },
 
           // Users
           {

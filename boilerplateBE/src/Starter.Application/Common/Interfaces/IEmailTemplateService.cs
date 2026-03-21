@@ -6,4 +6,5 @@ public interface IEmailTemplateService
 {
     EmailMessage RenderEmailVerification(string recipientEmail, string recipientName, string otpCode);
     EmailMessage RenderPasswordReset(string recipientEmail, string recipientName, string otpCode);
+    EmailMessage RenderInvitation(string recipientEmail, string inviterName, string tenantName, string roleName, string acceptUrl);
 }

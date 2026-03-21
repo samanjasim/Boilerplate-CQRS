@@ -97,6 +97,16 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.RefreshTokenExpiresAt)
             .HasColumnName("refresh_token_expires_at");
 
+        builder.Property(u => u.TwoFactorEnabled)
+            .HasColumnName("two_factor_enabled")
+            .HasDefaultValue(false);
+
+        builder.Property(u => u.TwoFactorSecret)
+            .HasColumnName("two_factor_secret");
+
+        builder.Property(u => u.TwoFactorBackupCodes)
+            .HasColumnName("two_factor_backup_codes");
+
         builder.Property(u => u.CreatedAt)
             .HasColumnName("created_at")
             .IsRequired();

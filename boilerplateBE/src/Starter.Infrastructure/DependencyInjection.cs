@@ -25,6 +25,7 @@ public static class DependencyInjection
             .AddServices()
             .AddEmailServices(configuration)
             .AddSmsServices(configuration)
+            .AddRealtimeServices(configuration)
             .AddHealthChecks(configuration);
 
         return services;
@@ -162,6 +163,29 @@ public static class DependencyInjection
         {
             services.AddScoped<ISmsService, LogOnlySmsService>();
         }
+
+        return services;
+    }
+
+    private static IServiceCollection AddRealtimeServices(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.Configure<AblySettings>(
+            configuration.GetSection(AblySettings.SectionName));
+
+        var ablyEnabled = configuration.GetValue($"{AblySettings.SectionName}:Enabled", false);
+
+        if (ablyEnabled)
+        {
+            services.AddHttpClient<IRealtimeService, AblyRealtimeService>();
+        }
+        else
+        {
+            services.AddScoped<IRealtimeService, NoOpRealtimeService>();
+        }
+
+        services.AddScoped<INotificationService, NotificationService>();
 
         return services;
     }

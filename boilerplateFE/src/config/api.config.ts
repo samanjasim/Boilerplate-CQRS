@@ -15,6 +15,16 @@ export const API_ENDPOINTS = {
     VERIFY_EMAIL: '/Auth/verify-email',
     FORGOT_PASSWORD: '/Auth/forgot-password',
     RESET_PASSWORD: '/Auth/reset-password',
+    SETUP_2FA: '/Auth/2fa/setup',
+    VERIFY_2FA: '/Auth/2fa/verify',
+    DISABLE_2FA: '/Auth/2fa/disable',
+    INVITE_USER: '/Auth/invite',
+    ACCEPT_INVITE: '/Auth/accept-invite',
+    INVITATIONS: '/Auth/invitations',
+    REVOKE_INVITATION: (id: string) => `/Auth/invitations/${id}`,
+    SESSIONS: '/Auth/sessions',
+    SESSION: (id: string) => `/Auth/sessions/${id}`,
+    LOGIN_HISTORY: '/Auth/login-history',
   },
   USERS: {
     LIST: '/Users',
@@ -43,5 +53,12 @@ export const API_ENDPOINTS = {
   },
   AUDIT_LOGS: {
     LIST: '/AuditLogs',
+  },
+  NOTIFICATIONS: {
+    LIST: '/Notifications',
+    UNREAD_COUNT: '/Notifications/unread-count',
+    MARK_READ: (id: string) => `/Notifications/${id}/read`,
+    MARK_ALL_READ: '/Notifications/read-all',
+    PREFERENCES: '/Notifications/preferences',
   },
 } as const;

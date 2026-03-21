@@ -14,6 +14,11 @@ public interface IApplicationDbContext
     DbSet<RolePermission> RolePermissions { get; }
     DbSet<Tenant> Tenants { get; }
     DbSet<AuditLog> AuditLogs { get; }
+    DbSet<Invitation> Invitations { get; }
+    DbSet<Session> Sessions { get; }
+    DbSet<LoginHistory> LoginHistory { get; }
+    DbSet<Notification> Notifications { get; }
+    DbSet<NotificationPreference> NotificationPreferences { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

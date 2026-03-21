@@ -2,6 +2,8 @@ export const queryKeys = {
   auth: {
     all: ['auth'] as const,
     me: () => [...queryKeys.auth.all, 'me'] as const,
+    sessions: () => [...queryKeys.auth.all, 'sessions'] as const,
+    loginHistory: () => [...queryKeys.auth.all, 'login-history'] as const,
   },
 
   users: {
@@ -31,8 +33,22 @@ export const queryKeys = {
     detail: (id: string) => [...queryKeys.tenants.all, 'detail', id] as const,
   },
 
+  invitations: {
+    all: ['invitations'] as const,
+    lists: () => [...queryKeys.invitations.all, 'list'] as const,
+    list: <T extends object>(filters?: T) => [...queryKeys.invitations.lists(), filters] as const,
+  },
+
   auditLogs: {
     all: () => ['auditLogs'] as const,
     list: () => [...queryKeys.auditLogs.all(), 'list'] as const,
+  },
+
+  notifications: {
+    all: ['notifications'] as const,
+    lists: () => [...queryKeys.notifications.all, 'list'] as const,
+    list: <T extends object>(filters?: T) => [...queryKeys.notifications.lists(), filters] as const,
+    unreadCount: () => [...queryKeys.notifications.all, 'unread-count'] as const,
+    preferences: () => [...queryKeys.notifications.all, 'preferences'] as const,
   },
 } as const;

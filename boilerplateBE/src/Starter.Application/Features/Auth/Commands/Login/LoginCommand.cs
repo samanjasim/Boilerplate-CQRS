@@ -6,4 +6,5 @@ namespace Starter.Application.Features.Auth.Commands.Login;
 
 public sealed record LoginCommand(
     string Email,
-    string Password) : IRequest<Result<LoginResponseDto>>;
+    string Password,
+    string? TwoFactorCode = null) : IRequest<Result<LoginResponseDto>>;

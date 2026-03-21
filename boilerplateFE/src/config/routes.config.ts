@@ -9,9 +9,16 @@ export const ROUTES = {
   VERIFY_EMAIL: '/verify-email',
   FORGOT_PASSWORD: '/forgot-password',
   RESET_PASSWORD: '/reset-password',
+  ACCEPT_INVITE: '/accept-invite',
 
   // Dashboard
   DASHBOARD: '/dashboard',
+
+  // Profile
+  PROFILE: '/profile',
+
+  // Notifications
+  NOTIFICATIONS: '/notifications',
 
   // Users
   USERS: {

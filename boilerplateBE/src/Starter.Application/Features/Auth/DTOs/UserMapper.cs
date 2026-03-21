@@ -26,7 +26,8 @@ public static partial class UserMapper
                 .Select(ur => ur.Role!.Name)
                 .ToList(),
             includePermissions ? user.GetPermissions().ToList() : null,
-            user.TenantId);
+            user.TenantId,
+            TwoFactorEnabled: user.TwoFactorEnabled);
     }
 
     public static IReadOnlyList<UserDto> ToDtoList(this IEnumerable<User> users)

@@ -8,7 +8,7 @@ import { useAuthStore, useUIStore } from '@/stores';
 import { storage } from '@/utils';
 import { ROUTES } from '@/config';
 import i18n from '@/i18n';
-import type { LoginCredentials, RegisterData, RegisterTenantData, ChangePasswordData } from '@/types';
+import type { LoginCredentials, RegisterData, RegisterTenantData, ChangePasswordData, Disable2FAData, PaginationParams } from '@/types';
 
 export function useCurrentUser() {
   return useQuery({
@@ -28,15 +28,21 @@ export function useLogin() {
   return useMutation({
     mutationFn: (credentials: LoginCredentials) => authApi.login(credentials),
     onSuccess: async (loginResponse) => {
-      storage.setTokens(loginResponse.accessToken, loginResponse.refreshToken);
+      // Check if 2FA is required
+      if (loginResponse.requiresTwoFactor) {
+        // Don't navigate or set tokens - the LoginForm will handle showing the 2FA input
+        return;
+      }
+
+      storage.setTokens(loginResponse.accessToken!, loginResponse.refreshToken!);
 
       const tokens = {
-        accessToken: loginResponse.accessToken,
-        refreshToken: loginResponse.refreshToken,
+        accessToken: loginResponse.accessToken!,
+        refreshToken: loginResponse.refreshToken!,
       };
 
       // Fetch full user with permissions from /me
-      const fullUser = await authApi.getMe(loginResponse.accessToken);
+      const fullUser = await authApi.getMe(loginResponse.accessToken!);
 
       login(fullUser, tokens);
       queryClient.setQueryData(queryKeys.auth.me(), fullUser);
@@ -141,5 +147,116 @@ export function useResetPassword() {
       toast.success(i18n.t('auth.passwordResetSuccess'));
       navigate(ROUTES.LOGIN);
     },
+  });
+}
+
+export function useSetup2FA() {
+  return useMutation({
+    mutationFn: () => authApi.setup2FA(),
+  });
+}
+
+export function useVerify2FA() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { secret: string; code: string }) => authApi.verify2FA(data),
+    onSuccess: () => {
+      toast.success(i18n.t('twoFactor.enabledSuccess'));
+      queryClient.invalidateQueries({ queryKey: queryKeys.auth.me() });
+    },
+  });
+}
+
+export function useDisable2FA() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Disable2FAData) => authApi.disable2FA(data),
+    onSuccess: () => {
+      toast.success(i18n.t('twoFactor.disabledSuccess'));
+      queryClient.invalidateQueries({ queryKey: queryKeys.auth.me() });
+    },
+  });
+}
+
+export function useInviteUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { email: string; roleId: string }) => authApi.inviteUser(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.invitations.all });
+      toast.success(i18n.t('invitations.inviteSent'));
+    },
+  });
+}
+
+export function useAcceptInvite() {
+  const navigate = useNavigate();
+  return useMutation({
+    mutationFn: (data: {
+      token: string;
+      firstName: string;
+      lastName: string;
+      password: string;
+      confirmPassword: string;
+    }) => authApi.acceptInvite(data),
+    onSuccess: () => {
+      toast.success(i18n.t('invitations.inviteAccepted'));
+      navigate(ROUTES.LOGIN);
+    },
+  });
+}
+
+export function useInvitations(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: queryKeys.invitations.lists(),
+    queryFn: () => authApi.getInvitations(),
+    enabled: options?.enabled,
+  });
+}
+
+export function useRevokeInvitation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => authApi.revokeInvitation(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.invitations.all });
+      toast.success(i18n.t('invitations.inviteRevoked'));
+    },
+  });
+}
+
+export function useSessions() {
+  return useQuery({
+    queryKey: queryKeys.auth.sessions(),
+    queryFn: () => authApi.getSessions(),
+  });
+}
+
+export function useRevokeSession() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => authApi.revokeSession(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.auth.sessions() });
+      toast.success(i18n.t('sessions.sessionRevoked'));
+    },
+  });
+}
+
+export function useRevokeAllSessions() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => authApi.revokeAllSessions(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.auth.sessions() });
+      toast.success(i18n.t('sessions.allSessionsRevoked'));
+    },
+  });
+}
+
+export function useLoginHistory(params?: PaginationParams) {
+  return useQuery({
+    queryKey: [...queryKeys.auth.loginHistory(), params],
+    queryFn: () => authApi.getLoginHistory(params),
   });
 }

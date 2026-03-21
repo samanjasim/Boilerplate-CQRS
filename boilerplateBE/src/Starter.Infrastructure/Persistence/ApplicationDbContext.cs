@@ -18,6 +18,11 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<Invitation> Invitations => Set<Invitation>();
+    public DbSet<Session> Sessions => Set<Session>();
+    public DbSet<LoginHistory> LoginHistory => Set<LoginHistory>();
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
 
     // EF Core evaluates this per-query via the expression tree.
     // Must be a property (not a method) for EF to parameterize it.
@@ -50,6 +55,12 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
 
         modelBuilder.Entity<AuditLog>().HasQueryFilter(a =>
             TenantId == null || a.TenantId == TenantId);
+
+        modelBuilder.Entity<Invitation>().HasQueryFilter(i =>
+            TenantId == null || i.TenantId == TenantId);
+
+        modelBuilder.Entity<Notification>().HasQueryFilter(n =>
+            TenantId == null || n.TenantId == TenantId);
 
         // Tenant entity: tenant users see only their own tenant; platform admins see all
         modelBuilder.Entity<Tenant>().HasQueryFilter(t =>

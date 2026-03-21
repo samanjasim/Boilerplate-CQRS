@@ -46,6 +46,15 @@ internal sealed class RefreshTokenCommandHandler(
 
         var tokens = tokenResult.Value;
 
+        // Update session with new refresh token
+        var session = await context.Sessions
+            .FirstOrDefaultAsync(s => s.RefreshToken == request.RefreshToken && !s.IsRevoked, cancellationToken);
+
+        if (session is not null)
+        {
+            session.UpdateRefreshToken(tokens.RefreshToken);
+        }
+
         user.SetRefreshToken(tokens.RefreshToken, tokens.RefreshTokenExpiresAt);
 
         await context.SaveChangesAsync(cancellationToken);

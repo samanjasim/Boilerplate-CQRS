@@ -16,6 +16,9 @@ public sealed class AuditContextProvider : IAuditContextProvider
     public string? IpAddress =>
         _httpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString();
 
+    public string? UserAgent =>
+        _httpContextAccessor.HttpContext?.Request.Headers["User-Agent"].FirstOrDefault();
+
     public string? CorrelationId =>
         _httpContextAccessor.HttpContext?.TraceIdentifier;
 
