@@ -1,0 +1,42 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: starter-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: starterdb
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: starter-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: starter-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit
+    container_name: starter-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    restart: unless-stopped
+
+volumes:
+  postgres-data:

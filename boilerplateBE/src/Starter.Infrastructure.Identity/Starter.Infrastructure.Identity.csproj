@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
+    <PackageReference Include="BCrypt.Net-Next" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Starter.Application\Starter.Application.csproj" />
+    <ProjectReference Include="..\Starter.Infrastructure\Starter.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

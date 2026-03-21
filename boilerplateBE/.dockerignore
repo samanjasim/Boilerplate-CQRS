@@ -1,0 +1,11 @@
+**/.git
+**/.vs
+**/bin
+**/obj
+**/node_modules
+**/.env
+**/.env.*
+**/logs
+**/*.md
+**/tests
+**/.idea

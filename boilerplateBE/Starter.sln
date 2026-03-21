@@ -1,0 +1,81 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36623.8 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+
+# Solution Folders
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{A1000001-0000-0000-0000-000000000001}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{A1000002-0000-0000-0000-000000000002}"
+EndProject
+
+# Source Projects
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Starter.Domain", "src\Starter.Domain\Starter.Domain.csproj", "{B1000001-0000-0000-0000-000000000001}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Starter.Shared", "src\Starter.Shared\Starter.Shared.csproj", "{B1000002-0000-0000-0000-000000000002}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Starter.Application", "src\Starter.Application\Starter.Application.csproj", "{B1000003-0000-0000-0000-000000000003}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Starter.Infrastructure", "src\Starter.Infrastructure\Starter.Infrastructure.csproj", "{B1000004-0000-0000-0000-000000000004}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Starter.Infrastructure.Identity", "src\Starter.Infrastructure.Identity\Starter.Infrastructure.Identity.csproj", "{B1000005-0000-0000-0000-000000000005}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Starter.Api", "src\Starter.Api\Starter.Api.csproj", "{B1000006-0000-0000-0000-000000000006}"
+EndProject
+
+# Test Projects
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Starter.Api.Tests", "tests\Starter.Api.Tests\Starter.Api.Tests.csproj", "{C1000001-0000-0000-0000-000000000001}"
+EndProject
+
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B1000001-0000-0000-0000-000000000001}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B1000001-0000-0000-0000-000000000001}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B1000001-0000-0000-0000-000000000001}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B1000001-0000-0000-0000-000000000001}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B1000002-0000-0000-0000-000000000002}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B1000002-0000-0000-0000-000000000002}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B1000002-0000-0000-0000-000000000002}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B1000002-0000-0000-0000-000000000002}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B1000003-0000-0000-0000-000000000003}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B1000003-0000-0000-0000-000000000003}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B1000003-0000-0000-0000-000000000003}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B1000003-0000-0000-0000-000000000003}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B1000004-0000-0000-0000-000000000004}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B1000004-0000-0000-0000-000000000004}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B1000004-0000-0000-0000-000000000004}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B1000004-0000-0000-0000-000000000004}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B1000005-0000-0000-0000-000000000005}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B1000005-0000-0000-0000-000000000005}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B1000005-0000-0000-0000-000000000005}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B1000005-0000-0000-0000-000000000005}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B1000006-0000-0000-0000-000000000006}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B1000006-0000-0000-0000-000000000006}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B1000006-0000-0000-0000-000000000006}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B1000006-0000-0000-0000-000000000006}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C1000001-0000-0000-0000-000000000001}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C1000001-0000-0000-0000-000000000001}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C1000001-0000-0000-0000-000000000001}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C1000001-0000-0000-0000-000000000001}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{B1000001-0000-0000-0000-000000000001} = {A1000001-0000-0000-0000-000000000001}
+		{B1000002-0000-0000-0000-000000000002} = {A1000001-0000-0000-0000-000000000001}
+		{B1000003-0000-0000-0000-000000000003} = {A1000001-0000-0000-0000-000000000001}
+		{B1000004-0000-0000-0000-000000000004} = {A1000001-0000-0000-0000-000000000001}
+		{B1000005-0000-0000-0000-000000000005} = {A1000001-0000-0000-0000-000000000001}
+		{B1000006-0000-0000-0000-000000000006} = {A1000001-0000-0000-0000-000000000001}
+		{C1000001-0000-0000-0000-000000000001} = {A1000002-0000-0000-0000-000000000002}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F0D1F2A3-B4C5-6789-ABCD-EF0123456789}
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,30 @@
+# Test output
+_test/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.sln.docstates
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude
+.claude/
+
+# Build artifacts
+**/bin/
+**/obj/
+**/dist/
+**/node_modules/
+**/logs/
+
+# Environment
+boilerplateBE/.env
+boilerplateFE/.env
+boilerplateFE/.env.local
+boilerplateFE/.env.*.local
