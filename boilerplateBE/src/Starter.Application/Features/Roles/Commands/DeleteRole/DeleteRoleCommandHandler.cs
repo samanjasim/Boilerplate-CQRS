@@ -7,7 +7,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Starter.Application.Features.Roles.Commands.DeleteRole;
 
 internal sealed class DeleteRoleCommandHandler(
-    IApplicationDbContext context) : IRequestHandler<DeleteRoleCommand, Result>
+    IApplicationDbContext context,
+    ICurrentUserService currentUserService) : IRequestHandler<DeleteRoleCommand, Result>
 {
     public async Task<Result> Handle(DeleteRoleCommand request, CancellationToken cancellationToken)
     {
@@ -20,6 +21,10 @@ internal sealed class DeleteRoleCommandHandler(
 
         if (role.IsSystemRole)
             return Result.Failure(RoleErrors.SystemRoleCannotBeDeleted());
+
+        // Tenant ownership check: non-platform users cannot delete roles from other tenants
+        if (currentUserService.TenantId is not null && role.TenantId != currentUserService.TenantId)
+            return Result.Failure(RoleErrors.NotFound(request.Id));
 
         if (role.UserRoles.Count > 0)
             return Result.Failure(RoleErrors.RoleInUse(role.Name));

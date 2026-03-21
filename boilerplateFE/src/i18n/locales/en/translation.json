@@ -88,12 +88,22 @@
     "passwordChanged": "Password changed successfully",
     "welcomeBackUser": "Welcome back, {{name}}!",
     "emailAlreadyVerified": "Email is already verified",
-    "creatingAccount": "Creating account..."
+    "creatingAccount": "Creating account...",
+    "createOrganization": "Create Your Organization",
+    "createOrganizationDesc": "Set up your organization and admin account",
+    "companyName": "Company Name"
+  },
+  "landing": {
+    "title": "Welcome to {{appName}}",
+    "subtitle": "Modern platform with authentication, roles, and multi-tenancy",
+    "getStarted": "Get Started",
+    "signIn": "Sign In"
   },
   "nav": {
     "dashboard": "Dashboard",
     "users": "Users",
     "roles": "Roles",
+    "tenants": "Tenants",
     "auditLogs": "Audit Logs",
     "collapse": "Collapse"
   },
@@ -170,6 +180,24 @@
     "roleRemoved": "Role removed successfully",
     "deleteRole": "Delete Role",
     "deleteRoleConfirm": "Are you sure you want to delete the role \"{{name}}\"? This action cannot be undone."
+  },
+  "tenants": {
+    "title": "Tenants",
+    "allTenants": "All Tenants",
+    "name": "Name",
+    "slug": "Slug",
+    "status": "Status",
+    "tenantDetail": "Tenant Details",
+    "backToTenants": "Back to Tenants",
+    "activate": "Activate",
+    "suspend": "Suspend",
+    "deactivate": "Deactivate",
+    "tenantActivated": "Tenant activated successfully",
+    "tenantSuspended": "Tenant suspended successfully",
+    "tenantDeactivated": "Tenant deactivated successfully",
+    "suspendConfirm": "Are you sure you want to suspend {{name}}?",
+    "deactivateConfirm": "Are you sure you want to deactivate {{name}}?",
+    "noTenants": "No tenants found"
   },
   "auditLogs": {
     "title": "Audit Logs",

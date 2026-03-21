@@ -1,4 +1,8 @@
 export const ROUTES = {
+  // Public
+  LANDING: '/',
+  REGISTER_TENANT: '/register-tenant',
+
   // Auth
   LOGIN: '/login',
   REGISTER: '/register',
@@ -7,7 +11,7 @@ export const ROUTES = {
   RESET_PASSWORD: '/reset-password',
 
   // Dashboard
-  DASHBOARD: '/',
+  DASHBOARD: '/dashboard',
 
   // Users
   USERS: {
@@ -25,6 +29,14 @@ export const ROUTES = {
     getDetail: (id: string) => `/roles/${id}`,
     getEdit: (id: string) => `/roles/${id}/edit`,
   },
+
+  // Tenants
+  TENANTS: {
+    LIST: '/tenants',
+    DETAIL: '/tenants/:id',
+    getDetail: (id: string) => `/tenants/${id}`,
+  },
+
   // Audit Logs
   AUDIT_LOGS: {
     LIST: '/audit-logs',

@@ -1,5 +1,6 @@
 using Starter.Domain.Identity.Entities;
 using Starter.Domain.Identity.ValueObjects;
+using Starter.Domain.Tenants.Entities;
 using Starter.Shared.Constants;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -32,6 +33,7 @@ public static class DataSeeder
             await SeedPermissionsAsync(context, logger);
             await SeedRolesAsync(context, logger);
             await SeedRolePermissionsAsync(context, logger);
+            await SeedDefaultTenantAsync(context, logger);
             await SeedSuperAdminUserAsync(context, configuration, logger);
         }
         catch (Exception ex)
@@ -132,6 +134,20 @@ public static class DataSeeder
             await context.SaveChangesAsync();
             logger.LogInformation("Seeded {Count} role-permission mappings", seededCount);
         }
+    }
+
+    private static async Task SeedDefaultTenantAsync(ApplicationDbContext context, ILogger logger)
+    {
+        var exists = await context.Tenants
+            .AnyAsync(t => t.Slug == "default");
+
+        if (exists) return;
+
+        var tenant = Tenant.Create("Default Organization", "default");
+        context.Tenants.Add(tenant);
+        await context.SaveChangesAsync();
+
+        logger.LogInformation("Seeded default tenant: {TenantName}", tenant.Name);
     }
 
     private static async Task SeedSuperAdminUserAsync(

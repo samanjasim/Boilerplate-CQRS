@@ -3,6 +3,7 @@ import { API_ENDPOINTS } from '@/config';
 import type {
   LoginCredentials,
   RegisterData,
+  RegisterTenantData,
   ChangePasswordData,
   User,
   AuthTokens,
@@ -59,4 +60,7 @@ export const authApi = {
     newPassword: string;
     confirmNewPassword: string;
   }) => apiClient.post(API_ENDPOINTS.AUTH.RESET_PASSWORD, data).then((r) => r.data),
+
+  registerTenant: (data: RegisterTenantData) =>
+    apiClient.post(API_ENDPOINTS.AUTH.REGISTER_TENANT, data).then((r) => r.data),
 };

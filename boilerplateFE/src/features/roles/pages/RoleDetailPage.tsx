@@ -28,7 +28,7 @@ export default function RoleDetailPage() {
 
   // All hooks must be called before any early returns
   const permissionsByModule = useMemo(
-    () => (role?.permissions ?? []).reduce<Record<string, typeof role.permissions>>(
+    () => (role?.permissions ?? []).reduce<Record<string, NonNullable<typeof role>['permissions']>>(
       (acc, perm) => {
         const module = perm.module || 'Other';
         if (!acc[module]) acc[module] = [];

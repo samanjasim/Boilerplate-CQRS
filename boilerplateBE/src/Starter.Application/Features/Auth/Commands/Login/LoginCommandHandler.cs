@@ -45,7 +45,7 @@ internal sealed class LoginCommandHandler(
         var permissions = user.GetPermissions().ToList();
 
         var tokenResult = await tokenService.GenerateTokensAsync(
-            user.Id, user.Email.Value, roles, permissions, tenantId: null);
+            user.Id, user.Email.Value, roles, permissions, tenantId: user.TenantId);
 
         if (tokenResult.IsFailure)
             return Result.Failure<LoginResponseDto>(tokenResult.Error);

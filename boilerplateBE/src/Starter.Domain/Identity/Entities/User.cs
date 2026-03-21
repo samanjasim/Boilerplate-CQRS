@@ -22,6 +22,7 @@ public sealed class User : AggregateRoot
     public DateTime? LastLoginAt { get; private set; }
     public int FailedLoginAttempts { get; private set; }
     public DateTime? LockoutEndAt { get; private set; }
+    public Guid? TenantId { get; private set; }
     public string? RefreshToken { get; private set; }
     public DateTime? RefreshTokenExpiresAt { get; private set; }
 
@@ -35,12 +36,14 @@ public sealed class User : AggregateRoot
         string username,
         Email email,
         FullName fullName,
-        string passwordHash) : base(id)
+        string passwordHash,
+        Guid? tenantId = null) : base(id)
     {
         Username = username;
         Email = email;
         FullName = fullName;
         PasswordHash = passwordHash;
+        TenantId = tenantId;
         Status = UserStatus.Pending;
         EmailConfirmed = false;
         PhoneConfirmed = false;
@@ -51,14 +54,16 @@ public sealed class User : AggregateRoot
         string username,
         Email email,
         FullName fullName,
-        string passwordHash)
+        string passwordHash,
+        Guid? tenantId = null)
     {
         var user = new User(
             Guid.NewGuid(),
             username,
             email,
             fullName,
-            passwordHash);
+            passwordHash,
+            tenantId);
 
         user.RaiseDomainEvent(new UserCreatedEvent(user.Id, user.Email.Value, user.FullName.GetFullName()));
 

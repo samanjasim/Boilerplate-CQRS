@@ -88,12 +88,22 @@
     "passwordChanged": "وشەی نهێنی بە سەرکەوتوویی گۆڕدرا",
     "welcomeBackUser": "بەخێربێیتەوە، {{name}}!",
     "emailAlreadyVerified": "ئیمەیڵ پێشتر پشتڕاستکراوەتەوە",
-    "creatingAccount": "دروستکردنی هەژمار..."
+    "creatingAccount": "دروستکردنی هەژمار...",
+    "createOrganization": "دروستکردنی دامەزراوەکەت",
+    "createOrganizationDesc": "دامەزراوەکەت و هەژماری بەڕێوەبەر دابنێ",
+    "companyName": "ناوی کۆمپانیا"
+  },
+  "landing": {
+    "title": "بەخێربێیت بۆ {{appName}}",
+    "subtitle": "سەکۆیەکی نوێ لەگەڵ ناسینەوە و ڕۆڵەکان و فرە خاوەنداری",
+    "getStarted": "دەست پێبکە",
+    "signIn": "چوونە ژوورەوە"
   },
   "nav": {
     "dashboard": "داشبۆرد",
     "users": "بەکارهێنەران",
     "roles": "ڕۆڵەکان",
+    "tenants": "خاوەنکارەکان",
     "auditLogs": "تۆماری چاودێری",
     "collapse": "کچکردن"
   },
@@ -170,6 +180,24 @@
     "roleRemoved": "ڕۆڵ بە سەرکەوتوویی لابرا",
     "deleteRole": "سڕینەوەی ڕۆڵ",
     "deleteRoleConfirm": "دڵنیایت لە سڕینەوەی ڕۆڵی \"{{name}}\"؟ ئەم کردارە ناگەڕێتەوە."
+  },
+  "tenants": {
+    "title": "خاوەنکارەکان",
+    "allTenants": "هەموو خاوەنکارەکان",
+    "name": "ناو",
+    "slug": "ناسنامە",
+    "status": "دۆخ",
+    "tenantDetail": "وردەکاری خاوەنکار",
+    "backToTenants": "گەڕانەوە بۆ خاوەنکارەکان",
+    "activate": "چالاککردن",
+    "suspend": "هەڵپەساندن",
+    "deactivate": "ناچالاککردن",
+    "tenantActivated": "خاوەنکار بە سەرکەوتوویی چالاککرا",
+    "tenantSuspended": "خاوەنکار بە سەرکەوتوویی هەڵپەسێنرا",
+    "tenantDeactivated": "خاوەنکار بە سەرکەوتوویی ناچالاککرا",
+    "suspendConfirm": "دڵنیایت لە هەڵپەساندنی {{name}}؟",
+    "deactivateConfirm": "دڵنیایت لە ناچالاککردنی {{name}}؟",
+    "noTenants": "هیچ خاوەنکارێک نەدۆزرایەوە"
   },
   "auditLogs": {
     "title": "تۆماری چاودێری",

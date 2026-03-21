@@ -49,6 +49,10 @@ public sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
         builder.Property(r => r.ModifiedBy)
             .HasColumnName("modified_by");
 
+        builder.Property(r => r.TenantId)
+            .HasColumnName("tenant_id");
+        builder.HasIndex(r => r.TenantId);
+
         builder.Navigation(r => r.UserRoles)
             .UsePropertyAccessMode(PropertyAccessMode.Field);
 

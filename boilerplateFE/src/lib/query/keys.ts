@@ -25,6 +25,12 @@ export const queryKeys = {
     list: () => [...queryKeys.permissions.all, 'list'] as const,
   },
 
+  tenants: {
+    all: ['tenants'] as const,
+    lists: () => [...queryKeys.tenants.all, 'list'] as const,
+    detail: (id: string) => [...queryKeys.tenants.all, 'detail', id] as const,
+  },
+
   auditLogs: {
     all: () => ['auditLogs'] as const,
     list: () => [...queryKeys.auditLogs.all(), 'list'] as const,

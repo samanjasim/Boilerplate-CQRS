@@ -88,12 +88,22 @@
     "passwordChanged": "تم تغيير كلمة المرور بنجاح",
     "welcomeBackUser": "مرحباً بعودتك، {{name}}!",
     "emailAlreadyVerified": "البريد الإلكتروني محقق بالفعل",
-    "creatingAccount": "جاري إنشاء الحساب..."
+    "creatingAccount": "جاري إنشاء الحساب...",
+    "createOrganization": "إنشاء مؤسستك",
+    "createOrganizationDesc": "قم بإعداد مؤسستك وحساب المسؤول",
+    "companyName": "اسم الشركة"
+  },
+  "landing": {
+    "title": "مرحباً بك في {{appName}}",
+    "subtitle": "منصة حديثة مع المصادقة والأدوار والإيجار المتعدد",
+    "getStarted": "ابدأ الآن",
+    "signIn": "تسجيل الدخول"
   },
   "nav": {
     "dashboard": "لوحة التحكم",
     "users": "المستخدمون",
     "roles": "الأدوار",
+    "tenants": "المستأجرون",
     "auditLogs": "سجلات التدقيق",
     "collapse": "طي"
   },
@@ -170,6 +180,24 @@
     "roleRemoved": "تم إزالة الدور بنجاح",
     "deleteRole": "حذف الدور",
     "deleteRoleConfirm": "هل أنت متأكد من حذف الدور \"{{name}}\"؟ لا يمكن التراجع عن هذا الإجراء."
+  },
+  "tenants": {
+    "title": "المستأجرون",
+    "allTenants": "جميع المستأجرين",
+    "name": "الاسم",
+    "slug": "المعرف",
+    "status": "الحالة",
+    "tenantDetail": "تفاصيل المستأجر",
+    "backToTenants": "العودة إلى المستأجرين",
+    "activate": "تفعيل",
+    "suspend": "تعليق",
+    "deactivate": "إلغاء التفعيل",
+    "tenantActivated": "تم تفعيل المستأجر بنجاح",
+    "tenantSuspended": "تم تعليق المستأجر بنجاح",
+    "tenantDeactivated": "تم إلغاء تفعيل المستأجر بنجاح",
+    "suspendConfirm": "هل أنت متأكد من تعليق {{name}}؟",
+    "deactivateConfirm": "هل أنت متأكد من إلغاء تفعيل {{name}}؟",
+    "noTenants": "لم يتم العثور على مستأجرين"
   },
   "auditLogs": {
     "title": "سجلات التدقيق",

@@ -1,48 +1,75 @@
 @import "tailwindcss";
 
+/*
+ * ╔══════════════════════════════════════════════════════════════╗
+ * ║                    THEME CONFIGURATION                       ║
+ * ║  To rebrand: change the HSL values in :root and .dark        ║
+ * ║  To change color scale: update the @theme block              ║
+ * ║  Use https://uicolors.app to generate color scales           ║
+ * ╚══════════════════════════════════════════════════════════════╝
+ */
+
 @layer base {
   :root {
-    --background: 0 0% 98%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
+    /* ── Brand Color (change this to rebrand) ── */
+    --primary: 221.2 83.2% 53.3%;              /* Blue */
     --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+
+    /* ── Surface & Background ── */
+    --background: 0 0% 98%;
+    --foreground: 224 71.4% 4.1%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 71.4% 4.1%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 71.4% 4.1%;
+
+    /* ── Secondary & Muted ── */
+    --secondary: 220 14.3% 95.9%;
+    --secondary-foreground: 220.9 39.3% 11%;
+    --muted: 220 14.3% 95.9%;
+    --muted-foreground: 220 8.9% 46.1%;
+    --accent: 220 14.3% 95.9%;
+    --accent-foreground: 220.9 39.3% 11%;
+
+    /* ── Status ── */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
+
+    /* ── Borders & Inputs ── */
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    /* ── Brand Color (dark mode) ── */
     --primary: 217.2 91.2% 59.8%;
     --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+
+    /* ── Surface & Background ── */
+    --background: 224 71.4% 4.1%;
+    --foreground: 210 20% 98%;
+    --card: 224 71.4% 4.1%;
+    --card-foreground: 210 20% 98%;
+    --popover: 224 71.4% 4.1%;
+    --popover-foreground: 210 20% 98%;
+
+    /* ── Secondary & Muted ── */
+    --secondary: 215 27.9% 16.9%;
+    --secondary-foreground: 210 20% 98%;
+    --muted: 215 27.9% 16.9%;
+    --muted-foreground: 217.9 10.6% 64.9%;
+    --accent: 215 27.9% 16.9%;
+    --accent-foreground: 210 20% 98%;
+
+    /* ── Status ── */
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
+
+    /* ── Borders & Inputs ── */
+    --border: 215 27.9% 16.9%;
+    --input: 215 27.9% 16.9%;
     --ring: 224.3 76.3% 48%;
   }
 }
@@ -51,7 +78,13 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  /* Primary Blue Scale (Education/Finance) */
+  /*
+   * ── Brand Color Scale ──
+   * Full palette for gradients, badges, backgrounds.
+   * Generate yours at: https://uicolors.app
+   *
+   * Current: Blue
+   */
   --color-primary-50: #eff6ff;
   --color-primary-100: #dbeafe;
   --color-primary-200: #bfdbfe;
@@ -64,7 +97,12 @@
   --color-primary-900: #1e3a8a;
   --color-primary-950: #172554;
 
-  /* Accent Emerald/Teal Scale */
+  /*
+   * ── Accent Color Scale ──
+   * Secondary brand color for highlights, badges.
+   *
+   * Current: Emerald
+   */
   --color-accent-50: #ecfdf5;
   --color-accent-100: #d1fae5;
   --color-accent-200: #a7f3d0;
@@ -77,179 +115,63 @@
   --color-accent-900: #064e3b;
   --color-accent-950: #022c22;
 
-  /* ===== LIGHT THEME (default) ===== */
-
-  /* Surface Colors (Light) */
-  --color-surface-50: #ffffff;
-  --color-surface-100: #f9fafb;
-  --color-surface-200: #f3f4f6;
-  --color-surface-300: #e5e7eb;
-  --color-surface-400: #d1d5db;
-  --color-surface-500: #9ca3af;
-
-  /* Semantic Aliases (Light default) */
-  --color-background: #f9fafb;
-  --color-surface: #ffffff;
-  --color-surface-elevated: #ffffff;
-  --color-border: #e5e7eb;
-  --color-hover: #f3f4f6;
-
-  /* Text Colors (Light default) */
-  --color-text-primary: #111827;
-  --color-text-secondary: #4b5563;
-  --color-text-muted: #9ca3af;
-  --color-text-inverse: #f9fafb;
-
-  /* Status Colors */
-  --color-success: #22c55e;
-  --color-warning: #f59e0b;
-  --color-error: #ef4444;
-  --color-info: #3b82f6;
-
-  /* Border Radius */
+  /* ── Layout Tokens ── */
   --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
   --radius-2xl: 1.5rem;
 
-  /* Shadows */
   --shadow-soft-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-soft-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
   --shadow-soft-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
 
-  /* Animation timing */
   --transition-fast: 150ms;
   --transition-normal: 200ms;
   --transition-slow: 300ms;
 }
 
-/* ===== DARK THEME OVERRIDES ===== */
-.dark {
-  --color-background: #0f172a;
-  --color-surface: #1e293b;
-  --color-surface-elevated: #334155;
-  --color-border: #334155;
-  --color-hover: #1e293b;
+/* ── Base Styles ── */
 
-  --color-text-primary: #f1f5f9;
-  --color-text-secondary: #94a3b8;
-  --color-text-muted: #64748b;
-  --color-text-inverse: #0f172a;
-
-  --shadow-soft-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-soft-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-  --shadow-soft-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
-}
-
-/* Base styles */
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
   padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: var(--color-background);
-  color: var(--color-text-primary);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
   transition: background-color 0.2s, color 0.2s;
 }
 
-/* Typography */
-h1 {
-  font-size: 2rem;
-  font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
-}
+/* ── Typography ── */
+h1 { font-size: 2rem; font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; }
+h2 { font-size: 1.5rem; font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; }
+h3 { font-size: 1.25rem; font-weight: 600; line-height: 1.4; }
+h4 { font-size: 1rem; font-weight: 600; line-height: 1.5; }
+p { font-size: 0.875rem; line-height: 1.6; }
+small { font-size: 0.75rem; line-height: 1.5; }
+button { font-family: inherit; }
 
-h2 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  line-height: 1.3;
-  letter-spacing: -0.01em;
-}
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: hsl(var(--card)); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
+* { scrollbar-width: thin; scrollbar-color: hsl(var(--border)) hsl(var(--card)); }
 
-h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  line-height: 1.4;
-}
+/* ── RTL Support ── */
+[dir="rtl"] { text-align: right; }
 
-h4 {
-  font-size: 1rem;
-  font-weight: 600;
-  line-height: 1.5;
-}
-
-p {
-  font-size: 0.875rem;
-  line-height: 1.6;
-}
-
-small {
-  font-size: 0.75rem;
-  line-height: 1.5;
-}
-
-button {
-  font-family: inherit;
-}
-
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--color-surface);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-muted);
-}
-
-/* Firefox scrollbar */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-border) var(--color-surface);
-}
-
-/* RTL support */
-[dir="rtl"] {
-  text-align: right;
-}
-
-/* Focus ring utility */
+/* ── Utilities ── */
 @layer utilities {
   .focus-ring {
-    @apply outline-none ring-2 ring-primary-500 ring-offset-2 ring-offset-background;
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2;
   }
-
   .focus-ring-inset {
     @apply outline-none ring-2 ring-primary-500 ring-inset;
-  }
-}
-
-/* Custom component styles */
-@layer components {
-  .card {
-    @apply bg-surface rounded-lg border border-border p-4;
-  }
-
-  .card-elevated {
-    @apply bg-surface-elevated rounded-lg border border-border p-4 shadow-soft-sm;
   }
 }

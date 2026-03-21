@@ -123,7 +123,8 @@ public sealed class AuditableEntityInterceptor(
                 PerformedByName = performedByName,
                 PerformedAt = utcNow,
                 IpAddress = ipAddress,
-                CorrelationId = correlationId
+                CorrelationId = correlationId,
+                TenantId = currentUserService.TenantId
             };
 
             context.Set<AuditLog>().Add(auditLog);

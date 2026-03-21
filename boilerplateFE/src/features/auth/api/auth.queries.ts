@@ -4,11 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { authApi } from './auth.api';
 import { queryKeys } from '@/lib/query/keys';
-import { useAuthStore } from '@/stores';
+import { useAuthStore, useUIStore } from '@/stores';
 import { storage } from '@/utils';
 import { ROUTES } from '@/config';
 import i18n from '@/i18n';
-import type { LoginCredentials, RegisterData, ChangePasswordData } from '@/types';
+import type { LoginCredentials, RegisterData, RegisterTenantData, ChangePasswordData } from '@/types';
 
 export function useCurrentUser() {
   return useQuery({
@@ -40,6 +40,9 @@ export function useLogin() {
 
       login(fullUser, tokens);
       queryClient.setQueryData(queryKeys.auth.me(), fullUser);
+      if (fullUser.tenantId) {
+        useUIStore.getState().setActiveTenantId(fullUser.tenantId);
+      }
       toast.success(i18n.t('auth.welcomeBackUser', { name: fullUser.firstName }));
       navigate(ROUTES.DASHBOARD);
     },
@@ -61,6 +64,18 @@ export function useRegister() {
   });
 }
 
+export function useRegisterTenant() {
+  const navigate = useNavigate();
+
+  return useMutation({
+    mutationFn: (data: RegisterTenantData) => authApi.registerTenant(data),
+    onSuccess: (_, variables) => {
+      toast.success(i18n.t('auth.accountCreated'));
+      navigate(ROUTES.VERIFY_EMAIL, { state: { email: variables.email } });
+    },
+  });
+}
+
 export function useLogout() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -69,6 +84,7 @@ export function useLogout() {
   return useCallback(() => {
     storage.clearTokens();
     logout();
+    useUIStore.getState().setActiveTenantId(null);
     queryClient.clear();
     navigate(ROUTES.LOGIN);
   }, [queryClient, navigate, logout]);

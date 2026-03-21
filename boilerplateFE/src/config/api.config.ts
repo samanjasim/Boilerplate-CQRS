@@ -7,6 +7,7 @@ export const API_ENDPOINTS = {
   AUTH: {
     LOGIN: '/Auth/login',
     REGISTER: '/Auth/register',
+    REGISTER_TENANT: '/Auth/register-tenant',
     REFRESH_TOKEN: '/Auth/refresh-token',
     ME: '/Auth/me',
     CHANGE_PASSWORD: '/Auth/change-password',
@@ -29,6 +30,13 @@ export const API_ENDPOINTS = {
     PERMISSIONS: (id: string) => `/Roles/${id}/permissions`,
     ASSIGN_USER: (roleId: string, userId: string) => `/Roles/${roleId}/users/${userId}`,
     REMOVE_USER: (roleId: string, userId: string) => `/Roles/${roleId}/users/${userId}`,
+  },
+  TENANTS: {
+    LIST: '/Tenants',
+    DETAIL: (id: string) => `/Tenants/${id}`,
+    ACTIVATE: (id: string) => `/Tenants/${id}/activate`,
+    SUSPEND: (id: string) => `/Tenants/${id}/suspend`,
+    DEACTIVATE: (id: string) => `/Tenants/${id}/deactivate`,
   },
   PERMISSIONS: {
     LIST: '/Permissions',

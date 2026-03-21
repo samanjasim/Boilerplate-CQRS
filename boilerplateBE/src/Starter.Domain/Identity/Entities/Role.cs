@@ -11,6 +11,7 @@ public sealed class Role : AggregateRoot
     public string? Description { get; private set; }
     public bool IsSystemRole { get; private set; }
     public bool IsActive { get; private set; }
+    public Guid? TenantId { get; private set; }
 
     private readonly List<UserRole> _userRoles = [];
     public IReadOnlyCollection<UserRole> UserRoles => _userRoles.AsReadOnly();
@@ -20,18 +21,19 @@ public sealed class Role : AggregateRoot
 
     private Role() { }
 
-    private Role(Guid id, string name, string? description, bool isSystemRole)
+    private Role(Guid id, string name, string? description, bool isSystemRole, Guid? tenantId = null)
         : base(id)
     {
         Name = name;
         Description = description;
         IsSystemRole = isSystemRole;
         IsActive = true;
+        TenantId = tenantId;
     }
 
-    public static Role Create(string name, string? description = null, bool isSystemRole = false)
+    public static Role Create(string name, string? description = null, bool isSystemRole = false, Guid? tenantId = null)
     {
-        return new Role(Guid.NewGuid(), name, description, isSystemRole);
+        return new Role(Guid.NewGuid(), name, description, isSystemRole, tenantId);
     }
 
     public void Update(string name, string? description)

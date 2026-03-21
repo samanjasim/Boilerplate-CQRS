@@ -110,6 +110,10 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.ModifiedBy)
             .HasColumnName("modified_by");
 
+        builder.Property(u => u.TenantId)
+            .HasColumnName("tenant_id");
+        builder.HasIndex(u => u.TenantId);
+
         builder.Navigation(u => u.UserRoles)
             .UsePropertyAccessMode(PropertyAccessMode.Field);
     }

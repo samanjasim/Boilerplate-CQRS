@@ -9,6 +9,8 @@ namespace Starter.Infrastructure.Persistence;
 
 public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
 {
+    private readonly ICurrentUserService? _currentUserService;
+
     public DbSet<User> Users => Set<User>();
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<Permission> Permissions => Set<Permission>();
@@ -17,9 +19,16 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+    // EF Core evaluates this per-query via the expression tree.
+    // Must be a property (not a method) for EF to parameterize it.
+    private Guid? TenantId => _currentUserService?.TenantId;
+
+    public ApplicationDbContext(
+        DbContextOptions<ApplicationDbContext> options,
+        ICurrentUserService? currentUserService = null)
         : base(options)
     {
+        _currentUserService = currentUserService;
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -27,5 +36,23 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+
+        // Global tenant query filters — EF parameterizes TenantId per query execution
+        // Platform admin (TenantId=null): sees everything
+        // Tenant user (TenantId=guid): sees ONLY their tenant's data (not platform users)
+
+        modelBuilder.Entity<User>().HasQueryFilter(u =>
+            TenantId == null || u.TenantId == TenantId);
+
+        // Roles: tenant users see global/system roles (TenantId=null) + their own custom roles
+        modelBuilder.Entity<Role>().HasQueryFilter(r =>
+            TenantId == null || r.TenantId == null || r.TenantId == TenantId);
+
+        modelBuilder.Entity<AuditLog>().HasQueryFilter(a =>
+            TenantId == null || a.TenantId == TenantId);
+
+        // Tenant entity: tenant users see only their own tenant; platform admins see all
+        modelBuilder.Entity<Tenant>().HasQueryFilter(t =>
+            TenantId == null || t.Id == TenantId);
     }
 }

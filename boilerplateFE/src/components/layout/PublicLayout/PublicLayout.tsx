@@ -1,0 +1,14 @@
+import { Outlet } from 'react-router-dom';
+import { LanguageSwitcher, ThemeToggle } from '@/components/common';
+
+export function PublicLayout() {
+  return (
+    <div className="relative min-h-screen">
+      <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
+        <LanguageSwitcher variant="text" />
+        <ThemeToggle variant="text" />
+      </div>
+      <Outlet />
+    </div>
+  );
+}

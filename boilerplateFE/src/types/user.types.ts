@@ -9,6 +9,8 @@ export interface User {
   emailConfirmed?: boolean;
   phoneConfirmed?: boolean;
   status?: string;
+  tenantId?: string;
+  tenantName?: string;
   roles?: string[];
   permissions?: string[];
   lastLoginAt?: string;

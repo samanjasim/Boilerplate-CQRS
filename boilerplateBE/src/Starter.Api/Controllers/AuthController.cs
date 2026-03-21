@@ -9,6 +9,7 @@ using Starter.Application.Features.Auth.Commands.SendEmailVerification;
 using Starter.Application.Features.Auth.Commands.VerifyEmail;
 using Starter.Application.Features.Auth.Commands.ForgotPassword;
 using Starter.Application.Features.Auth.Commands.ResetPassword;
+using Starter.Application.Features.Tenants.Commands.RegisterTenant;
 using Starter.Application.Features.Users.Queries.GetCurrentUser;
 
 namespace Starter.Api.Controllers;
@@ -119,6 +120,20 @@ public sealed class AuthController(ISender mediator) : BaseApiController(mediato
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordCommand command)
+    {
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Register a new tenant with an admin user.
+    /// </summary>
+    [HttpPost("register-tenant")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> RegisterTenant([FromBody] RegisterTenantCommand command)
     {
         var result = await Mediator.Send(command);
         return HandleResult(result);

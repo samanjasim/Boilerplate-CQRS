@@ -14,4 +14,5 @@ public class AuditLog
     public DateTime PerformedAt { get; set; } = DateTime.UtcNow;
     public string? IpAddress { get; set; }
     public string? CorrelationId { get; set; }
+    public Guid? TenantId { get; set; }
 }

@@ -13,4 +13,6 @@ public sealed record UserDto(
     DateTime? LastLoginAt,
     DateTime CreatedAt,
     IReadOnlyList<string> Roles,
-    IReadOnlyList<string>? Permissions = null);
+    IReadOnlyList<string>? Permissions = null,
+    Guid? TenantId = null,
+    string? TenantName = null);
