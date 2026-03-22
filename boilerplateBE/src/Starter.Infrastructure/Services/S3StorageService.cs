@@ -53,7 +53,10 @@ public sealed class S3StorageService : IStorageService
             BucketName = _settings.BucketName,
             Key = key,
             Expires = DateTime.UtcNow.Add(expiration),
-            Verb = HttpVerb.GET
+            Verb = HttpVerb.GET,
+            Protocol = new Uri(_settings.Endpoint).Scheme.Equals("https", StringComparison.OrdinalIgnoreCase)
+                ? Protocol.HTTPS
+                : Protocol.HTTP
         };
         var url = _s3Client.GetPreSignedURL(request);
         return Task.FromResult(url);

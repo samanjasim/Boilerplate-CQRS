@@ -20,18 +20,7 @@ public sealed class NotificationService(
         string? data = null,
         CancellationToken ct = default)
     {
-        var notification = new Notification
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            TenantId = tenantId,
-            Type = type,
-            Title = title,
-            Message = message,
-            Data = data,
-            IsRead = false,
-            CreatedAt = DateTime.UtcNow
-        };
+        var notification = Notification.Create(userId, tenantId, type, title, message, data);
 
         context.Notifications.Add(notification);
         await context.SaveChangesAsync(ct);

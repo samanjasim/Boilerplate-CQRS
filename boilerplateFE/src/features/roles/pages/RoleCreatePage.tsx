@@ -101,12 +101,12 @@ export default function RoleCreatePage() {
                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
                   <span className="text-xs font-bold text-primary">2</span>
                 </div>
-                <h3 className="text-lg font-semibold text-foreground">Assign Permissions</h3>
+                <h3 className="text-lg font-semibold text-foreground">{t('roles.assignPermissions')}</h3>
               </div>
               {selectedPermissionIds.size > 0 && (
                 <div className="flex items-center gap-1.5 text-xs text-primary font-medium">
                   <ShieldCheck className="h-3.5 w-3.5" />
-                  {selectedPermissionIds.size} permission{selectedPermissionIds.size !== 1 ? 's' : ''} selected
+                  {t('roles.permissionsSelected', { count: selectedPermissionIds.size })}
                 </div>
               )}
             </div>
@@ -114,7 +114,8 @@ export default function RoleCreatePage() {
             <div className="flex items-start gap-2 mb-4 rounded-lg bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 px-3 py-2.5">
               <Info className="h-4 w-4 shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
               <p className="text-xs text-blue-700 dark:text-blue-300">
-                Select the permissions this role should have. You can also modify permissions later from the role edit page.
+                <strong>{t('roles.permissionsInfoTitle')}</strong>{' '}
+                {t('roles.permissionsInfoDesc')}
               </p>
             </div>
 

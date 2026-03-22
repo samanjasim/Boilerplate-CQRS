@@ -1,5 +1,6 @@
 import type { AxiosInstance, AxiosError } from 'axios';
 import { toast } from 'sonner';
+import i18n from '@/i18n';
 import type { ApiError } from '@/types';
 
 const getErrorMessage = (error: AxiosError<ApiError>): string => {
@@ -8,12 +9,12 @@ const getErrorMessage = (error: AxiosError<ApiError>): string => {
 
   if (!error.response) {
     if (error.code === 'ERR_NETWORK') {
-      return 'Unable to connect to the server. Please check your internet connection.';
+      return i18n.t('errors.networkError');
     }
     if (error.code === 'ECONNABORTED') {
-      return 'Request timed out. Please try again.';
+      return i18n.t('errors.timeout');
     }
-    return 'Network error. Please check your connection.';
+    return i18n.t('errors.networkError');
   }
 
   if (errorData?.message) {
@@ -49,30 +50,30 @@ const getErrorMessage = (error: AxiosError<ApiError>): string => {
           return errorMessages[0] as string;
         }
       }
-      return errorData?.detail || errorData?.title || 'Invalid request. Please check your input.';
+      return errorData?.detail || errorData?.title || i18n.t('errors.badRequest');
 
     case 401:
-      return errorData?.detail || 'Invalid credentials. Please check your email and password.';
+      return errorData?.detail || i18n.t('errors.unauthorized');
 
     case 403:
-      return errorData?.detail || 'You do not have permission to perform this action.';
+      return errorData?.detail || i18n.t('errors.forbidden');
 
     case 404:
-      return errorData?.detail || 'The requested resource was not found.';
+      return errorData?.detail || i18n.t('errors.notFound');
 
     case 409:
-      return errorData?.detail || errorData?.title || 'A conflict occurred. The resource may already exist.';
+      return errorData?.detail || errorData?.title || i18n.t('errors.conflict');
 
     case 422:
-      return errorData?.detail || 'Validation failed. Please check your input.';
+      return errorData?.detail || i18n.t('errors.validationFailed');
 
     case 500:
-      return 'An internal server error occurred. Please try again later.';
+      return i18n.t('errors.serverError');
 
     case 502:
     case 503:
     case 504:
-      return 'The server is temporarily unavailable. Please try again later.';
+      return i18n.t('errors.serviceUnavailable');
 
     default:
       if (errorData?.detail) {
@@ -81,7 +82,7 @@ const getErrorMessage = (error: AxiosError<ApiError>): string => {
       if (errorData?.title) {
         return errorData.title;
       }
-      return 'An unexpected error occurred. Please try again.';
+      return i18n.t('errors.unknownError');
   }
 };
 

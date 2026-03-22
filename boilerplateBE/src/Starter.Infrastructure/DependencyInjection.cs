@@ -1,5 +1,4 @@
 using Amazon.S3;
-using Amazon.S3.Util;
 using Starter.Application.Common.Interfaces;
 using Starter.Infrastructure.Email.Templates;
 using Starter.Infrastructure.Persistence;
@@ -216,22 +215,7 @@ public static class DependencyInjection
         services.AddScoped<IStorageService, S3StorageService>();
         services.AddScoped<IFileService, FileService>();
 
-        // Ensure bucket exists on startup
-        Task.Run(async () =>
-        {
-            try
-            {
-                var bucketExists = await AmazonS3Util.DoesS3BucketExistV2Async(s3Client, settings.BucketName);
-                if (!bucketExists)
-                {
-                    await s3Client.PutBucketAsync(settings.BucketName);
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Warning: Failed to create storage bucket '{settings.BucketName}': {ex.Message}");
-            }
-        });
+        services.AddHostedService<StorageBucketInitializer>();
 
         return services;
     }

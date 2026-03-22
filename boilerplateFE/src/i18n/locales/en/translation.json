@@ -41,7 +41,8 @@
     "hidePassword": "Hide password",
     "showPassword": "Show password",
     "noPermission": "You don't have permission to access this page",
-    "copyFailed": "Failed to copy to clipboard"
+    "copyFailed": "Failed to copy to clipboard",
+    "creating": "Creating..."
   },
   "auth": {
     "welcomeBack": "Welcome back",
@@ -178,7 +179,8 @@
     "userDeactivated": "User deactivated successfully",
     "userUnlocked": "User unlocked successfully",
     "suspendConfirm": "Are you sure you want to suspend {{name}}? They will not be able to log in.",
-    "deactivateConfirm": "Are you sure you want to deactivate {{name}}? They will not be able to log in."
+    "deactivateConfirm": "Are you sure you want to deactivate {{name}}? They will not be able to log in.",
+    "removeRoleConfirm": "Are you sure you want to remove the \"{{roleName}}\" role from {{userName}}? They will lose all permissions associated with this role."
   },
   "roles": {
     "title": "Roles",
@@ -202,7 +204,13 @@
     "roleAssigned": "Role assigned successfully",
     "roleRemoved": "Role removed successfully",
     "deleteRole": "Delete Role",
-    "deleteRoleConfirm": "Are you sure you want to delete the role \"{{name}}\"? This action cannot be undone."
+    "deleteRoleConfirm": "Are you sure you want to delete the role \"{{name}}\"? This action cannot be undone.",
+    "assignPermissions": "Assign Permissions",
+    "roleDetails": "Role Details",
+    "systemRole": "System",
+    "permissionsSelected": "{{count}} permission(s) selected",
+    "permissionsInfoTitle": "Permissions can be modified later",
+    "permissionsInfoDesc": "You can always update the permissions assigned to this role from the role detail page."
   },
   "tenants": {
     "title": "Tenants",
@@ -382,5 +390,20 @@
     "invalidEmail": "Invalid email address",
     "invalidPhone": "Phone number must be in E.164 format (e.g., +9647701234567)",
     "passwordsMismatch": "Passwords do not match"
+  },
+  "errors": {
+    "networkError": "Unable to connect to server",
+    "timeout": "Request timed out",
+    "unauthorized": "Invalid credentials",
+    "forbidden": "You do not have permission",
+    "notFound": "Resource not found",
+    "conflict": "A conflict occurred",
+    "badRequest": "Invalid request. Please check your input.",
+    "validationFailed": "Validation failed. Please check your input.",
+    "serverError": "An unexpected server error occurred",
+    "badGateway": "Server is temporarily unavailable",
+    "serviceUnavailable": "Service is temporarily unavailable",
+    "gatewayTimeout": "Server took too long to respond",
+    "unknownError": "An unexpected error occurred"
   }
 }

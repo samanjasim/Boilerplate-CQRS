@@ -24,13 +24,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAuditLogs } from '../api';
+import { AUDIT_ACTION_VARIANTS } from '@/constants';
 import type { AuditLog } from '@/types';
-
-const ACTION_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive'> = {
-  Created: 'default',
-  Updated: 'secondary',
-  Deleted: 'destructive',
-};
 
 function ChangesDetail({ changes }: { changes: string | null }) {
   const { t } = useTranslation();
@@ -91,7 +86,7 @@ export default function AuditLogsPage() {
     return p;
   }, [pageNumber, entityType, action, searchTerm]);
 
-  const { data, isLoading, isError } = useAuditLogs(params);
+  const { data, isLoading, isFetching, isError } = useAuditLogs(params);
   const logs = data?.data ?? [];
   const pagination = data?.pagination;
 
@@ -112,7 +107,7 @@ export default function AuditLogsPage() {
     );
   }
 
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <div className="flex justify-center py-12">
         <Spinner size="lg" />
@@ -167,7 +162,13 @@ export default function AuditLogsPage() {
       </Card>
 
       {/* Table */}
-      {logs.length === 0 ? (
+      <div className={`relative transition-opacity ${isFetching && !isLoading ? 'opacity-60' : ''}`}>
+      {isFetching && !isLoading && (
+        <div className="absolute inset-0 z-10 flex items-start justify-center pt-12">
+          <Spinner size="md" />
+        </div>
+      )}
+      {logs.length === 0 && !isFetching ? (
         <EmptyState icon={ClipboardList} title={t('auditLogs.noLogs')} />
       ) : (
         <Card>
@@ -207,7 +208,7 @@ export default function AuditLogsPage() {
                         </span>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={ACTION_VARIANTS[log.action] ?? 'secondary'}>
+                        <Badge variant={AUDIT_ACTION_VARIANTS[log.action] ?? 'secondary'}>
                           {log.action}
                         </Badge>
                       </TableCell>
@@ -229,6 +230,8 @@ export default function AuditLogsPage() {
           </CardContent>
         </Card>
       )}
+
+      </div>
 
       {/* Pagination */}
       {pagination && pagination.totalPages > 1 && (

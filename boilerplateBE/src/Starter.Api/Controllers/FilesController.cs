@@ -36,6 +36,7 @@ public sealed class FilesController(ISender mediator) : BaseApiController(mediat
         [FromForm] Guid? entityId = null,
         [FromForm] bool isPublic = false)
     {
+        // ASP.NET Core disposes IFormFile streams at end of request — no explicit disposal needed
         var stream = file.OpenReadStream();
         var command = new UploadFileCommand(
             stream,

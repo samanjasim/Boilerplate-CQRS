@@ -1,24 +1,15 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDistanceToNow } from 'date-fns';
-import { Bell, Check, CheckCheck, User, Shield, Key, Building, Mail } from 'lucide-react';
+import { Bell, CheckCheck } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/common';
 import { useNotifications, useMarkRead, useMarkAllRead } from '@/features/notifications/api';
+import { NOTIFICATION_ICONS } from '@/constants';
 import { cn } from '@/lib/utils';
 import type { Notification } from '@/types';
-
-const notificationIcons: Record<string, React.ElementType> = {
-  UserCreated: User,
-  UserInvited: Mail,
-  RoleChanged: Shield,
-  PasswordChanged: Key,
-  TenantCreated: Building,
-  InvitationAccepted: Check,
-  LoginFromNewDevice: Shield,
-};
 
 type FilterType = 'all' | 'unread';
 
@@ -29,7 +20,7 @@ export default function NotificationsPage() {
 
   const isReadParam = filter === 'unread' ? false : undefined;
 
-  const { data, isLoading } = useNotifications({
+  const { data, isLoading, isFetching } = useNotifications({
     pageNumber: page,
     pageSize: 20,
     isRead: isReadParam,
@@ -75,11 +66,11 @@ export default function NotificationsPage() {
 
       <Card>
         <CardContent className="py-4">
-          {isLoading ? (
+          {isLoading && !data ? (
             <div className="flex items-center justify-center py-8 text-muted-foreground">
               {t('common.loading')}
             </div>
-          ) : notifications.length === 0 ? (
+          ) : notifications.length === 0 && !isFetching ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Bell className="h-10 w-10 mb-3 opacity-40" />
               <p>{t('notifications.noNotifications')}</p>
@@ -87,7 +78,7 @@ export default function NotificationsPage() {
           ) : (
             <div className="divide-y">
               {notifications.map((notification) => {
-                const Icon = notificationIcons[notification.type] || Bell;
+                const Icon = NOTIFICATION_ICONS[notification.type] || NOTIFICATION_ICONS.default;
                 const timeAgo = formatDistanceToNow(new Date(notification.createdAt), {
                   addSuffix: true,
                 });

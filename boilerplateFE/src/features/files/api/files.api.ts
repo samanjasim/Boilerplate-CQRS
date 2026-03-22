@@ -2,13 +2,29 @@ import { apiClient } from '@/lib/axios';
 import { API_ENDPOINTS } from '@/config';
 import type { FileMetadata, UploadFileData, UpdateFileData } from '@/types';
 
+/** Tags come as comma-separated string from API — normalize to array. */
+function normalizeTags(file: FileMetadata): FileMetadata {
+  return {
+    ...file,
+    tags: typeof file.tags === 'string'
+      ? (file.tags as string).split(',').map(t => t.trim()).filter(Boolean)
+      : file.tags,
+  };
+}
+
 export const filesApi = {
   getFiles: (params?: Record<string, unknown>) =>
-    apiClient.get(API_ENDPOINTS.FILES.LIST, { params }).then(r => r.data),
+    apiClient.get(API_ENDPOINTS.FILES.LIST, { params }).then(r => {
+      const data = r.data;
+      if (data.data && Array.isArray(data.data)) {
+        data.data = data.data.map(normalizeTags);
+      }
+      return data;
+    }),
 
   getFileById: async (id: string): Promise<FileMetadata> => {
     const response = await apiClient.get<{ data: FileMetadata }>(API_ENDPOINTS.FILES.DETAIL(id));
-    return response.data.data;
+    return normalizeTags(response.data.data);
   },
 
   getFileUrl: async (id: string): Promise<string> => {
@@ -31,7 +47,7 @@ export const filesApi = {
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } }
     );
-    return response.data.data;
+    return normalizeTags(response.data.data);
   },
 
   updateFile: async (id: string, data: UpdateFileData): Promise<void> => {

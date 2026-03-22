@@ -38,21 +38,19 @@ public sealed class FileService(
 
         await storageService.UploadAsync(stream, key, contentType, ct);
 
-        var metadata = new FileMetadata
-        {
-            FileName = fileName,
-            StorageKey = key,
-            ContentType = contentType,
-            Size = size,
-            Category = category,
-            Tags = tags is { Length: > 0 } ? string.Join(",", tags) : null,
-            TenantId = tenantId,
-            UploadedBy = userId,
-            IsPublic = isPublic,
-            Description = description,
-            EntityType = entityType,
-            EntityId = entityId
-        };
+        var metadata = FileMetadata.Create(
+            fileName: fileName,
+            storageKey: key,
+            contentType: contentType,
+            size: size,
+            category: category,
+            uploadedBy: userId,
+            tenantId: tenantId,
+            tags: tags is { Length: > 0 } ? string.Join(",", tags) : null,
+            isPublic: isPublic,
+            description: description,
+            entityType: entityType,
+            entityId: entityId);
 
         context.FileMetadata.Add(metadata);
         await context.SaveChangesAsync(ct);

@@ -39,7 +39,7 @@ export default function TenantsListPage() {
     );
   }
 
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <div className="flex justify-center py-12">
         <Spinner size="lg" />

@@ -273,7 +273,7 @@ export default function UserDetailPage() {
         onClose={() => setRoleToRemove(null)}
         onConfirm={handleRemoveRole}
         title={t('users.removeRole')}
-        description={`Are you sure you want to remove the "${roleToRemove?.roleName}" role from ${user.firstName} ${user.lastName}? They will lose all permissions associated with this role.`}
+        description={t('users.removeRoleConfirm', { roleName: roleToRemove?.roleName, userName: `${user.firstName} ${user.lastName}` })}
         confirmLabel={t('users.removeRole')}
         isLoading={isRemovingRole}
       />

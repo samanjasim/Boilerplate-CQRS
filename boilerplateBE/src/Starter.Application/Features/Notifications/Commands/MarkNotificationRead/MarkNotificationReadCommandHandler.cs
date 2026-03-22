@@ -24,8 +24,7 @@ internal sealed class MarkNotificationReadCommandHandler(
 
         if (!notification.IsRead)
         {
-            notification.IsRead = true;
-            notification.ReadAt = DateTime.UtcNow;
+            notification.MarkAsRead();
             await context.SaveChangesAsync(cancellationToken);
         }
 

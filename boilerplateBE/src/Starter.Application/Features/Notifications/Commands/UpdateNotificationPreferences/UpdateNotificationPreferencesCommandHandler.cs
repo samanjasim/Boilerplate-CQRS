@@ -27,19 +27,12 @@ internal sealed class UpdateNotificationPreferencesCommandHandler(
         {
             if (existingDict.TryGetValue(item.NotificationType, out var pref))
             {
-                pref.EmailEnabled = item.EmailEnabled;
-                pref.InAppEnabled = item.InAppEnabled;
+                pref.Update(item.EmailEnabled, item.InAppEnabled);
             }
             else
             {
-                context.NotificationPreferences.Add(new NotificationPreference
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = userId.Value,
-                    NotificationType = item.NotificationType,
-                    EmailEnabled = item.EmailEnabled,
-                    InAppEnabled = item.InAppEnabled,
-                });
+                context.NotificationPreferences.Add(
+                    NotificationPreference.Create(userId.Value, item.NotificationType, item.EmailEnabled, item.InAppEnabled));
             }
         }
 

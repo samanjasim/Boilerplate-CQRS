@@ -45,7 +45,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { PageHeader, EmptyState, FileUpload, ConfirmDialog } from '@/components/common';
-import { useFiles, useUploadFile, useDeleteFile, useUpdateFile } from '../api';
+import { filesApi, useFiles, useUploadFile, useDeleteFile, useUpdateFile } from '../api';
 import { toast } from 'sonner';
 import { usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
@@ -99,7 +99,7 @@ export default function FilesPage() {
     return p;
   }, [pageNumber, category, searchTerm]);
 
-  const { data, isLoading, isError } = useFiles(params);
+  const { data, isLoading, isFetching, isError } = useFiles(params);
   const { mutate: doUpload, isPending: isUploading } = useUploadFile();
   const { mutate: doDelete, isPending: isDeleting } = useDeleteFile();
   const { mutate: doUpdate, isPending: isUpdating } = useUpdateFile();
@@ -168,27 +168,38 @@ export default function FilesPage() {
     setEditTags(file.tags?.join(', ') ?? '');
   }, []);
 
+  const resolveUrl = useCallback(async (file: FileMetadata): Promise<string | null> => {
+    if (file.url) return file.url;
+    try {
+      return await filesApi.getFileUrl(file.id);
+    } catch {
+      return null;
+    }
+  }, []);
+
   const handleCopyUrl = useCallback(
     async (file: FileMetadata) => {
-      if (!file.url) {
+      const url = await resolveUrl(file);
+      if (!url) {
         toast.error(t('files.noUrlAvailable'));
         return;
       }
       try {
-        await navigator.clipboard.writeText(file.url);
+        await navigator.clipboard.writeText(url);
         toast.success(t('files.urlCopied'));
       } catch {
         toast.error(t('common.copyFailed'));
       }
     },
-    [t]
+    [t, resolveUrl]
   );
 
-  const handleDownload = useCallback((file: FileMetadata) => {
-    if (file.url) {
-      window.open(file.url, '_blank');
+  const handleDownload = useCallback(async (file: FileMetadata) => {
+    const url = await resolveUrl(file);
+    if (url) {
+      window.open(url, '_blank');
     }
-  }, []);
+  }, [resolveUrl]);
 
   if (isError) {
     return (
@@ -203,7 +214,7 @@ export default function FilesPage() {
     );
   }
 
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <div className="flex justify-center py-12">
         <Spinner size="lg" />
@@ -286,7 +297,13 @@ export default function FilesPage() {
       </Card>
 
       {/* Content */}
-      {files.length === 0 ? (
+      <div className={`relative ${isFetching && !isLoading ? 'opacity-60 pointer-events-none' : ''}`}>
+      {isFetching && !isLoading && (
+        <div className="absolute inset-0 z-10 flex items-start justify-center pt-12">
+          <Spinner size="md" />
+        </div>
+      )}
+      {files.length === 0 && !isFetching ? (
         <EmptyState icon={FolderOpen} title={t('files.noFiles')} />
       ) : viewMode === 'grid' ? (
         /* Grid View */
@@ -450,6 +467,7 @@ export default function FilesPage() {
           </div>
         </div>
       )}
+      </div>
 
       {/* Upload Dialog */}
       <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>

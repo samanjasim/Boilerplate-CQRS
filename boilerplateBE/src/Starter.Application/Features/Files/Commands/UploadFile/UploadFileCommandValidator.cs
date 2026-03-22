@@ -4,8 +4,6 @@ namespace Starter.Application.Features.Files.Commands.UploadFile;
 
 public sealed class UploadFileCommandValidator : AbstractValidator<UploadFileCommand>
 {
-    private const long MaxFileSize = 50 * 1024 * 1024; // 50MB
-
     public UploadFileCommandValidator()
     {
         RuleFor(x => x.FileName)
@@ -19,7 +17,6 @@ public sealed class UploadFileCommandValidator : AbstractValidator<UploadFileCom
             .MaximumLength(200);
 
         RuleFor(x => x.Size)
-            .GreaterThan(0).WithMessage("File must not be empty.")
-            .LessThanOrEqualTo(MaxFileSize).WithMessage("File size must not exceed 50MB.");
+            .GreaterThan(0).WithMessage("File must not be empty.");
     }
 }

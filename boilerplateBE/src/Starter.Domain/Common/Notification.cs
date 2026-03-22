@@ -1,15 +1,43 @@
 namespace Starter.Domain.Common;
 
-public sealed class Notification
+public sealed class Notification : BaseEntity
 {
-    public Guid Id { get; set; }
-    public Guid UserId { get; set; }
-    public Guid? TenantId { get; set; }
-    public string Type { get; set; } = null!;
-    public string Title { get; set; } = null!;
-    public string Message { get; set; } = null!;
-    public string? Data { get; set; }
-    public bool IsRead { get; set; }
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime? ReadAt { get; set; }
+    public Guid UserId { get; private set; }
+    public Guid? TenantId { get; private set; }
+    public string Type { get; private set; } = null!;
+    public string Title { get; private set; } = null!;
+    public string Message { get; private set; } = null!;
+    public string? Data { get; private set; }
+    public bool IsRead { get; private set; }
+    public DateTime? ReadAt { get; private set; }
+
+    private Notification() { }
+
+    private Notification(Guid id) : base(id) { }
+
+    public static Notification Create(
+        Guid userId,
+        Guid? tenantId,
+        string type,
+        string title,
+        string message,
+        string? data = null)
+    {
+        return new Notification(Guid.NewGuid())
+        {
+            UserId = userId,
+            TenantId = tenantId,
+            Type = type,
+            Title = title,
+            Message = message,
+            Data = data,
+            IsRead = false
+        };
+    }
+
+    public void MarkAsRead()
+    {
+        IsRead = true;
+        ReadAt = DateTime.UtcNow;
+    }
 }

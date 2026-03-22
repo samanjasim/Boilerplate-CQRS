@@ -1,4 +1,4 @@
-import { Bell, Check, CheckCheck, User, Shield, Key, Building, Mail } from 'lucide-react';
+import { Bell, CheckCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
@@ -13,22 +13,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useUnreadCount, useNotifications, useMarkRead, useMarkAllRead } from '@/features/notifications/api';
 import { useAblyNotifications } from '@/hooks/useAblyNotifications';
+import { NOTIFICATION_ICONS } from '@/constants';
 import { ROUTES } from '@/config';
 import { cn } from '@/lib/utils';
 import type { Notification } from '@/types';
 
-const notificationIcons: Record<string, React.ElementType> = {
-  UserCreated: User,
-  UserInvited: Mail,
-  RoleChanged: Shield,
-  PasswordChanged: Key,
-  TenantCreated: Building,
-  InvitationAccepted: Check,
-  LoginFromNewDevice: Shield,
-};
-
 function NotificationIcon({ type }: { type: string }) {
-  const Icon = notificationIcons[type] || Bell;
+  const Icon = NOTIFICATION_ICONS[type] || NOTIFICATION_ICONS.default;
   return <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />;
 }
 

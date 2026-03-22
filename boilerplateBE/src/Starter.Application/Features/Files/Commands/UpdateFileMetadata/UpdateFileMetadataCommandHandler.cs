@@ -1,5 +1,6 @@
 using Starter.Application.Common.Interfaces;
 using Starter.Domain.Common.Errors;
+using PermissionConstants = Starter.Shared.Constants.Permissions;
 using Starter.Shared.Results;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -8,24 +9,24 @@ namespace Starter.Application.Features.Files.Commands.UpdateFileMetadata;
 
 internal sealed class UpdateFileMetadataCommandHandler(
     IApplicationDbContext context,
-    IFileService fileService) : IRequestHandler<UpdateFileMetadataCommand, Result<FileDto>>
+    IFileService fileService,
+    ICurrentUserService currentUserService) : IRequestHandler<UpdateFileMetadataCommand, Result<FileDto>>
 {
     public async Task<Result<FileDto>> Handle(UpdateFileMetadataCommand request, CancellationToken cancellationToken)
     {
+        // Global query filter scopes by tenant; defense-in-depth check below
         var metadata = await context.FileMetadata
             .FirstOrDefaultAsync(f => f.Id == request.Id, cancellationToken);
 
         if (metadata is null)
             return Result.Failure<FileDto>(FileErrors.NotFound(request.Id));
 
-        if (request.Description is not null)
-            metadata.Description = request.Description;
+        if (metadata.TenantId != currentUserService.TenantId && !currentUserService.HasPermission(PermissionConstants.Files.Manage))
+            return Result.Failure<FileDto>(Error.Unauthorized());
 
-        if (request.Category.HasValue)
-            metadata.Category = request.Category.Value;
+        var tags = request.Tags is { Length: > 0 } ? string.Join(",", request.Tags) : request.Tags is not null ? null : metadata.Tags;
 
-        if (request.Tags is not null)
-            metadata.Tags = request.Tags.Length > 0 ? string.Join(",", request.Tags) : null;
+        metadata.UpdateMetadata(request.Description, request.Category, tags);
 
         await context.SaveChangesAsync(cancellationToken);
 

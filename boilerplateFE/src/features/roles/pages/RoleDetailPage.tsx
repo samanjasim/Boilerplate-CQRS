@@ -102,7 +102,7 @@ export default function RoleDetailPage() {
                 {role.isSystemRole && (
                   <Badge variant="outline">
                     <Lock className="h-3 w-3 ltr:mr-1 rtl:ml-1" />
-                    System
+                    {t('roles.systemRole')}
                   </Badge>
                 )}
               </div>

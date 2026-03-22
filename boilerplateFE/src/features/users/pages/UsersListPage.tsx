@@ -43,7 +43,7 @@ export default function UsersListPage() {
     );
   }
 
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <div className="flex justify-center py-12">
         <Spinner size="lg" />

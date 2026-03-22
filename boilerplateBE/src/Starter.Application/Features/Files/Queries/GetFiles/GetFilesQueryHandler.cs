@@ -11,6 +11,7 @@ internal sealed class GetFilesQueryHandler(
 {
     public async Task<Result<PaginatedList<FileDto>>> Handle(GetFilesQuery request, CancellationToken cancellationToken)
     {
+        // Tenant scoping is handled by the global query filter on FileMetadata in ApplicationDbContext
         var query = context.FileMetadata.AsNoTracking();
 
         if (request.Category.HasValue)

@@ -9,13 +9,16 @@ public sealed class UpdateFileMetadataCommandValidator : AbstractValidator<Updat
         RuleFor(x => x.Id).NotEmpty();
 
         RuleFor(x => x.Description)
-            .MaximumLength(1000).WithMessage("Description must not exceed 1000 characters.")
+            .MaximumLength(1000)
             .When(x => x.Description is not null);
 
         RuleFor(x => x.Tags)
-            .Must(tags => tags == null || tags.Length <= 10)
+            .Must(tags => tags!.Length <= 10)
             .WithMessage("Maximum 10 tags allowed.")
-            .Must(tags => tags == null || tags.All(t => t.Length <= 100))
-            .WithMessage("Each tag must not exceed 100 characters.");
+            .When(x => x.Tags is not null);
+
+        RuleForEach(x => x.Tags)
+            .MaximumLength(100)
+            .When(x => x.Tags is not null);
     }
 }
