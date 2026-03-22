@@ -21,7 +21,7 @@ public static class CorsConfiguration
             {
                 policy.WithOrigins(allowedOrigins)
                     .AllowAnyMethod()
-                    .WithHeaders("Content-Type", "Authorization", "X-Tenant-Id", "X-Correlation-Id", "X-Api-Version")
+                    .WithHeaders("Content-Type", "Authorization", "X-Tenant-Id", "X-Correlation-Id", "X-Api-Version", "X-Refresh-Token")
                     .AllowCredentials()
                     .WithExposedHeaders("X-Correlation-Id", "Token-Expired");
             });

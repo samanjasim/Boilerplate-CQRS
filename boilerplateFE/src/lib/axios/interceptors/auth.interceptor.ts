@@ -2,7 +2,7 @@ import type { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { storage } from '@/utils/storage';
 import { useUIStore } from '@/stores';
 
-const AUTH_PATHS = ['/Auth/login', '/Auth/register', '/Auth/register-tenant', '/Auth/forgot-password', '/Auth/reset-password', '/Auth/verify-email', '/Auth/send-email-verification', '/Auth/refresh-token'];
+const AUTH_PATHS = ['/Auth/login', '/Auth/register', '/Auth/register-tenant', '/Auth/forgot-password', '/Auth/reset-password', '/Auth/verify-email', '/Auth/send-email-verification', '/Auth/refresh-token', '/Auth/me', '/Auth/accept-invite'];
 
 export const setupAuthInterceptor = (client: AxiosInstance): void => {
   client.interceptors.request.use(

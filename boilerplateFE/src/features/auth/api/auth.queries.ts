@@ -46,9 +46,8 @@ export function useLogin() {
 
       login(fullUser, tokens);
       queryClient.setQueryData(queryKeys.auth.me(), fullUser);
-      if (fullUser.tenantId) {
-        useUIStore.getState().setActiveTenantId(fullUser.tenantId);
-      }
+      // Always set tenant — clears stale value for platform admins (null)
+      useUIStore.getState().setActiveTenantId(fullUser.tenantId ?? null);
       toast.success(i18n.t('auth.welcomeBackUser', { name: fullUser.firstName }));
       navigate(ROUTES.DASHBOARD);
     },
