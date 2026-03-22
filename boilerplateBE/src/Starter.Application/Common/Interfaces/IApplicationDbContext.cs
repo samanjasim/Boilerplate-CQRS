@@ -19,6 +19,7 @@ public interface IApplicationDbContext
     DbSet<LoginHistory> LoginHistory { get; }
     DbSet<Notification> Notifications { get; }
     DbSet<NotificationPreference> NotificationPreferences { get; }
+    DbSet<FileMetadata> FileMetadata { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

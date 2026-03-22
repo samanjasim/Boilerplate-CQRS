@@ -7,3 +7,4 @@ export * from './LoadingScreen';
 export * from './PageHeader';
 export * from './ThemeToggle';
 export * from './NotificationBell';
+export * from './FileUpload';

@@ -34,6 +34,7 @@ namespace Starter.Shared.Constants;
 /// | Roles      |  ✓   |  ✓   |   ✓    |   ✓    |   ✓    | ManagePermissions        |
 /// | System     |      |      |        |        |        | ViewDashboard, ViewAuditLogs, ManageSettings |
 /// | Tenants    |  ✓   |  ✓   |   ✓    |   ✓    |   ✓    |                          |
+/// | Files      |  ✓   |      |        |        |   ✓    | Upload, Manage           |
 /// </summary>
 public static class Permissions
 {
@@ -65,6 +66,15 @@ public static class Permissions
         public const string ViewAuditLogs = "System.ViewAuditLogs";
         public const string ManageSettings = "System.ManageSettings";
         public const string ViewDashboard = "System.ViewDashboard";
+    }
+
+    // ─── Files ──────────────────────────────────────
+    public static class Files
+    {
+        public const string View = "Files.View";
+        public const string Upload = "Files.Upload";
+        public const string Delete = "Files.Delete";
+        public const string Manage = "Files.Manage";
     }
 
     // ─── Tenants ─────────────────────────────────────
@@ -124,6 +134,12 @@ public static class Permissions
         yield return (System.ViewAuditLogs, "View system audit logs", "System");
         yield return (System.ManageSettings, "Manage system settings", "System");
         yield return (System.ViewDashboard, "View the dashboard", "System");
+
+        // ─── Files ───
+        yield return (Files.View, "View and download files", "Files");
+        yield return (Files.Upload, "Upload new files", "Files");
+        yield return (Files.Delete, "Delete files", "Files");
+        yield return (Files.Manage, "Manage file metadata", "Files");
 
         // ─── Tenants ───
         yield return (Tenants.View, "View tenants list", "Tenants");

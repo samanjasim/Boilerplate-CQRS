@@ -36,11 +36,19 @@ public static class Roles
             Permissions.Tenants.Show,
             Permissions.Tenants.Create,
             Permissions.Tenants.Update,
+            // Files
+            Permissions.Files.View,
+            Permissions.Files.Upload,
+            Permissions.Files.Delete,
+            Permissions.Files.Manage,
             // System
             Permissions.System.ViewDashboard
         ]);
 
         yield return (User, [
+            // Files
+            Permissions.Files.View,
+            Permissions.Files.Upload,
             // System
             Permissions.System.ViewDashboard
         ]);

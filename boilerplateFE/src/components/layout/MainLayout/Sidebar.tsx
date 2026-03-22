@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ClipboardList,
   Building,
+  FolderOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore, selectSidebarCollapsed } from '@/stores';
@@ -32,6 +33,9 @@ export function Sidebar() {
       : []),
     ...(hasPermission(PERMISSIONS.Tenants.View)
       ? [{ label: t('nav.tenants'), icon: Building, path: ROUTES.TENANTS.LIST }]
+      : []),
+    ...(hasPermission(PERMISSIONS.Files.View)
+      ? [{ label: t('nav.files'), icon: FolderOpen, path: ROUTES.FILES.LIST }]
       : []),
     ...(hasPermission(PERMISSIONS.System.ViewAuditLogs)
       ? [{ label: t('nav.auditLogs'), icon: ClipboardList, path: ROUTES.AUDIT_LOGS.LIST }]

@@ -23,6 +23,7 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<LoginHistory> LoginHistory => Set<LoginHistory>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
+    public DbSet<FileMetadata> FileMetadata => Set<FileMetadata>();
 
     // EF Core evaluates this per-query via the expression tree.
     // Must be a property (not a method) for EF to parameterize it.
@@ -61,6 +62,9 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
 
         modelBuilder.Entity<Notification>().HasQueryFilter(n =>
             TenantId == null || n.TenantId == TenantId);
+
+        modelBuilder.Entity<FileMetadata>().HasQueryFilter(f =>
+            TenantId == null || f.TenantId == TenantId);
 
         // Tenant entity: tenant users see only their own tenant; platform admins see all
         modelBuilder.Entity<Tenant>().HasQueryFilter(t =>

@@ -61,4 +61,11 @@ export const API_ENDPOINTS = {
     MARK_ALL_READ: '/Notifications/read-all',
     PREFERENCES: '/Notifications/preferences',
   },
+  FILES: {
+    LIST: '/Files',
+    UPLOAD: '/Files',
+    DETAIL: (id: string) => `/Files/${id}`,
+    URL: (id: string) => `/Files/${id}/url`,
+    DELETE: (id: string) => `/Files/${id}`,
+  },
 } as const;

@@ -36,6 +36,12 @@ export const PERMISSIONS = {
     Update: 'Tenants.Update',
     Delete: 'Tenants.Delete',
   },
+  Files: {
+    View: 'Files.View',
+    Upload: 'Files.Upload',
+    Delete: 'Files.Delete',
+    Manage: 'Files.Manage',
+  },
   System: {
     ViewAuditLogs: 'System.ViewAuditLogs',
     ManageSettings: 'System.ManageSettings',

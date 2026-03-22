@@ -6,7 +6,7 @@ Features planned for future implementation. The architecture supports all of the
 - Export audit logs / user lists to CSV/PDF
 - Report generation with charts
 - Data import/export utilities
-- File/blob storage service (S3, Azure Blob, local disk) with IStorageService interface
+- ~~File/blob storage service~~ — **Implemented** (S3/MinIO with IStorageService, IFileService, file manager UI)
 - System settings management page (key-value config per tenant)
 
 ## Tenant & Organization

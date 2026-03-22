@@ -51,4 +51,12 @@ export const queryKeys = {
     unreadCount: () => [...queryKeys.notifications.all, 'unread-count'] as const,
     preferences: () => [...queryKeys.notifications.all, 'preferences'] as const,
   },
+
+  files: {
+    all: ['files'] as const,
+    lists: () => [...queryKeys.files.all, 'list'] as const,
+    list: (filters?: object) => [...queryKeys.files.lists(), filters ?? {}] as const,
+    detail: (id: string) => [...queryKeys.files.all, 'detail', id] as const,
+    url: (id: string) => [...queryKeys.files.all, 'url', id] as const,
+  },
 } as const;

@@ -1,0 +1,707 @@
+import { useState, useMemo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
+import { format } from 'date-fns';
+import {
+  Upload,
+  LayoutGrid,
+  List,
+  FileText,
+  Image,
+  File as FileIcon,
+  Download,
+  Trash2,
+  Copy,
+  Pencil,
+  FolderOpen,
+} from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Spinner } from '@/components/ui/spinner';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { PageHeader, EmptyState, FileUpload, ConfirmDialog } from '@/components/common';
+import { useFiles, useUploadFile, useDeleteFile, useUpdateFile } from '../api';
+import { toast } from 'sonner';
+import { usePermissions } from '@/hooks';
+import { PERMISSIONS } from '@/constants';
+import { formatFileSize } from '@/utils';
+import type { FileMetadata, FileCategory } from '@/types';
+
+function isImageType(contentType: string): boolean {
+  return contentType.startsWith('image/');
+}
+
+function getFileIcon(contentType: string) {
+  if (isImageType(contentType)) return Image;
+  if (contentType.includes('pdf') || contentType.includes('document') || contentType.includes('text'))
+    return FileText;
+  return FileIcon;
+}
+
+const CATEGORIES: FileCategory[] = ['Avatar', 'Logo', 'Document', 'Attachment', 'Other'];
+
+export default function FilesPage() {
+  const { t } = useTranslation();
+  const { hasPermission } = usePermissions();
+  const canUpload = hasPermission(PERMISSIONS.Files.Upload);
+  const canDelete = hasPermission(PERMISSIONS.Files.Delete);
+  const canManage = hasPermission(PERMISSIONS.Files.Manage);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [pageNumber, setPageNumber] = useState(1);
+  const [category, setCategory] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [detailFile, setDetailFile] = useState<FileMetadata | null>(null);
+  const [deleteFile, setDeleteFile] = useState<FileMetadata | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Upload form state
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadCategory, setUploadCategory] = useState<FileCategory>('Document');
+  const [uploadDescription, setUploadDescription] = useState('');
+  const [uploadTags, setUploadTags] = useState('');
+  const [uploadIsPublic, setUploadIsPublic] = useState(false);
+
+  // Edit form state
+  const [editDescription, setEditDescription] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [editTags, setEditTags] = useState('');
+
+  const params = useMemo(() => {
+    const p: Record<string, unknown> = { pageNumber, pageSize: 20 };
+    if (category && category !== 'all') p.category = category;
+    if (searchTerm) p.searchTerm = searchTerm;
+    return p;
+  }, [pageNumber, category, searchTerm]);
+
+  const { data, isLoading, isError } = useFiles(params);
+  const { mutate: doUpload, isPending: isUploading } = useUploadFile();
+  const { mutate: doDelete, isPending: isDeleting } = useDeleteFile();
+  const { mutate: doUpdate, isPending: isUpdating } = useUpdateFile();
+
+  const files: FileMetadata[] = data?.data ?? [];
+  const pagination = data?.pagination;
+
+  const handleUploadSubmit = useCallback(() => {
+    if (!uploadFile) return;
+    doUpload(
+      {
+        file: uploadFile,
+        category: uploadCategory,
+        description: uploadDescription || undefined,
+        tags: uploadTags || undefined,
+        isPublic: uploadIsPublic,
+      },
+      {
+        onSuccess: () => {
+          setUploadDialogOpen(false);
+          setUploadFile(null);
+          setUploadDescription('');
+          setUploadTags('');
+          setUploadIsPublic(false);
+          setUploadCategory('Document');
+        },
+      }
+    );
+  }, [uploadFile, uploadCategory, uploadDescription, uploadTags, uploadIsPublic, doUpload]);
+
+  const handleDeleteConfirm = useCallback(() => {
+    if (!deleteFile) return;
+    doDelete(deleteFile.id, {
+      onSuccess: () => {
+        setDeleteFile(null);
+        if (detailFile?.id === deleteFile.id) setDetailFile(null);
+      },
+    });
+  }, [deleteFile, detailFile, doDelete]);
+
+  const handleEditSave = useCallback(() => {
+    if (!detailFile) return;
+    doUpdate(
+      {
+        id: detailFile.id,
+        data: {
+          description: editDescription,
+          category: editCategory,
+          tags: editTags,
+        },
+      },
+      {
+        onSuccess: () => {
+          setIsEditing(false);
+          setDetailFile(null);
+        },
+      }
+    );
+  }, [detailFile, editDescription, editCategory, editTags, doUpdate]);
+
+  const openDetail = useCallback((file: FileMetadata) => {
+    setDetailFile(file);
+    setIsEditing(false);
+    setEditDescription(file.description ?? '');
+    setEditCategory(file.category);
+    setEditTags(file.tags?.join(', ') ?? '');
+  }, []);
+
+  const handleCopyUrl = useCallback(
+    async (file: FileMetadata) => {
+      if (!file.url) {
+        toast.error(t('files.noUrlAvailable'));
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(file.url);
+        toast.success(t('files.urlCopied'));
+      } catch {
+        toast.error(t('common.copyFailed'));
+      }
+    },
+    [t]
+  );
+
+  const handleDownload = useCallback((file: FileMetadata) => {
+    if (file.url) {
+      window.open(file.url, '_blank');
+    }
+  }, []);
+
+  if (isError) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title={t('files.title')} />
+        <EmptyState
+          icon={FolderOpen}
+          title={t('common.errorOccurred')}
+          description={t('common.tryAgain')}
+        />
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <PageHeader
+        title={t('files.title')}
+        actions={
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-md border">
+              <Button
+                variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('grid')}
+                title={t('files.gridView')}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                title={t('files.listView')}
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
+            {canUpload && (
+              <Button onClick={() => setUploadDialogOpen(true)}>
+                <Upload className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+                {t('files.upload')}
+              </Button>
+            )}
+          </div>
+        }
+      />
+
+      {/* Filters */}
+      <Card>
+        <CardContent className="py-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="w-48">
+              <Select
+                value={category}
+                onValueChange={(v) => {
+                  setCategory(v);
+                  setPageNumber(1);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t('files.category')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t('files.allCategories')}</SelectItem>
+                  {CATEGORIES.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {t(`files.${cat.toLowerCase()}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1 min-w-[200px]">
+              <Input
+                placeholder={t('common.search')}
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPageNumber(1);
+                }}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Content */}
+      {files.length === 0 ? (
+        <EmptyState icon={FolderOpen} title={t('files.noFiles')} />
+      ) : viewMode === 'grid' ? (
+        /* Grid View */
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {files.map((file) => {
+            const Icon = getFileIcon(file.contentType);
+            return (
+              <Card
+                key={file.id}
+                className="cursor-pointer transition-shadow hover:shadow-md"
+                onClick={() => openDetail(file)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex h-32 items-center justify-center rounded-md bg-muted mb-3">
+                    {isImageType(file.contentType) && file.url ? (
+                      <img
+                        src={file.url}
+                        alt={file.fileName}
+                        className="h-full w-full rounded-md object-cover"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    ) : (
+                      <Icon className="h-12 w-12 text-muted-foreground" />
+                    )}
+                  </div>
+                  <p className="text-sm font-medium truncate" title={file.fileName}>
+                    {file.fileName}
+                  </p>
+                  <div className="mt-1 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">
+                      {formatFileSize(file.size)}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <Badge variant="secondary" className="text-xs">
+                        {file.category}
+                      </Badge>
+                      {canDelete && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-muted-foreground hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteFile(file);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {format(new Date(file.createdAt), 'MMM d, yyyy')}
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        /* List View */
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('files.fileName')}</TableHead>
+                  <TableHead>{t('files.category')}</TableHead>
+                  <TableHead>{t('files.fileSize')}</TableHead>
+                  <TableHead>{t('files.uploadedBy')}</TableHead>
+                  <TableHead>{t('files.uploadDate')}</TableHead>
+                  <TableHead>{t('common.actions')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {files.map((file) => {
+                  const Icon = getFileIcon(file.contentType);
+                  return (
+                    <TableRow key={file.id}>
+                      <TableCell>
+                        <div
+                          className="flex items-center gap-2 cursor-pointer hover:text-primary"
+                          onClick={() => openDetail(file)}
+                        >
+                          <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          <span className="font-medium truncate max-w-[200px]">
+                            {file.fileName}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{file.category}</Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatFileSize(file.size)}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {file.uploadedByName ?? '-'}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {format(new Date(file.createdAt), 'MMM d, yyyy')}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDownload(file)}
+                            title={t('files.download')}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          {canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDeleteFile(file)}
+                              title={t('files.deleteFile')}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Pagination */}
+      {pagination && pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            {t('common.showing', {
+              start: (pagination.pageNumber - 1) * pagination.pageSize + 1,
+              end: Math.min(pagination.pageNumber * pagination.pageSize, pagination.totalCount),
+              total: pagination.totalCount,
+            })}
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!pagination.hasPreviousPage}
+              onClick={() => setPageNumber((p) => p - 1)}
+            >
+              {t('common.previous')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!pagination.hasNextPage}
+              onClick={() => setPageNumber((p) => p + 1)}
+            >
+              {t('common.next')}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Dialog */}
+      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('files.uploadFiles')}</DialogTitle>
+            <DialogDescription>{t('files.dragDrop')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <FileUpload
+              onUpload={(file) => setUploadFile(file)}
+              disabled={isUploading}
+            />
+            <div className="space-y-2">
+              <Label>{t('files.category')}</Label>
+              <Select
+                value={uploadCategory}
+                onValueChange={(v) => setUploadCategory(v as FileCategory)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {t(`files.${cat.toLowerCase()}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>{t('files.description')}</Label>
+              <Textarea
+                value={uploadDescription}
+                onChange={(e) => setUploadDescription(e.target.value)}
+                placeholder={t('files.description')}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('files.tags')}</Label>
+              <Input
+                value={uploadTags}
+                onChange={(e) => setUploadTags(e.target.value)}
+                placeholder={t('files.tagsPlaceholder')}
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="upload-public"
+                checked={uploadIsPublic}
+                onChange={(e) => setUploadIsPublic(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <div>
+                <Label htmlFor="upload-public">{t('files.isPublic')}</Label>
+                <p className="text-xs text-muted-foreground">{t('files.isPublicDesc')}</p>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setUploadDialogOpen(false)}
+              disabled={isUploading}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button onClick={handleUploadSubmit} disabled={!uploadFile || isUploading}>
+              {isUploading ? t('common.loading') : t('files.upload')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* File Detail Modal */}
+      <Dialog open={!!detailFile} onOpenChange={(open) => !open && setDetailFile(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t('files.fileDetails')}</DialogTitle>
+          </DialogHeader>
+          {detailFile && (
+            <div className="space-y-4">
+              {/* Preview */}
+              <div className="flex h-48 items-center justify-center rounded-md bg-muted">
+                {isImageType(detailFile.contentType) && detailFile.url ? (
+                  <img
+                    src={detailFile.url}
+                    alt={detailFile.fileName}
+                    className="h-full w-full rounded-md object-contain"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                ) : (
+                  (() => {
+                    const Icon = getFileIcon(detailFile.contentType);
+                    return <Icon className="h-16 w-16 text-muted-foreground" />;
+                  })()
+                )}
+              </div>
+
+              {isEditing ? (
+                /* Edit Mode */
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label>{t('files.category')}</Label>
+                    <Select value={editCategory} onValueChange={setEditCategory}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CATEGORIES.map((cat) => (
+                          <SelectItem key={cat} value={cat}>
+                            {t(`files.${cat.toLowerCase()}`)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t('files.description')}</Label>
+                    <Textarea
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t('files.tags')}</Label>
+                    <Input
+                      value={editTags}
+                      onChange={(e) => setEditTags(e.target.value)}
+                      placeholder={t('files.tagsPlaceholder')}
+                    />
+                  </div>
+                </div>
+              ) : (
+                /* View Mode */
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t('files.fileName')}</span>
+                    <span className="font-medium truncate max-w-[250px]" title={detailFile.fileName}>
+                      {detailFile.fileName}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t('files.fileSize')}</span>
+                    <span>{formatFileSize(detailFile.size)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t('files.fileType')}</span>
+                    <span>{detailFile.contentType}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t('files.category')}</span>
+                    <Badge variant="secondary">{detailFile.category}</Badge>
+                  </div>
+                  {detailFile.tags && detailFile.tags.length > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{t('files.tags')}</span>
+                      <div className="flex flex-wrap gap-1 justify-end">
+                        {detailFile.tags.map((tag) => (
+                          <Badge key={tag} variant="outline" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {detailFile.description && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{t('files.description')}</span>
+                      <span className="text-end max-w-[250px]">{detailFile.description}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t('files.uploadedBy')}</span>
+                    <span>{detailFile.uploadedByName ?? '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t('files.uploadDate')}</span>
+                    <span>{format(new Date(detailFile.createdAt), 'MMM d, yyyy HH:mm')}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex flex-wrap gap-2">
+                {isEditing ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsEditing(false)}
+                      disabled={isUpdating}
+                    >
+                      {t('common.cancel')}
+                    </Button>
+                    <Button size="sm" onClick={handleEditSave} disabled={isUpdating}>
+                      {isUpdating ? t('common.saving') : t('common.save')}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="outline" size="sm" onClick={() => handleDownload(detailFile)}>
+                      <Download className="h-4 w-4 ltr:mr-1 rtl:ml-1" />
+                      {t('files.download')}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleCopyUrl(detailFile)}
+                    >
+                      <Copy className="h-4 w-4 ltr:mr-1 rtl:ml-1" />
+                      {t('files.copyUrl')}
+                    </Button>
+                    {canManage && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsEditing(true)}
+                      >
+                        <Pencil className="h-4 w-4 ltr:mr-1 rtl:ml-1" />
+                        {t('common.edit')}
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setDeleteFile(detailFile)}
+                      >
+                        <Trash2 className="h-4 w-4 ltr:mr-1 rtl:ml-1" />
+                        {t('common.delete')}
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={!!deleteFile}
+        onClose={() => setDeleteFile(null)}
+        onConfirm={handleDeleteConfirm}
+        title={t('files.deleteFile')}
+        description={t('files.deleteConfirm', { name: deleteFile?.fileName ?? '' })}
+        isLoading={isDeleting}
+      />
+    </div>
+  );
+}

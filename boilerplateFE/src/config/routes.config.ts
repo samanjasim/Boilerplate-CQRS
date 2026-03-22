@@ -48,4 +48,9 @@ export const ROUTES = {
   AUDIT_LOGS: {
     LIST: '/audit-logs',
   },
+
+  // Files
+  FILES: {
+    LIST: '/files',
+  },
 } as const;

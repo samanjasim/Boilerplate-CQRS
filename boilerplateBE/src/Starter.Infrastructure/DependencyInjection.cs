@@ -1,3 +1,5 @@
+using Amazon.S3;
+using Amazon.S3.Util;
 using Starter.Application.Common.Interfaces;
 using Starter.Infrastructure.Email.Templates;
 using Starter.Infrastructure.Persistence;
@@ -26,6 +28,7 @@ public static class DependencyInjection
             .AddEmailServices(configuration)
             .AddSmsServices(configuration)
             .AddRealtimeServices(configuration)
+            .AddStorageServices(configuration)
             .AddHealthChecks(configuration);
 
         return services;
@@ -186,6 +189,49 @@ public static class DependencyInjection
         }
 
         services.AddScoped<INotificationService, NotificationService>();
+
+        return services;
+    }
+
+    private static IServiceCollection AddStorageServices(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        var settings = configuration.GetSection(StorageSettings.SectionName).Get<StorageSettings>() ?? new StorageSettings();
+        services.Configure<StorageSettings>(configuration.GetSection(StorageSettings.SectionName));
+
+        var s3Config = new AmazonS3Config
+        {
+            RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(settings.Region),
+            ForcePathStyle = settings.ForcePathStyle,
+        };
+
+        if (!string.IsNullOrWhiteSpace(settings.Endpoint))
+        {
+            s3Config.ServiceURL = settings.Endpoint;
+        }
+
+        var s3Client = new AmazonS3Client(settings.AccessKey, settings.SecretKey, s3Config);
+        services.AddSingleton<IAmazonS3>(s3Client);
+        services.AddScoped<IStorageService, S3StorageService>();
+        services.AddScoped<IFileService, FileService>();
+
+        // Ensure bucket exists on startup
+        Task.Run(async () =>
+        {
+            try
+            {
+                var bucketExists = await AmazonS3Util.DoesS3BucketExistV2Async(s3Client, settings.BucketName);
+                if (!bucketExists)
+                {
+                    await s3Client.PutBucketAsync(settings.BucketName);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Warning: Failed to create storage bucket '{settings.BucketName}': {ex.Message}");
+            }
+        });
 
         return services;
     }
