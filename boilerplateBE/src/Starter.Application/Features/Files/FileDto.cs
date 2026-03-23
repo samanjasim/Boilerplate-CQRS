@@ -1,5 +1,3 @@
-using Starter.Domain.Common.Enums;
-
 namespace Starter.Application.Features.Files;
 
 public sealed record FileDto(
@@ -7,10 +5,11 @@ public sealed record FileDto(
     string FileName,
     string ContentType,
     long Size,
-    FileCategory Category,
+    string Category,
     string? Tags,
     Guid? TenantId,
     Guid UploadedBy,
+    string? UploadedByName,
     bool IsPublic,
     string? Description,
     string? EntityType,

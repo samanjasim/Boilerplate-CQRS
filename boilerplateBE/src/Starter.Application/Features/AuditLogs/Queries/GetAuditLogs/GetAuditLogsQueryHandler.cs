@@ -56,9 +56,9 @@ internal sealed class GetAuditLogsQueryHandler(
 
         var projected = query.Select(a => new AuditLogDto(
             a.Id,
-            a.EntityType,
+            a.EntityType.ToString(),
             a.EntityId,
-            a.Action,
+            a.Action.ToString(),
             a.Changes,
             a.PerformedBy,
             a.PerformedByName,

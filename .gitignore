@@ -28,3 +28,4 @@ boilerplateBE/.env
 boilerplateFE/.env
 boilerplateFE/.env.local
 boilerplateFE/.env.*.local
+.playwright-mcp/

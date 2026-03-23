@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import { ChevronDown, ChevronRight, ClipboardList } from 'lucide-react';
@@ -186,9 +186,8 @@ export default function AuditLogsPage() {
               </TableHeader>
               <TableBody>
                 {logs.map((log: AuditLog) => (
-                  <>
+                  <Fragment key={log.id}>
                     <TableRow
-                      key={log.id}
                       className="cursor-pointer"
                       onClick={() => log.changes && toggleRow(log.id)}
                     >
@@ -223,7 +222,7 @@ export default function AuditLogsPage() {
                         </TableCell>
                       </TableRow>
                     )}
-                  </>
+                  </Fragment>
                 ))}
               </TableBody>
             </Table>

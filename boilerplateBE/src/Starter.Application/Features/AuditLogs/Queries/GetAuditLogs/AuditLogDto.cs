@@ -1,12 +1,10 @@
-using Starter.Domain.Common.Enums;
-
 namespace Starter.Application.Features.AuditLogs.Queries.GetAuditLogs;
 
 public sealed record AuditLogDto(
     Guid Id,
-    AuditEntityType EntityType,
+    string EntityType,
     Guid EntityId,
-    AuditAction Action,
+    string Action,
     string? Changes,
     Guid? PerformedBy,
     string? PerformedByName,

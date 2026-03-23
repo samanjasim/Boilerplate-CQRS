@@ -71,6 +71,7 @@ export default function DashboardPage() {
   const { data: rolesData } = useRoles({ enabled: canViewRoles });
   const { data: auditLogsData } = useAuditLogs(
     { pageSize: 5, pageNumber: 1, sortBy: 'performedAt', sortDescending: true },
+    { enabled: canViewAuditLogs },
   );
   const { data: recentUsersData } = useSearchUsers(
     { pageSize: 5, pageNumber: 1, sortBy: 'createdAt', sortDescending: true },

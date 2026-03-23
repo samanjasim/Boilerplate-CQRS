@@ -4,16 +4,17 @@ namespace Starter.Application.Features.Files;
 
 public static class FileMapper
 {
-    public static FileDto ToDto(this FileMetadata file, string? url = null) =>
+    public static FileDto ToDto(this FileMetadata file, string? url = null, string? uploadedByName = null) =>
         new(
             file.Id,
             file.FileName,
             file.ContentType,
             file.Size,
-            file.Category,
+            file.Category.ToString(),
             file.Tags,
             file.TenantId,
             file.UploadedBy,
+            uploadedByName,
             file.IsPublic,
             file.Description,
             file.EntityType,

@@ -34,21 +34,25 @@ internal sealed class GetFilesQueryHandler(
 
         query = query.OrderByDescending(f => f.CreatedAt);
 
-        var projectedQuery = query.Select(f => new FileDto(
-            f.Id,
-            f.FileName,
-            f.ContentType,
-            f.Size,
-            f.Category,
-            f.Tags,
-            f.TenantId,
-            f.UploadedBy,
-            f.IsPublic,
-            f.Description,
-            f.EntityType,
-            f.EntityId,
-            f.CreatedAt,
-            null));
+        var projectedQuery = from f in query
+            join u in context.Users on f.UploadedBy equals u.Id into users
+            from u in users.DefaultIfEmpty()
+            select new FileDto(
+                f.Id,
+                f.FileName,
+                f.ContentType,
+                f.Size,
+                f.Category.ToString(),
+                f.Tags,
+                f.TenantId,
+                f.UploadedBy,
+                u != null ? u.FullName.FirstName + " " + u.FullName.LastName : null,
+                f.IsPublic,
+                f.Description,
+                f.EntityType,
+                f.EntityId,
+                f.CreatedAt,
+                null);
 
         var paginatedList = await PaginatedList<FileDto>.CreateAsync(
             projectedQuery,
