@@ -1,6 +1,7 @@
 export * from './ConfirmDialog';
 export * from './EmptyState';
 export * from './ErrorBoundary';
+export * from './ExportButton';
 export * from './InfoField';
 export * from './LanguageSwitcher';
 export * from './LoadingScreen';

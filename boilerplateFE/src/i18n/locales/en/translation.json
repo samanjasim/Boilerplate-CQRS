@@ -42,7 +42,13 @@
     "showPassword": "Show password",
     "noPermission": "You don't have permission to access this page",
     "copyFailed": "Failed to copy to clipboard",
-    "creating": "Creating..."
+    "creating": "Creating...",
+    "verified": "Verified",
+    "phonePlaceholder": "+1234567890",
+    "export": "Export",
+    "exportCsv": "Export CSV",
+    "exportPdf": "Export PDF",
+    "exporting": "Exporting..."
   },
   "auth": {
     "welcomeBack": "Welcome back",
@@ -93,7 +99,11 @@
     "creatingAccount": "Creating account...",
     "createOrganization": "Create Your Organization",
     "createOrganizationDesc": "Set up your organization and admin account",
-    "companyName": "Company Name"
+    "companyName": "Company Name",
+    "firstNamePlaceholder": "John",
+    "lastNamePlaceholder": "Doe",
+    "usernamePlaceholder": "johndoe",
+    "emailPlaceholder": "john@example.com"
   },
   "landing": {
     "title": "Welcome to {{appName}}",
@@ -108,6 +118,7 @@
     "tenants": "Tenants",
     "auditLogs": "Audit Logs",
     "files": "Files",
+    "reports": "Reports",
     "collapse": "Collapse"
   },
   "header": {
@@ -210,7 +221,9 @@
     "systemRole": "System",
     "permissionsSelected": "{{count}} permission(s) selected",
     "permissionsInfoTitle": "Permissions can be modified later",
-    "permissionsInfoDesc": "You can always update the permissions assigned to this role from the role detail page."
+    "permissionsInfoDesc": "You can always update the permissions assigned to this role from the role detail page.",
+    "namePlaceholder": "e.g. Admin",
+    "descriptionPlaceholder": "Describe the role's purpose..."
   },
   "tenants": {
     "title": "Tenants",
@@ -280,7 +293,8 @@
     "disabledSuccess": "Two-factor authentication disabled successfully",
     "copyAll": "Copy All",
     "copied": "Copied!",
-    "done": "Done"
+    "done": "Done",
+    "qrCodeAlt": "Two-factor authentication QR code"
   },
   "invitations": {
     "inviteUser": "Invite User",
@@ -382,6 +396,42 @@
     "preview": "Preview",
     "fileDetails": "File Details",
     "noUrlAvailable": "File URL is not available"
+  },
+  "reports": {
+    "title": "Reports",
+    "subtitle": "Generated reports and exports",
+    "requestReport": "Request Report",
+    "requested": "Report requested",
+    "requestedDesc": "Your report is being generated. You'll be notified when it's ready.",
+    "alreadyReady": "Report is ready to download",
+    "reportType": "Report Type",
+    "format": "Format",
+    "status": "Status",
+    "requestedAt": "Requested",
+    "completedAt": "Completed",
+    "actions": "Actions",
+    "download": "Download",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "deleteConfirm": "Are you sure you want to delete this report?",
+    "noReports": "No reports yet",
+    "noReportsDesc": "Export data from other pages to see your reports here",
+    "pending": "Pending",
+    "processing": "Processing",
+    "completed": "Completed",
+    "failed": "Failed",
+    "forceRefresh": "Force Refresh",
+    "forceRefreshDesc": "Generate a fresh report ignoring cache",
+    "auditLogs": "Audit Logs",
+    "users": "Users",
+    "files": "Files",
+    "csv": "CSV",
+    "pdf": "PDF",
+    "reportReady": "Your report is ready to download",
+    "reportFailed": "Report generation failed",
+    "viewReports": "View Reports",
+    "downloadFailed": "Failed to download report"
   },
   "validation": {
     "required": "{{field}} is required",

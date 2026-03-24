@@ -44,7 +44,7 @@ export function RegisterForm() {
             <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               id="firstName"
-              placeholder="John"
+              placeholder={t('auth.firstNamePlaceholder')}
               className="pl-10"
               {...register('firstName')}
             />
@@ -57,7 +57,7 @@ export function RegisterForm() {
           <Label htmlFor="lastName">{t('auth.lastName')}</Label>
           <Input
             id="lastName"
-            placeholder="Doe"
+            placeholder={t('auth.lastNamePlaceholder')}
             {...register('lastName')}
           />
           {errors.lastName && (
@@ -72,7 +72,7 @@ export function RegisterForm() {
           <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             id="username"
-            placeholder="johndoe"
+            placeholder={t('auth.usernamePlaceholder')}
             className="pl-10"
             {...register('username')}
           />
@@ -89,7 +89,7 @@ export function RegisterForm() {
           <Input
             id="email"
             type="email"
-            placeholder="john@example.com"
+            placeholder={t('auth.emailPlaceholder')}
             className="pl-10"
             {...register('email')}
           />

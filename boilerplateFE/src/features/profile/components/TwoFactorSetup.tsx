@@ -37,6 +37,7 @@ export function TwoFactorSetup({ user }: TwoFactorSetupProps) {
         setQrCodeUri(data.qrCodeUri);
         setStep('scanning');
       },
+      onError: () => setStep('idle'),
     });
   };
 
@@ -50,6 +51,7 @@ export function TwoFactorSetup({ user }: TwoFactorSetupProps) {
           setStep('backup');
           setVerifyCode('');
         },
+        onError: () => {},
       }
     );
   };
@@ -65,6 +67,7 @@ export function TwoFactorSetup({ user }: TwoFactorSetupProps) {
           setSecret('');
           setQrCodeUri('');
         },
+        onError: () => {},
       }
     );
   };
@@ -144,7 +147,7 @@ export function TwoFactorSetup({ user }: TwoFactorSetupProps) {
             <div className="flex justify-center">
               <img
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrCodeUri)}`}
-                alt="QR Code"
+                alt={t('twoFactor.qrCodeAlt')}
                 className="rounded-lg border"
                 width={200}
                 height={200}

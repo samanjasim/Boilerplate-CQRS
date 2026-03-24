@@ -42,7 +42,8 @@ public static class Roles
             Permissions.Files.Delete,
             Permissions.Files.Manage,
             // System
-            Permissions.System.ViewDashboard
+            Permissions.System.ViewDashboard,
+            Permissions.System.ExportData
         ]);
 
         yield return (User, [

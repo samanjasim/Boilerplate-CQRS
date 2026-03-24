@@ -24,6 +24,7 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
     public DbSet<FileMetadata> FileMetadata => Set<FileMetadata>();
+    public DbSet<ReportRequest> ReportRequests => Set<ReportRequest>();
 
     // EF Core evaluates this per-query via the expression tree.
     // Must be a property (not a method) for EF to parameterize it.
@@ -65,6 +66,9 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
 
         modelBuilder.Entity<FileMetadata>().HasQueryFilter(f =>
             TenantId == null || f.TenantId == TenantId);
+
+        modelBuilder.Entity<ReportRequest>().HasQueryFilter(r =>
+            TenantId == null || r.TenantId == TenantId);
 
         // Tenant entity: tenant users see only their own tenant; platform admins see all
         modelBuilder.Entity<Tenant>().HasQueryFilter(t =>

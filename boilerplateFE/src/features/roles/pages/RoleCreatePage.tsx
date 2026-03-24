@@ -75,7 +75,7 @@ export default function RoleCreatePage() {
               <div className="space-y-2">
                 <Label>{t('roles.name')}</Label>
                 <Input
-                  placeholder="e.g. Admin"
+                  placeholder={t('roles.namePlaceholder')}
                   {...register('name')}
                 />
                 {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
@@ -83,7 +83,7 @@ export default function RoleCreatePage() {
               <div className="space-y-2">
                 <Label>{t('roles.description')}</Label>
                 <Textarea
-                  placeholder="Describe the role's purpose..."
+                  placeholder={t('roles.descriptionPlaceholder')}
                   rows={3}
                   {...register('description')}
                 />

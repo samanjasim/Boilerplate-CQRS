@@ -32,7 +32,7 @@ namespace Starter.Shared.Constants;
 /// |------------|------|------|--------|--------|--------|--------------------------|
 /// | Users      |  ✓   |  ✓   |   ✓    |   ✓    |   ✓    | ManageRoles              |
 /// | Roles      |  ✓   |  ✓   |   ✓    |   ✓    |   ✓    | ManagePermissions        |
-/// | System     |      |      |        |        |        | ViewDashboard, ViewAuditLogs, ManageSettings |
+/// | System     |      |      |        |        |        | ViewDashboard, ViewAuditLogs, ManageSettings, ExportData, ForceExport |
 /// | Tenants    |  ✓   |  ✓   |   ✓    |   ✓    |   ✓    |                          |
 /// | Files      |  ✓   |      |        |        |   ✓    | Upload, Manage           |
 /// </summary>
@@ -66,6 +66,8 @@ public static class Permissions
         public const string ViewAuditLogs = "System.ViewAuditLogs";
         public const string ManageSettings = "System.ManageSettings";
         public const string ViewDashboard = "System.ViewDashboard";
+        public const string ExportData = "System.ExportData";
+        public const string ForceExport = "System.ForceExport";
     }
 
     // ─── Files ──────────────────────────────────────
@@ -134,6 +136,8 @@ public static class Permissions
         yield return (System.ViewAuditLogs, "View system audit logs", "System");
         yield return (System.ManageSettings, "Manage system settings", "System");
         yield return (System.ViewDashboard, "View the dashboard", "System");
+        yield return (System.ExportData, "Export data to CSV or PDF", "System");
+        yield return (System.ForceExport, "Force regeneration of cached reports", "System");
 
         // ─── Files ───
         yield return (Files.View, "View and download files", "Files");

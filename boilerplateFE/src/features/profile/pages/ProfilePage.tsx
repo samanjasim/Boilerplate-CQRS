@@ -373,7 +373,7 @@ export default function ProfilePage() {
             </div>
             <div className="space-y-2">
               <Label>{t('common.phoneNumber')}</Label>
-              <Input placeholder="+9647XXXXXXXXX" {...registerProfile('phoneNumber')} />
+              <Input placeholder={t('common.phonePlaceholder')} {...registerProfile('phoneNumber')} />
               {profileErrors.phoneNumber && (
                 <p className="text-sm text-destructive">{profileErrors.phoneNumber.message}</p>
               )}

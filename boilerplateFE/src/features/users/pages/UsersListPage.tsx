@@ -13,16 +13,20 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { PageHeader, EmptyState } from '@/components/common';
+import { PageHeader, EmptyState, ExportButton } from '@/components/common';
 import { useUsers } from '../api';
 import { useInvitations, useRevokeInvitation } from '@/features/auth/api';
 import { InviteUserModal } from '../components';
 import { ROUTES } from '@/config';
 import { Users, UserPlus, X, Mail, Clock } from 'lucide-react';
 import { format } from 'date-fns';
+import { usePermissions } from '@/hooks';
+import { PERMISSIONS } from '@/constants';
 
 export default function UsersListPage() {
   const { t } = useTranslation();
+  const { hasPermission } = usePermissions();
+  const canExport = hasPermission(PERMISSIONS.System.ExportData);
   const { data, isLoading, isError } = useUsers();
   const { data: invitationsData } = useInvitations();
   const { mutate: revokeInvitation } = useRevokeInvitation();
@@ -57,10 +61,13 @@ export default function UsersListPage() {
         title={t('users.title')}
         subtitle={t('users.allUsers')}
         actions={
-          <Button onClick={() => setInviteModalOpen(true)}>
-            <UserPlus className="mr-2 h-4 w-4" />
-            {t('invitations.inviteUser')}
-          </Button>
+          <div className="flex items-center gap-2">
+            {canExport && <ExportButton reportType="Users" />}
+            <Button onClick={() => setInviteModalOpen(true)}>
+              <UserPlus className="mr-2 h-4 w-4" />
+              {t('invitations.inviteUser')}
+            </Button>
+          </div>
         }
       />
 
@@ -146,7 +153,9 @@ export default function UsersListPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => revokeInvitation(invitation.id)}
+                        onClick={() => revokeInvitation(invitation.id, {
+                          onError: () => {},
+                        })}
                       >
                         <X className="mr-1 h-4 w-4" />
                         {t('invitations.revoke')}

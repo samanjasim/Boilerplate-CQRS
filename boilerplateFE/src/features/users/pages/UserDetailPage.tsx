@@ -116,7 +116,7 @@ export default function UserDetailPage() {
                 <Mail className="h-4 w-4 text-muted-foreground" />
                 <span>{user.email}</span>
                 {user.emailConfirmed && (
-                  <Badge variant="secondary">Verified</Badge>
+                  <Badge variant="secondary">{t('common.verified')}</Badge>
                 )}
               </div>
             </InfoField>
@@ -126,7 +126,7 @@ export default function UserDetailPage() {
                   <Phone className="h-4 w-4 text-muted-foreground" />
                   <span>{user.phoneNumber}</span>
                   {user.phoneConfirmed && (
-                    <Badge variant="secondary">Verified</Badge>
+                    <Badge variant="secondary">{t('common.verified')}</Badge>
                   )}
                 </div>
               </InfoField>

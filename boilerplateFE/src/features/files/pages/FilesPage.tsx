@@ -44,7 +44,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { PageHeader, EmptyState, FileUpload, ConfirmDialog } from '@/components/common';
+import { PageHeader, EmptyState, FileUpload, ConfirmDialog, ExportButton } from '@/components/common';
 import { filesApi, useFiles, useUploadFile, useDeleteFile, useUpdateFile } from '../api';
 import { toast } from 'sonner';
 import { usePermissions } from '@/hooks';
@@ -71,6 +71,7 @@ export default function FilesPage() {
   const canUpload = hasPermission(PERMISSIONS.Files.Upload);
   const canDelete = hasPermission(PERMISSIONS.Files.Delete);
   const canManage = hasPermission(PERMISSIONS.Files.Manage);
+  const canExport = hasPermission(PERMISSIONS.System.ExportData);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [pageNumber, setPageNumber] = useState(1);
   const [category, setCategory] = useState<string>('all');
@@ -126,6 +127,7 @@ export default function FilesPage() {
           setUploadIsPublic(false);
           setUploadCategory('Document');
         },
+        onError: () => {},
       }
     );
   }, [uploadFile, uploadCategory, uploadDescription, uploadTags, uploadIsPublic, doUpload]);
@@ -137,6 +139,7 @@ export default function FilesPage() {
         setDeleteFile(null);
         if (detailFile?.id === deleteFile.id) setDetailFile(null);
       },
+      onError: () => {},
     });
   }, [deleteFile, detailFile, doDelete]);
 
@@ -156,6 +159,7 @@ export default function FilesPage() {
           setIsEditing(false);
           setDetailFile(null);
         },
+        onError: () => setIsEditing(false),
       }
     );
   }, [detailFile, editDescription, editCategory, editTags, doUpdate]);
@@ -200,6 +204,13 @@ export default function FilesPage() {
       window.open(url, '_blank');
     }
   }, [resolveUrl]);
+
+  const exportFilters = useMemo(() => {
+    const f: Record<string, unknown> = {};
+    if (category && category !== 'all') f.category = category;
+    if (searchTerm) f.searchTerm = searchTerm;
+    return f;
+  }, [category, searchTerm]);
 
   if (isError) {
     return (
@@ -247,6 +258,7 @@ export default function FilesPage() {
                 <List className="h-4 w-4" />
               </Button>
             </div>
+            {canExport && <ExportButton reportType="Files" filters={exportFilters} />}
             {canUpload && (
               <Button onClick={() => setUploadDialogOpen(true)}>
                 <Upload className="h-4 w-4 ltr:mr-2 rtl:ml-2" />

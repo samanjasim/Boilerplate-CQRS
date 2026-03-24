@@ -53,4 +53,9 @@ export const ROUTES = {
   FILES: {
     LIST: '/files',
   },
+
+  // Reports
+  REPORTS: {
+    LIST: '/reports',
+  },
 } as const;

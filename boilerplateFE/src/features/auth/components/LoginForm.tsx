@@ -43,10 +43,15 @@ export function LoginForm() {
 
   const onSubmit2FA = () => {
     if (!savedCredentials || !twoFactorCode.trim()) return;
-    login({
-      ...savedCredentials,
-      twoFactorCode: twoFactorCode.trim(),
-    });
+    login(
+      {
+        ...savedCredentials,
+        twoFactorCode: twoFactorCode.trim(),
+      },
+      {
+        onError: () => setTwoFactorCode(''),
+      }
+    );
   };
 
   const handleBack = () => {

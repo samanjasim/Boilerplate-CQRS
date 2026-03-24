@@ -42,7 +42,13 @@
     "showPassword": "إظهار كلمة المرور",
     "noPermission": "ليس لديك صلاحية للوصول إلى هذه الصفحة",
     "copyFailed": "فشل النسخ إلى الحافظة",
-    "creating": "جاري الإنشاء..."
+    "creating": "جاري الإنشاء...",
+    "verified": "مُوثّق",
+    "phonePlaceholder": "+9647XXXXXXXXX",
+    "export": "تصدير",
+    "exportCsv": "تصدير CSV",
+    "exportPdf": "تصدير PDF",
+    "exporting": "جاري التصدير..."
   },
   "auth": {
     "welcomeBack": "مرحباً بعودتك",
@@ -93,7 +99,11 @@
     "creatingAccount": "جاري إنشاء الحساب...",
     "createOrganization": "إنشاء مؤسستك",
     "createOrganizationDesc": "قم بإعداد مؤسستك وحساب المسؤول",
-    "companyName": "اسم الشركة"
+    "companyName": "اسم الشركة",
+    "firstNamePlaceholder": "أحمد",
+    "lastNamePlaceholder": "محمد",
+    "usernamePlaceholder": "ahmed_m",
+    "emailPlaceholder": "ahmed@example.com"
   },
   "landing": {
     "title": "مرحباً بك في {{appName}}",
@@ -108,6 +118,7 @@
     "tenants": "المستأجرون",
     "auditLogs": "سجلات التدقيق",
     "files": "الملفات",
+    "reports": "التقارير",
     "collapse": "طي"
   },
   "header": {
@@ -210,7 +221,9 @@
     "systemRole": "نظام",
     "permissionsSelected": "{{count}} صلاحية مختارة",
     "permissionsInfoTitle": "يمكن تعديل الصلاحيات لاحقاً",
-    "permissionsInfoDesc": "يمكنك دائماً تحديث الصلاحيات المعينة لهذا الدور من صفحة تفاصيل الدور."
+    "permissionsInfoDesc": "يمكنك دائماً تحديث الصلاحيات المعينة لهذا الدور من صفحة تفاصيل الدور.",
+    "namePlaceholder": "مثال: مدير",
+    "descriptionPlaceholder": "وصف الغرض من الدور..."
   },
   "tenants": {
     "title": "المستأجرون",
@@ -280,7 +293,8 @@
     "disabledSuccess": "تم تعطيل المصادقة الثنائية بنجاح",
     "copyAll": "نسخ الكل",
     "copied": "تم النسخ!",
-    "done": "تم"
+    "done": "تم",
+    "qrCodeAlt": "رمز QR للمصادقة الثنائية"
   },
   "invitations": {
     "inviteUser": "دعوة مستخدم",
@@ -382,6 +396,42 @@
     "preview": "معاينة",
     "fileDetails": "تفاصيل الملف",
     "noUrlAvailable": "رابط الملف غير متوفر"
+  },
+  "reports": {
+    "title": "التقارير",
+    "subtitle": "التقارير والصادرات المُنشأة",
+    "requestReport": "طلب تقرير",
+    "requested": "تم طلب التقرير",
+    "requestedDesc": "جاري إنشاء تقريرك. سيتم إشعارك عندما يكون جاهزاً.",
+    "alreadyReady": "التقرير جاهز للتحميل",
+    "reportType": "نوع التقرير",
+    "format": "الصيغة",
+    "status": "الحالة",
+    "requestedAt": "تاريخ الطلب",
+    "completedAt": "تاريخ الإكمال",
+    "actions": "الإجراءات",
+    "download": "تنزيل",
+    "retry": "إعادة المحاولة",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "deleteConfirm": "هل أنت متأكد من حذف هذا التقرير؟",
+    "noReports": "لا توجد تقارير بعد",
+    "noReportsDesc": "قم بتصدير البيانات من الصفحات الأخرى لرؤية تقاريرك هنا",
+    "pending": "قيد الانتظار",
+    "processing": "قيد المعالجة",
+    "completed": "مكتمل",
+    "failed": "فشل",
+    "forceRefresh": "تحديث إجباري",
+    "forceRefreshDesc": "إنشاء تقرير جديد مع تجاهل الذاكرة المؤقتة",
+    "auditLogs": "سجلات التدقيق",
+    "users": "المستخدمون",
+    "files": "الملفات",
+    "csv": "CSV",
+    "pdf": "PDF",
+    "reportReady": "تقريرك جاهز للتنزيل",
+    "reportFailed": "فشل إنشاء التقرير",
+    "viewReports": "عرض التقارير",
+    "downloadFailed": "فشل في تحميل التقرير"
   },
   "validation": {
     "required": "{{field}} مطلوب",

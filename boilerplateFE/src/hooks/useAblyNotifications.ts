@@ -32,6 +32,16 @@ export function useAblyNotifications(): { connected: boolean } {
           // Invalidate notification queries to refresh the list and unread count
           queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
 
+          // If this is a report-related notification, also invalidate reports
+          const notificationType = data?.type ?? data?.notificationType ?? '';
+          if (
+            notificationType === 'ReportReady' ||
+            notificationType === 'ReportFailed' ||
+            notificationType === 'ReportCompleted'
+          ) {
+            queryClient.invalidateQueries({ queryKey: queryKeys.reports.all });
+          }
+
           // Show a toast for the new notification
           if (data?.title) {
             toast.info(data.title, {

@@ -68,4 +68,10 @@ export const API_ENDPOINTS = {
     URL: (id: string) => `/Files/${id}/url`,
     DELETE: (id: string) => `/Files/${id}`,
   },
+  REPORTS: {
+    LIST: '/Reports',
+    REQUEST: '/Reports',
+    DOWNLOAD: (id: string) => `/Reports/${id}/download`,
+    DELETE: (id: string) => `/Reports/${id}`,
+  },
 } as const;

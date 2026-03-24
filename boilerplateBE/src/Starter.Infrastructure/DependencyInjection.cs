@@ -1,6 +1,8 @@
 using Amazon.S3;
+using QuestPDF.Infrastructure;
 using Starter.Application.Common.Interfaces;
 using Starter.Infrastructure.Email.Templates;
+using Starter.Infrastructure.Consumers;
 using Starter.Infrastructure.Persistence;
 using Starter.Infrastructure.Persistence.Interceptors;
 using Starter.Infrastructure.Services;
@@ -19,6 +21,8 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        QuestPDF.Settings.License = LicenseType.Community;
+
         services
             .AddPersistence(configuration)
             .AddCaching(configuration)
@@ -28,6 +32,7 @@ public static class DependencyInjection
             .AddSmsServices(configuration)
             .AddRealtimeServices(configuration)
             .AddStorageServices(configuration)
+            .AddExportServices()
             .AddHealthChecks(configuration);
 
         return services;
@@ -96,6 +101,8 @@ public static class DependencyInjection
         {
             busConfigurator.SetKebabCaseEndpointNameFormatter();
 
+            busConfigurator.AddConsumer<GenerateReportConsumer>();
+
             if (!rabbitMqEnabled)
             {
                 busConfigurator.UsingInMemory((context, cfg) =>
@@ -129,6 +136,7 @@ public static class DependencyInjection
     private static IServiceCollection AddServices(this IServiceCollection services)
     {
         services.AddSingleton<IDateTimeService, DateTimeService>();
+        services.AddScoped<IMessagePublisher, MassTransitMessagePublisher>();
 
         return services;
     }
@@ -216,6 +224,13 @@ public static class DependencyInjection
         services.AddScoped<IFileService, FileService>();
 
         services.AddHostedService<StorageBucketInitializer>();
+
+        return services;
+    }
+
+    private static IServiceCollection AddExportServices(this IServiceCollection services)
+    {
+        services.AddScoped<IExportService, ExportService>();
 
         return services;
     }

@@ -59,4 +59,10 @@ export const queryKeys = {
     detail: (id: string) => [...queryKeys.files.all, 'detail', id] as const,
     url: (id: string) => [...queryKeys.files.all, 'url', id] as const,
   },
+
+  reports: {
+    all: ['reports'] as const,
+    lists: () => [...queryKeys.reports.all, 'list'] as const,
+    list: <T extends object>(filters?: T) => [...queryKeys.reports.lists(), filters] as const,
+  },
 } as const;

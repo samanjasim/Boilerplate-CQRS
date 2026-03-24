@@ -7,7 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
-import { PageHeader, EmptyState } from '@/components/common';
+import { PageHeader, EmptyState, ExportButton } from '@/components/common';
+import { usePermissions } from '@/hooks';
+import { PERMISSIONS } from '@/constants';
 import {
   Table,
   TableBody,
@@ -72,12 +74,13 @@ function ChangesDetail({ changes }: { changes: string | null }) {
 
 export default function AuditLogsPage() {
   const { t } = useTranslation();
+  const { hasPermission } = usePermissions();
+  const canExport = hasPermission(PERMISSIONS.System.ExportData);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [entityType, setEntityType] = useState<string>('all');
   const [action, setAction] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
-
   const params = useMemo(() => {
     const p: Record<string, unknown> = { pageNumber, pageSize: 20 };
     if (entityType && entityType !== 'all') p.entityType = entityType;
@@ -89,6 +92,14 @@ export default function AuditLogsPage() {
   const { data, isLoading, isFetching, isError } = useAuditLogs(params);
   const logs = data?.data ?? [];
   const pagination = data?.pagination;
+
+  const exportFilters = useMemo(() => {
+    const f: Record<string, unknown> = {};
+    if (entityType && entityType !== 'all') f.entityType = entityType;
+    if (action && action !== 'all') f.action = action;
+    if (searchTerm) f.searchTerm = searchTerm;
+    return f;
+  }, [entityType, action, searchTerm]);
 
   const toggleRow = (id: string) => {
     setExpandedRow((prev) => (prev === id ? null : id));
@@ -117,7 +128,10 @@ export default function AuditLogsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t('auditLogs.title')} />
+      <PageHeader
+        title={t('auditLogs.title')}
+        actions={canExport ? <ExportButton reportType="AuditLogs" filters={exportFilters} /> : undefined}
+      />
 
       {/* Filters */}
       <Card>

@@ -124,7 +124,7 @@ export default function RoleEditPage() {
                 <div className="space-y-2">
                   <Label>{t('roles.name')}</Label>
                   <Input
-                    placeholder="e.g. Admin"
+                    placeholder={t('roles.namePlaceholder')}
                     disabled={role.isSystemRole}
                     {...register('name')}
                   />
@@ -133,7 +133,7 @@ export default function RoleEditPage() {
                 <div className="space-y-2">
                   <Label>{t('roles.description')}</Label>
                   <Textarea
-                    placeholder="Describe the role's purpose..."
+                    placeholder={t('roles.descriptionPlaceholder')}
                     rows={3}
                     disabled={role.isSystemRole}
                     {...register('description')}

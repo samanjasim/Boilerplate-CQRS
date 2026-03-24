@@ -42,7 +42,13 @@
     "showPassword": "پیشاندانی وشەی نهێنی",
     "noPermission": "مۆڵەتی دەستگەیشتن بەم پەڕەیە نییە",
     "copyFailed": "کۆپیکردن بۆ کلیپبۆرد سەرکەوتوو نەبوو",
-    "creating": "دروستکردن..."
+    "creating": "دروستکردن...",
+    "verified": "پشتڕاستکراوە",
+    "phonePlaceholder": "+9647XXXXXXXXX",
+    "export": "هەناردەکردن",
+    "exportCsv": "هەناردەکردنی CSV",
+    "exportPdf": "هەناردەکردنی PDF",
+    "exporting": "هەناردەکردن..."
   },
   "auth": {
     "welcomeBack": "بەخێربێیتەوە",
@@ -93,7 +99,11 @@
     "creatingAccount": "دروستکردنی هەژمار...",
     "createOrganization": "دروستکردنی دامەزراوەکەت",
     "createOrganizationDesc": "دامەزراوەکەت و هەژماری بەڕێوەبەر دابنێ",
-    "companyName": "ناوی کۆمپانیا"
+    "companyName": "ناوی کۆمپانیا",
+    "firstNamePlaceholder": "ئەحمەد",
+    "lastNamePlaceholder": "محەمەد",
+    "usernamePlaceholder": "ahmed_m",
+    "emailPlaceholder": "ahmed@example.com"
   },
   "landing": {
     "title": "بەخێربێیت بۆ {{appName}}",
@@ -108,6 +118,7 @@
     "tenants": "خاوەنکارەکان",
     "auditLogs": "تۆماری چاودێری",
     "files": "فایلەکان",
+    "reports": "ڕاپۆرتەکان",
     "collapse": "کچکردن"
   },
   "header": {
@@ -210,7 +221,9 @@
     "systemRole": "سیستەم",
     "permissionsSelected": "{{count}} مۆڵەت هەڵبژێردراوە",
     "permissionsInfoTitle": "مۆڵەتەکان دواتر دەگۆڕدرێن",
-    "permissionsInfoDesc": "هەمیشە دەتوانیت مۆڵەتەکانی دیاریکراو بۆ ئەم ڕۆڵە لە پەڕەی وردەکاری ڕۆڵ نوێ بکەیتەوە."
+    "permissionsInfoDesc": "هەمیشە دەتوانیت مۆڵەتەکانی دیاریکراو بۆ ئەم ڕۆڵە لە پەڕەی وردەکاری ڕۆڵ نوێ بکەیتەوە.",
+    "namePlaceholder": "بۆ نمونە: بەڕێوەبەر",
+    "descriptionPlaceholder": "مەبەستی ئەم ڕۆڵە وەسف بکە..."
   },
   "tenants": {
     "title": "خاوەنکارەکان",
@@ -280,7 +293,8 @@
     "disabledSuccess": "ناسینەوەی دوو هەنگاوی بە سەرکەوتوویی ناچالاککرا",
     "copyAll": "کۆپیکردنی هەمووی",
     "copied": "کۆپیکرا!",
-    "done": "تەواو"
+    "done": "تەواو",
+    "qrCodeAlt": "کۆدی QR بۆ دووفاکتەری ناسنامە"
   },
   "invitations": {
     "inviteUser": "بانگهێشتکردنی بەکارهێنەر",
@@ -382,6 +396,42 @@
     "preview": "پیشاندان",
     "fileDetails": "وردەکاری فایل",
     "noUrlAvailable": "لینکی فایل بەردەست نییە"
+  },
+  "reports": {
+    "title": "ڕاپۆرتەکان",
+    "subtitle": "ڕاپۆرت و هەناردەکراوە دروستکراوەکان",
+    "requestReport": "داواکاری ڕاپۆرت",
+    "requested": "داواکاری ڕاپۆرت تۆمارکرا",
+    "requestedDesc": "ڕاپۆرتەکەت دروست دەکرێت. کاتێک ئامادە بوو ئاگادار دەکرێیتەوە.",
+    "alreadyReady": "ڕاپۆرت ئامادەیە بۆ داگرتن",
+    "reportType": "جۆری ڕاپۆرت",
+    "format": "شێواز",
+    "status": "دۆخ",
+    "requestedAt": "بەرواری داواکاری",
+    "completedAt": "بەرواری تەواوبوون",
+    "actions": "کردارەکان",
+    "download": "داگرتن",
+    "retry": "دووبارە هەوڵدان",
+    "cancel": "هەڵوەشاندنەوە",
+    "delete": "سڕینەوە",
+    "deleteConfirm": "دڵنیایت لە سڕینەوەی ئەم ڕاپۆرتە؟",
+    "noReports": "هێشتا هیچ ڕاپۆرتێک نییە",
+    "noReportsDesc": "داتا لە پەڕەکانی تر هەناردە بکە بۆ بینینی ڕاپۆرتەکانت لێرە",
+    "pending": "چاوەڕوان",
+    "processing": "لە پرۆسەکردندا",
+    "completed": "تەواوبوو",
+    "failed": "سەرنەکەوت",
+    "forceRefresh": "نوێکردنەوەی ناچاری",
+    "forceRefreshDesc": "دروستکردنی ڕاپۆرتێکی نوێ بە پشتگوێخستنی کاش",
+    "auditLogs": "تۆماری چاودێری",
+    "users": "بەکارهێنەران",
+    "files": "فایلەکان",
+    "csv": "CSV",
+    "pdf": "PDF",
+    "reportReady": "ڕاپۆرتەکەت ئامادەیە بۆ داگرتن",
+    "reportFailed": "دروستکردنی ڕاپۆرت سەرنەکەوت",
+    "viewReports": "بینینی ڕاپۆرتەکان",
+    "downloadFailed": "شکستی هێنا لە داگرتنی ڕاپۆرت"
   },
   "validation": {
     "required": "{{field}} پێویستە",

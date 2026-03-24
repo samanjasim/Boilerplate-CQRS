@@ -202,47 +202,71 @@ This checklist covers every user-facing feature in the boilerplate. Run through 
 | 16.5 | Login History table | Date, IP, device, status, reason columns |
 | 16.6 | Failed login shows "Failed" status | With failure reason |
 
-## 17. Notifications
+## 17. Reports (Async Export)
 
 | # | Test Case | Expected |
 |---|-----------|----------|
-| 17.1 | Bell icon in header | Shows unread count badge |
-| 17.2 | Click bell → dropdown | Shows recent notifications |
-| 17.3 | Click notification → marks as read | Unread count decrements |
-| 17.4 | "View All" link → notifications page | Full paginated list |
-| 17.5 | Mark all as read | All notifications marked read |
-| 17.6 | Polling fallback (no Ably) | Unread count refreshes every 30s |
+| 17.1 | Reports nav in sidebar | Visible for users with System.ExportData permission |
+| 17.2 | Reports page shows empty state | "No reports yet" with description |
+| 17.3 | Export CSV from Audit Logs page | Toast "Report requested" with "View Reports" link |
+| 17.4 | Export PDF from Users page | Toast "Report requested" with "View Reports" link |
+| 17.5 | Export from Files page | Toast "Report requested" with "View Reports" link |
+| 17.6 | Reports page shows Pending status | Yellow badge with spinner |
+| 17.7 | Report transitions to Completed | Green badge, download button appears |
+| 17.8 | Download completed report | Signed URL opens, file downloads |
+| 17.9 | Delete report | Confirmation dialog, report removed |
+| 17.10 | Retry failed report | Creates new report with forceRefresh=true |
+| 17.11 | Cache dedup — same report twice | Returns existing report, no new generation |
+| 17.12 | Force Refresh (SuperAdmin) | Generates fresh report even if cached |
+| 17.13 | Auto-polling when pending reports | List refreshes every 5 seconds |
+| 17.14 | Auto-polling stops when all done | No more polling after Completed/Failed |
+| 17.15 | Report type filter works | Filters by AuditLogs, Users, Files |
+| 17.16 | Status filter works | Filters by Pending, Processing, Completed, Failed |
+| 17.17 | Tenant isolation | Tenant user only sees own reports |
+| 17.18 | Notification on report completion | Bell icon updates, toast if Ably enabled |
 
-## 18. Theme & Language
-
-| # | Test Case | Expected |
-|---|-----------|----------|
-| 18.1 | Toggle dark mode | HTML gets `class="dark"`, UI colors change |
-| 18.2 | Toggle back to light mode | `class="light"`, UI reverts |
-| 18.3 | Switch to Arabic | All text in Arabic, `dir="rtl"`, `lang="ar"` |
-| 18.4 | Switch to Kurdish | All text in Kurdish, RTL layout |
-| 18.5 | Switch back to English | All text in English, `dir="ltr"` |
-| 18.6 | Theme persists on page reload | Theme stays after F5 |
-| 18.7 | Language persists on page reload | Language stays after F5 |
-
-## 19. Tenant Data Isolation
-
-| # | Test Case | Expected |
-|---|-----------|----------|
-| 19.1 | Tenant user cannot see SuperAdmin | Not in users list |
-| 19.2 | Tenant user cannot see other tenants' users | Only own tenant's users |
-| 19.3 | Tenant user sees only own tenant in tenants list | Single row |
-| 19.4 | Tenant user files isolated | Only own tenant's files |
-| 19.5 | Tenant user audit logs isolated | Only own tenant's logs |
-| 19.6 | SuperAdmin sees all data across tenants | Full access |
-
-## 20. Logout
+## 18. Notifications
 
 | # | Test Case | Expected |
 |---|-----------|----------|
-| 20.1 | Click user dropdown → Logout | Clears tokens, redirects to `/login` |
-| 20.2 | After logout, cannot access protected routes | Redirects to `/login` |
-| 20.3 | After logout, API calls return 401 | No stale data |
+| 18.1 | Bell icon in header | Shows unread count badge |
+| 18.2 | Click bell → dropdown | Shows recent notifications |
+| 18.3 | Click notification → marks as read | Unread count decrements |
+| 18.4 | "View All" link → notifications page | Full paginated list |
+| 18.5 | Mark all as read | All notifications marked read |
+| 18.6 | Polling fallback (no Ably) | Unread count refreshes every 30s |
+
+## 19. Theme & Language
+
+| # | Test Case | Expected |
+|---|-----------|----------|
+| 19.1 | Toggle dark mode | HTML gets `class="dark"`, UI colors change |
+| 19.2 | Toggle back to light mode | `class="light"`, UI reverts |
+| 19.3 | Switch to Arabic | All text in Arabic, `dir="rtl"`, `lang="ar"` |
+| 19.4 | Switch to Kurdish | All text in Kurdish, RTL layout |
+| 19.5 | Switch back to English | All text in English, `dir="ltr"` |
+| 19.6 | Theme persists on page reload | Theme stays after F5 |
+| 19.7 | Language persists on page reload | Language stays after F5 |
+
+## 20. Tenant Data Isolation
+
+| # | Test Case | Expected |
+|---|-----------|----------|
+| 20.1 | Tenant user cannot see SuperAdmin | Not in users list |
+| 20.2 | Tenant user cannot see other tenants' users | Only own tenant's users |
+| 20.3 | Tenant user sees only own tenant in tenants list | Single row |
+| 20.4 | Tenant user files isolated | Only own tenant's files |
+| 20.5 | Tenant user audit logs isolated | Only own tenant's logs |
+| 20.6 | Tenant user reports isolated | Only own tenant's reports |
+| 20.7 | SuperAdmin sees all data across tenants | Full access |
+
+## 21. Logout
+
+| # | Test Case | Expected |
+|---|-----------|----------|
+| 21.1 | Click user dropdown → Logout | Clears tokens, redirects to `/login` |
+| 21.2 | After logout, cannot access protected routes | Redirects to `/login` |
+| 21.3 | After logout, API calls return 401 | No stale data |
 
 ---
 

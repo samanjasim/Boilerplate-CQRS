@@ -46,6 +46,8 @@ export const PERMISSIONS = {
     ViewAuditLogs: 'System.ViewAuditLogs',
     ManageSettings: 'System.ManageSettings',
     ViewDashboard: 'System.ViewDashboard',
+    ExportData: 'System.ExportData',
+    ForceExport: 'System.ForceExport',
   },
 } as const;
 

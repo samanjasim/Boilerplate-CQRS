@@ -6,3 +6,4 @@ export * from './audit-log.types';
 export * from './tenant.types';
 export * from './notification.types';
 export * from './file.types';
+export * from './report.types';
