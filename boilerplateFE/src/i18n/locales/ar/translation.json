@@ -527,6 +527,11 @@
     "otpMaxAttempts": "أقصى محاولات OTP",
     "accessTokenExpirationMinutes": "مدة رمز الوصول (دقائق)",
     "refreshTokenExpirationDays": "مدة رمز التحديث (أيام)",
+    "files": "الملفات",
+    "tempFileTtlMinutes": "مدة صلاحية الملفات المؤقتة (دقائق)",
+    "orphanCleanupIntervalMinutes": "فترة تنظيف الملفات اليتيمة (دقائق)",
+    "maxUploadSizeMb": "أقصى حجم للرفع (ميغابايت)",
+    "fileExpirationHours": "انتهاء صلاحية التقرير (ساعات)",
     "unsavedChanges": "{{count}} تغييرات غير محفوظة"
   },
   "validation": {

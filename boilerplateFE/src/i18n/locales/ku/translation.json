@@ -527,6 +527,11 @@
     "otpMaxAttempts": "زۆرترین هەوڵی OTP",
     "accessTokenExpirationMinutes": "ماوەی تۆکنی دەستگەیشتن (خولەک)",
     "refreshTokenExpirationDays": "ماوەی تۆکنی نوێکردنەوە (ڕۆژ)",
+    "files": "فایلەکان",
+    "tempFileTtlMinutes": "ماوەی فایلی کاتی (خولەک)",
+    "orphanCleanupIntervalMinutes": "ماوەی پاککردنەوەی فایلە یەتیمەکان (خولەک)",
+    "maxUploadSizeMb": "زۆرترین قەبارەی بارکردن (مێگابایت)",
+    "fileExpirationHours": "بەسەرچوونی ڕاپۆرت (کاتژمێر)",
     "unsavedChanges": "{{count}} گۆڕانکاری پاشەکەوت نەکراو"
   },
   "validation": {

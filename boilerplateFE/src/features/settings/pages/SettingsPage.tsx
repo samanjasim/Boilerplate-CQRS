@@ -32,8 +32,8 @@ function resolveLabel(
 
 /** Resolves an i18n label for a category name. */
 function resolveCategoryLabel(t: (key: string) => string, category: string): string {
-  const camelKey = category.charAt(0).toLowerCase() + category.slice(1);
-  const i18nKey = `settings.${camelKey}`;
+  const lowerKey = category.toLowerCase();
+  const i18nKey = `settings.${lowerKey}`;
   const translated = t(i18nKey);
   if (translated !== i18nKey) return translated;
   return category;

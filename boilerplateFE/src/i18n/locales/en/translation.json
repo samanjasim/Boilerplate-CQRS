@@ -527,6 +527,11 @@
     "otpMaxAttempts": "Max OTP Attempts",
     "accessTokenExpirationMinutes": "Access Token Lifetime (minutes)",
     "refreshTokenExpirationDays": "Refresh Token Lifetime (days)",
+    "files": "Files",
+    "tempFileTtlMinutes": "Temp File TTL (minutes)",
+    "orphanCleanupIntervalMinutes": "Orphan Cleanup Interval (minutes)",
+    "maxUploadSizeMb": "Max Upload Size (MB)",
+    "fileExpirationHours": "Report Expiration (hours)",
     "unsavedChanges": "{{count}} unsaved changes"
   },
   "validation": {
