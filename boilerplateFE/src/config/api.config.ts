@@ -74,4 +74,9 @@ export const API_ENDPOINTS = {
     DOWNLOAD: (id: string) => `/Reports/${id}/download`,
     DELETE: (id: string) => `/Reports/${id}`,
   },
+  SETTINGS: {
+    LIST: '/Settings',
+    UPDATE: '/Settings',
+    UPDATE_SINGLE: (key: string) => `/Settings/${key}`,
+  },
 } as const;

@@ -8,14 +8,13 @@ public sealed class OtpService : IOtpService
 {
     private readonly ICacheService _cache;
     private readonly ILogger<OtpService> _logger;
+    private readonly ISettingsProvider _settingsProvider;
 
-    private static readonly TimeSpan OtpExpiration = TimeSpan.FromMinutes(10);
-    private const int MaxAttempts = 3;
-
-    public OtpService(ICacheService cache, ILogger<OtpService> logger)
+    public OtpService(ICacheService cache, ILogger<OtpService> logger, ISettingsProvider settingsProvider)
     {
         _cache = cache;
         _logger = logger;
+        _settingsProvider = settingsProvider;
     }
 
     public async Task<string> GenerateAsync(
@@ -26,12 +25,17 @@ public sealed class OtpService : IOtpService
         ArgumentException.ThrowIfNullOrWhiteSpace(purpose);
         ArgumentException.ThrowIfNullOrWhiteSpace(identifier);
 
+        var minutes = await _settingsProvider.GetIntAsync("Security.OtpExpirationMinutes", 10, cancellationToken);
+        var otpExpiration = TimeSpan.FromMinutes(minutes);
+
+        var maxAttempts = await _settingsProvider.GetIntAsync("Security.OtpMaxAttempts", 3, cancellationToken);
+
         var rateLimitKey = $"otp-rate:{purpose}:{identifier}";
         var otpKey = $"otp:{purpose}:{identifier}";
 
         var attempts = await _cache.GetAsync<int?>(rateLimitKey, cancellationToken) ?? 0;
 
-        if (attempts >= MaxAttempts)
+        if (attempts >= maxAttempts)
         {
             _logger.LogWarning(
                 "OTP rate limit exceeded for {Purpose}:{Identifier}",
@@ -42,8 +46,8 @@ public sealed class OtpService : IOtpService
 
         var code = GenerateCode();
 
-        await _cache.SetAsync(otpKey, code, OtpExpiration, cancellationToken);
-        await _cache.SetAsync(rateLimitKey, attempts + 1, OtpExpiration, cancellationToken);
+        await _cache.SetAsync(otpKey, code, otpExpiration, cancellationToken);
+        await _cache.SetAsync(rateLimitKey, attempts + 1, otpExpiration, cancellationToken);
 
         _logger.LogInformation(
             "OTP generated for {Purpose}:{Identifier}",

@@ -65,4 +65,9 @@ export const queryKeys = {
     lists: () => [...queryKeys.reports.all, 'list'] as const,
     list: <T extends object>(filters?: T) => [...queryKeys.reports.lists(), filters] as const,
   },
+
+  settings: {
+    all: ['settings'] as const,
+    list: () => [...queryKeys.settings.all, 'list'] as const,
+  },
 } as const;

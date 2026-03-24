@@ -7,3 +7,4 @@ export * from './tenant.types';
 export * from './notification.types';
 export * from './file.types';
 export * from './report.types';
+export * from './settings.types';

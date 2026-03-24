@@ -1,3 +1,4 @@
+using Starter.Domain.Common;
 using Starter.Domain.Identity.Entities;
 using Starter.Domain.Identity.ValueObjects;
 using Starter.Domain.Tenants.Entities;
@@ -35,6 +36,7 @@ public static class DataSeeder
             await SeedRolePermissionsAsync(context, logger);
             await SeedDefaultTenantAsync(context, logger);
             await SeedSuperAdminUserAsync(context, configuration, logger);
+            await SeedDefaultSettingsAsync(context, logger);
         }
         catch (Exception ex)
         {
@@ -189,5 +191,101 @@ public static class DataSeeder
         await context.SaveChangesAsync();
 
         logger.LogInformation("Seeded SuperAdmin user: {Username}", superAdminUsername);
+    }
+
+    private static async Task SeedDefaultSettingsAsync(ApplicationDbContext context, ILogger logger)
+    {
+        var defaultSettings = new (string Key, string Value, string Description, string Category, bool IsSecret, string DataType)[]
+        {
+            // Application
+            ("App.Name", "Starter", "Application display name", "Application", false, "text"),
+            ("App.Timezone", "UTC", "Default timezone", "Application", false, "text"),
+            ("App.DateFormat", "yyyy-MM-dd", "Date display format", "Application", false, "text"),
+            ("App.Currency", "USD", "Default currency code", "Application", false, "text"),
+            ("App.Language", "en", "Default language", "Application", false, "text"),
+            ("App.MaintenanceMode", "false", "Enable maintenance mode", "Application", false, "boolean"),
+            ("App.FrontendUrl", "http://localhost:3000", "Frontend application URL", "Application", false, "url"),
+
+            // Email
+            ("Email.FromName", "Starter", "Email sender display name", "Email", false, "text"),
+            ("Email.FromAddress", "noreply@starter.com", "Email sender address", "Email", false, "email"),
+            ("Email.SmtpHost", "localhost", "SMTP server hostname", "Email", false, "text"),
+            ("Email.SmtpPort", "587", "SMTP server port", "Email", false, "number"),
+            ("Email.SmtpUsername", "", "SMTP authentication username", "Email", true, "password"),
+            ("Email.SmtpPassword", "", "SMTP authentication password", "Email", true, "password"),
+            ("Email.SmtpEnableSsl", "true", "Use SSL/TLS for SMTP", "Email", false, "boolean"),
+
+            // SMS
+            ("Sms.TwilioEnabled", "false", "Enable Twilio SMS service", "SMS", false, "boolean"),
+            ("Sms.TwilioAccountSid", "", "Twilio account SID", "SMS", true, "password"),
+            ("Sms.TwilioAuthToken", "", "Twilio auth token", "SMS", true, "password"),
+            ("Sms.TwilioFromNumber", "", "SMS sender phone number", "SMS", false, "text"),
+
+            // Notifications
+            ("Notifications.AblyEnabled", "false", "Enable Ably real-time notifications", "Notifications", false, "boolean"),
+            ("Notifications.AblyApiKey", "", "Ably API key", "Notifications", true, "password"),
+            ("Notifications.PollingIntervalSeconds", "30", "Notification polling interval in seconds", "Notifications", false, "number"),
+
+            // Security
+            ("Security.MaxLoginAttempts", "5", "Max failed login attempts before lockout", "Security", false, "number"),
+            ("Security.LockoutDuration", "15", "Account lockout duration in minutes", "Security", false, "number"),
+            ("Security.PasswordMinLength", "8", "Minimum password length", "Security", false, "number"),
+            ("Security.SessionTimeout", "1440", "Session timeout in minutes", "Security", false, "number"),
+            ("Security.OtpExpirationMinutes", "10", "OTP code expiration in minutes", "Security", false, "number"),
+            ("Security.OtpMaxAttempts", "3", "Max OTP generation attempts per window", "Security", false, "number"),
+            ("Security.AccessTokenExpirationMinutes", "60", "JWT access token lifetime in minutes", "Security", false, "number"),
+            ("Security.RefreshTokenExpirationDays", "7", "Refresh token lifetime in days", "Security", false, "number"),
+
+            // Reports
+            ("Reports.CacheDurationMinutes", "60", "Report cache duration in minutes", "Reports", false, "number"),
+            ("Reports.MaxFileSizeMb", "50", "Maximum report file size in MB", "Reports", false, "number"),
+        };
+
+        var existingSettings = await context.SystemSettings
+            .IgnoreQueryFilters()
+            .Where(s => s.TenantId == null)
+            .ToListAsync();
+
+        var existingByKey = existingSettings.ToDictionary(s => s.Key);
+        var seededCount = 0;
+        var updatedCount = 0;
+
+        foreach (var (key, value, description, category, isSecret, dataType) in defaultSettings)
+        {
+            if (existingByKey.TryGetValue(key, out var existing))
+            {
+                // Update DataType if it changed
+                if (existing.DataType != dataType)
+                {
+                    existing.UpdateDataType(dataType);
+                    updatedCount++;
+                }
+
+                continue;
+            }
+
+            var setting = SystemSetting.Create(
+                key,
+                value,
+                tenantId: null,
+                description: description,
+                category: category,
+                isSecret: isSecret,
+                dataType: dataType);
+
+            context.SystemSettings.Add(setting);
+            seededCount++;
+        }
+
+        if (seededCount > 0 || updatedCount > 0)
+        {
+            await context.SaveChangesAsync();
+        }
+
+        if (seededCount > 0)
+            logger.LogInformation("Seeded {Count} default system settings", seededCount);
+
+        if (updatedCount > 0)
+            logger.LogInformation("Updated DataType on {Count} existing system settings", updatedCount);
     }
 }

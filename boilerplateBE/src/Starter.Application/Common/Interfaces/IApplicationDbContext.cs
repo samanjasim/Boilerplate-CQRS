@@ -21,6 +21,7 @@ public interface IApplicationDbContext
     DbSet<NotificationPreference> NotificationPreferences { get; }
     DbSet<FileMetadata> FileMetadata { get; }
     DbSet<ReportRequest> ReportRequests { get; }
+    DbSet<SystemSetting> SystemSettings { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

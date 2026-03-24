@@ -10,6 +10,7 @@ import {
   Building,
   FolderOpen,
   FileText,
+  Settings2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore, selectSidebarCollapsed } from '@/stores';
@@ -43,6 +44,9 @@ export function Sidebar() {
       : []),
     ...(hasPermission(PERMISSIONS.System.ViewAuditLogs)
       ? [{ label: t('nav.auditLogs'), icon: ClipboardList, path: ROUTES.AUDIT_LOGS.LIST }]
+      : []),
+    ...(hasPermission(PERMISSIONS.System.ManageSettings)
+      ? [{ label: t('nav.settings'), icon: Settings2, path: ROUTES.SETTINGS }]
       : []),
   ];
 

@@ -29,6 +29,7 @@ const ProfilePage = lazy(() => import('@/features/profile/pages/ProfilePage'));
 const NotificationsPage = lazy(() => import('@/features/notifications/pages/NotificationsPage'));
 const FilesPage = lazy(() => import('@/features/files/pages/FilesPage'));
 const ReportsPage = lazy(() => import('@/features/reports/pages/ReportsPage'));
+const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage'));
 const NotFoundPage = lazy(() => import('@/routes/NotFoundPage'));
 
 export const routes: RouteObject[] = [
@@ -135,6 +136,14 @@ export const routes: RouteObject[] = [
             element: <PermissionGuard permission={PERMISSIONS.System.ExportData} />,
             children: [
               { path: ROUTES.REPORTS.LIST, element: <ReportsPage /> },
+            ],
+          },
+
+          // Settings
+          {
+            element: <PermissionGuard permission={PERMISSIONS.System.ManageSettings} />,
+            children: [
+              { path: ROUTES.SETTINGS, element: <SettingsPage /> },
             ],
           },
         ],

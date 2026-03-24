@@ -16,7 +16,8 @@ namespace Starter.Application.Features.Reports.Commands.RequestReport;
 internal sealed class RequestReportCommandHandler(
     IApplicationDbContext context,
     ICurrentUserService currentUserService,
-    IMessagePublisher messagePublisher) : IRequestHandler<RequestReportCommand, Result<ReportDto>>
+    IMessagePublisher messagePublisher,
+    ISettingsProvider settingsProvider) : IRequestHandler<RequestReportCommand, Result<ReportDto>>
 {
     public async Task<Result<ReportDto>> Handle(RequestReportCommand request, CancellationToken cancellationToken)
     {
@@ -32,7 +33,8 @@ internal sealed class RequestReportCommandHandler(
         if (format is null)
             return Result.Failure<ReportDto>(Error.Validation("Report.InvalidFormat", "Invalid report format."));
 
-        var filterHash = ComputeFilterHash(reportType, format, request.Filters);
+        var cacheDurationMinutes = await settingsProvider.GetIntAsync("Reports.CacheDurationMinutes", 60, cancellationToken);
+        var filterHash = ComputeFilterHash(reportType, format, request.Filters, cacheDurationMinutes);
 
         var forceRefresh = request.ForceRefresh && currentUserService.HasPermission(Starter.Shared.Constants.Permissions.System.ForceExport);
 
@@ -68,14 +70,15 @@ internal sealed class RequestReportCommandHandler(
         return Result.Success(reportRequest.ToDto());
     }
 
-    private static string ComputeFilterHash(ReportType reportType, ReportFormat format, string? filters)
+    private static string ComputeFilterHash(ReportType reportType, ReportFormat format, string? filters, int cacheDurationMinutes)
     {
         var normalizedFilters = NormalizeJson(filters);
 
-        // Date bucket: truncate to the hour for deterministic hashing
-        var dateBucket = DateTime.UtcNow.ToString("yyyyMMddHH");
+        // Date bucket: truncate to cache duration window for deterministic hashing
+        var totalMinutes = (long)Math.Floor((DateTime.UtcNow - DateTime.UnixEpoch).TotalMinutes);
+        var bucket = cacheDurationMinutes > 0 ? totalMinutes / cacheDurationMinutes : totalMinutes;
 
-        var input = $"{reportType.Name}|{format.Name}|{normalizedFilters}|{dateBucket}";
+        var input = $"{reportType.Name}|{format.Name}|{normalizedFilters}|{bucket}";
         var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
         return Convert.ToHexString(hashBytes).ToLowerInvariant();
     }

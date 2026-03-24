@@ -43,7 +43,8 @@ public static class Roles
             Permissions.Files.Manage,
             // System
             Permissions.System.ViewDashboard,
-            Permissions.System.ExportData
+            Permissions.System.ExportData,
+            Permissions.System.ManageSettings
         ]);
 
         yield return (User, [

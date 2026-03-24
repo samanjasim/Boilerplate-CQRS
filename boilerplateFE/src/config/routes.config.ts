@@ -58,4 +58,7 @@ export const ROUTES = {
   REPORTS: {
     LIST: '/reports',
   },
+
+  // Settings
+  SETTINGS: '/settings',
 } as const;

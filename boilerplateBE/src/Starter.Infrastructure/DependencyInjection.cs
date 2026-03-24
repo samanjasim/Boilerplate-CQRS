@@ -137,6 +137,8 @@ public static class DependencyInjection
     {
         services.AddSingleton<IDateTimeService, DateTimeService>();
         services.AddScoped<IMessagePublisher, MassTransitMessagePublisher>();
+        services.AddScoped<ISettingsService, SettingsService>();
+        services.AddScoped<ISettingsProvider, SettingsProvider>();
 
         return services;
     }
