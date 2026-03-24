@@ -13,6 +13,9 @@ export interface FileMetadata {
   uploadedByName: string | null;
   createdAt: string;
   url: string | null;
+  status: string;
+  origin: string;
+  expiresAt: string | null;
 }
 
 export type FileCategory = 'Avatar' | 'Logo' | 'Document' | 'Attachment' | 'Other';

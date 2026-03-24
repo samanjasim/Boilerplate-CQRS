@@ -19,7 +19,7 @@ import { useInvitations, useRevokeInvitation } from '@/features/auth/api';
 import { InviteUserModal } from '../components';
 import { ROUTES } from '@/config';
 import { Users, UserPlus, X, Mail, Clock } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatDate } from '@/utils/format';
 import { usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
 
@@ -103,7 +103,7 @@ export default function UsersListPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {user.createdAt ? format(new Date(user.createdAt), 'MMM d, yyyy') : '-'}
+                      {user.createdAt ? formatDate(user.createdAt) : '-'}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -146,16 +146,14 @@ export default function UsersListPage() {
                     <TableCell className="text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {format(new Date(invitation.expiresAt), 'MMM d, yyyy')}
+                        {formatDate(invitation.expiresAt)}
                       </div>
                     </TableCell>
                     <TableCell>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => revokeInvitation(invitation.id, {
-                          onError: () => {},
-                        })}
+                        onClick={() => revokeInvitation(invitation.id)}
                       >
                         <X className="mr-1 h-4 w-4" />
                         {t('invitations.revoke')}

@@ -8,7 +8,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Starter.Application.Features.Tenants.Queries.GetTenantById;
 
 internal sealed class GetTenantByIdQueryHandler(
-    IApplicationDbContext context) : IRequestHandler<GetTenantByIdQuery, Result<TenantDto>>
+    IApplicationDbContext context,
+    IFileService fileService) : IRequestHandler<GetTenantByIdQuery, Result<TenantDto>>
 {
     public async Task<Result<TenantDto>> Handle(GetTenantByIdQuery request, CancellationToken cancellationToken)
     {
@@ -19,6 +20,15 @@ internal sealed class GetTenantByIdQueryHandler(
         if (tenant is null)
             return Result.Failure<TenantDto>(TenantErrors.NotFound(request.Id));
 
-        return Result.Success(tenant.ToDto());
+        string? logoUrl = null;
+        string? faviconUrl = null;
+
+        if (tenant.LogoFileId.HasValue)
+            logoUrl = await fileService.GetUrlAsync(tenant.LogoFileId.Value, cancellationToken);
+
+        if (tenant.FaviconFileId.HasValue)
+            faviconUrl = await fileService.GetUrlAsync(tenant.FaviconFileId.Value, cancellationToken);
+
+        return Result.Success(tenant.ToDto(logoUrl, faviconUrl));
     }
 }

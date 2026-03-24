@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Monitor, Globe, Clock, Trash2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatDateTime } from '@/utils/format';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -73,10 +73,10 @@ export function SessionsList() {
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      {t('sessions.lastActive')}: {format(new Date(session.lastActiveAt), 'MMM d, yyyy HH:mm')}
+                      {t('sessions.lastActive')}: {formatDateTime(session.lastActiveAt)}
                     </span>
                     <span>
-                      {t('sessions.createdAt')}: {format(new Date(session.createdAt), 'MMM d, yyyy HH:mm')}
+                      {t('sessions.createdAt')}: {formatDateTime(session.createdAt)}
                     </span>
                   </div>
                 </div>

@@ -47,6 +47,10 @@ export const API_ENDPOINTS = {
     ACTIVATE: (id: string) => `/Tenants/${id}/activate`,
     SUSPEND: (id: string) => `/Tenants/${id}/suspend`,
     DEACTIVATE: (id: string) => `/Tenants/${id}/deactivate`,
+    BRANDING: (id: string) => `/Tenants/${id}/branding`,
+    BUSINESS_INFO: (id: string) => `/Tenants/${id}/business-info`,
+    CUSTOM_TEXT: (id: string) => `/Tenants/${id}/custom-text`,
+    PUBLIC_BRANDING: '/Tenants/branding',
   },
   PERMISSIONS: {
     LIST: '/Permissions',
@@ -64,6 +68,7 @@ export const API_ENDPOINTS = {
   FILES: {
     LIST: '/Files',
     UPLOAD: '/Files',
+    UPLOAD_TEMP: '/Files/upload-temp',
     DETAIL: (id: string) => `/Files/${id}`,
     URL: (id: string) => `/Files/${id}/url`,
     DELETE: (id: string) => `/Files/${id}`,

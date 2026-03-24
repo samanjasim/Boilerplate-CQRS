@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { format } from 'date-fns';
+import { formatDate, formatDateTime } from '@/utils/format';
 import {
   Upload,
   LayoutGrid,
@@ -76,6 +76,7 @@ export default function FilesPage() {
   const [pageNumber, setPageNumber] = useState(1);
   const [category, setCategory] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [origin, setOrigin] = useState<string>('');
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [detailFile, setDetailFile] = useState<FileMetadata | null>(null);
   const [deleteFile, setDeleteFile] = useState<FileMetadata | null>(null);
@@ -97,8 +98,9 @@ export default function FilesPage() {
     const p: Record<string, unknown> = { pageNumber, pageSize: 20 };
     if (category && category !== 'all') p.category = category;
     if (searchTerm) p.searchTerm = searchTerm;
+    if (origin) p.origin = origin;
     return p;
-  }, [pageNumber, category, searchTerm]);
+  }, [pageNumber, category, searchTerm, origin]);
 
   const { data, isLoading, isFetching, isError } = useFiles(params);
   const { mutate: doUpload, isPending: isUploading } = useUploadFile();
@@ -127,7 +129,6 @@ export default function FilesPage() {
           setUploadIsPublic(false);
           setUploadCategory('Document');
         },
-        onError: () => {},
       }
     );
   }, [uploadFile, uploadCategory, uploadDescription, uploadTags, uploadIsPublic, doUpload]);
@@ -139,7 +140,6 @@ export default function FilesPage() {
         setDeleteFile(null);
         if (detailFile?.id === deleteFile.id) setDetailFile(null);
       },
-      onError: () => {},
     });
   }, [deleteFile, detailFile, doDelete]);
 
@@ -209,8 +209,9 @@ export default function FilesPage() {
     const f: Record<string, unknown> = {};
     if (category && category !== 'all') f.category = category;
     if (searchTerm) f.searchTerm = searchTerm;
+    if (origin) f.origin = origin;
     return f;
-  }, [category, searchTerm]);
+  }, [category, searchTerm, origin]);
 
   if (isError) {
     return (
@@ -294,6 +295,24 @@ export default function FilesPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="w-48">
+              <Select
+                value={origin || 'all'}
+                onValueChange={(v) => {
+                  setOrigin(v === 'all' ? '' : v);
+                  setPageNumber(1);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t('files.allFiles')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t('files.allFiles')}</SelectItem>
+                  <SelectItem value="UserUpload">{t('files.myFiles')}</SelectItem>
+                  <SelectItem value="SystemGenerated">{t('files.systemFiles')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex-1 min-w-[200px]">
               <Input
                 placeholder={t('common.search')}
@@ -368,7 +387,7 @@ export default function FilesPage() {
                     </div>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {format(new Date(file.createdAt), 'MMM d, yyyy')}
+                    {formatDate(file.createdAt)}
                   </p>
                 </CardContent>
               </Card>
@@ -416,7 +435,7 @@ export default function FilesPage() {
                         {file.uploadedByName ?? '-'}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {format(new Date(file.createdAt), 'MMM d, yyyy')}
+                        {formatDate(file.createdAt)}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
@@ -660,7 +679,7 @@ export default function FilesPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">{t('files.uploadDate')}</span>
-                    <span>{format(new Date(detailFile.createdAt), 'MMM d, yyyy HH:mm')}</span>
+                    <span>{formatDateTime(detailFile.createdAt)}</span>
                   </div>
                 </div>
               )}

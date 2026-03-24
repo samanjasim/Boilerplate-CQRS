@@ -70,6 +70,17 @@ public sealed class FileMetadataConfiguration : IEntityTypeConfiguration<FileMet
         builder.Property(f => f.EntityId)
             .HasColumnName("entity_id");
 
+        builder.Property(f => f.Status)
+            .HasColumnName("status")
+            .IsRequired();
+
+        builder.Property(f => f.Origin)
+            .HasColumnName("origin")
+            .IsRequired();
+
+        builder.Property(f => f.ExpiresAt)
+            .HasColumnName("expires_at");
+
         builder.Property(f => f.CreatedAt)
             .HasColumnName("created_at")
             .IsRequired();
@@ -88,5 +99,7 @@ public sealed class FileMetadataConfiguration : IEntityTypeConfiguration<FileMet
         builder.HasIndex(f => new { f.EntityType, f.EntityId });
         builder.HasIndex(f => f.UploadedBy);
         builder.HasIndex(f => f.CreatedAt);
+        builder.HasIndex(f => new { f.Status, f.ExpiresAt });
+        builder.HasIndex(f => f.Origin);
     }
 }

@@ -2,6 +2,7 @@ using System.Text.Json;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Starter.Application.Common.Constants;
 using Starter.Application.Common.Interfaces;
 using Starter.Application.Common.Messages;
 using Starter.Domain.Common;
@@ -13,8 +14,9 @@ namespace Starter.Infrastructure.Consumers;
 public sealed class GenerateReportConsumer(
     ApplicationDbContext dbContext,
     IExportService exportService,
-    IStorageService storageService,
+    IFileService fileService,
     INotificationService notificationService,
+    ISettingsService settingsService,
     ILogger<GenerateReportConsumer> logger) : IConsumer<GenerateReportMessage>
 {
     public async Task Consume(ConsumeContext<GenerateReportMessage> context)
@@ -40,29 +42,27 @@ public sealed class GenerateReportConsumer(
 
             var fileBytes = await GenerateReportDataAsync(report, cancellationToken);
 
+            if (fileBytes is null || fileBytes.Length == 0)
+                throw new InvalidOperationException($"Report generation for {report.ReportType.Name} produced no data.");
+
             var contentType = report.Format == ReportFormat.Csv ? "text/csv" : "application/pdf";
-            var storageKey = report.GetStorageKey();
             var fileName = report.GetFileName();
 
+            // Determine expiration from system settings for time-sensitive reports
+            DateTime? expiresAt = null;
+            if (HasTimeSensitiveFilters(report.Filters))
+            {
+                var hoursStr = await settingsService.GetValueAsync(FileSettings.ReportExpirationHoursKey, report.TenantId, cancellationToken);
+                var hours = int.TryParse(hoursStr, out var h) ? h : FileSettings.ReportExpirationHoursDefault;
+                expiresAt = DateTime.UtcNow.AddHours(hours);
+            }
+
             using var stream = new MemoryStream(fileBytes);
-            await storageService.UploadAsync(stream, storageKey, contentType, cancellationToken);
-
-            // Create FileMetadata record
-            var fileMetadata = FileMetadata.Create(
-                fileName,
-                storageKey,
-                contentType,
-                fileBytes.Length,
-                FileCategory.Document,
-                report.RequestedBy,
-                report.TenantId);
-
-            dbContext.Set<FileMetadata>().Add(fileMetadata);
-
-            // Determine expiration: use 24 hours for time-sensitive reports
-            var expiresAt = HasTimeSensitiveFilters(report.Filters)
-                ? DateTime.UtcNow.AddHours(24)
-                : (DateTime?)null;
+            var fileMetadata = await fileService.CreateSystemFileAsync(
+                stream, fileName, contentType, fileBytes.Length,
+                FileCategory.Report, report.TenantId,
+                $"Generated report: {report.ReportType.Name}",
+                expiresAt, cancellationToken);
 
             report.MarkCompleted(fileMetadata.Id, fileName, expiresAt);
             await dbContext.SaveChangesAsync(cancellationToken);

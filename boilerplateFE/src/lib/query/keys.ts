@@ -31,6 +31,7 @@ export const queryKeys = {
     all: ['tenants'] as const,
     lists: () => [...queryKeys.tenants.all, 'list'] as const,
     detail: (id: string) => [...queryKeys.tenants.all, 'detail', id] as const,
+    branding: (slug?: string) => [...queryKeys.tenants.all, 'branding', slug ?? 'default'] as const,
   },
 
   invitations: {

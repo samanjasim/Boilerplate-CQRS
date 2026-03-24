@@ -51,7 +51,6 @@ export function TwoFactorSetup({ user }: TwoFactorSetupProps) {
           setStep('backup');
           setVerifyCode('');
         },
-        onError: () => {},
       }
     );
   };
@@ -67,7 +66,6 @@ export function TwoFactorSetup({ user }: TwoFactorSetupProps) {
           setSecret('');
           setQrCodeUri('');
         },
-        onError: () => {},
       }
     );
   };

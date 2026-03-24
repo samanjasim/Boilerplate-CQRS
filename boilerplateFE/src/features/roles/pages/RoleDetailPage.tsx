@@ -11,7 +11,7 @@ import { useRole, useDeleteRole } from '../api';
 import { usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
 import { ROUTES } from '@/config';
-import { format } from 'date-fns';
+import { formatDate } from '@/utils/format';
 
 export default function RoleDetailPage() {
   const { t } = useTranslation();
@@ -31,8 +31,7 @@ export default function RoleDetailPage() {
     () => (role?.permissions ?? []).reduce<Record<string, NonNullable<typeof role>['permissions']>>(
       (acc, perm) => {
         const module = perm.module || 'Other';
-        if (!acc[module]) acc[module] = [];
-        acc[module]!.push(perm);
+        (acc[module] ??= []).push(perm);
         return acc;
       },
       {}
@@ -121,7 +120,7 @@ export default function RoleDetailPage() {
               <p className="text-lg font-semibold">{role.permissions?.length || 0}</p>
             </InfoField>
             <InfoField label={t('users.userCreated')}>
-              {role.createdAt ? format(new Date(role.createdAt), 'MMMM d, yyyy') : '-'}
+              {role.createdAt ? formatDate(role.createdAt, 'long') : '-'}
             </InfoField>
           </div>
         </CardContent>

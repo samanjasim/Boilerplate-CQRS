@@ -11,7 +11,43 @@ public static class TenantMapper
             tenant.Name,
             tenant.Slug,
             tenant.Status.Name,
-            tenant.CreatedAt);
+            tenant.CreatedAt,
+            LogoFileId: tenant.LogoFileId,
+            FaviconFileId: tenant.FaviconFileId,
+            PrimaryColor: tenant.PrimaryColor,
+            SecondaryColor: tenant.SecondaryColor,
+            Description: tenant.Description,
+            Address: tenant.Address,
+            Phone: tenant.Phone,
+            Website: tenant.Website,
+            TaxId: tenant.TaxId,
+            LoginPageTitle: tenant.LoginPageTitle,
+            LoginPageSubtitle: tenant.LoginPageSubtitle,
+            EmailFooterText: tenant.EmailFooterText);
+    }
+
+    public static TenantDto ToDto(this Tenant tenant, string? logoUrl, string? faviconUrl)
+    {
+        return new TenantDto(
+            tenant.Id,
+            tenant.Name,
+            tenant.Slug,
+            tenant.Status.Name,
+            tenant.CreatedAt,
+            LogoFileId: tenant.LogoFileId,
+            FaviconFileId: tenant.FaviconFileId,
+            LogoUrl: logoUrl,
+            FaviconUrl: faviconUrl,
+            PrimaryColor: tenant.PrimaryColor,
+            SecondaryColor: tenant.SecondaryColor,
+            Description: tenant.Description,
+            Address: tenant.Address,
+            Phone: tenant.Phone,
+            Website: tenant.Website,
+            TaxId: tenant.TaxId,
+            LoginPageTitle: tenant.LoginPageTitle,
+            LoginPageSubtitle: tenant.LoginPageSubtitle,
+            EmailFooterText: tenant.EmailFooterText);
     }
 
     public static IReadOnlyList<TenantDto> ToDtoList(this IEnumerable<Tenant> tenants)

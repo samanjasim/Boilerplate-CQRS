@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { format } from 'date-fns';
+import { formatDateTime } from '@/utils/format';
 import { FileText, Download, Trash2, RefreshCw, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -83,7 +83,7 @@ export default function ReportsPage() {
   const pagination = data?.pagination;
 
   const formatDate = (dateStr: string) => {
-    return format(new Date(dateStr), 'MMM d, yyyy HH:mm');
+    return formatDateTime(dateStr);
   };
 
   const reportTypeLabel = (type: string) => {

@@ -42,6 +42,55 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
             .HasColumnName("connection_string")
             .HasMaxLength(500);
 
+        // Branding
+        builder.Property(t => t.LogoFileId)
+            .HasColumnName("logo_file_id");
+
+        builder.Property(t => t.FaviconFileId)
+            .HasColumnName("favicon_file_id");
+
+        builder.Property(t => t.PrimaryColor)
+            .HasColumnName("primary_color")
+            .HasMaxLength(20);
+
+        builder.Property(t => t.SecondaryColor)
+            .HasColumnName("secondary_color")
+            .HasMaxLength(20);
+
+        builder.Property(t => t.Description)
+            .HasColumnName("description")
+            .HasMaxLength(1000);
+
+        // Business Info
+        builder.Property(t => t.Address)
+            .HasColumnName("address")
+            .HasMaxLength(500);
+
+        builder.Property(t => t.Phone)
+            .HasColumnName("phone")
+            .HasMaxLength(50);
+
+        builder.Property(t => t.Website)
+            .HasColumnName("website")
+            .HasMaxLength(200);
+
+        builder.Property(t => t.TaxId)
+            .HasColumnName("tax_id")
+            .HasMaxLength(100);
+
+        // Custom Text
+        builder.Property(t => t.LoginPageTitle)
+            .HasColumnName("login_page_title")
+            .HasMaxLength(2000);
+
+        builder.Property(t => t.LoginPageSubtitle)
+            .HasColumnName("login_page_subtitle")
+            .HasMaxLength(2000);
+
+        builder.Property(t => t.EmailFooterText)
+            .HasColumnName("email_footer_text")
+            .HasMaxLength(2000);
+
         builder.Property(t => t.CreatedAt)
             .HasColumnName("created_at")
             .IsRequired();

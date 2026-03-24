@@ -131,10 +131,18 @@ This checklist covers every user-facing feature in the boilerplate. Run through 
 |---|-----------|----------|
 | 11.1 | SuperAdmin sees all tenants | List with name, slug, status, created |
 | 11.2 | Tenant user sees only their own tenant | Single row in list |
-| 11.3 | Click tenant → detail page | Name, slug, status, action buttons |
-| 11.4 | Suspend tenant | Status changes to Suspended |
-| 11.5 | Deactivate tenant | Status changes to Deactivated |
-| 11.6 | Activate suspended/deactivated tenant | Status changes to Active |
+| 11.3 | Click tenant → detail page with tabs | Overview, Branding, Business Info, Custom Text tabs |
+| 11.4 | Overview tab: status management | Suspend, Deactivate, Activate buttons work |
+| 11.5 | Branding tab: upload logo | Logo preview shown, saved |
+| 11.6 | Branding tab: set primary color | Color picker + hex input, swatch preview |
+| 11.7 | Branding tab: set description | Textarea, saves |
+| 11.8 | Business Info tab: save address/phone/website/taxId | All fields save correctly |
+| 11.9 | Custom Text tab: language sub-tabs (en/ar/ku) | Per-language input fields |
+| 11.10 | Custom Text tab: save login page title | JSON stored, login page shows custom title |
+| 11.11 | Sidebar shows tenant logo after branding update | Logo replaces app icon |
+| 11.12 | Primary color applies to theme | CSS variables updated dynamically |
+| 11.13 | Logout resets branding to platform default | App icon + default colors restored |
+| 11.14 | Public branding endpoint (anonymous) | GET /Tenants/branding?slug=xxx returns branding |
 
 ## 12. Audit Logs
 

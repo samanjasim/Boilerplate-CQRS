@@ -2,11 +2,14 @@ import { useEffect } from 'react';
 import { AppProviders } from './providers';
 import { AppRouter } from '@/routes';
 import { useAuthStore } from '@/stores';
+import { useTenantBranding } from '@/hooks';
 import { storage } from '@/utils';
 import { authApi } from '@/features/auth/api/auth.api';
 
 function AppContent() {
   const { setUser, setLoading, logout } = useAuthStore();
+
+  useTenantBranding();
 
   useEffect(() => {
     const initAuth = async () => {

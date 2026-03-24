@@ -20,5 +20,8 @@ public static class FileMapper
             file.EntityType,
             file.EntityId,
             file.CreatedAt,
-            url);
+            url,
+            file.Status.ToString(),
+            file.Origin.ToString(),
+            file.ExpiresAt);
 }

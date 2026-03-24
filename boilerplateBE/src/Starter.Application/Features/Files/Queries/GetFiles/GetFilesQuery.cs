@@ -10,4 +10,5 @@ public sealed record GetFilesQuery : PaginationQuery, IRequest<Result<PaginatedL
     public FileCategory? Category { get; init; }
     public string? EntityType { get; init; }
     public Guid? EntityId { get; init; }
+    public string? Origin { get; init; }
 }

@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using StackExchange.Redis;
 
 namespace Starter.Infrastructure;
 
@@ -75,6 +76,9 @@ public static class DependencyInjection
 
         if (!string.IsNullOrWhiteSpace(redisConnectionString))
         {
+            services.AddSingleton<IConnectionMultiplexer>(
+                ConnectionMultiplexer.Connect(redisConnectionString));
+
             services.AddStackExchangeRedisCache(options =>
             {
                 options.Configuration = redisConnectionString;
@@ -226,6 +230,7 @@ public static class DependencyInjection
         services.AddScoped<IFileService, FileService>();
 
         services.AddHostedService<StorageBucketInitializer>();
+        services.AddHostedService<OrphanFileCleanupService>();
 
         return services;
     }

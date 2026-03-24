@@ -13,7 +13,7 @@ import { RoleAssignModal, EditUserModal } from '../components';
 import { usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
 import { ROUTES } from '@/config';
-import { format } from 'date-fns';
+import { formatDate, formatDateTime } from '@/utils/format';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query/keys';
 
@@ -132,13 +132,13 @@ export default function UserDetailPage() {
               </InfoField>
             )}
             <InfoField label={t('users.userCreated')}>
-              {user.createdAt ? format(new Date(user.createdAt), 'MMMM d, yyyy') : '-'}
+              {user.createdAt ? formatDate(user.createdAt, 'long') : '-'}
             </InfoField>
             {user.lastLoginAt && (
               <InfoField label={t('users.lastLogin')}>
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span>{format(new Date(user.lastLoginAt), 'MMM d, yyyy HH:mm')}</span>
+                  <span>{formatDateTime(user.lastLoginAt)}</span>
                 </div>
               </InfoField>
             )}

@@ -54,3 +54,52 @@ export function useDeactivateTenant() {
     },
   });
 }
+
+export function useUpdateTenantBranding() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
+      tenantsApi.updateBranding(id, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tenants.detail(variables.id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tenants.lists() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tenants.all });
+      toast.success(i18n.t('tenants.brandingSaved'));
+    },
+  });
+}
+
+export function useUpdateTenantBusinessInfo() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
+      tenantsApi.updateBusinessInfo(id, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tenants.detail(variables.id) });
+      toast.success(i18n.t('tenants.businessInfoSaved'));
+    },
+  });
+}
+
+export function useUpdateTenantCustomText() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
+      tenantsApi.updateCustomText(id, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tenants.detail(variables.id) });
+      toast.success(i18n.t('tenants.customTextSaved'));
+    },
+  });
+}
+
+export function useTenantBranding(slug?: string) {
+  return useQuery({
+    queryKey: [...queryKeys.tenants.all, 'branding', slug ?? 'default'],
+    queryFn: () => tenantsApi.getBranding(slug),
+    staleTime: 5 * 60 * 1000,
+  });
+}

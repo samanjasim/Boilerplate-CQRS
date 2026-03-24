@@ -101,7 +101,13 @@ export default function RoleEditPage() {
     }
 
     if (promises.length > 0) {
-      await Promise.all(promises);
+      try {
+        await Promise.all(promises);
+        navigate(ROUTES.ROLES.getDetail(role.id));
+      } catch {
+        // Error already shown by interceptor
+      }
+      return;
     }
     navigate(ROUTES.ROLES.getDetail(role.id));
   };

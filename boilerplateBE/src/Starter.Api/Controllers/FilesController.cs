@@ -1,6 +1,8 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Starter.Application.Common.Interfaces;
+using Starter.Application.Common.Constants;
 using Starter.Application.Features.Files;
 using Starter.Application.Features.Files.Commands.DeleteFile;
 using Starter.Application.Features.Files.Commands.UpdateFileMetadata;
@@ -10,13 +12,15 @@ using Starter.Application.Features.Files.Queries.GetFiles;
 using Starter.Application.Features.Files.Queries.GetFileUrl;
 using Starter.Domain.Common.Enums;
 using Starter.Shared.Constants;
+using Starter.Shared.Models;
+using Starter.Shared.Results;
 
 namespace Starter.Api.Controllers;
 
 /// <summary>
 /// File storage endpoints.
 /// </summary>
-public sealed class FilesController(ISender mediator) : BaseApiController(mediator)
+public sealed class FilesController(ISender mediator, IFileService fileService, ISettingsProvider settingsProvider) : BaseApiController(mediator)
 {
     /// <summary>
     /// Upload a file.
@@ -34,10 +38,13 @@ public sealed class FilesController(ISender mediator) : BaseApiController(mediat
         [FromForm] string? tags = null,
         [FromForm] string? entityType = null,
         [FromForm] Guid? entityId = null,
-        [FromForm] bool isPublic = false)
+        [FromForm] bool isPublic = false,
+        CancellationToken cancellationToken = default)
     {
-        // ASP.NET Core disposes IFormFile streams at end of request — no explicit disposal needed
-        var stream = file.OpenReadStream();
+        using var stream = file.OpenReadStream();
+        var maxSizeMb = await settingsProvider.GetIntAsync(FileSettings.MaxUploadSizeMbKey, FileSettings.MaxUploadSizeMbDefault);
+        if (file.Length > maxSizeMb * 1024L * 1024L)
+            return BadRequest(ApiResponse<object>.Fail($"File size exceeds the maximum allowed size of {maxSizeMb}MB."));
         var command = new UploadFileCommand(
             stream,
             file.FileName,
@@ -49,8 +56,31 @@ public sealed class FilesController(ISender mediator) : BaseApiController(mediat
             entityType,
             entityId,
             isPublic);
-        var result = await Mediator.Send(command);
+        var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Upload a temporary file.
+    /// </summary>
+    [HttpPost("upload-temp")]
+    [Authorize]
+    [RequestSizeLimit(50 * 1024 * 1024)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UploadTemporary(
+        IFormFile file,
+        [FromForm] string? description = null,
+        CancellationToken cancellationToken = default)
+    {
+        using var stream = file.OpenReadStream();
+        var maxSizeMb = await settingsProvider.GetIntAsync(FileSettings.MaxUploadSizeMbKey, FileSettings.MaxUploadSizeMbDefault);
+        if (file.Length > maxSizeMb * 1024L * 1024L)
+            return BadRequest(ApiResponse<object>.Fail($"File size exceeds the maximum allowed size of {maxSizeMb}MB."));
+        var metadata = await fileService.UploadTemporaryAsync(
+            stream, file.FileName, file.ContentType, file.Length,
+            FileCategory.Other, description, null, cancellationToken);
+        return HandleResult(Result.Success(metadata.ToDto()));
     }
 
     /// <summary>

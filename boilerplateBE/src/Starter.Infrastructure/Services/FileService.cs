@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Starter.Application.Common.Interfaces;
 using Starter.Domain.Common;
 using Starter.Domain.Common.Enums;
+using Starter.Application.Common.Constants;
 using Starter.Infrastructure.Settings;
 
 namespace Starter.Infrastructure.Services;
@@ -11,6 +12,7 @@ public sealed class FileService(
     IApplicationDbContext context,
     IStorageService storageService,
     ICurrentUserService currentUserService,
+    ISettingsProvider settingsProvider,
     IOptions<StorageSettings> settings) : IFileService
 {
     private readonly StorageSettings _settings = settings.Value;
@@ -83,6 +85,138 @@ public sealed class FileService(
         await storageService.DeleteAsync(metadata.StorageKey, ct);
 
         context.FileMetadata.Remove(metadata);
+        await context.SaveChangesAsync(ct);
+    }
+
+    public async Task<FileMetadata> UploadTemporaryAsync(
+        Stream stream,
+        string fileName,
+        string contentType,
+        long size,
+        FileCategory category,
+        string? description = null,
+        string[]? tags = null,
+        CancellationToken ct = default)
+    {
+        var tenantId = currentUserService.TenantId;
+        var userId = currentUserService.UserId
+                     ?? throw new InvalidOperationException("User must be authenticated to upload files.");
+
+        var ttlMinutes = await settingsProvider.GetIntAsync(FileSettings.TempFileTtlMinutesKey, FileSettings.TempFileTtlMinutesDefault, ct);
+
+        var folder = tenantId?.ToString() ?? "platform";
+        var extension = Path.GetExtension(fileName);
+        var key = $"{folder}/{category.ToString().ToLowerInvariant()}/{Guid.NewGuid()}{extension}";
+
+        await storageService.UploadAsync(stream, key, contentType, ct);
+
+        var metadata = FileMetadata.Create(
+            fileName: fileName,
+            storageKey: key,
+            contentType: contentType,
+            size: size,
+            category: category,
+            uploadedBy: userId,
+            tenantId: tenantId,
+            tags: tags is { Length: > 0 } ? string.Join(",", tags) : null,
+            description: description,
+            status: FileStatus.Temporary,
+            origin: FileOrigin.ProcessUpload,
+            expiresAt: DateTime.UtcNow.AddMinutes(ttlMinutes));
+
+        context.FileMetadata.Add(metadata);
+        await context.SaveChangesAsync(ct);
+
+        return metadata;
+    }
+
+    public async Task<FileMetadata> CreateSystemFileAsync(
+        Stream stream,
+        string fileName,
+        string contentType,
+        long size,
+        FileCategory category,
+        Guid? tenantId = null,
+        string? description = null,
+        DateTime? expiresAt = null,
+        CancellationToken ct = default)
+    {
+        var folder = tenantId?.ToString() ?? "platform";
+        var extension = Path.GetExtension(fileName);
+        var key = $"{folder}/{category.ToString().ToLowerInvariant()}/{Guid.NewGuid()}{extension}";
+
+        await storageService.UploadAsync(stream, key, contentType, ct);
+
+        var metadata = FileMetadata.Create(
+            fileName: fileName,
+            storageKey: key,
+            contentType: contentType,
+            size: size,
+            category: category,
+            uploadedBy: Guid.Empty,
+            tenantId: tenantId,
+            description: description,
+            status: FileStatus.Permanent,
+            origin: FileOrigin.SystemGenerated,
+            expiresAt: expiresAt);
+
+        context.FileMetadata.Add(metadata);
+        await context.SaveChangesAsync(ct);
+
+        return metadata;
+    }
+
+    public async Task AttachToEntityAsync(Guid fileId, Guid entityId, string entityType, CancellationToken ct = default)
+    {
+        var metadata = await context.FileMetadata
+            .FirstOrDefaultAsync(f => f.Id == fileId, ct)
+            ?? throw new InvalidOperationException($"File with ID {fileId} not found.");
+
+        metadata.MarkPermanent();
+        metadata.LinkToEntity(entityId, entityType);
+        await context.SaveChangesAsync(ct);
+    }
+
+    public async Task DetachFromEntityAsync(Guid fileId, CancellationToken ct = default)
+    {
+        var metadata = await context.FileMetadata
+            .FirstOrDefaultAsync(f => f.Id == fileId, ct)
+            ?? throw new InvalidOperationException($"File with ID {fileId} not found.");
+
+        metadata.Unlink();
+        await context.SaveChangesAsync(ct);
+    }
+
+    public async Task ReplaceEntityFileAsync(Guid? oldFileId, Guid newFileId, Guid entityId, string entityType, CancellationToken ct = default)
+    {
+        if (oldFileId.HasValue && oldFileId.Value == newFileId) return;
+
+        if (oldFileId.HasValue)
+        {
+            var oldFile = await context.FileMetadata
+                .FirstOrDefaultAsync(f => f.Id == oldFileId.Value, ct);
+
+            if (oldFile is not null)
+            {
+                if (oldFile.Origin == FileOrigin.ProcessUpload)
+                {
+                    await storageService.DeleteAsync(oldFile.StorageKey, ct);
+                    context.FileMetadata.Remove(oldFile);
+                }
+                else
+                {
+                    oldFile.Unlink();
+                }
+            }
+        }
+
+        var newFile = await context.FileMetadata
+            .FirstOrDefaultAsync(f => f.Id == newFileId, ct)
+            ?? throw new InvalidOperationException($"File with ID {newFileId} not found.");
+
+        newFile.MarkPermanent();
+        newFile.LinkToEntity(entityId, entityType);
+
         await context.SaveChangesAsync(ct);
     }
 }

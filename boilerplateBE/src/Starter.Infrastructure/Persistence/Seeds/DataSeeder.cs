@@ -239,6 +239,12 @@ public static class DataSeeder
             // Reports
             ("Reports.CacheDurationMinutes", "60", "Report cache duration in minutes", "Reports", false, "number"),
             ("Reports.MaxFileSizeMb", "50", "Maximum report file size in MB", "Reports", false, "number"),
+
+            // Files
+            ("Files.TempFileTtlMinutes", "120", "Time-to-live for temporary file uploads in minutes", "Files", false, "number"),
+            ("Files.OrphanCleanupIntervalMinutes", "30", "Interval between orphan file cleanup runs in minutes", "Files", false, "number"),
+            ("Files.MaxUploadSizeMb", "50", "Maximum file upload size in MB", "Files", false, "number"),
+            ("Reports.FileExpirationHours", "24", "Hours until time-sensitive report files expire", "Reports", false, "number"),
         };
 
         var existingSettings = await context.SystemSettings

@@ -15,7 +15,7 @@ import { PageHeader, EmptyState } from '@/components/common';
 import { useTenants } from '../api';
 import { ROUTES } from '@/config';
 import { Building } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatDate } from '@/utils/format';
 
 const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   Active: 'default',
@@ -82,7 +82,7 @@ export default function TenantsListPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {tenant.createdAt ? format(new Date(tenant.createdAt), 'MMM d, yyyy') : '-'}
+                      {tenant.createdAt ? formatDate(tenant.createdAt) : '-'}
                     </TableCell>
                   </TableRow>
                 ))}

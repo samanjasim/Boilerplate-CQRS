@@ -2,6 +2,7 @@ using System.Text.Json;
 using Starter.Application.Common.Interfaces;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
+using StackExchange.Redis;
 
 namespace Starter.Infrastructure.Services;
 
@@ -9,6 +10,7 @@ public sealed class CacheService : ICacheService
 {
     private readonly IDistributedCache _cache;
     private readonly ILogger<CacheService> _logger;
+    private readonly IConnectionMultiplexer? _multiplexer;
 
     private static readonly TimeSpan DefaultExpiration = TimeSpan.FromMinutes(30);
 
@@ -18,10 +20,11 @@ public sealed class CacheService : ICacheService
         WriteIndented = false
     };
 
-    public CacheService(IDistributedCache cache, ILogger<CacheService> logger)
+    public CacheService(IDistributedCache cache, ILogger<CacheService> logger, IConnectionMultiplexer? multiplexer = null)
     {
         _cache = cache;
         _logger = logger;
+        _multiplexer = multiplexer;
     }
 
     public async Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
@@ -85,15 +88,31 @@ public sealed class CacheService : ICacheService
 
     public async Task RemoveByPrefixAsync(string prefix, CancellationToken cancellationToken = default)
     {
-        // Note: IDistributedCache does not natively support prefix-based removal.
-        // For Redis-specific prefix removal, consider using IConnectionMultiplexer directly.
-        // This implementation logs a warning since the operation requires Redis-specific commands.
-        _logger.LogDebug(
-            "RemoveByPrefixAsync is a no-op with IDistributedCache. " +
-            "Inject IConnectionMultiplexer for Redis prefix removal. Prefix: {Prefix}",
-            prefix);
+        if (_multiplexer is null)
+        {
+            _logger.LogDebug("RemoveByPrefixAsync: No Redis multiplexer available, skipping prefix removal for '{Prefix}'", prefix);
+            return;
+        }
 
-        await Task.CompletedTask;
+        try
+        {
+            var endpoints = _multiplexer.GetEndPoints();
+            foreach (var endpoint in endpoints)
+            {
+                var server = _multiplexer.GetServer(endpoint);
+                var keys = server.Keys(pattern: $"{prefix}*").ToArray();
+                if (keys.Length > 0)
+                {
+                    var db = _multiplexer.GetDatabase();
+                    await db.KeyDeleteAsync(keys);
+                    _logger.LogDebug("Removed {Count} cached keys with prefix '{Prefix}'", keys.Length, prefix);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to remove cached keys with prefix '{Prefix}'", prefix);
+        }
     }
 
     public async Task<T> GetOrSetAsync<T>(

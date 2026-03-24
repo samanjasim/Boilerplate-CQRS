@@ -44,7 +44,6 @@ export function useRequestReport() {
         });
       }
     },
-    onError: () => {},
   });
 }
 
@@ -75,6 +74,5 @@ export function useDeleteReport() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.reports.all });
     },
-    onError: () => {},
   });
 }

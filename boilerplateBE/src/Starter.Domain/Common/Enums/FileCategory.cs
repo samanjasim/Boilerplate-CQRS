@@ -6,5 +6,8 @@ public enum FileCategory
     Logo = 2,
     Document = 3,
     Attachment = 4,
-    Other = 5
+    Other = 5,
+    Report = 6,
+    Generated = 7,
+    Export = 8
 }

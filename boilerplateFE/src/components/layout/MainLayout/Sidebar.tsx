@@ -13,7 +13,7 @@ import {
   Settings2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useUIStore, selectSidebarCollapsed } from '@/stores';
+import { useUIStore, useAuthStore, selectSidebarCollapsed, selectUser } from '@/stores';
 import { ROUTES } from '@/config';
 import { Button } from '@/components/ui/button';
 import { usePermissions } from '@/hooks';
@@ -24,6 +24,10 @@ export function Sidebar() {
   const isCollapsed = useUIStore(selectSidebarCollapsed);
   const toggleCollapse = useUIStore((state) => state.toggleSidebarCollapse);
   const { hasPermission } = usePermissions();
+  const user = useAuthStore(selectUser);
+
+  const tenantLogoUrl = (user as unknown as Record<string, unknown> | null)?.tenantLogoUrl as string | undefined;
+  const tenantName = user?.tenantName;
 
   const navItems = [
     { label: t('nav.dashboard'), icon: LayoutDashboard, path: ROUTES.DASHBOARD },
@@ -61,11 +65,21 @@ export function Sidebar() {
       {/* Logo */}
       <div className="flex h-16 items-center justify-between border-b border-border px-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-            <Blocks className="h-5 w-5 text-primary" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 overflow-hidden">
+            {tenantLogoUrl ? (
+              <img
+                src={tenantLogoUrl}
+                alt={tenantName ?? ''}
+                className="h-8 w-8 rounded object-cover"
+              />
+            ) : (
+              <Blocks className="h-5 w-5 text-primary" />
+            )}
           </div>
           {!isCollapsed && (
-            <span className="text-lg font-bold text-foreground">{import.meta.env.VITE_APP_NAME}</span>
+            <span className="text-lg font-bold text-foreground">
+              {tenantName ?? import.meta.env.VITE_APP_NAME}
+            </span>
           )}
         </div>
       </div>

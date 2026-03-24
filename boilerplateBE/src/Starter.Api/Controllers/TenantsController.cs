@@ -5,8 +5,12 @@ using Starter.Application.Features.Tenants.Commands.ActivateTenant;
 using Starter.Application.Features.Tenants.Commands.DeactivateTenant;
 using Starter.Application.Features.Tenants.Commands.SuspendTenant;
 using Starter.Application.Features.Tenants.Commands.UpdateTenant;
+using Starter.Application.Features.Tenants.Commands.UpdateTenantBranding;
+using Starter.Application.Features.Tenants.Commands.UpdateTenantBusinessInfo;
+using Starter.Application.Features.Tenants.Commands.UpdateTenantCustomText;
 using Starter.Application.Features.Tenants.Queries.GetTenants;
 using Starter.Application.Features.Tenants.Queries.GetTenantById;
+using Starter.Application.Features.Tenants.Queries.GetTenantBranding;
 using Starter.Shared.Constants;
 
 namespace Starter.Api.Controllers;
@@ -98,6 +102,89 @@ public sealed class TenantsController(ISender mediator) : BaseApiController(medi
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeactivateTenant(Guid id)
         => HandleResult(await Mediator.Send(new DeactivateTenantCommand(id)));
+
+    /// <summary>
+    /// Update tenant branding.
+    /// </summary>
+    [HttpPut("{id:guid}/branding")]
+    [Authorize(Policy = Permissions.Tenants.Update)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateTenantBranding(
+        Guid id,
+        [FromBody] UpdateTenantBrandingRequest request)
+    {
+        var command = new UpdateTenantBrandingCommand(
+            id,
+            request.LogoFileId,
+            request.FaviconFileId,
+            request.RemoveLogo,
+            request.RemoveFavicon,
+            request.PrimaryColor,
+            request.SecondaryColor,
+            request.Description);
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Update tenant business info.
+    /// </summary>
+    [HttpPut("{id:guid}/business-info")]
+    [Authorize(Policy = Permissions.Tenants.Update)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateTenantBusinessInfo(Guid id, [FromBody] UpdateTenantBusinessInfoRequest request)
+    {
+        var command = new UpdateTenantBusinessInfoCommand(
+            id,
+            request.Address,
+            request.Phone,
+            request.Website,
+            request.TaxId);
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Update tenant custom text.
+    /// </summary>
+    [HttpPut("{id:guid}/custom-text")]
+    [Authorize(Policy = Permissions.Tenants.Update)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateTenantCustomText(Guid id, [FromBody] UpdateTenantCustomTextRequest request)
+    {
+        var command = new UpdateTenantCustomTextCommand(
+            id,
+            request.LoginPageTitle,
+            request.LoginPageSubtitle,
+            request.EmailFooterText);
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Get tenant branding (public — needed for login page customization).
+    /// </summary>
+    [HttpGet("branding")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetTenantBranding([FromQuery] string? slug, [FromQuery] Guid? tenantId)
+    {
+        var result = await Mediator.Send(new GetTenantBrandingQuery(slug, tenantId));
+        return HandleResult(result);
+    }
 }
 
 #region Request DTOs
@@ -108,5 +195,34 @@ public sealed class TenantsController(ISender mediator) : BaseApiController(medi
 public sealed record UpdateTenantRequest(
     string Name,
     string? Slug);
+
+/// <summary>
+/// Request to update tenant branding.
+/// </summary>
+public sealed record UpdateTenantBrandingRequest(
+    Guid? LogoFileId,
+    Guid? FaviconFileId,
+    bool RemoveLogo,
+    bool RemoveFavicon,
+    string? PrimaryColor,
+    string? SecondaryColor,
+    string? Description);
+
+/// <summary>
+/// Request to update tenant business info.
+/// </summary>
+public sealed record UpdateTenantBusinessInfoRequest(
+    string? Address,
+    string? Phone,
+    string? Website,
+    string? TaxId);
+
+/// <summary>
+/// Request to update tenant custom text.
+/// </summary>
+public sealed record UpdateTenantCustomTextRequest(
+    string? LoginPageTitle,
+    string? LoginPageSubtitle,
+    string? EmailFooterText);
 
 #endregion

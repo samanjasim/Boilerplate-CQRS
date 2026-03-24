@@ -16,6 +16,9 @@ public sealed class FileMetadata : BaseAuditableEntity
     public string? Description { get; private set; }
     public string? EntityType { get; private set; }
     public Guid? EntityId { get; private set; }
+    public FileStatus Status { get; private set; }
+    public FileOrigin Origin { get; private set; }
+    public DateTime? ExpiresAt { get; private set; }
 
     private FileMetadata() { }
 
@@ -31,7 +34,10 @@ public sealed class FileMetadata : BaseAuditableEntity
         bool isPublic = false,
         string? description = null,
         string? entityType = null,
-        Guid? entityId = null)
+        Guid? entityId = null,
+        FileStatus status = FileStatus.Permanent,
+        FileOrigin origin = FileOrigin.UserUpload,
+        DateTime? expiresAt = null)
     {
         return new FileMetadata(Guid.NewGuid())
         {
@@ -46,7 +52,10 @@ public sealed class FileMetadata : BaseAuditableEntity
             IsPublic = isPublic,
             Description = description,
             EntityType = entityType,
-            EntityId = entityId
+            EntityId = entityId,
+            Status = status,
+            Origin = origin,
+            ExpiresAt = expiresAt
         };
     }
 
@@ -55,6 +64,24 @@ public sealed class FileMetadata : BaseAuditableEntity
         if (description is not null) Description = description;
         if (category is not null) Category = category.Value;
         if (tags is not null) Tags = tags;
+    }
+
+    public void MarkPermanent()
+    {
+        Status = FileStatus.Permanent;
+        ExpiresAt = null;
+    }
+
+    public void Unlink()
+    {
+        EntityType = null;
+        EntityId = null;
+    }
+
+    public void LinkToEntity(Guid entityId, string entityType)
+    {
+        EntityId = entityId;
+        EntityType = entityType;
     }
 
     private FileMetadata(Guid id) : base(id) { }

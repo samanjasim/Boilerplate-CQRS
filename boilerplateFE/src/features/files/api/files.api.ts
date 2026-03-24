@@ -1,6 +1,6 @@
 import { apiClient } from '@/lib/axios';
 import { API_ENDPOINTS } from '@/config';
-import type { FileMetadata, UploadFileData, UpdateFileData } from '@/types';
+import type { FileMetadata, UploadFileData, UpdateFileData, ApiResponse } from '@/types';
 
 /** Tags come as comma-separated string from API — normalize to array. */
 function normalizeTags(file: FileMetadata): FileMetadata {
@@ -48,6 +48,18 @@ export const filesApi = {
       { headers: { 'Content-Type': 'multipart/form-data' } }
     );
     return normalizeTags(response.data.data);
+  },
+
+  uploadTemp: async (file: File, description?: string): Promise<FileMetadata> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (description) formData.append('description', description);
+    const response = await apiClient.post<ApiResponse<FileMetadata>>(
+      API_ENDPOINTS.FILES.UPLOAD_TEMP,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data.data;
   },
 
   updateFile: async (id: string, data: UpdateFileData): Promise<void> => {

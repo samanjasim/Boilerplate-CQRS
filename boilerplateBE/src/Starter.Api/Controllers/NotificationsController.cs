@@ -55,6 +55,7 @@ public sealed class NotificationsController(ISender mediator) : BaseApiControlle
     /// </summary>
     [HttpPost("read-all")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> MarkAllRead()
     {
         var result = await Mediator.Send(new MarkAllNotificationsReadCommand());

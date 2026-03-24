@@ -1,6 +1,6 @@
 import { useState, useMemo, Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
-import { format } from 'date-fns';
+import { formatDateTime } from '@/utils/format';
 import { ChevronDown, ChevronRight, ClipboardList } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -106,7 +106,7 @@ export default function AuditLogsPage() {
   };
 
   const formatDate = (dateStr: string) => {
-    return format(new Date(dateStr), 'MMM d, yyyy HH:mm');
+    return formatDateTime(dateStr);
   };
 
   if (isError) {

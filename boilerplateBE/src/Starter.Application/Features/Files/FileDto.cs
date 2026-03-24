@@ -15,4 +15,7 @@ public sealed record FileDto(
     string? EntityType,
     Guid? EntityId,
     DateTime CreatedAt,
-    string? Url = null);
+    string? Url = null,
+    string? Status = null,
+    string? Origin = null,
+    DateTime? ExpiresAt = null);

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { format } from 'date-fns';
+import { formatDateTime } from '@/utils/format';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -56,7 +56,7 @@ export function LoginHistoryList() {
                   {items.map((entry) => (
                     <TableRow key={entry.id}>
                       <TableCell className="text-sm">
-                        {format(new Date(entry.createdAt), 'MMM d, yyyy HH:mm')}
+                        {formatDateTime(entry.createdAt)}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {entry.ipAddress ?? '-'}

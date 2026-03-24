@@ -15,7 +15,7 @@ import {
   CheckCircle,
   XCircle,
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatDate, formatDateTime } from '@/utils/format';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -320,13 +320,13 @@ export default function ProfilePage() {
               <InfoField label={t('profile.lastLogin')}>
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span>{format(new Date(user.lastLoginAt), 'MMM d, yyyy HH:mm')}</span>
+                  <span>{formatDateTime(user.lastLoginAt)}</span>
                 </div>
               </InfoField>
             )}
             {user.createdAt && (
               <InfoField label={t('profile.memberSince')}>
-                <span>{format(new Date(user.createdAt), 'MMMM d, yyyy')}</span>
+                <span>{formatDate(user.createdAt, 'long')}</span>
               </InfoField>
             )}
             <InfoField label={t('common.status')}>
