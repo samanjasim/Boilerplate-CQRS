@@ -127,7 +127,17 @@ internal sealed class LoginCommandHandler(
 
         await context.SaveChangesAsync(cancellationToken);
 
-        var userDto = user.ToDto();
+        string? tenantSlug = null;
+        if (user.TenantId.HasValue)
+        {
+            tenantSlug = await context.Tenants
+                .AsNoTracking()
+                .Where(t => t.Id == user.TenantId.Value)
+                .Select(t => t.Slug)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+
+        var userDto = user.ToDto(tenantSlug: tenantSlug);
 
         return Result.Success(new LoginResponseDto(
             tokens.AccessToken,

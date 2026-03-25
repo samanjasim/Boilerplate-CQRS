@@ -21,6 +21,9 @@ export interface Tenant {
 }
 
 export interface TenantBranding {
+  tenantId: string;
+  slug: string | null;
+  status: string;
   logoUrl: string | null;
   faviconUrl: string | null;
   primaryColor: string | null;

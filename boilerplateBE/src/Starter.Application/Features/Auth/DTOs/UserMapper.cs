@@ -7,7 +7,7 @@ namespace Starter.Application.Features.Auth.DTOs;
 [Mapper]
 public static partial class UserMapper
 {
-    public static UserDto ToDto(this User user, bool includePermissions = false)
+    public static UserDto ToDto(this User user, bool includePermissions = false, string? tenantSlug = null)
     {
         return new UserDto(
             user.Id,
@@ -27,6 +27,7 @@ public static partial class UserMapper
                 .ToList(),
             includePermissions ? user.GetPermissions().ToList() : null,
             user.TenantId,
+            TenantSlug: tenantSlug,
             TwoFactorEnabled: user.TwoFactorEnabled);
     }
 

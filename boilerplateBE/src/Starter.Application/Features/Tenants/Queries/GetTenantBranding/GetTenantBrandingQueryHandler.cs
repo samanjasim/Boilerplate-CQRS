@@ -53,6 +53,9 @@ internal sealed class GetTenantBrandingQueryHandler(
             faviconUrl = await fileService.GetUrlAsync(tenant.FaviconFileId.Value, cancellationToken);
 
         var dto = new TenantBrandingDto(
+            tenant.Id,
+            tenant.Slug,
+            tenant.Status.Name,
             logoUrl,
             faviconUrl,
             tenant.PrimaryColor,

@@ -26,6 +26,16 @@ internal sealed class GetCurrentUserQueryHandler(
         if (user is null)
             return Result.Failure<UserDto>(UserErrors.NotFound(currentUserService.UserId.Value));
 
-        return Result.Success(user.ToDto(includePermissions: true));
+        string? tenantSlug = null;
+        if (user.TenantId.HasValue)
+        {
+            tenantSlug = await context.Tenants
+                .AsNoTracking()
+                .Where(t => t.Id == user.TenantId.Value)
+                .Select(t => t.Slug)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+
+        return Result.Success(user.ToDto(includePermissions: true, tenantSlug: tenantSlug));
     }
 }

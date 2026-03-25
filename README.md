@@ -62,7 +62,8 @@ A production-ready full-stack boilerplate with **.NET 10 Backend** (Clean Archit
 - Rate limiting per endpoint
 - CORS with explicit header whitelist
 - Correlation ID middleware for request tracing
-- Multi-tenancy ready (X-Tenant-Id header)
+- Multi-tenancy with subdomain routing (`acme.starter.com`)
+- Shared cookie auth for cross-subdomain SSO
 - Dark/Light/System theme with RTL support
 
 ## Quick Start
@@ -216,6 +217,31 @@ Edit `boilerplateFE/src/styles/index.css` to change the color scheme:
 - `--color-primary-*` — Primary color scale (default: blue)
 - `--color-accent-*` — Accent color scale (default: emerald)
 - Dark mode overrides in `.dark { }` block
+
+## Subdomain Tenant Routing
+
+Each tenant gets a branded URL like `acme.starter.com`. The frontend detects the subdomain and scopes all data to that tenant. The API stays on a single domain.
+
+### How It Works
+
+1. User visits `starter.com` and logs in (same login page for everyone)
+2. After login, tenant users are automatically redirected to `acme.starter.com/dashboard`
+3. Platform admins stay on `starter.com/dashboard`
+4. Auth tokens are stored in shared cookies (`domain=.starter.com`) so they work across all subdomains
+
+### Production Setup
+
+1. **DNS**: Add a wildcard record: `*.starter.com → your-server-IP`
+2. **SSL**: Get a wildcard certificate for `*.starter.com` (Let's Encrypt, Cloudflare, etc.)
+3. **Reverse proxy**: Configure Nginx/Caddy to route all subdomains to the same frontend
+4. **Backend config**: Set `AppSettings:BaseDomain` to your domain (e.g., `starter.com`)
+5. **Frontend build**: Set `VITE_BASE_DOMAIN=starter.com` when building
+
+### Development
+
+Subdomain routing works locally:
+- `acme.localhost:3000` works in Chrome/Firefox natively
+- `localhost:3000?tenant=acme` works as a fallback in any browser
 
 ## License
 
