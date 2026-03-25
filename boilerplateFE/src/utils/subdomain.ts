@@ -36,13 +36,13 @@ export function getMainDomainUrl(): string {
   return `${window.location.protocol}//${BASE_DOMAIN}`;
 }
 
-export function getTenantUrl(slug: string): string {
+export function getTenantUrl(slug: string, path = '/'): string {
   if (import.meta.env.DEV) {
     const base = getMainDomainUrl();
-    const url = new URL(base);
+    const url = new URL(path, base);
     url.searchParams.set('tenant', slug);
     return url.toString();
   }
-  if (!BASE_DOMAIN) return window.location.origin;
-  return `${window.location.protocol}//${slug}.${BASE_DOMAIN}`;
+  if (!BASE_DOMAIN) return window.location.origin + path;
+  return `${window.location.protocol}//${slug}.${BASE_DOMAIN}${path}`;
 }

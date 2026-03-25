@@ -52,8 +52,7 @@ export function useLogin() {
 
       // Check if user belongs to a tenant with a slug
       if (fullUser.tenantSlug) {
-        const tenantUrl = getTenantUrl(fullUser.tenantSlug);
-        window.location.href = `${tenantUrl}/dashboard`;
+        window.location.href = getTenantUrl(fullUser.tenantSlug, '/dashboard');
         return;
       }
       navigate(ROUTES.DASHBOARD);
