@@ -44,7 +44,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { PageHeader, EmptyState, FileUpload, ConfirmDialog, ExportButton } from '@/components/common';
+import { PageHeader, EmptyState, FileUpload, ConfirmDialog, ExportButton, Pagination, getPersistedPageSize } from '@/components/common';
 import { filesApi, useFiles, useUploadFile, useDeleteFile, useUpdateFile } from '../api';
 import { toast } from 'sonner';
 import { usePermissions } from '@/hooks';
@@ -74,6 +74,7 @@ export default function FilesPage() {
   const canExport = hasPermission(PERMISSIONS.System.ExportData);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [pageNumber, setPageNumber] = useState(1);
+  const [pageSize, setPageSize] = useState(getPersistedPageSize);
   const [category, setCategory] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [origin, setOrigin] = useState<string>('');
@@ -95,12 +96,12 @@ export default function FilesPage() {
   const [editTags, setEditTags] = useState('');
 
   const params = useMemo(() => {
-    const p: Record<string, unknown> = { pageNumber, pageSize: 20 };
+    const p: Record<string, unknown> = { pageNumber, pageSize };
     if (category && category !== 'all') p.category = category;
     if (searchTerm) p.searchTerm = searchTerm;
     if (origin) p.origin = origin;
     return p;
-  }, [pageNumber, category, searchTerm, origin]);
+  }, [pageNumber, pageSize, category, searchTerm, origin]);
 
   const { data, isLoading, isFetching, isError } = useFiles(params);
   const { mutate: doUpload, isPending: isUploading } = useUploadFile();
@@ -241,7 +242,7 @@ export default function FilesPage() {
         title={t('files.title')}
         actions={
           <div className="flex items-center gap-2">
-            <div className="flex rounded-md border">
+            <div className="flex rounded-xl bg-secondary p-0.5 gap-0.5">
               <Button
                 variant={viewMode === 'grid' ? 'default' : 'ghost'}
                 size="sm"
@@ -469,34 +470,12 @@ export default function FilesPage() {
       )}
 
       {/* Pagination */}
-      {pagination && pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            {t('common.showing', {
-              start: (pagination.pageNumber - 1) * pagination.pageSize + 1,
-              end: Math.min(pagination.pageNumber * pagination.pageSize, pagination.totalCount),
-              total: pagination.totalCount,
-            })}
-          </p>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!pagination.hasPreviousPage}
-              onClick={() => setPageNumber((p) => p - 1)}
-            >
-              {t('common.previous')}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!pagination.hasNextPage}
-              onClick={() => setPageNumber((p) => p + 1)}
-            >
-              {t('common.next')}
-            </Button>
-          </div>
-        </div>
+      {pagination && (
+        <Pagination
+          pagination={pagination}
+          onPageChange={setPageNumber}
+          onPageSizeChange={(size) => { setPageSize(size); setPageNumber(1); }}
+        />
       )}
       </div>
 

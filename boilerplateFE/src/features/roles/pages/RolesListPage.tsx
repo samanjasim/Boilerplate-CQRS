@@ -57,11 +57,11 @@ export default function RolesListPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {roles.map((role) => (
             <Link key={role.id} to={ROUTES.ROLES.getDetail(role.id)}>
-              <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+              <Card className="hover:shadow-card-hover transition-all duration-200 cursor-pointer h-full">
                 <CardContent className="py-4">
                   <div className="flex items-start justify-between mb-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                      <Shield className="h-5 w-5 text-primary" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg [background:var(--active-bg)]">
+                      <Shield className="h-5 w-5 [color:var(--active-text)]" />
                     </div>
                     <Badge variant={role.isActive ? 'default' : 'secondary'}>
                       {role.isActive ? t('common.active') : t('common.inactive')}

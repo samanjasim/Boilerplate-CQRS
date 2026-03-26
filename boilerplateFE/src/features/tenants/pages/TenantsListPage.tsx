@@ -1,6 +1,6 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import {
@@ -11,24 +11,21 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { PageHeader, EmptyState } from '@/components/common';
+import { PageHeader, EmptyState, Pagination, getPersistedPageSize } from '@/components/common';
 import { useTenants } from '../api';
 import { ROUTES } from '@/config';
 import { Building } from 'lucide-react';
 import { formatDate } from '@/utils/format';
-
-const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  Active: 'default',
-  Pending: 'secondary',
-  Suspended: 'destructive',
-  Deactivated: 'destructive',
-};
+import { STATUS_BADGE_VARIANT } from '@/constants';
 
 export default function TenantsListPage() {
   const { t } = useTranslation();
-  const { data, isLoading, isError } = useTenants();
+  const [pageNumber, setPageNumber] = useState(1);
+  const [pageSize, setPageSize] = useState(getPersistedPageSize);
+  const { data, isLoading, isError } = useTenants({ pageNumber, pageSize });
 
   const tenants = data?.data ?? [];
+  const pagination = data?.pagination;
 
   if (isError) {
     return (
@@ -54,8 +51,6 @@ export default function TenantsListPage() {
       {tenants.length === 0 ? (
         <EmptyState icon={Building} title={t('tenants.noTenants')} />
       ) : (
-        <Card>
-          <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -77,7 +72,7 @@ export default function TenantsListPage() {
                       {tenant.slug || '-'}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={STATUS_VARIANT[tenant.status] || 'default'}>
+                      <Badge variant={STATUS_BADGE_VARIANT[tenant.status] || 'default'}>
                         {tenant.status}
                       </Badge>
                     </TableCell>
@@ -88,8 +83,14 @@ export default function TenantsListPage() {
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
+      )}
+
+      {pagination && (
+        <Pagination
+          pagination={pagination}
+          onPageChange={setPageNumber}
+          onPageSizeChange={(size) => { setPageSize(size); setPageNumber(1); }}
+        />
       )}
     </div>
   );

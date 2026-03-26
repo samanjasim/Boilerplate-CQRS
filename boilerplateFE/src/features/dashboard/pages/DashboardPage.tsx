@@ -1,4 +1,5 @@
 import { Users, Shield, TrendingUp, Blocks, UserPlus, Pencil, Trash2, Activity } from 'lucide-react';
+import { UserAvatar } from '@/components/common';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
@@ -25,17 +26,17 @@ function StatCard({
   color: 'primary' | 'accent' | 'success' | 'info';
 }) {
   const colors = {
-    primary: 'bg-primary/10 text-primary',
-    accent: 'bg-accent-500/10 text-accent-600 dark:bg-accent-500/20 dark:text-accent-400',
-    success: 'bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400',
-    info: 'bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400',
+    primary: '[background:var(--active-bg)] [color:var(--active-text)]',
+    accent: 'bg-accent-500/10 text-accent-600',
+    success: 'bg-green-500/10 text-green-600',
+    info: 'bg-blue-500/10 text-blue-600',
   };
 
   return (
-    <Card>
+    <Card className="hover-lift">
       <CardContent className="py-6">
         <div className="flex items-center gap-4">
-          <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${colors[color]}`}>
+          <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${colors[color]}`}>
             <Icon className="h-6 w-6" />
           </div>
           <div>
@@ -87,24 +88,16 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Welcome section */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/80 via-primary to-primary/90 p-8">
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-white/20 shadow-lg">
-              <Blocks className="h-7 w-7 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-white">
-                {t('dashboard.welcomeBack', { name: user?.firstName })}
-              </h1>
-              <p className="text-white/80">
-                {t('dashboard.subtitle')}
-              </p>
-            </div>
-          </div>
+      <div className="flex items-center justify-between rounded-2xl gradient-hero px-8 py-7">
+        <div>
+          <h1 className="text-2xl font-semibold text-white tracking-tight">
+            {t('dashboard.welcomeBack', { name: user?.firstName })}
+          </h1>
+          <p className="text-sm text-white mt-1">
+            {t('dashboard.subtitle')}
+          </p>
         </div>
-        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
-        <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
+        <Blocks className="h-12 w-12 text-white/30" />
       </div>
 
       {/* Stats grid */}
@@ -122,8 +115,8 @@ export default function DashboardPage() {
           <Card>
             <CardContent className="py-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-foreground">{t('dashboard.recentActivity')}</h2>
-                <Button variant="ghost" size="sm" asChild>
+                <h2 className="text-base font-semibold text-foreground tracking-tight">{t('dashboard.recentActivity')}</h2>
+                <Button variant="link" size="sm" asChild>
                   <Link to={ROUTES.AUDIT_LOGS.LIST}>{t('dashboard.viewAll')}</Link>
                 </Button>
               </div>
@@ -138,10 +131,10 @@ export default function DashboardPage() {
                     return (
                       <div
                         key={log.id}
-                        className="flex items-start gap-3 rounded-lg border px-4 py-3"
+                        className="flex items-start gap-3 rounded-xl px-4 py-3 transition-colors duration-150 hover:bg-secondary"
                       >
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                          <ActionIcon className="h-4 w-4 text-primary" />
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg [background:var(--active-bg)]">
+                          <ActionIcon className="h-4 w-4 [color:var(--active-text)]" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -169,8 +162,8 @@ export default function DashboardPage() {
           <Card>
             <CardContent className="py-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-foreground">{t('dashboard.recentUsers')}</h2>
-                <Button variant="ghost" size="sm" asChild>
+                <h2 className="text-base font-semibold text-foreground tracking-tight">{t('dashboard.recentUsers')}</h2>
+                <Button variant="link" size="sm" asChild>
                   <Link to={ROUTES.USERS.LIST}>{t('dashboard.viewAll')}</Link>
                 </Button>
               </div>
@@ -184,11 +177,9 @@ export default function DashboardPage() {
                     <Link
                       key={u.id}
                       to={ROUTES.USERS.getDetail(u.id)}
-                      className="flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors hover:bg-muted/50"
+                      className="flex items-center gap-3 rounded-xl px-4 py-3 transition-colors duration-150 hover:bg-secondary"
                     >
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                        {u.firstName.charAt(0)}{u.lastName.charAt(0)}
-                      </div>
+                      <UserAvatar firstName={u.firstName} lastName={u.lastName} size="sm" />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-foreground truncate">
                           {u.firstName} {u.lastName}
@@ -226,34 +217,34 @@ export default function DashboardPage() {
           <h2 className="mb-4 text-lg font-semibold text-foreground">{t('dashboard.quickOverview')}</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {canViewUsers ? (
-              <Link to={ROUTES.USERS.LIST} className="rounded-lg border p-4 transition-colors hover:bg-muted/50">
+              <Link to={ROUTES.USERS.LIST} className="rounded-2xl bg-card p-5 shadow-card transition-all duration-200 hover:shadow-card-hover">
                 <h3 className="text-sm font-medium text-foreground">{t('dashboard.usersManagement')}</h3>
                 <p className="mt-1 text-sm text-muted-foreground">{t('dashboard.usersManagementDesc')}</p>
               </Link>
             ) : (
-              <div className="rounded-lg border p-4">
+              <div className="rounded-2xl bg-card p-5 shadow-card">
                 <h3 className="text-sm font-medium text-foreground">{t('dashboard.usersManagement')}</h3>
                 <p className="mt-1 text-sm text-muted-foreground">{t('dashboard.usersManagementDesc')}</p>
               </div>
             )}
             {canViewRoles ? (
-              <Link to={ROUTES.ROLES.LIST} className="rounded-lg border p-4 transition-colors hover:bg-muted/50">
+              <Link to={ROUTES.ROLES.LIST} className="rounded-2xl bg-card p-5 shadow-card transition-all duration-200 hover:shadow-card-hover">
                 <h3 className="text-sm font-medium text-foreground">{t('dashboard.rolesPermissions')}</h3>
                 <p className="mt-1 text-sm text-muted-foreground">{t('dashboard.rolesPermissionsDesc')}</p>
               </Link>
             ) : (
-              <div className="rounded-lg border p-4">
+              <div className="rounded-2xl bg-card p-5 shadow-card">
                 <h3 className="text-sm font-medium text-foreground">{t('dashboard.rolesPermissions')}</h3>
                 <p className="mt-1 text-sm text-muted-foreground">{t('dashboard.rolesPermissionsDesc')}</p>
               </div>
             )}
             {canViewAuditLogs ? (
-              <Link to={ROUTES.AUDIT_LOGS.LIST} className="rounded-lg border p-4 transition-colors hover:bg-muted/50">
+              <Link to={ROUTES.AUDIT_LOGS.LIST} className="rounded-2xl bg-card p-5 shadow-card transition-all duration-200 hover:shadow-card-hover">
                 <h3 className="text-sm font-medium text-foreground">{t('dashboard.systemSettings')}</h3>
                 <p className="mt-1 text-sm text-muted-foreground">{t('dashboard.systemSettingsDesc')}</p>
               </Link>
             ) : (
-              <div className="rounded-lg border p-4">
+              <div className="rounded-2xl bg-card p-5 shadow-card">
                 <h3 className="text-sm font-medium text-foreground">{t('dashboard.systemSettings')}</h3>
                 <p className="mt-1 text-sm text-muted-foreground">{t('dashboard.systemSettingsDesc')}</p>
               </div>

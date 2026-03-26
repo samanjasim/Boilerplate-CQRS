@@ -4,8 +4,8 @@ import {
   LayoutDashboard,
   Users,
   Shield,
-  Blocks,
-  ChevronLeft,
+  ChevronsLeft,
+  ChevronsRight,
   ClipboardList,
   Building,
   FolderOpen,
@@ -15,7 +15,6 @@ import {
 import { cn } from '@/lib/utils';
 import { useUIStore, useAuthStore, selectSidebarCollapsed, selectUser } from '@/stores';
 import { ROUTES } from '@/config';
-import { Button } from '@/components/ui/button';
 import { usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
 
@@ -26,8 +25,9 @@ export function Sidebar() {
   const { hasPermission } = usePermissions();
   const user = useAuthStore(selectUser);
 
-  const tenantLogoUrl = (user as unknown as Record<string, unknown> | null)?.tenantLogoUrl as string | undefined;
+  const tenantLogoUrl = user?.tenantLogoUrl;
   const tenantName = user?.tenantName;
+  const appName = tenantName ?? import.meta.env.VITE_APP_NAME ?? 'Starter';
 
   const navItems = [
     { label: t('nav.dashboard'), icon: LayoutDashboard, path: ROUTES.DASHBOARD },
@@ -57,35 +57,40 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        'fixed top-0 z-40 flex h-screen flex-col border-border bg-card transition-all duration-300',
-        'ltr:left-0 ltr:border-r rtl:right-0 rtl:border-l',
-        isCollapsed ? 'w-16' : 'w-64'
+        'fixed top-0 z-40 flex h-screen flex-col bg-card transition-all duration-300',
+        'ltr:left-0 ltr:border-r rtl:right-0 rtl:border-l border-border',
+        isCollapsed ? 'w-16' : 'w-60'
       )}
     >
       {/* Logo */}
-      <div className="flex h-16 items-center justify-between border-b border-border px-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 overflow-hidden">
+      <div className={cn('flex h-14 items-center gap-2.5 px-5', isCollapsed && 'justify-center px-0')}>
+        <button
+          onClick={isCollapsed ? toggleCollapse : undefined}
+          className={cn('flex items-center gap-2.5 min-w-0', isCollapsed && 'cursor-pointer')}
+        >
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shrink-0">
             {tenantLogoUrl ? (
-              <img
-                src={tenantLogoUrl}
-                alt={tenantName ?? ''}
-                className="h-8 w-8 rounded object-cover"
-              />
+              <img src={tenantLogoUrl} alt={appName} className="h-7 w-7 rounded object-cover" />
             ) : (
-              <Blocks className="h-5 w-5 text-primary" />
+              <span className="text-sm font-bold text-white">{appName.charAt(0)}</span>
             )}
           </div>
           {!isCollapsed && (
-            <span className="text-lg font-bold text-foreground">
-              {tenantName ?? import.meta.env.VITE_APP_NAME}
-            </span>
+            <span className="text-lg font-semibold text-foreground tracking-tight">{appName}</span>
           )}
-        </div>
+        </button>
+        {!isCollapsed && (
+          <button
+            onClick={toggleCollapse}
+            className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors duration-150 shrink-0 ltr:ml-auto rtl:mr-auto"
+          >
+            <ChevronsLeft className="h-[18px] w-[18px] rtl:rotate-180" />
+          </button>
+        )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto p-3">
+      <nav className="flex-1 overflow-y-auto px-3 pt-2">
         <ul className="space-y-1">
           {navItems.map((item) => (
             <li key={item.path}>
@@ -94,14 +99,15 @@ export function Sidebar() {
                 end={item.path === ROUTES.DASHBOARD}
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                    'flex items-center gap-2.5 rounded-lg h-10 px-3 text-sm transition-colors duration-150 cursor-pointer',
+                    isCollapsed && 'justify-center px-0',
                     isActive
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                      ? 'state-active'
+                      : 'state-hover'
                   )
                 }
               >
-                <item.icon className="h-5 w-5 shrink-0" />
+                <item.icon className="h-[18px] w-[18px] shrink-0" />
                 {!isCollapsed && <span>{item.label}</span>}
               </NavLink>
             </li>
@@ -109,24 +115,17 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      {/* Collapse toggle */}
-      <div className="border-t border-border p-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={toggleCollapse}
-          className={cn('w-full justify-center', !isCollapsed && 'justify-start')}
-        >
-          <ChevronLeft
-            className={cn(
-              'h-4 w-4 transition-transform',
-              isCollapsed && 'ltr:rotate-180 rtl:rotate-0',
-              !isCollapsed && 'rtl:rotate-180'
-            )}
-          />
-          {!isCollapsed && <span className="ltr:ml-2 rtl:mr-2">{t('nav.collapse')}</span>}
-        </Button>
-      </div>
+      {/* Collapsed: expand */}
+      {isCollapsed && (
+        <div className="p-2 border-t border-border">
+          <button
+            onClick={toggleCollapse}
+            className="flex w-full items-center justify-center rounded-lg h-9 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors duration-150 cursor-pointer"
+          >
+            <ChevronsRight className="h-4 w-4 rtl:rotate-180" />
+          </button>
+        </div>
+      )}
     </aside>
   );
 }

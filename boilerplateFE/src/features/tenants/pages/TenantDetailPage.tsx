@@ -26,16 +26,12 @@ import {
   useUpdateTenantBusinessInfo,
   useUpdateTenantCustomText,
 } from '../api';
+import { useBackNavigation } from '@/hooks';
 import { ROUTES } from '@/config';
 import { formatDate } from '@/utils/format';
 import { toast } from 'sonner';
 
-const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  Active: 'default',
-  Pending: 'secondary',
-  Suspended: 'destructive',
-  Deactivated: 'destructive',
-};
+import { STATUS_BADGE_VARIANT } from '@/constants';
 
 type TabKey = 'overview' | 'branding' | 'businessInfo' | 'customText';
 type LangKey = 'en' | 'ar' | 'ku';
@@ -64,6 +60,7 @@ export default function TenantDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const { data: tenant, isLoading } = useTenant(id!);
+  useBackNavigation(ROUTES.TENANTS.LIST, t('tenants.backToTenants'));
 
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [statusAction, setStatusAction] = useState<'suspend' | 'deactivate' | null>(null);
@@ -204,8 +201,6 @@ export default function TenantDetailPage() {
     <div className="space-y-6">
       <PageHeader
         title={tenant.name}
-        backTo={ROUTES.TENANTS.LIST}
-        backLabel={t('tenants.backToTenants')}
       />
 
       {/* Mobile: horizontal scrollable pills */}
@@ -237,10 +232,10 @@ export default function TenantDetailPage() {
               type="button"
               onClick={() => setActiveTab(tab)}
               className={cn(
-                'rounded-md px-3 py-2 text-sm font-medium text-start transition-colors',
+                'px-4 py-2.5 text-sm text-start transition-colors duration-150 cursor-pointer ltr:border-l-2 rtl:border-r-2',
                 activeTab === tab
-                  ? 'bg-primary/10 text-primary border-s-2 border-primary'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  ? 'state-active-border font-semibold [color:var(--active-text)]'
+                  : 'border-transparent state-hover'
               )}
             >
               {t(`tenants.${tab}`)}
@@ -272,7 +267,7 @@ export default function TenantDetailPage() {
                       <p className="text-muted-foreground">{tenant.slug}</p>
                     )}
                   </div>
-                  <Badge variant={STATUS_VARIANT[tenant.status] || 'default'}>
+                  <Badge variant={STATUS_BADGE_VARIANT[tenant.status] || 'default'}>
                     {tenant.status}
                   </Badge>
                 </div>
