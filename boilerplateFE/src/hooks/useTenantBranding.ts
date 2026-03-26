@@ -41,10 +41,7 @@ export function useTenantBranding() {
   useEffect(() => {
     if (!user?.tenantId) return;
 
-    // The tenant primary color may be included in the user DTO from /Auth/me
-    const color = (user as unknown as Record<string, unknown>).tenantPrimaryColor as
-      | string
-      | undefined;
+    const color = user.tenantPrimaryColor;
 
     if (color) {
       const hsl = hexToHSL(color);

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { AppProviders } from './providers';
 import { AppRouter } from '@/routes';
 import { useAuthStore, useUIStore } from '@/stores';
-import { useTenantBranding } from '@/hooks';
+import { useTenantBranding, useThemePreset } from '@/hooks';
 import { storage, getTenantSlug } from '@/utils';
 import { authApi } from '@/features/auth/api/auth.api';
 import { tenantsApi } from '@/features/tenants/api/tenants.api';
@@ -11,6 +11,9 @@ function AppContent() {
   const { setUser, setLoading, logout } = useAuthStore();
   const { setActiveTenantId, setTenantSlug } = useUIStore();
   const [tenantReady, setTenantReady] = useState(false);
+
+  // Applies active theme preset CSS variables (before tenant branding so tenant wins)
+  useThemePreset();
 
   // Applies tenant primary color to CSS when user has tenantPrimaryColor
   useTenantBranding();

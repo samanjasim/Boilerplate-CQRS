@@ -9,7 +9,7 @@ export default function LandingPage() {
   const appName = import.meta.env.VITE_APP_NAME || 'Starter';
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-600 via-primary-700 to-primary-900 overflow-hidden">
+    <div className="relative flex min-h-screen items-center justify-center gradient-hero overflow-hidden">
       {/* Decorative blur circles */}
       <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
       <div className="absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-white/5 blur-3xl" />
@@ -33,7 +33,7 @@ export default function LandingPage() {
           <Button
             asChild
             size="lg"
-            className="bg-white text-primary-700 hover:bg-white/90"
+            className="bg-white [color:var(--active-text)] hover:bg-white/90 shadow-lg"
           >
             <Link to={ROUTES.REGISTER_TENANT}>{t('landing.getStarted')}</Link>
           </Button>
@@ -41,7 +41,7 @@ export default function LandingPage() {
             asChild
             variant="outline"
             size="lg"
-            className="border-white/30 text-white hover:bg-white/10"
+            className="border-white/40 text-white hover:bg-white/10"
           >
             <Link to={ROUTES.LOGIN}>{t('landing.signIn')}</Link>
           </Button>

@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { formatDateTime } from '@/utils/format';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -12,12 +11,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Pagination, getPersistedPageSize } from '@/components/common';
 import { useLoginHistory } from '@/features/auth/api';
 
 export function LoginHistoryList() {
   const { t } = useTranslation();
   const [pageNumber, setPageNumber] = useState(1);
-  const pageSize = 10;
+  const [pageSize, setPageSize] = useState(() => Math.min(getPersistedPageSize(), 10));
 
   const { data, isLoading } = useLoginHistory({ pageNumber, pageSize });
 
@@ -80,34 +80,12 @@ export function LoginHistoryList() {
               </Table>
             </div>
 
-            {pagination && pagination.totalPages > 1 && (
-              <div className="flex items-center justify-between mt-4">
-                <p className="text-sm text-muted-foreground">
-                  {t('common.showing', {
-                    start: (pagination.pageNumber - 1) * pagination.pageSize + 1,
-                    end: Math.min(pagination.pageNumber * pagination.pageSize, pagination.totalCount),
-                    total: pagination.totalCount,
-                  })}
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!pagination.hasPreviousPage}
-                    onClick={() => setPageNumber((p) => p - 1)}
-                  >
-                    {t('common.previous')}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!pagination.hasNextPage}
-                    onClick={() => setPageNumber((p) => p + 1)}
-                  >
-                    {t('common.next')}
-                  </Button>
-                </div>
-              </div>
+            {pagination && (
+              <Pagination
+                pagination={pagination}
+                onPageChange={setPageNumber}
+                onPageSizeChange={(size) => { setPageSize(size); setPageNumber(1); }}
+              />
             )}
           </>
         )}

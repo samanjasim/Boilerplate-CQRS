@@ -10,7 +10,7 @@ import { PageHeader, InfoField, ConfirmDialog } from '@/components/common';
 import { useUser, useActivateUser, useSuspendUser, useDeactivateUser, useUnlockUser } from '../api';
 import { useRoles, useRemoveUserRole } from '@/features/roles/api';
 import { RoleAssignModal, EditUserModal } from '../components';
-import { usePermissions } from '@/hooks';
+import { usePermissions, useBackNavigation } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
 import { ROUTES } from '@/config';
 import { formatDate, formatDateTime } from '@/utils/format';
@@ -46,6 +46,7 @@ export default function UserDetailPage() {
 
   const canManageRoles = hasPermission(PERMISSIONS.Users.ManageRoles);
   const canUpdate = hasPermission(PERMISSIONS.Users.Update);
+  useBackNavigation(ROUTES.USERS.LIST, t('users.backToUsers'));
 
   const allRoles = rolesData?.data ?? [];
 
@@ -88,8 +89,6 @@ export default function UserDetailPage() {
       <PageHeader
         title={`${user.firstName} ${user.lastName}`}
         subtitle={`@${user.username}`}
-        backTo={ROUTES.USERS.LIST}
-        backLabel={t('users.backToUsers')}
       />
 
       {/* User Info */}

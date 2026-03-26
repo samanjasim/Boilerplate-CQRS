@@ -4,6 +4,11 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 type Theme = 'dark' | 'light' | 'system';
 type Language = 'en' | 'ar' | 'ku';
 
+interface BackNavigation {
+  to: string;
+  label: string;
+}
+
 interface UIState {
   theme: Theme;
   language: Language;
@@ -13,6 +18,7 @@ interface UIState {
   modalData: unknown;
   activeTenantId: string | null;
   tenantSlug: string | null;
+  backNavigation: BackNavigation | null;
 }
 
 interface UIActions {
@@ -25,6 +31,7 @@ interface UIActions {
   closeModal: () => void;
   setActiveTenantId: (tenantId: string | null) => void;
   setTenantSlug: (slug: string | null) => void;
+  setBackNavigation: (nav: BackNavigation | null) => void;
 }
 
 type UIStore = UIState & UIActions;
@@ -58,6 +65,7 @@ export const useUIStore = create<UIStore>()(
       modalData: null,
       activeTenantId: null,
       tenantSlug: null,
+      backNavigation: null,
 
       setTheme: (theme) => {
         set({ theme });
@@ -83,6 +91,8 @@ export const useUIStore = create<UIStore>()(
       setActiveTenantId: (activeTenantId) => set({ activeTenantId }),
 
       setTenantSlug: (tenantSlug) => set({ tenantSlug }),
+
+      setBackNavigation: (backNavigation) => set({ backNavigation }),
     }),
     {
       name: 'starter-ui',
@@ -112,3 +122,4 @@ export const selectActiveModal = (state: UIStore) => state.activeModal;
 export const selectModalData = (state: UIStore) => state.modalData;
 export const selectActiveTenantId = (state: UIStore) => state.activeTenantId;
 export const selectTenantSlug = (state: UIStore) => state.tenantSlug;
+export const selectBackNavigation = (state: UIStore) => state.backNavigation;

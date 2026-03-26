@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { PageHeader, EmptyState, ConfirmDialog } from '@/components/common';
+import { PageHeader, EmptyState, ConfirmDialog, Pagination, getPersistedPageSize } from '@/components/common';
 import { useReports, useDownloadReport, useDeleteReport, useRequestReport } from '../api';
 import type { ReportRequest, RequestReportData } from '@/types';
 
@@ -63,16 +63,17 @@ function StatusBadge({ status }: { status: string }) {
 export default function ReportsPage() {
   const { t } = useTranslation();
   const [pageNumber, setPageNumber] = useState(1);
+  const [pageSize, setPageSize] = useState(getPersistedPageSize);
   const [reportType, setReportType] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [deleteTarget, setDeleteTarget] = useState<ReportRequest | null>(null);
 
   const params = useMemo(() => {
-    const p: Record<string, unknown> = { pageNumber, pageSize: 20 };
+    const p: Record<string, unknown> = { pageNumber, pageSize };
     if (reportType && reportType !== 'all') p.reportType = reportType;
     if (statusFilter && statusFilter !== 'all') p.status = statusFilter;
     return p;
-  }, [pageNumber, reportType, statusFilter]);
+  }, [pageNumber, pageSize, reportType, statusFilter]);
 
   const { data, isLoading, isFetching, isError } = useReports(params);
   const { mutate: downloadReport, isPending: isDownloading } = useDownloadReport();
@@ -306,34 +307,12 @@ export default function ReportsPage() {
       </div>
 
       {/* Pagination */}
-      {pagination && pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            {t('common.showing', {
-              start: (pagination.pageNumber - 1) * pagination.pageSize + 1,
-              end: Math.min(pagination.pageNumber * pagination.pageSize, pagination.totalCount),
-              total: pagination.totalCount,
-            })}
-          </p>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!pagination.hasPreviousPage}
-              onClick={() => setPageNumber((p) => p - 1)}
-            >
-              {t('common.previous')}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!pagination.hasNextPage}
-              onClick={() => setPageNumber((p) => p + 1)}
-            >
-              {t('common.next')}
-            </Button>
-          </div>
-        </div>
+      {pagination && (
+        <Pagination
+          pagination={pagination}
+          onPageChange={setPageNumber}
+          onPageSizeChange={(size) => { setPageSize(size); setPageNumber(1); }}
+        />
       )}
 
       {/* Delete Confirmation */}

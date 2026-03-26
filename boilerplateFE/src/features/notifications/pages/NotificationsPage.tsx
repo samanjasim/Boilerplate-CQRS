@@ -5,7 +5,7 @@ import { Bell, CheckCheck } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { PageHeader } from '@/components/common';
+import { PageHeader, Pagination, getPersistedPageSize } from '@/components/common';
 import { useNotifications, useMarkRead, useMarkAllRead } from '@/features/notifications/api';
 import { NOTIFICATION_ICONS } from '@/constants';
 import { cn } from '@/lib/utils';
@@ -17,12 +17,13 @@ export default function NotificationsPage() {
   const { t } = useTranslation();
   const [filter, setFilter] = useState<FilterType>('all');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(getPersistedPageSize);
 
   const isReadParam = filter === 'unread' ? false : undefined;
 
   const { data, isLoading, isFetching } = useNotifications({
     pageNumber: page,
-    pageSize: 20,
+    pageSize,
     isRead: isReadParam,
   });
   const { mutate: markRead } = useMarkRead();
@@ -126,34 +127,12 @@ export default function NotificationsPage() {
           )}
 
           {/* Pagination */}
-          {pagination && pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between pt-4 mt-4 border-t">
-              <p className="text-sm text-muted-foreground">
-                {t('common.showing', {
-                  start: (pagination.pageNumber - 1) * pagination.pageSize + 1,
-                  end: Math.min(pagination.pageNumber * pagination.pageSize, pagination.totalCount),
-                  total: pagination.totalCount,
-                })}
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!pagination.hasPreviousPage}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  {t('common.previous')}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!pagination.hasNextPage}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  {t('common.next')}
-                </Button>
-              </div>
-            </div>
+          {pagination && (
+            <Pagination
+              pagination={pagination}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+            />
           )}
         </CardContent>
       </Card>

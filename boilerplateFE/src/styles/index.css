@@ -11,98 +11,131 @@
 
 @layer base {
   :root {
-    /* ── Brand Color (change this to rebrand) ── */
-    --primary: 221.2 83.2% 53.3%;              /* Blue */
-    --primary-foreground: 210 40% 98%;
+    /* ── Brand Color ── */
+    --primary: 22 51% 55%;
+    --primary-foreground: 0 0% 100%;
 
     /* ── Surface & Background ── */
-    --background: 0 0% 98%;
-    --foreground: 224 71.4% 4.1%;
+    --background: 40 33% 97%;
+    --foreground: 0 0% 17%;
     --card: 0 0% 100%;
-    --card-foreground: 224 71.4% 4.1%;
+    --card-foreground: 0 0% 17%;
     --popover: 0 0% 100%;
-    --popover-foreground: 224 71.4% 4.1%;
+    --popover-foreground: 0 0% 17%;
 
     /* ── Secondary & Muted ── */
-    --secondary: 220 14.3% 95.9%;
-    --secondary-foreground: 220.9 39.3% 11%;
-    --muted: 220 14.3% 95.9%;
-    --muted-foreground: 220 8.9% 46.1%;
-    --accent: 220 14.3% 95.9%;
-    --accent-foreground: 220.9 39.3% 11%;
+    --secondary: 30 17% 94%;
+    --secondary-foreground: 0 0% 17%;
+    --muted: 30 17% 94%;
+    --muted-foreground: 0 0% 42%;
+    --accent: 30 17% 94%;
+    --accent-foreground: 0 0% 17%;
 
     /* ── Status ── */
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 4 62% 53%;
+    --destructive-foreground: 0 0% 100%;
 
     /* ── Borders & Inputs ── */
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    --border: 34 10% 88%;
+    --input: 34 10% 88%;
+    --ring: 22 51% 55%;
+    --radius: 0.75rem;
+
+    /* ── Semantic Design Tokens ──
+     * These are the ONLY tokens components should reference for
+     * interactive states. They adapt automatically with theme presets.
+     */
+    --active-bg: color-mix(in srgb, hsl(var(--primary)) 10%, transparent);
+    --active-text: hsl(var(--primary));
+    --active-border: hsl(var(--primary));
+    --active-bg-strong: color-mix(in srgb, hsl(var(--primary)) 20%, transparent);
+    --hover-bg: hsl(var(--secondary));
+    --gradient-from: var(--color-primary-700);
+    --gradient-to: var(--color-primary-500);
   }
 
   .dark {
-    /* ── Brand Color (dark mode) ── */
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 22 56% 60%;
+    --primary-foreground: 0 0% 100%;
 
-    /* ── Surface & Background ── */
-    --background: 224 71.4% 4.1%;
-    --foreground: 210 20% 98%;
-    --card: 224 71.4% 4.1%;
-    --card-foreground: 210 20% 98%;
-    --popover: 224 71.4% 4.1%;
-    --popover-foreground: 210 20% 98%;
+    --background: 20 8% 9%;
+    --foreground: 30 12% 93%;
+    --card: 20 8% 13%;
+    --card-foreground: 30 12% 93%;
+    --popover: 20 8% 13%;
+    --popover-foreground: 30 12% 93%;
 
-    /* ── Secondary & Muted ── */
-    --secondary: 215 27.9% 16.9%;
-    --secondary-foreground: 210 20% 98%;
-    --muted: 215 27.9% 16.9%;
-    --muted-foreground: 217.9 10.6% 64.9%;
-    --accent: 215 27.9% 16.9%;
-    --accent-foreground: 210 20% 98%;
+    --secondary: 20 8% 11%;
+    --secondary-foreground: 30 12% 93%;
+    --muted: 20 8% 11%;
+    --muted-foreground: 20 4% 59%;
+    --accent: 20 8% 11%;
+    --accent-foreground: 30 12% 93%;
 
-    /* ── Status ── */
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 4 55% 45%;
+    --destructive-foreground: 0 0% 100%;
 
-    /* ── Borders & Inputs ── */
-    --border: 215 27.9% 16.9%;
-    --input: 215 27.9% 16.9%;
-    --ring: 224.3 76.3% 48%;
+    --border: 20 6% 21%;
+    --input: 20 6% 21%;
+    --ring: 22 56% 60%;
+
+    /* ── Dark semantic tokens ── */
+    --active-bg: color-mix(in srgb, hsl(var(--primary)) 15%, transparent);
+    --active-text: hsl(var(--primary));
+    --active-border: hsl(var(--primary));
+    --active-bg-strong: color-mix(in srgb, hsl(var(--primary)) 25%, transparent);
+    --hover-bg: hsl(var(--secondary));
+    --gradient-from: var(--color-primary-800);
+    --gradient-to: var(--color-primary-600);
   }
 }
 
-/* Custom dark mode variant */
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   /*
-   * ── Brand Color Scale ──
-   * Full palette for gradients, badges, backgrounds.
-   * Generate yours at: https://uicolors.app
-   *
-   * Current: Blue
+   * ── Primary Color Scale (Warm Copper) ──
+   * Fallback values — overridden at runtime by useThemePreset
    */
-  --color-primary-50: #eff6ff;
-  --color-primary-100: #dbeafe;
-  --color-primary-200: #bfdbfe;
-  --color-primary-300: #93c5fd;
-  --color-primary-400: #60a5fa;
-  --color-primary-500: #3b82f6;
-  --color-primary-600: #2563eb;
-  --color-primary-700: #1d4ed8;
-  --color-primary-800: #1e40af;
-  --color-primary-900: #1e3a8a;
-  --color-primary-950: #172554;
+  --color-primary: #c67a52;
+  --color-primary-foreground: #ffffff;
+  --color-primary-50: #fdf5ef;
+  --color-primary-100: #fbe8d9;
+  --color-primary-200: #f6ceb2;
+  --color-primary-300: #f0ae81;
+  --color-primary-400: #e9884f;
+  --color-primary-500: #d4885f;
+  --color-primary-600: #c67a52;
+  --color-primary-700: #b56a42;
+  --color-primary-800: #94522e;
+  --color-primary-900: #784528;
+  --color-primary-950: #412113;
 
   /*
-   * ── Accent Color Scale ──
-   * Secondary brand color for highlights, badges.
-   *
-   * Current: Emerald
+   * ── Semantic Colors ──
+   * These map HSL CSS variables to hex values for Tailwind utilities.
+   * bg-card, bg-popover, bg-background, text-foreground, etc. all need these.
+   * Light mode defaults — dark mode overridden at runtime via useThemePreset.
    */
+  --color-background: #f9f7f3;
+  --color-foreground: #2c2c2c;
+  --color-card: #ffffff;
+  --color-card-foreground: #2c2c2c;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #2c2c2c;
+  --color-secondary: #f5f2ec;
+  --color-secondary-foreground: #2c2c2c;
+  --color-muted: #f5f2ec;
+  --color-muted-foreground: #6b6b6b;
+  --color-accent: #f5f2ec;
+  --color-accent-foreground: #2c2c2c;
+  --color-destructive: #c4574c;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #e5e2dc;
+  --color-input: #e5e2dc;
+  --color-ring: #c67a52;
+
+  /* ── Accent Color Scale (Emerald) ── */
   --color-accent-50: #ecfdf5;
   --color-accent-100: #d1fae5;
   --color-accent-200: #a7f3d0;
@@ -115,16 +148,20 @@
   --color-accent-900: #064e3b;
   --color-accent-950: #022c22;
 
-  /* ── Layout Tokens ── */
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
+  /* ── Radius (sm=8, md=12, lg=16) ── */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
   --radius-2xl: 1.5rem;
 
-  --shadow-soft-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-soft-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
-  --shadow-soft-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+  /* ── Shadows ── */
+  --shadow-soft-sm: 0 1px 2px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.02);
+  --shadow-soft-md: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-soft-lg: 0 8px 24px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.02);
+  --shadow-card: 0 0 0 1px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-card-hover: 0 0 0 1px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
 
   --transition-fast: 150ms;
   --transition-normal: 200ms;
@@ -134,44 +171,102 @@
 /* ── Base Styles ── */
 
 * { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 
 body {
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
+    'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
-  transition: background-color 0.2s, color 0.2s;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* ── Typography ── */
-h1 { font-size: 2rem; font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; }
-h2 { font-size: 1.5rem; font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; }
-h3 { font-size: 1.25rem; font-weight: 600; line-height: 1.4; }
-h4 { font-size: 1rem; font-weight: 600; line-height: 1.5; }
-p { font-size: 0.875rem; line-height: 1.6; }
+h1 { font-size: 1.75rem; font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; }
+h2 { font-size: 1.25rem; font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; }
+h3 { font-size: 1.0625rem; font-weight: 600; line-height: 1.4; }
+h4 { font-size: 0.9375rem; font-weight: 600; line-height: 1.5; }
+p { font-size: 0.8125rem; line-height: 1.6; }
 small { font-size: 0.75rem; line-height: 1.5; }
 button { font-family: inherit; }
 
 /* ── Scrollbar ── */
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: hsl(var(--card)); border-radius: 4px; }
-::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
-* { scrollbar-width: thin; scrollbar-color: hsl(var(--border)) hsl(var(--card)); }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.5); }
+* { scrollbar-width: thin; scrollbar-color: hsl(var(--border)) transparent; }
 
 /* ── RTL Support ── */
-[dir="rtl"] { text-align: right; }
+[dir="rtl"] {
+  text-align: right;
+  font-family: 'IBM Plex Sans Arabic', 'IBM Plex Sans', 'Segoe UI', 'Tahoma', sans-serif;
+}
 
-/* ── Utilities ── */
+/* ── Semantic Utility Classes ──
+ * Use these instead of hardcoding primary-N shades in components.
+ * They automatically adapt when the theme preset changes.
+ */
 @layer utilities {
+  /* Active states — for nav items, sidebar, list selections */
+  .state-active {
+    background: var(--active-bg);
+    color: var(--active-text);
+    font-weight: 600;
+  }
+  .state-active-border {
+    border-color: var(--active-border);
+  }
+
+  /* Hover states */
+  .state-hover {
+    color: hsl(var(--muted-foreground));
+    font-weight: 500;
+  }
+  .state-hover:hover {
+    background: var(--hover-bg);
+    color: hsl(var(--foreground));
+  }
+
+  /* Hero/banner gradient */
+  .gradient-hero {
+    background: linear-gradient(to right, var(--gradient-from), var(--gradient-to));
+  }
+
+  /* Focus ring */
   .focus-ring {
-    @apply outline-none ring-2 ring-primary-500 ring-offset-2;
+    @apply outline-none ring-2 ring-offset-2;
+    --tw-ring-color: var(--active-border);
+    --tw-ring-opacity: 0.3;
   }
   .focus-ring-inset {
-    @apply outline-none ring-2 ring-primary-500 ring-inset;
+    @apply outline-none ring-2 ring-inset;
+    --tw-ring-color: var(--active-border);
+    --tw-ring-opacity: 0.3;
   }
+
+  /* Lift on hover */
+  .hover-lift {
+    @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-hover;
+  }
+
+  /* Glass effect */
+  .glass {
+    background-color: hsl(var(--card) / 0.85);
+    @apply backdrop-blur-xl;
+  }
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes subtle-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }

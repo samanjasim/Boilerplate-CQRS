@@ -21,7 +21,7 @@ export function ThemeToggle({ variant = 'ghost', className }: ThemeToggleProps) 
       <button
         onClick={toggleTheme}
         className={cn(
-          'rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors',
+          'rounded-xl p-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-all duration-150',
           className
         )}
       >

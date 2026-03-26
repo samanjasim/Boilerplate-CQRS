@@ -19,9 +19,10 @@ export function AppProviders({ children }: AppProvidersProps) {
           position="top-right"
           toastOptions={{
             style: {
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              color: 'var(--color-text-primary)',
+              borderRadius: '12px',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.03)',
+              border: 'none',
+              padding: '12px 16px',
             },
           }}
         />

@@ -4,10 +4,9 @@ import { formatDateTime } from '@/utils/format';
 import { ChevronDown, ChevronRight, ClipboardList } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
-import { PageHeader, EmptyState, ExportButton } from '@/components/common';
+import { PageHeader, EmptyState, ExportButton, Pagination, getPersistedPageSize } from '@/components/common';
 import { usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
 import {
@@ -78,16 +77,17 @@ export default function AuditLogsPage() {
   const canExport = hasPermission(PERMISSIONS.System.ExportData);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
+  const [pageSize, setPageSize] = useState(getPersistedPageSize);
   const [entityType, setEntityType] = useState<string>('all');
   const [action, setAction] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const params = useMemo(() => {
-    const p: Record<string, unknown> = { pageNumber, pageSize: 20 };
+    const p: Record<string, unknown> = { pageNumber, pageSize };
     if (entityType && entityType !== 'all') p.entityType = entityType;
     if (action && action !== 'all') p.action = action;
     if (searchTerm) p.searchTerm = searchTerm;
     return p;
-  }, [pageNumber, entityType, action, searchTerm]);
+  }, [pageNumber, pageSize, entityType, action, searchTerm]);
 
   const { data, isLoading, isFetching, isError } = useAuditLogs(params);
   const logs = data?.data ?? [];
@@ -185,8 +185,6 @@ export default function AuditLogsPage() {
       {logs.length === 0 && !isFetching ? (
         <EmptyState icon={ClipboardList} title={t('auditLogs.noLogs')} />
       ) : (
-        <Card>
-          <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -240,41 +238,16 @@ export default function AuditLogsPage() {
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
       )}
 
       </div>
 
-      {/* Pagination */}
-      {pagination && pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            {t('common.showing', {
-              start: (pagination.pageNumber - 1) * pagination.pageSize + 1,
-              end: Math.min(pagination.pageNumber * pagination.pageSize, pagination.totalCount),
-              total: pagination.totalCount,
-            })}
-          </p>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!pagination.hasPreviousPage}
-              onClick={() => setPageNumber((p) => p - 1)}
-            >
-              {t('common.previous')}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!pagination.hasNextPage}
-              onClick={() => setPageNumber((p) => p + 1)}
-            >
-              {t('common.next')}
-            </Button>
-          </div>
-        </div>
+      {pagination && (
+        <Pagination
+          pagination={pagination}
+          onPageChange={setPageNumber}
+          onPageSizeChange={(size) => { setPageSize(size); setPageNumber(1); }}
+        />
       )}
     </div>
   );

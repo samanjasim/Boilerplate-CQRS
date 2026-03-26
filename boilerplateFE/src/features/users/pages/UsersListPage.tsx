@@ -13,8 +13,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { PageHeader, EmptyState, ExportButton } from '@/components/common';
-import { useUsers } from '../api';
+import { PageHeader, EmptyState, ExportButton, UserAvatar, Pagination, getPersistedPageSize } from '@/components/common';
+import { useSearchUsers } from '../api';
 import { useInvitations, useRevokeInvitation } from '@/features/auth/api';
 import { InviteUserModal } from '../components';
 import { ROUTES } from '@/config';
@@ -27,12 +27,15 @@ export default function UsersListPage() {
   const { t } = useTranslation();
   const { hasPermission } = usePermissions();
   const canExport = hasPermission(PERMISSIONS.System.ExportData);
-  const { data, isLoading, isError } = useUsers();
+  const [pageNumber, setPageNumber] = useState(1);
+  const [pageSize, setPageSize] = useState(getPersistedPageSize);
+  const { data, isLoading, isError } = useSearchUsers({ pageNumber, pageSize, sortBy: 'createdAt', sortDescending: true });
   const { data: invitationsData } = useInvitations();
   const { mutate: revokeInvitation } = useRevokeInvitation();
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
 
   const users = data?.data ?? [];
+  const pagination = data?.pagination;
   const invitations = invitationsData?.data ?? [];
   const pendingInvitations = invitations.filter(
     (inv) => !inv.isAccepted && new Date(inv.expiresAt) > new Date()
@@ -74,8 +77,6 @@ export default function UsersListPage() {
       {users.length === 0 ? (
         <EmptyState icon={Users} title={t('common.noResults')} />
       ) : (
-        <Card>
-          <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -89,16 +90,19 @@ export default function UsersListPage() {
                 {users.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell>
-                      <Link to={ROUTES.USERS.getDetail(user.id)} className="font-medium text-foreground hover:text-primary">
-                        {user.firstName} {user.lastName}
+                      <Link to={ROUTES.USERS.getDetail(user.id)} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                        <UserAvatar firstName={user.firstName} lastName={user.lastName} size="sm" />
+                        <div>
+                          <p className="font-medium text-foreground">{user.firstName} {user.lastName}</p>
+                          <p className="text-xs text-muted-foreground">@{user.username}</p>
+                        </div>
                       </Link>
-                      <p className="text-xs text-muted-foreground">@{user.username}</p>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{user.email}</TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {user.roles?.map((role) => (
-                          <Badge key={role} variant="secondary">{role}</Badge>
+                          <Badge key={role} variant="default">{role}</Badge>
                         )) || <span className="text-muted-foreground">-</span>}
                       </div>
                     </TableCell>
@@ -109,8 +113,14 @@ export default function UsersListPage() {
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
+      )}
+
+      {pagination && (
+        <Pagination
+          pagination={pagination}
+          onPageChange={setPageNumber}
+          onPageSizeChange={(size) => { setPageSize(size); setPageNumber(1); }}
+        />
       )}
 
       {/* Pending Invitations Section */}

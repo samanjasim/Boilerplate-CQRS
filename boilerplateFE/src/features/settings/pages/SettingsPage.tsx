@@ -75,8 +75,8 @@ function SettingInput({
           aria-checked={isOn}
           onClick={() => onToggle(settingKey)}
           className={cn(
-            'relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-            isOn ? 'bg-primary' : 'bg-muted-foreground/30'
+            'relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:ring-offset-2',
+            isOn ? 'bg-primary' : 'bg-border'
           )}
         >
           <span
@@ -321,17 +321,17 @@ export default function SettingsPage() {
       {/* Desktop: vertical tabs left + form right */}
       <div className="flex gap-6">
         {/* Vertical tab list — hidden on mobile */}
-        <nav className="hidden md:flex w-48 shrink-0 flex-col gap-1">
+        <nav className="hidden md:flex w-48 shrink-0 flex-col">
           {categories.map((cat) => (
             <button
               key={cat}
               type="button"
               onClick={() => setActiveTab(cat)}
               className={cn(
-                'rounded-md px-3 py-2 text-sm font-medium text-start transition-colors',
+                'px-4 py-2.5 text-sm text-start transition-colors duration-150 cursor-pointer ltr:border-l-2 rtl:border-r-2',
                 activeTab === cat
-                  ? 'bg-primary/10 text-primary border-s-2 border-primary'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  ? 'state-active-border font-semibold [color:var(--active-text)]'
+                  : 'border-transparent state-hover'
               )}
             >
               {resolveCategoryLabel(t, cat)}
@@ -344,11 +344,15 @@ export default function SettingsPage() {
           {activeGroup && (
             <Card>
               <CardContent className="py-6">
-                <h3 className="text-lg font-semibold text-foreground mb-6">
-                  {resolveCategoryLabel(t, activeGroup.category)}
-                </h3>
+                <div className="mb-6">
+                  <h3 className="text-base font-semibold text-foreground">
+                    {resolveCategoryLabel(t, activeGroup.category)}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-0.5">General application configuration</p>
+                </div>
 
-                <div className="space-y-6">
+                <div className="border-t border-border/40 pt-6">
+                  <div className="grid gap-6 sm:grid-cols-2">
                   {activeGroup.settings.map((setting: SystemSetting) => {
                     const currentValue = localValues[setting.key] ?? setting.value;
                     const label = resolveLabel(t, setting);
@@ -356,11 +360,11 @@ export default function SettingsPage() {
                     return (
                       <div
                         key={setting.id}
-                        className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4"
+                        className="space-y-1.5"
                       >
-                        <div className="sm:w-1/3">
+                        <div>
                           <div className="flex items-center gap-2">
-                            <Label className="text-sm font-medium">{label}</Label>
+                            <Label className="text-sm font-medium text-foreground">{label}</Label>
                             {setting.isOverridden && (
                               <Badge variant="outline">{t('settings.overridden')}</Badge>
                             )}
@@ -375,7 +379,7 @@ export default function SettingsPage() {
                           )}
                         </div>
 
-                        <div className="flex-1 flex items-center gap-2">
+                        <div className="flex items-center gap-2">
                           <SettingInput
                             setting={setting}
                             value={currentValue}
@@ -401,6 +405,7 @@ export default function SettingsPage() {
                       </div>
                     );
                   })}
+                  </div>
                 </div>
               </CardContent>
             </Card>

@@ -15,6 +15,7 @@ Thumbs.db
 
 # Claude
 .claude/
+.superpowers/
 
 # Build artifacts
 **/bin/

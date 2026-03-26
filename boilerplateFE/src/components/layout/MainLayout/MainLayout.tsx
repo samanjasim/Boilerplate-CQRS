@@ -14,10 +14,10 @@ export function MainLayout() {
       <main
         className={cn(
           'pt-16 transition-all duration-300',
-          isCollapsed ? 'ltr:pl-16 rtl:pr-16' : 'ltr:pl-64 rtl:pr-64'
+          isCollapsed ? 'ltr:pl-16 rtl:pr-16' : 'ltr:pl-60 rtl:pr-60'
         )}
       >
-        <div className="p-6">
+        <div className="p-8">
           <Outlet />
         </div>
       </main>

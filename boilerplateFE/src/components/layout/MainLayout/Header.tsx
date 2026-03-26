@@ -1,7 +1,7 @@
-import { LogOut, User, Menu } from 'lucide-react';
+import { LogOut, User, Menu, ArrowLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
-import { useAuthStore, selectUser, useUIStore, selectSidebarCollapsed } from '@/stores';
+import { useNavigate, Link } from 'react-router-dom';
+import { useAuthStore, selectUser, useUIStore, selectSidebarCollapsed, selectBackNavigation } from '@/stores';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -13,13 +13,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { useLogout } from '@/features/auth/api';
-import { LanguageSwitcher, ThemeToggle, NotificationBell } from '@/components/common';
+import { LanguageSwitcher, ThemeToggle, NotificationBell, UserAvatar } from '@/components/common';
 import { ROUTES } from '@/config';
 
 export function Header() {
   const { t } = useTranslation();
   const user = useAuthStore(selectUser);
   const isCollapsed = useUIStore(selectSidebarCollapsed);
+  const backNavigation = useUIStore(selectBackNavigation);
   const toggleSidebar = useUIStore((state) => state.toggleSidebar);
   const navigate = useNavigate();
   const handleLogout = useLogout();
@@ -27,48 +28,56 @@ export function Header() {
   return (
     <header
       className={cn(
-        'fixed top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/80 backdrop-blur-sm px-6 transition-all duration-300',
+        'fixed top-0 z-30 flex h-14 items-center justify-between px-6 transition-all duration-300',
         isCollapsed
           ? 'ltr:left-16 rtl:right-16 ltr:right-0 rtl:left-0'
-          : 'ltr:left-64 rtl:right-64 ltr:right-0 rtl:left-0'
+          : 'ltr:left-60 rtl:right-60 ltr:right-0 rtl:left-0'
       )}
     >
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={toggleSidebar} className="lg:hidden">
+      {/* Left side: back button or mobile menu toggle */}
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={toggleSidebar} className="lg:hidden">
           <Menu className="h-5 w-5" />
         </Button>
+        {backNavigation && (
+          <Link
+            to={backNavigation.to}
+            className="hidden lg:flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4 rtl:rotate-180" />
+            <span>{backNavigation.label}</span>
+          </Link>
+        )}
       </div>
 
-      <div className="flex items-center gap-2">
+      {/* Right side: controls */}
+      <div className="flex items-center gap-1">
         <LanguageSwitcher />
         <ThemeToggle />
         <NotificationBell />
 
-        {/* User dropdown menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="flex items-center gap-3 ltr:ml-2 rtl:mr-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
-                <User className="h-4 w-4 text-primary" />
-              </div>
-              <div className="hidden sm:block text-left">
-                <p className="text-sm font-medium text-foreground">
-                  {user?.firstName} {user?.lastName}
-                </p>
-                <p className="text-xs text-muted-foreground">{user?.email}</p>
-              </div>
-            </Button>
+            <button className="flex items-center gap-2.5 ltr:ml-2 rtl:mr-2 rounded-xl px-2 py-1.5 transition-colors duration-150 hover:bg-secondary/80">
+              <UserAvatar firstName={user?.firstName} lastName={user?.lastName} size="sm" />
+              <span className="hidden sm:inline text-sm font-medium text-foreground">
+                {user?.firstName} {user?.lastName}
+              </span>
+            </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>
-              {user?.firstName} {user?.lastName}
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium">{user?.firstName} {user?.lastName}</p>
+                <p className="text-xs text-muted-foreground">{user?.email}</p>
+              </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate(ROUTES.PROFILE)}>
+            <DropdownMenuItem onClick={() => navigate(ROUTES.PROFILE)} className="cursor-pointer">
               <User className="h-4 w-4" />
               {t('profile.title')}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive focus:text-destructive">
               <LogOut className="h-4 w-4" />
               {t('header.logout')}
             </DropdownMenuItem>
