@@ -23,20 +23,20 @@ public static class CorsConfiguration
             {
                 if (!string.IsNullOrEmpty(baseDomain))
                 {
+                    // O(1) lookup for explicit origins
+                    var originsSet = new HashSet<string>(allowedOrigins, StringComparer.OrdinalIgnoreCase);
+                    var domainSuffix = $".{baseDomain}";
+
                     policy.SetIsOriginAllowed(origin =>
                     {
-                        // Check explicit allowlist first (case-insensitive)
-                        if (allowedOrigins.Any(o => string.Equals(o, origin, StringComparison.OrdinalIgnoreCase)))
+                        if (originsSet.Contains(origin))
                             return true;
 
-                        // Check if origin host matches baseDomain or is a subdomain of it
                         if (Uri.TryCreate(origin, UriKind.Absolute, out var uri))
                         {
                             var host = uri.Host;
-                            if (string.Equals(host, baseDomain, StringComparison.OrdinalIgnoreCase))
-                                return true;
-                            if (host.EndsWith($".{baseDomain}", StringComparison.OrdinalIgnoreCase))
-                                return true;
+                            return host.Equals(baseDomain, StringComparison.OrdinalIgnoreCase)
+                                || host.EndsWith(domainSuffix, StringComparison.OrdinalIgnoreCase);
                         }
 
                         return false;

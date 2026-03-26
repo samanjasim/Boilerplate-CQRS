@@ -38,7 +38,7 @@ function AppContent() {
       setTenantReady(true);
     };
     resolveSubdomain();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [setActiveTenantId, setTenantSlug]);
 
   // Step 2: Existing auth init — gated by tenantReady
   useEffect(() => {

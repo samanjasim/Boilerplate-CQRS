@@ -27,15 +27,18 @@ internal sealed class GetCurrentUserQueryHandler(
             return Result.Failure<UserDto>(UserErrors.NotFound(currentUserService.UserId.Value));
 
         string? tenantSlug = null;
+        string? tenantName = null;
         if (user.TenantId.HasValue)
         {
-            tenantSlug = await context.Tenants
+            var tenant = await context.Tenants
                 .AsNoTracking()
                 .Where(t => t.Id == user.TenantId.Value)
-                .Select(t => t.Slug)
+                .Select(t => new { t.Slug, t.Name })
                 .FirstOrDefaultAsync(cancellationToken);
+            tenantSlug = tenant?.Slug;
+            tenantName = tenant?.Name;
         }
 
-        return Result.Success(user.ToDto(includePermissions: true, tenantSlug: tenantSlug));
+        return Result.Success(user.ToDto(includePermissions: true, tenantSlug: tenantSlug, tenantName: tenantName));
     }
 }

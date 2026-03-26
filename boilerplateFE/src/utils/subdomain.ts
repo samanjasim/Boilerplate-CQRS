@@ -30,6 +30,7 @@ export function isSubdomainAccess(): boolean {
 
 export function getMainDomainUrl(): string {
   if (import.meta.env.DEV) {
+    // "acme.localhost:4000" → "localhost:4000", "localhost:4000" → "localhost:4000"
     return `${window.location.protocol}//${window.location.host.split('.').slice(-1)[0]}`;
   }
   if (!BASE_DOMAIN) return window.location.origin;
