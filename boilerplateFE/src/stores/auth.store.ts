@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import type { User, AuthTokens } from '@/types';
 
 interface AuthState {
@@ -27,47 +26,38 @@ const initialState: AuthState = {
   isLoading: true,
 };
 
-export const useAuthStore = create<AuthStore>()(
-  persist(
-    (set) => ({
-      ...initialState,
+// Tokens are stored in cookies (shared across subdomains), not in localStorage.
+// No persist middleware needed — auth state is rebuilt on mount from cookies + /Auth/me.
+export const useAuthStore = create<AuthStore>()((set) => ({
+  ...initialState,
 
-      setUser: (user) => set({ user, isAuthenticated: true }),
+  setUser: (user) => set({ user, isAuthenticated: true }),
 
-      setTokens: (tokens) => set({ tokens }),
+  setTokens: (tokens) => set({ tokens }),
 
-      login: (user, tokens) =>
-        set({
-          user,
-          tokens,
-          isAuthenticated: true,
-          isLoading: false,
-        }),
-
-      logout: () =>
-        set({
-          user: null,
-          tokens: null,
-          isAuthenticated: false,
-          isLoading: false,
-        }),
-
-      setLoading: (isLoading) => set({ isLoading }),
-
-      updateUser: (updates) =>
-        set((state) => ({
-          user: state.user ? { ...state.user, ...updates } : null,
-        })),
+  login: (user, tokens) =>
+    set({
+      user,
+      tokens,
+      isAuthenticated: true,
+      isLoading: false,
     }),
-    {
-      name: 'starter-auth',
-      storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({
-        tokens: state.tokens,
-      }),
-    }
-  )
-);
+
+  logout: () =>
+    set({
+      user: null,
+      tokens: null,
+      isAuthenticated: false,
+      isLoading: false,
+    }),
+
+  setLoading: (isLoading) => set({ isLoading }),
+
+  updateUser: (updates) =>
+    set((state) => ({
+      user: state.user ? { ...state.user, ...updates } : null,
+    })),
+}));
 
 export const selectUser = (state: AuthStore) => state.user;
 export const selectIsAuthenticated = (state: AuthStore) => state.isAuthenticated;

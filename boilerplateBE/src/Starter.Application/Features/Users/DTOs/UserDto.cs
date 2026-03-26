@@ -16,4 +16,5 @@ public sealed record UserDto(
     IReadOnlyList<string>? Permissions = null,
     Guid? TenantId = null,
     string? TenantName = null,
+    string? TenantSlug = null,
     bool TwoFactorEnabled = false);

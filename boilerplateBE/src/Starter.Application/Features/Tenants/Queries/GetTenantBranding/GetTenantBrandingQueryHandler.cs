@@ -13,6 +13,10 @@ internal sealed class GetTenantBrandingQueryHandler(
 {
     public async Task<Result<TenantBrandingDto>> Handle(GetTenantBrandingQuery request, CancellationToken cancellationToken)
     {
+        // Reject obviously invalid slugs early (DB max length = 100)
+        if (!string.IsNullOrWhiteSpace(request.Slug) && request.Slug.Length > 100)
+            return Result.Failure<TenantBrandingDto>(Error.NotFound("Tenant.NotFound", "Tenant not found."));
+
         Tenant? tenant;
 
         if (request.TenantId.HasValue)
@@ -53,6 +57,9 @@ internal sealed class GetTenantBrandingQueryHandler(
             faviconUrl = await fileService.GetUrlAsync(tenant.FaviconFileId.Value, cancellationToken);
 
         var dto = new TenantBrandingDto(
+            tenant.Id,
+            tenant.Slug,
+            tenant.Status.Name,
             logoUrl,
             faviconUrl,
             tenant.PrimaryColor,

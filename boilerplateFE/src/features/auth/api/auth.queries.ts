@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { authApi } from './auth.api';
 import { queryKeys } from '@/lib/query/keys';
 import { useAuthStore, useUIStore } from '@/stores';
-import { storage } from '@/utils';
+import { storage, getTenantSlug, getTenantUrl, getMainDomainUrl } from '@/utils';
 import { ROUTES } from '@/config';
 import i18n from '@/i18n';
 import type { LoginCredentials, RegisterData, RegisterTenantData, ChangePasswordData, Disable2FAData, PaginationParams } from '@/types';
@@ -49,6 +49,12 @@ export function useLogin() {
       // Always set tenant — clears stale value for platform admins (null)
       useUIStore.getState().setActiveTenantId(fullUser.tenantId ?? null);
       toast.success(i18n.t('auth.welcomeBackUser', { name: fullUser.firstName }));
+
+      // Check if user belongs to a tenant with a slug
+      if (fullUser.tenantSlug) {
+        window.location.href = getTenantUrl(fullUser.tenantSlug, '/dashboard');
+        return;
+      }
       navigate(ROUTES.DASHBOARD);
     },
     onError: () => {
@@ -83,16 +89,21 @@ export function useRegisterTenant() {
 
 export function useLogout() {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const { logout } = useAuthStore();
 
   return useCallback(() => {
+    const slug = getTenantSlug();
     storage.clearTokens();
     logout();
     useUIStore.getState().setActiveTenantId(null);
+    useUIStore.getState().setTenantSlug(null);
     queryClient.clear();
-    navigate(ROUTES.LOGIN);
-  }, [queryClient, navigate, logout]);
+    if (slug) {
+      window.location.href = `${getMainDomainUrl()}/login`;
+    } else {
+      window.location.href = '/login';
+    }
+  }, [queryClient, logout]);
 }
 
 export function useChangePassword() {

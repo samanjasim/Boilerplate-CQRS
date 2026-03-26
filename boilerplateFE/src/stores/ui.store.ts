@@ -12,6 +12,7 @@ interface UIState {
   activeModal: string | null;
   modalData: unknown;
   activeTenantId: string | null;
+  tenantSlug: string | null;
 }
 
 interface UIActions {
@@ -23,6 +24,7 @@ interface UIActions {
   openModal: (modalId: string, data?: unknown) => void;
   closeModal: () => void;
   setActiveTenantId: (tenantId: string | null) => void;
+  setTenantSlug: (slug: string | null) => void;
 }
 
 type UIStore = UIState & UIActions;
@@ -55,6 +57,7 @@ export const useUIStore = create<UIStore>()(
       activeModal: null,
       modalData: null,
       activeTenantId: null,
+      tenantSlug: null,
 
       setTheme: (theme) => {
         set({ theme });
@@ -78,6 +81,8 @@ export const useUIStore = create<UIStore>()(
       closeModal: () => set({ activeModal: null, modalData: null }),
 
       setActiveTenantId: (activeTenantId) => set({ activeTenantId }),
+
+      setTenantSlug: (tenantSlug) => set({ tenantSlug }),
     }),
     {
       name: 'starter-ui',
@@ -87,6 +92,7 @@ export const useUIStore = create<UIStore>()(
         language: state.language,
         sidebarCollapsed: state.sidebarCollapsed,
         activeTenantId: state.activeTenantId,
+        tenantSlug: state.tenantSlug,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
@@ -105,3 +111,4 @@ export const selectSidebarCollapsed = (state: UIStore) => state.sidebarCollapsed
 export const selectActiveModal = (state: UIStore) => state.activeModal;
 export const selectModalData = (state: UIStore) => state.modalData;
 export const selectActiveTenantId = (state: UIStore) => state.activeTenantId;
+export const selectTenantSlug = (state: UIStore) => state.tenantSlug;
