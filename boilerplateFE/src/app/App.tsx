@@ -12,15 +12,19 @@ function AppContent() {
   const { setActiveTenantId, setTenantSlug } = useUIStore();
   const [tenantReady, setTenantReady] = useState(false);
 
+  // Applies tenant primary color to CSS when user has tenantPrimaryColor
   useTenantBranding();
 
-  // Step 1: Resolve subdomain
+  // Step 1: Resolve subdomain → tenantId before auth init
   useEffect(() => {
+    let cancelled = false;
+
     const resolveSubdomain = async () => {
       const slug = getTenantSlug();
       if (slug) {
         try {
           const branding = await tenantsApi.getBranding(slug);
+          if (cancelled) return;
           if (branding && branding.status === 'Active') {
             setActiveTenantId(branding.tenantId);
             setTenantSlug(slug);
@@ -29,15 +33,18 @@ function AppContent() {
             setTenantSlug(null);
           }
         } catch {
+          if (cancelled) return;
           setActiveTenantId(null);
           setTenantSlug(null);
         }
       } else {
         setTenantSlug(null);
       }
-      setTenantReady(true);
+      if (!cancelled) setTenantReady(true);
     };
+
     resolveSubdomain();
+    return () => { cancelled = true; };
   }, [setActiveTenantId, setTenantSlug]);
 
   // Step 2: Existing auth init — gated by tenantReady

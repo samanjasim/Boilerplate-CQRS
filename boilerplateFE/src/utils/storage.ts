@@ -27,8 +27,6 @@ function deleteCookie(name: string): void {
     cookie += `; domain=.${BASE_DOMAIN}`;
   }
   document.cookie = cookie;
-  // Also delete without domain (cleanup old localStorage-era cookies)
-  document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 }
 
 export const storage = {

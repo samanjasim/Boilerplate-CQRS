@@ -1,11 +1,19 @@
 const BASE_DOMAIN = import.meta.env.VITE_BASE_DOMAIN || '';
 
+// DNS label: 1-63 chars, alphanumeric + hyphens, no leading/trailing hyphen
+const SLUG_PATTERN = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
+const RESERVED = new Set(['www', 'api', 'admin', 'app', 'mail', 'smtp', 'ftp']);
+
+function isValidSlug(value: string): boolean {
+  return SLUG_PATTERN.test(value) && !RESERVED.has(value);
+}
+
 export function getTenantSlug(): string | null {
   // Dev fallback: ?tenant=acme query param
   if (import.meta.env.DEV) {
     const params = new URLSearchParams(window.location.search);
-    const tenant = params.get('tenant');
-    if (tenant) return tenant.toLowerCase();
+    const tenant = params.get('tenant')?.toLowerCase();
+    if (tenant && isValidSlug(tenant)) return tenant;
   }
 
   if (!BASE_DOMAIN) return null;
@@ -16,12 +24,11 @@ export function getTenantSlug(): string | null {
   const suffix = `.${BASE_DOMAIN}`;
   if (!hostname.endsWith(suffix)) return null;
 
-  const subdomain = hostname.slice(0, hostname.length - suffix.length);
-  const reserved = ['www', 'api', 'admin', 'app', 'mail', 'smtp', 'ftp'];
-  if (!subdomain || reserved.includes(subdomain.toLowerCase())) return null;
+  const subdomain = hostname.slice(0, hostname.length - suffix.length).toLowerCase();
   if (subdomain.includes('.')) return null;
+  if (!isValidSlug(subdomain)) return null;
 
-  return subdomain.toLowerCase();
+  return subdomain;
 }
 
 export function isSubdomainAccess(): boolean {
