@@ -7,6 +7,7 @@
     <PackageReference Include="Riok.Mapperly" />
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="OpenTelemetry.Api" />
   </ItemGroup>
 
   <ItemGroup>

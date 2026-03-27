@@ -17,6 +17,7 @@
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
     <PackageReference Include="AspNetCore.HealthChecks.NpgSql" />
     <PackageReference Include="AspNetCore.HealthChecks.Redis" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.StackExchangeRedis" />
     <PackageReference Include="BCrypt.Net-Next" />
   </ItemGroup>
 
