@@ -21,7 +21,10 @@ public static class OpenTelemetryConfiguration
             return services;
 
         var serviceName = configuration.GetValue<string>("OpenTelemetry:ServiceName") ?? "starter-api";
-        var otlpEndpoint = configuration.GetValue<string>("OpenTelemetry:OtlpEndpoint") ?? "http://localhost:4317";
+        var otlpEndpoint = configuration.GetValue<string>("OpenTelemetry:OtlpEndpoint") ?? "http://localhost:4318";
+
+        // Enable unencrypted HTTP/2 for gRPC on localhost (Windows/.NET requirement)
+        AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
 
         services.AddOpenTelemetry()
             .ConfigureResource(resource => resource.AddService(serviceName))
@@ -46,7 +49,7 @@ public static class OpenTelemetryConfiguration
                 .AddOtlpExporter(options =>
                 {
                     options.Endpoint = new Uri(otlpEndpoint);
-                    options.Protocol = OtlpExportProtocol.Grpc;
+                    options.Protocol = OtlpExportProtocol.HttpProtobuf;
                 }))
             .WithMetrics(metrics => metrics
                 .AddAspNetCoreInstrumentation()
@@ -54,7 +57,7 @@ public static class OpenTelemetryConfiguration
                 .AddOtlpExporter(options =>
                 {
                     options.Endpoint = new Uri(otlpEndpoint);
-                    options.Protocol = OtlpExportProtocol.Grpc;
+                    options.Protocol = OtlpExportProtocol.HttpProtobuf;
                 }));
 
         // Reconfigure Serilog to also ship logs via OTLP
@@ -66,8 +69,8 @@ public static class OpenTelemetryConfiguration
             .Enrich.WithThreadId()
             .WriteTo.OpenTelemetry(options =>
             {
-                options.Endpoint = otlpEndpoint;
-                options.Protocol = OtlpProtocol.Grpc;
+                options.Endpoint = $"{otlpEndpoint}/v1/logs";
+                options.Protocol = OtlpProtocol.HttpProtobuf;
             })
             .CreateLogger();
 
