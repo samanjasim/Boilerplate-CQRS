@@ -84,4 +84,9 @@ export const API_ENDPOINTS = {
     UPDATE: '/Settings',
     UPDATE_SINGLE: (key: string) => `/Settings/${key}`,
   },
+  API_KEYS: {
+    LIST: '/ApiKeys',
+    DETAIL: (id: string) => `/ApiKeys/${id}`,
+    EMERGENCY_REVOKE: (id: string) => `/ApiKeys/${id}/emergency-revoke`,
+  },
 } as const;
