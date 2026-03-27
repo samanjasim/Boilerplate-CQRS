@@ -11,7 +11,9 @@ public static partial class UserMapper
         this User user,
         bool includePermissions = false,
         string? tenantSlug = null,
-        string? tenantName = null)
+        string? tenantName = null,
+        string? tenantLogoUrl = null,
+        string? tenantPrimaryColor = null)
     {
         return new UserDto(
             user.Id,
@@ -33,6 +35,8 @@ public static partial class UserMapper
             user.TenantId,
             TenantName: tenantName,
             TenantSlug: tenantSlug,
+            TenantLogoUrl: tenantLogoUrl,
+            TenantPrimaryColor: tenantPrimaryColor,
             TwoFactorEnabled: user.TwoFactorEnabled);
     }
 

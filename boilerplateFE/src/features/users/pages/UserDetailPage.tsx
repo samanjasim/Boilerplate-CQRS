@@ -11,19 +11,11 @@ import { useUser, useActivateUser, useSuspendUser, useDeactivateUser, useUnlockU
 import { useRoles, useRemoveUserRole } from '@/features/roles/api';
 import { RoleAssignModal, EditUserModal } from '../components';
 import { usePermissions, useBackNavigation } from '@/hooks';
-import { PERMISSIONS } from '@/constants';
+import { PERMISSIONS, STATUS_BADGE_VARIANT } from '@/constants';
 import { ROUTES } from '@/config';
 import { formatDate, formatDateTime } from '@/utils/format';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query/keys';
-
-const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  Active: 'default',
-  Pending: 'secondary',
-  Suspended: 'destructive',
-  Deactivated: 'destructive',
-  Locked: 'destructive',
-};
 
 export default function UserDetailPage() {
   const { t } = useTranslation();
@@ -104,7 +96,7 @@ export default function UserDetailPage() {
               </h2>
               <p className="text-muted-foreground">@{user.username}</p>
             </div>
-            <Badge variant={STATUS_VARIANT[user.status || 'Active'] || 'default'}>
+            <Badge variant={STATUS_BADGE_VARIANT[user.status || 'Active'] || 'default'}>
               {user.status || t('common.active')}
             </Badge>
           </div>

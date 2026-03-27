@@ -8,8 +8,8 @@ interface PermissionGroup {
 }
 
 export const rolesApi = {
-  getRoles: async (): Promise<PaginatedResponse<Role>> => {
-    const response = await apiClient.get<PaginatedResponse<Role>>(API_ENDPOINTS.ROLES.LIST);
+  getRoles: async (params?: Record<string, unknown>): Promise<PaginatedResponse<Role>> => {
+    const response = await apiClient.get<PaginatedResponse<Role>>(API_ENDPOINTS.ROLES.LIST, { params });
     return response.data;
   },
 

@@ -4,4 +4,5 @@ export const STATUS_BADGE_VARIANT: Record<string, 'default' | 'secondary' | 'des
   Pending: 'secondary',
   Suspended: 'destructive',
   Deactivated: 'destructive',
+  Locked: 'destructive',
 };

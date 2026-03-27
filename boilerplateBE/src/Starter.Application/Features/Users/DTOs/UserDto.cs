@@ -17,4 +17,6 @@ public sealed record UserDto(
     Guid? TenantId = null,
     string? TenantName = null,
     string? TenantSlug = null,
+    string? TenantLogoUrl = null,
+    string? TenantPrimaryColor = null,
     bool TwoFactorEnabled = false);

@@ -5,10 +5,10 @@ import { rolesApi } from './roles.api';
 import { queryKeys } from '@/lib/query/keys';
 import type { CreateRoleData, UpdateRoleData, UpdateRolePermissionsData } from '@/types';
 
-export function useRoles(options?: { enabled?: boolean }) {
+export function useRoles(options?: { params?: Record<string, unknown>; enabled?: boolean }) {
   return useQuery({
-    queryKey: queryKeys.roles.lists(),
-    queryFn: () => rolesApi.getRoles(),
+    queryKey: options?.params ? queryKeys.roles.list(options.params) : queryKeys.roles.lists(),
+    queryFn: () => rolesApi.getRoles(options?.params),
     enabled: options?.enabled,
   });
 }

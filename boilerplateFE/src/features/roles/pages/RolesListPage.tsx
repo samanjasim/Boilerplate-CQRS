@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Plus, Shield } from 'lucide-react';
@@ -5,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { PageHeader, EmptyState } from '@/components/common';
+import { PageHeader, EmptyState, Pagination, getPersistedPageSize } from '@/components/common';
 import { useRoles } from '../api';
 import { usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
@@ -14,8 +15,11 @@ import { ROUTES } from '@/config';
 export default function RolesListPage() {
   const { t } = useTranslation();
   const { hasPermission } = usePermissions();
-  const { data, isLoading, isError } = useRoles();
+  const [pageNumber, setPageNumber] = useState(1);
+  const [pageSize, setPageSize] = useState(getPersistedPageSize);
+  const { data, isLoading, isError } = useRoles({ params: { pageNumber, pageSize } });
   const roles = data?.data ?? [];
+  const pagination = data?.pagination;
 
   if (isError) {
     return (
@@ -80,6 +84,14 @@ export default function RolesListPage() {
             </Link>
           ))}
         </div>
+      )}
+
+      {pagination && (
+        <Pagination
+          pagination={pagination}
+          onPageChange={setPageNumber}
+          onPageSizeChange={(size) => { setPageSize(size); setPageNumber(1); }}
+        />
       )}
     </div>
   );

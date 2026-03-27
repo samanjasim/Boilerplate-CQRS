@@ -11,7 +11,8 @@ namespace Starter.Application.Features.Users.Queries.GetCurrentUser;
 
 internal sealed class GetCurrentUserQueryHandler(
     IApplicationDbContext context,
-    ICurrentUserService currentUserService) : IRequestHandler<GetCurrentUserQuery, Result<UserDto>>
+    ICurrentUserService currentUserService,
+    IFileService fileService) : IRequestHandler<GetCurrentUserQuery, Result<UserDto>>
 {
     public async Task<Result<UserDto>> Handle(GetCurrentUserQuery request, CancellationToken cancellationToken)
     {
@@ -28,17 +29,30 @@ internal sealed class GetCurrentUserQueryHandler(
 
         string? tenantSlug = null;
         string? tenantName = null;
+        string? tenantLogoUrl = null;
+        string? tenantPrimaryColor = null;
+
         if (user.TenantId.HasValue)
         {
             var tenant = await context.Tenants
                 .AsNoTracking()
                 .Where(t => t.Id == user.TenantId.Value)
-                .Select(t => new { t.Slug, t.Name })
+                .Select(t => new { t.Slug, t.Name, t.LogoFileId, t.PrimaryColor })
                 .FirstOrDefaultAsync(cancellationToken);
+
             tenantSlug = tenant?.Slug;
             tenantName = tenant?.Name;
+            tenantPrimaryColor = tenant?.PrimaryColor;
+
+            if (tenant?.LogoFileId.HasValue == true)
+                tenantLogoUrl = await fileService.GetUrlAsync(tenant.LogoFileId.Value, cancellationToken);
         }
 
-        return Result.Success(user.ToDto(includePermissions: true, tenantSlug: tenantSlug, tenantName: tenantName));
+        return Result.Success(user.ToDto(
+            includePermissions: true,
+            tenantSlug: tenantSlug,
+            tenantName: tenantName,
+            tenantLogoUrl: tenantLogoUrl,
+            tenantPrimaryColor: tenantPrimaryColor));
     }
 }
