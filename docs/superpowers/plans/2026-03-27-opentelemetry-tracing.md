@@ -563,59 +563,106 @@ git commit -m "feat(otel): add configuration and Jaeger container"
 
 ---
 
-### Task 7: Integration Verification
+### Task 7: Integration Verification via Test App
 
-This task verifies the full pipeline works end-to-end.
+Use the post-feature testing workflow (see CLAUDE.md → "Post-Feature Testing Workflow") to verify end-to-end in an isolated test instance.
 
-- [ ] **Step 1: Start Jaeger container**
+- [ ] **Step 1: Create test app via rename script**
+
+Run from the worktree root:
+```bash
+powershell -File scripts/rename.ps1 -Name "_testOtel" -OutputDir "."
+```
+Expected: Creates `_testOtel/` directory with `_testOtel-BE/` and `_testOtel-FE/` inside (gitignored by `_test*` pattern).
+
+- [ ] **Step 2: Drop old test DB if exists**
 
 Run:
 ```bash
-cd boilerplateBE && docker compose up -d jaeger
+PGPASSWORD=123456 psql -U postgres -c "DROP DATABASE IF EXISTS _testoteldb;"
+```
+
+- [ ] **Step 3: Reconfigure test app ports**
+
+In the test app backend (`_testOtel/_testOtel-BE/`):
+- Change launch profile port to `5100` in `Properties/launchSettings.json`
+- Add `http://localhost:3100` to CORS allowed origins in `appsettings.Development.json`
+- Fix seed email: change `superadmin@_testotel.com` to `superadmin@testotel.com` in `appsettings.Development.json` (Zod rejects `_` prefix in email domains)
+
+In the test app frontend (`_testOtel/_testOtel-FE/`):
+- Update `.env` to set `VITE_API_BASE_URL=http://localhost:5100/api/v1`
+
+- [ ] **Step 4: Start Jaeger container**
+
+Run:
+```bash
+cd _testOtel/_testOtel-BE && docker compose up -d jaeger
 ```
 Expected: Jaeger container starts. Verify UI at `http://localhost:16686`.
 
-- [ ] **Step 2: Run the backend**
+- [ ] **Step 5: Build and run the test backend**
 
 Run:
 ```bash
-cd boilerplateBE/src/Starter.Api && dotnet run --launch-profile http
+cd _testOtel/_testOtel-BE && dotnet build
+cd _testOtel/_testOtel-BE/src/_testOtel.Api && dotnet run --launch-profile http
 ```
-Expected: App starts. Console shows no OTel connection errors. Look for Serilog OpenTelemetry sink initialization.
+Expected: App starts on port 5100. Migrations run, database created, seed data applied. Console shows no OTel connection errors. Serilog OpenTelemetry sink initializes.
 
-- [ ] **Step 3: Make test API calls**
+- [ ] **Step 6: Build and run the test frontend**
 
 Run:
 ```bash
-curl http://localhost:5000/health
-curl http://localhost:5000/api/v1/Auth/login -X POST -H "Content-Type: application/json" -d '{"email":"superadmin@starter.com","password":"Admin@123456"}'
+cd _testOtel/_testOtel-FE && npm install && npm run dev
+```
+Expected: Frontend starts on port 3100.
+
+- [ ] **Step 7: Verify traces via API calls**
+
+Run:
+```bash
+curl http://localhost:5100/health
+curl http://localhost:5100/api/v1/Auth/login -X POST -H "Content-Type: application/json" -d '{"email":"superadmin@testotel.com","password":"Admin@123456"}'
 ```
 
-- [ ] **Step 4: Verify traces in Jaeger**
-
-Open `http://localhost:16686`. Select service `starter-api`. Click "Find Traces".
+Open Jaeger at `http://localhost:16686`. Select service (will be named after the test app). Click "Find Traces".
 
 Expected:
 - The `/api/v1/Auth/login` request appears as a trace
-- Expanding it shows nested spans: ASP.NET → `MediatR LoginCommand` → EF Core DB query
+- Expanding shows nested spans: ASP.NET → `MediatR LoginCommand` → EF Core DB query
 - The `/health` endpoint does NOT appear (filtered out)
 
-- [ ] **Step 5: Verify log correlation**
+- [ ] **Step 8: Playwright regression test**
 
-Check console output for log entries. They should contain `TraceId` values matching the traces in Jaeger.
+Using Playwright MCP, run:
+1. Navigate to `http://localhost:3100`
+2. Login with `superadmin@testotel.com` / `Admin@123456`
+3. Verify navigation: Dashboard, Users, Roles, Files, Settings, API Keys pages all load
+4. Verify basic CRUD still works (e.g., view user list, view role list)
 
-- [ ] **Step 6: Verify disabled mode**
+This confirms OTel instrumentation doesn't break any existing functionality.
 
-Temporarily set `"Enabled": false` in `appsettings.Development.json`. Restart the app.
+- [ ] **Step 9: Verify log correlation**
+
+Check backend console output for log entries. They should contain `TraceId` values matching the traces in Jaeger.
+
+- [ ] **Step 10: Verify disabled mode**
+
+Temporarily set `"Enabled": false` in the test app's `appsettings.Development.json`. Restart the backend.
 
 Expected: App starts normally without any OTel-related log output. No connection attempts to port 4317.
 
 Restore `"Enabled": true` after verification.
 
-- [ ] **Step 7: Final build check**
+- [ ] **Step 11: Leave running for manual QA**
 
-Run:
+Report URLs to user:
+- Frontend: `http://localhost:3100`
+- Backend: `http://localhost:5100/swagger`
+- Jaeger: `http://localhost:16686`
+
+Wait for user confirmation before pushing. After confirmation, clean up:
 ```bash
-cd boilerplateBE && dotnet build
+rm -rf _testOtel
+PGPASSWORD=123456 psql -U postgres -c "DROP DATABASE IF EXISTS _testoteldb;"
 ```
-Expected: Clean build, no warnings related to OTel packages.
