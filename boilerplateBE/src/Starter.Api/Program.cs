@@ -36,6 +36,7 @@ builder.Services.AddApiVersioningConfiguration();
 builder.Services.AddSwaggerConfiguration();
 builder.Services.AddCorsConfiguration(builder.Configuration);
 builder.Services.AddRateLimitingConfiguration(builder.Configuration);
+builder.Services.AddOpenTelemetryObservability(builder.Configuration);
 
 var app = builder.Build();
 
@@ -46,7 +47,6 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
         | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
 });
 
-app.UseCorrelationId();
 app.UseExceptionHandling();
 app.UseRequestLogging();
 
