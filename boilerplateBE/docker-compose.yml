@@ -52,6 +52,17 @@ services:
       - minio-data:/data
     restart: unless-stopped
 
+  jaeger:
+    image: jaegertracing/jaeger:2
+    container_name: starter-jaeger
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    restart: unless-stopped
+
 volumes:
   postgres-data:
   minio-data:
