@@ -42,6 +42,17 @@ export const PERMISSIONS = {
     Delete: 'Files.Delete',
     Manage: 'Files.Manage',
   },
+  ApiKeys: {
+    View: 'ApiKeys.View',
+    Create: 'ApiKeys.Create',
+    Update: 'ApiKeys.Update',
+    Delete: 'ApiKeys.Delete',
+    ViewPlatform: 'ApiKeys.ViewPlatform',
+    CreatePlatform: 'ApiKeys.CreatePlatform',
+    UpdatePlatform: 'ApiKeys.UpdatePlatform',
+    DeletePlatform: 'ApiKeys.DeletePlatform',
+    EmergencyRevoke: 'ApiKeys.EmergencyRevoke',
+  },
   System: {
     ViewAuditLogs: 'System.ViewAuditLogs',
     ManageSettings: 'System.ManageSettings',

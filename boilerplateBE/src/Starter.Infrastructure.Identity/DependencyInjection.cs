@@ -1,4 +1,5 @@
 using System.Text;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
@@ -6,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Starter.Application.Common.Interfaces;
+using Starter.Infrastructure.Identity.Authentication;
 using Starter.Infrastructure.Identity.Authorization;
 using Starter.Infrastructure.Identity.Models;
 using Starter.Infrastructure.Identity.Services;
@@ -38,13 +40,24 @@ public static class DependencyInjection
         services.AddScoped<IAuditContextProvider, AuditContextProvider>();
         services.AddSingleton<ITotpService, TotpService>();
 
-        // Authentication
+        // Authentication — composite: JWT (default) + API Key
         services.AddAuthentication(options =>
         {
-            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultAuthenticateScheme = "CompositeAuth";
             options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultScheme = "CompositeAuth";
         })
+        .AddPolicyScheme("CompositeAuth", "JWT or API Key", options =>
+        {
+            options.ForwardDefaultSelector = context =>
+            {
+                if (context.Request.Headers.ContainsKey(ApiKeyAuthenticationHandler.HeaderName))
+                    return ApiKeyAuthenticationHandler.SchemeName;
+                return JwtBearerDefaults.AuthenticationScheme;
+            };
+        })
+        .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(
+            ApiKeyAuthenticationHandler.SchemeName, null)
         .AddJwtBearer(options =>
         {
             options.SaveToken = true;

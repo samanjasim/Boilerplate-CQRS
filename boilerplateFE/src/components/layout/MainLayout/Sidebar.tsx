@@ -11,6 +11,7 @@ import {
   FolderOpen,
   FileText,
   Settings2,
+  KeyRound,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore, useAuthStore, selectSidebarCollapsed, selectUser } from '@/stores';
@@ -48,6 +49,9 @@ export function Sidebar() {
       : []),
     ...(hasPermission(PERMISSIONS.System.ViewAuditLogs)
       ? [{ label: t('nav.auditLogs'), icon: ClipboardList, path: ROUTES.AUDIT_LOGS.LIST }]
+      : []),
+    ...(hasPermission(PERMISSIONS.ApiKeys.View)
+      ? [{ label: t('nav.apiKeys'), icon: KeyRound, path: ROUTES.API_KEYS.LIST }]
       : []),
     ...(hasPermission(PERMISSIONS.System.ManageSettings)
       ? [{ label: t('nav.settings'), icon: Settings2, path: ROUTES.SETTINGS }]

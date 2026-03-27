@@ -4,6 +4,7 @@ namespace Starter.Infrastructure.Identity.Authorization;
 
 /// <summary>
 /// Authorization handler for permission-based authorization.
+/// Succeeds if the user holds ANY one of the requirement's permissions (any-of semantics).
 /// Checks permissions from JWT claims for performance.
 /// </summary>
 public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionRequirement>
@@ -13,20 +14,15 @@ public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionReq
         PermissionRequirement requirement)
     {
         if (context.User?.Identity?.IsAuthenticated != true)
-        {
             return Task.CompletedTask;
-        }
 
-        // Check if user has the required permission in their claims
-        var permissions = context.User.Claims
+        var userPermissions = context.User.Claims
             .Where(c => c.Type == "permission")
             .Select(c => c.Value)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        if (permissions.Contains(requirement.Permission))
-        {
+        if (requirement.Permissions.Any(p => userPermissions.Contains(p)))
             context.Succeed(requirement);
-        }
 
         return Task.CompletedTask;
     }
