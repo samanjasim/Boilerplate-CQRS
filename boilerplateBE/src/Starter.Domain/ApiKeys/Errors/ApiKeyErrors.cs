@@ -8,6 +8,10 @@ public static class ApiKeyErrors
         "ApiKey.NotFound",
         "The specified API key was not found.");
 
+    public static readonly Error AlreadyRevoked = Error.Conflict(
+        "ApiKey.AlreadyRevoked",
+        "API key is already revoked.");
+
     public static readonly Error TenantCannotCreatePlatformKey = new(
         "ApiKey.TenantCannotCreatePlatformKey",
         "Tenant users cannot create platform keys.",
