@@ -41,6 +41,11 @@ public static class Roles
             Permissions.Files.Upload,
             Permissions.Files.Delete,
             Permissions.Files.Manage,
+            // API Keys
+            Permissions.ApiKeys.View,
+            Permissions.ApiKeys.Create,
+            Permissions.ApiKeys.Update,
+            Permissions.ApiKeys.Delete,
             // System
             Permissions.System.ViewDashboard,
             Permissions.System.ExportData,

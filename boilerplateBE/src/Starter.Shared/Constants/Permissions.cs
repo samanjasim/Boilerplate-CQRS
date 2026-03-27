@@ -35,6 +35,7 @@ namespace Starter.Shared.Constants;
 /// | System     |      |      |        |        |        | ViewDashboard, ViewAuditLogs, ManageSettings, ExportData, ForceExport |
 /// | Tenants    |  ✓   |  ✓   |   ✓    |   ✓    |   ✓    |                          |
 /// | Files      |  ✓   |      |        |        |   ✓    | Upload, Manage           |
+/// | ApiKeys    |  ✓   |      |   ✓    |   ✓    |   ✓    | ViewPlatform, CreatePlatform, UpdatePlatform, DeletePlatform, EmergencyRevoke |
 /// </summary>
 public static class Permissions
 {
@@ -77,6 +78,20 @@ public static class Permissions
         public const string Upload = "Files.Upload";
         public const string Delete = "Files.Delete";
         public const string Manage = "Files.Manage";
+    }
+
+    // ─── API Keys ────────────────────────────────────
+    public static class ApiKeys
+    {
+        public const string View = "ApiKeys.View";
+        public const string Create = "ApiKeys.Create";
+        public const string Update = "ApiKeys.Update";
+        public const string Delete = "ApiKeys.Delete";
+        public const string ViewPlatform = "ApiKeys.ViewPlatform";
+        public const string CreatePlatform = "ApiKeys.CreatePlatform";
+        public const string UpdatePlatform = "ApiKeys.UpdatePlatform";
+        public const string DeletePlatform = "ApiKeys.DeletePlatform";
+        public const string EmergencyRevoke = "ApiKeys.EmergencyRevoke";
     }
 
     // ─── Tenants ─────────────────────────────────────
@@ -144,6 +159,17 @@ public static class Permissions
         yield return (Files.Upload, "Upload new files", "Files");
         yield return (Files.Delete, "Delete files", "Files");
         yield return (Files.Manage, "Manage file metadata", "Files");
+
+        // ─── API Keys ───
+        yield return (ApiKeys.View, "View API keys", "ApiKeys");
+        yield return (ApiKeys.Create, "Create API keys", "ApiKeys");
+        yield return (ApiKeys.Update, "Update API keys", "ApiKeys");
+        yield return (ApiKeys.Delete, "Delete (revoke) API keys", "ApiKeys");
+        yield return (ApiKeys.ViewPlatform, "View platform API keys and all tenant keys (read-only)", "ApiKeys");
+        yield return (ApiKeys.CreatePlatform, "Create platform-scoped API keys", "ApiKeys");
+        yield return (ApiKeys.UpdatePlatform, "Update platform API keys", "ApiKeys");
+        yield return (ApiKeys.DeletePlatform, "Revoke platform API keys", "ApiKeys");
+        yield return (ApiKeys.EmergencyRevoke, "Emergency revoke any tenant API key", "ApiKeys");
 
         // ─── Tenants ───
         yield return (Tenants.View, "View tenants list", "Tenants");
