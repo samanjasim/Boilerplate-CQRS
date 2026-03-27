@@ -1,3 +1,4 @@
+using Starter.Domain.ApiKeys.Entities;
 using Starter.Domain.Common;
 using Starter.Domain.Identity.Entities;
 using Starter.Domain.Tenants.Entities;
@@ -22,6 +23,7 @@ public interface IApplicationDbContext
     DbSet<FileMetadata> FileMetadata { get; }
     DbSet<ReportRequest> ReportRequests { get; }
     DbSet<SystemSetting> SystemSettings { get; }
+    DbSet<ApiKey> ApiKeys { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

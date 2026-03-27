@@ -1,5 +1,6 @@
 using System.Reflection;
 using Starter.Application.Common.Interfaces;
+using Starter.Domain.ApiKeys.Entities;
 using Starter.Domain.Common;
 using Starter.Domain.Identity.Entities;
 using Starter.Domain.Tenants.Entities;
@@ -26,6 +27,7 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<FileMetadata> FileMetadata => Set<FileMetadata>();
     public DbSet<ReportRequest> ReportRequests => Set<ReportRequest>();
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
+    public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
 
     // EF Core evaluates this per-query via the expression tree.
     // Must be a property (not a method) for EF to parameterize it.
@@ -73,6 +75,9 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
 
         modelBuilder.Entity<SystemSetting>().HasQueryFilter(s =>
             TenantId == null || s.TenantId == null || s.TenantId == TenantId);
+
+        modelBuilder.Entity<ApiKey>().HasQueryFilter(a =>
+            TenantId == null || a.TenantId == TenantId);
 
         // Tenant entity: tenant users see only their own tenant; platform admins see all
         modelBuilder.Entity<Tenant>().HasQueryFilter(t =>
