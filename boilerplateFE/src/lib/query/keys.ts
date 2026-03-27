@@ -71,4 +71,12 @@ export const queryKeys = {
     all: ['settings'] as const,
     list: () => [...queryKeys.settings.all, 'list'] as const,
   },
+
+  apiKeys: {
+    all: ['apiKeys'] as const,
+    lists: () => [...queryKeys.apiKeys.all, 'list'] as const,
+    list: (filters?: object) => [...queryKeys.apiKeys.lists(), filters ?? {}] as const,
+    details: () => [...queryKeys.apiKeys.all, 'detail'] as const,
+    detail: (id: string) => [...queryKeys.apiKeys.details(), id] as const,
+  },
 } as const;

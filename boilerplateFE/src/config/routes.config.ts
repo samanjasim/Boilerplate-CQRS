@@ -61,4 +61,9 @@ export const ROUTES = {
 
   // Settings
   SETTINGS: '/settings',
+
+  // API Keys
+  API_KEYS: {
+    LIST: '/api-keys',
+  },
 } as const;

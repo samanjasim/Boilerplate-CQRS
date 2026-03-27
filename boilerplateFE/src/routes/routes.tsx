@@ -30,6 +30,7 @@ const NotificationsPage = lazy(() => import('@/features/notifications/pages/Noti
 const FilesPage = lazy(() => import('@/features/files/pages/FilesPage'));
 const ReportsPage = lazy(() => import('@/features/reports/pages/ReportsPage'));
 const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage'));
+const ApiKeysPage = lazy(() => import('@/features/api-keys/pages/ApiKeysPage'));
 const NotFoundPage = lazy(() => import('@/routes/NotFoundPage'));
 
 export const routes: RouteObject[] = [
@@ -144,6 +145,14 @@ export const routes: RouteObject[] = [
             element: <PermissionGuard permission={PERMISSIONS.System.ManageSettings} />,
             children: [
               { path: ROUTES.SETTINGS, element: <SettingsPage /> },
+            ],
+          },
+
+          // API Keys
+          {
+            element: <PermissionGuard permission={PERMISSIONS.ApiKeys.View} />,
+            children: [
+              { path: ROUTES.API_KEYS.LIST, element: <ApiKeysPage /> },
             ],
           },
         ],
