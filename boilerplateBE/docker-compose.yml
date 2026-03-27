@@ -53,7 +53,7 @@ services:
     restart: unless-stopped
 
   jaeger:
-    image: jaegertracing/jaeger:2
+    image: jaegertracing/all-in-one:latest
     container_name: starter-jaeger
     ports:
       - "16686:16686"
