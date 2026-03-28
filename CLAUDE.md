@@ -13,7 +13,154 @@ cd boilerplateFE && npm run dev
 
 # Build check
 cd boilerplateFE && npm run build
+
+# Docker services (from boilerplateBE/)
+docker compose up -d
 ```
+
+## Architecture Overview
+
+```
+API (Controllers) → Application (MediatR CQRS) → Domain (Entities) ← Infrastructure (EF Core, Services)
+```
+
+- **Clean Architecture** — Domain has zero dependencies. Application defines interfaces. Infrastructure implements them.
+- **CQRS via MediatR** — Commands mutate state, Queries read. Each handler is a single file.
+- **Multi-tenancy** — Global EF query filters on `ApplicationDbContext`. Platform admins (`TenantId=null`) see all data. Tenant users see only their tenant's data.
+- **Auth** — JWT bearer tokens + API key auth (`X-Api-Key` header). Refresh token rotation. TOTP/2FA.
+- **Result pattern** — All handlers return `Result<T>`. Controllers use `HandleResult()` / `HandlePagedResult()`.
+- **Pipeline behaviors** — `ValidationBehavior`, `LoggingBehavior`, `PerformanceBehavior`, `TracingBehavior` (OpenTelemetry).
+
+## Feature Inventory
+
+### Backend (11 features, 12 controllers)
+
+| Feature | Key Operations | Controller | Domain Entity |
+|---------|---------------|------------|---------------|
+| Auth | Login, Register, 2FA, Sessions, Invitations, Password Reset | AuthController | User, Session, LoginHistory, Invitation |
+| Users | CRUD, Activate/Suspend/Deactivate/Unlock | UsersController | User, UserRole |
+| Roles | CRUD, Permission matrix management | RolesController | Role, RolePermission, Permission |
+| Tenants | CRUD, Status, Branding, Business Info | TenantsController | Tenant |
+| Files | Upload, Download (signed URLs), Delete, List | FilesController | FileMetadata |
+| Reports | Request (async), Download, Delete, List | ReportsController | ReportRequest |
+| Notifications | List, Mark read, Preferences | NotificationsController | Notification, NotificationPreference |
+| Settings | List, Update (per-tenant overrides) | SettingsController | SystemSetting |
+| Audit Logs | List with filters (read-only) | AuditLogsController | AuditLog |
+| Permissions | List (read-only) | PermissionsController | Permission |
+| API Keys | Create, Update, Revoke, Emergency Revoke | ApiKeysController | ApiKey |
+
+### Frontend (13 feature modules)
+
+| Feature | Pages | Key Hooks |
+|---------|-------|-----------|
+| auth | Login, Register, RegisterTenant, ForgotPassword, VerifyEmail, AcceptInvite | useLogin, useRegister |
+| dashboard | DashboardPage | useUsers, useRoles, useAuditLogs |
+| users | UsersListPage, UserDetailPage | useSearchUsers, useUsers |
+| roles | RolesListPage, RoleDetailPage, RoleCreatePage, RoleEditPage | useRoles, useRole |
+| tenants | TenantsListPage, TenantDetailPage | useTenants, useTenant |
+| files | FilesPage | useFiles, useUploadFile |
+| reports | ReportsPage | useReports, useRequestReport |
+| notifications | NotificationsPage | useNotifications |
+| settings | SettingsPage | useSettings, useUpdateSettings |
+| audit-logs | AuditLogsPage | useAuditLogs |
+| profile | ProfilePage | useProfile, useLoginHistory |
+| api-keys | ApiKeysPage | useApiKeys |
+| landing | LandingPage | — |
+
+## Backend Development Patterns
+
+### Adding a New Feature (End-to-End)
+
+1. **Domain** — Create entity in `Starter.Domain/{Feature}/Entities/` extending `AggregateRoot`. Add `Errors/` and `Enums/` as needed.
+2. **Application** — Create `Starter.Application/Features/{Feature}/`:
+   - `Commands/{Action}/{Action}Command.cs` — sealed record implementing `IRequest<Result<T>>`
+   - `Commands/{Action}/{Action}CommandHandler.cs` — sealed class with primary constructor
+   - `Commands/{Action}/{Action}CommandValidator.cs` — `AbstractValidator<T>` (optional)
+   - `Queries/{Query}/{Query}Query.cs` + `{Query}QueryHandler.cs`
+   - `DTOs/{Feature}Dto.cs`
+3. **Infrastructure** — Add `DbSet` to `IApplicationDbContext` + `ApplicationDbContext`. Add EF config in `Persistence/Configurations/`. Add global tenant filter if multi-tenant.
+4. **API** — Create controller inheriting `BaseApiController(ISender)`. Route: `api/v{version}/[controller]`. Use `[Authorize(Policy = Permissions.{Module}.{Action})]`.
+5. **Permissions** — Add module to `Starter.Shared/Constants/Permissions.cs`. Map to roles in `Constants/Roles.cs`. Mirror in `boilerplateFE/src/constants/permissions.ts`.
+6. **Seed** — Update `DataSeeder` if initial data needed.
+7. **Migration** — `dotnet ef migrations add {Name} --project src/Starter.Infrastructure --startup-project src/Starter.Api`
+
+### Naming Conventions
+
+| Type | Pattern | Example |
+|------|---------|---------|
+| Command | `{Action}{Entity}Command` | `CreateApiKeyCommand` |
+| Handler | `{Action}{Entity}CommandHandler` | `CreateApiKeyCommandHandler` |
+| Validator | `{Action}{Entity}CommandValidator` | `CreateApiKeyCommandValidator` |
+| Query | `Get{Entity}ByIdQuery` / `Get{Entities}Query` | `GetApiKeyByIdQuery` |
+| DTO | `{Entity}Dto` | `ApiKeyDto` |
+| Errors | `{Entity}Errors` (static class) | `ApiKeyErrors.NotFound` |
+| Controller | `{Entities}Controller` (plural) | `ApiKeysController` |
+
+### Multi-Tenancy Rules
+
+- Entities with `TenantId` get a global query filter in `ApplicationDbContext.OnModelCreating()`
+- Platform admins (`TenantId=null`) see all data; tenant users see only their tenant
+- Use `.IgnoreQueryFilters()` when cross-tenant access is needed (e.g., uniqueness checks)
+- Never expose `TenantId` in API responses — it's an internal concern
+
+## Frontend Development Patterns
+
+### Adding a New Feature (End-to-End)
+
+1. **Feature folder** — `src/features/{feature}/api/`, `pages/`, `components/`, `index.ts`
+2. **API** — Add endpoints to `src/config/api.config.ts`. Create `{feature}.api.ts` (typed API calls) + `{feature}.queries.ts` (TanStack Query hooks with `queryKeys`).
+3. **Types** — Add to `src/types/{feature}.types.ts`
+4. **Routes** — Add to `src/config/routes.config.ts` (paths) + `src/routes/routes.tsx` (lazy components with PermissionGuard)
+5. **Navigation** — Add to Sidebar in `src/components/layout/MainLayout/Sidebar.tsx`
+6. **Permissions** — Add to `src/constants/permissions.ts` (mirror from BE)
+
+### API Hook Pattern
+
+```ts
+// api/{feature}.api.ts — raw API calls
+export const featureApi = {
+  getAll: (params?) => apiClient.get(API_ENDPOINTS.FEATURE.LIST, { params }),
+  create: (data) => apiClient.post(API_ENDPOINTS.FEATURE.CREATE, data),
+};
+
+// api/{feature}.queries.ts — TanStack Query hooks
+export function useFeatures(params) {
+  return useQuery({ queryKey: queryKeys.feature.list(params), queryFn: () => featureApi.getAll(params) });
+}
+```
+
+## Environment Setup
+
+### Docker Services (run `docker compose up -d` from `boilerplateBE/`)
+
+| Service | Ports | Purpose |
+|---------|-------|---------|
+| PostgreSQL | 5432 | Primary database |
+| Redis | 6379 | Distributed cache |
+| RabbitMQ | 5672, 15672 | Message broker + management UI |
+| Mailpit | 1025, 8025 | Dev SMTP server + email viewer |
+| MinIO | 9000, 9001 | S3-compatible file storage + console |
+| Jaeger | 16686, 4317, 4318 | Distributed tracing UI + OTLP |
+| Prometheus | 9090 | Metrics collection |
+
+### Key URLs (development)
+
+| URL | Service |
+|-----|---------|
+| http://localhost:5000/swagger | API Swagger UI |
+| http://localhost:3000 | Frontend |
+| http://localhost:8025 | Mailpit (email viewer) |
+| http://localhost:9001 | MinIO Console |
+| http://localhost:16686 | Jaeger UI |
+| http://localhost:9090 | Prometheus |
+| http://localhost:15672 | RabbitMQ Management |
+
+### Default Credentials
+
+- **App**: `superadmin@starter.com` / `Admin@123456`
+- **MinIO**: `minioadmin` / `minioadmin`
+- **RabbitMQ**: `guest` / `guest`
+- **PostgreSQL**: `postgres` / `123456`
 
 ## Frontend Rules — Must Always Follow
 
@@ -78,3 +225,9 @@ See `.claude/skills/post-feature-testing.md` for full details.
 - EF Core migrations in `Starter.Infrastructure/Persistence/Migrations/`
 - Seed data applied on startup when `DatabaseSettings.SeedDataOnStartup = true`
 - Default credentials: `superadmin@starter.com` / `Admin@123456`
+- **OpenTelemetry** — Enabled via `OpenTelemetry:Enabled` in appsettings. Traces to Jaeger via OTLP at port 4318.
+- **Serilog** — Structured logging to console + daily rolling file (`logs/`). Enriched with environment, machine, thread ID.
+- **Rate limiting** — Global: 10/s, 100/m. Login: 5/m. Register: 10/h. Returns 429.
+- **Health checks** — `/health` endpoint for all external services.
+- **API versioning** — URL path (`/api/v1/`). Swagger per version.
+- **CORS** — Explicit origin whitelist in `appsettings.Development.json` → `Cors:AllowedOrigins`.

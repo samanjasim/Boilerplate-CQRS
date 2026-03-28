@@ -233,48 +233,78 @@ This checklist covers every user-facing feature in the boilerplate. Run through 
 | 17.17 | Tenant isolation | Tenant user only sees own reports |
 | 17.18 | Notification on report completion | Bell icon updates, toast if Ably enabled |
 
-## 18. Notifications
+## 18. System Settings
 
 | # | Test Case | Expected |
 |---|-----------|----------|
-| 18.1 | Bell icon in header | Shows unread count badge |
-| 18.2 | Click bell → dropdown | Shows recent notifications |
-| 18.3 | Click notification → marks as read | Unread count decrements |
-| 18.4 | "View All" link → notifications page | Full paginated list |
-| 18.5 | Mark all as read | All notifications marked read |
-| 18.6 | Polling fallback (no Ably) | Unread count refreshes every 30s |
+| 18.1 | Navigate to `/settings` as admin | Settings page with category tabs |
+| 18.2 | Click each category tab | Shows settings for that category |
+| 18.3 | Update a text setting value | Value saved, success toast |
+| 18.4 | Toggle a boolean setting | Toggle state changes, persists on reload |
+| 18.5 | Update a secret/password field | Field masked, value saved |
+| 18.6 | View settings as non-admin (no ManageSettings permission) | Access denied, redirect |
+| 18.7 | Reload page after changes | All values persist correctly |
+| 18.8 | Save button disabled when no changes made | Button only active after edits |
 
-## 19. Theme & Language
-
-| # | Test Case | Expected |
-|---|-----------|----------|
-| 19.1 | Toggle dark mode | HTML gets `class="dark"`, UI colors change |
-| 19.2 | Toggle back to light mode | `class="light"`, UI reverts |
-| 19.3 | Switch to Arabic | All text in Arabic, `dir="rtl"`, `lang="ar"` |
-| 19.4 | Switch to Kurdish | All text in Kurdish, RTL layout |
-| 19.5 | Switch back to English | All text in English, `dir="ltr"` |
-| 19.6 | Theme persists on page reload | Theme stays after F5 |
-| 19.7 | Language persists on page reload | Language stays after F5 |
-
-## 20. Tenant Data Isolation
+## 19. API Key Management
 
 | # | Test Case | Expected |
 |---|-----------|----------|
-| 20.1 | Tenant user cannot see SuperAdmin | Not in users list |
-| 20.2 | Tenant user cannot see other tenants' users | Only own tenant's users |
-| 20.3 | Tenant user sees only own tenant in tenants list | Single row |
-| 20.4 | Tenant user files isolated | Only own tenant's files |
-| 20.5 | Tenant user audit logs isolated | Only own tenant's logs |
-| 20.6 | Tenant user reports isolated | Only own tenant's reports |
-| 20.7 | SuperAdmin sees all data across tenants | Full access |
+| 19.1 | Navigate to `/api-keys` as admin | API keys page with tenant/platform tabs |
+| 19.2 | Create a tenant API key with name and expiration | Key created, secret shown once |
+| 19.3 | Copy secret to clipboard | Clipboard contains the secret |
+| 19.4 | Close creation dialog and reopen list | New key appears, secret no longer visible |
+| 19.5 | Revoke an API key | Key status changes to Revoked |
+| 19.6 | Try to use revoked key via API | 401 Unauthorized |
+| 19.7 | Create platform API key (as SuperAdmin) | Key created with isPlatformKey flag |
+| 19.8 | Emergency revoke a tenant key (as SuperAdmin) | Key revoked across tenants |
+| 19.9 | View expired key | Shows expired status badge |
+| 19.10 | Update key name | Name updated, success toast |
+| 19.11 | Non-admin cannot access API keys page | Access denied, redirect |
+| 19.12 | Keys from one tenant not visible to another | Tenant isolation verified |
 
-## 21. Logout
+## 20. Notifications
 
 | # | Test Case | Expected |
 |---|-----------|----------|
-| 21.1 | Click user dropdown → Logout | Clears tokens, redirects to `/login` |
-| 21.2 | After logout, cannot access protected routes | Redirects to `/login` |
-| 21.3 | After logout, API calls return 401 | No stale data |
+| 20.1 | Bell icon in header | Shows unread count badge |
+| 20.2 | Click bell → dropdown | Shows recent notifications |
+| 20.3 | Click notification → marks as read | Unread count decrements |
+| 20.4 | "View All" link → notifications page | Full paginated list |
+| 20.5 | Mark all as read | All notifications marked read |
+| 20.6 | Polling fallback (no Ably) | Unread count refreshes every 30s |
+
+## 21. Theme & Language
+
+| # | Test Case | Expected |
+|---|-----------|----------|
+| 21.1 | Toggle dark mode | HTML gets `class="dark"`, UI colors change |
+| 21.2 | Toggle back to light mode | `class="light"`, UI reverts |
+| 21.3 | Switch to Arabic | All text in Arabic, `dir="rtl"`, `lang="ar"` |
+| 21.4 | Switch to Kurdish | All text in Kurdish, RTL layout |
+| 21.5 | Switch back to English | All text in English, `dir="ltr"` |
+| 21.6 | Theme persists on page reload | Theme stays after F5 |
+| 21.7 | Language persists on page reload | Language stays after F5 |
+
+## 22. Tenant Data Isolation
+
+| # | Test Case | Expected |
+|---|-----------|----------|
+| 22.1 | Tenant user cannot see SuperAdmin | Not in users list |
+| 22.2 | Tenant user cannot see other tenants' users | Only own tenant's users |
+| 22.3 | Tenant user sees only own tenant in tenants list | Single row |
+| 22.4 | Tenant user files isolated | Only own tenant's files |
+| 22.5 | Tenant user audit logs isolated | Only own tenant's logs |
+| 22.6 | Tenant user reports isolated | Only own tenant's reports |
+| 22.7 | SuperAdmin sees all data across tenants | Full access |
+
+## 23. Logout
+
+| # | Test Case | Expected |
+|---|-----------|----------|
+| 23.1 | Click user dropdown → Logout | Clears tokens, redirects to `/login` |
+| 23.2 | After logout, cannot access protected routes | Redirects to `/login` |
+| 23.3 | After logout, API calls return 401 | No stale data |
 
 ---
 
@@ -284,3 +314,4 @@ This checklist covers every user-facing feature in the boilerplate. Run through 
 - **MinIO** must be running at `http://localhost:9000` with bucket created for file tests
 - **SuperAdmin credentials**: `superadmin@{appname}.com` / `Admin@123456`
 - Update this checklist when adding new features to the boilerplate
+- Jaeger should be running on port 16686 for tracing verification

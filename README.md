@@ -15,6 +15,9 @@ A production-ready full-stack boilerplate with **.NET 10 Backend** (Clean Archit
 - **FluentValidation** for request validation
 - **Serilog** for structured logging
 - **BCrypt** password hashing
+- **OpenTelemetry** distributed tracing (Jaeger + Prometheus)
+- **S3/MinIO** file storage with signed URLs
+- **API key authentication** alongside JWT (X-Api-Key header)
 
 ### Frontend
 - **React 19** + TypeScript + Vite
@@ -24,6 +27,8 @@ A production-ready full-stack boilerplate with **.NET 10 Backend** (Clean Archit
 - **React Hook Form** + Zod validation
 - **i18next** with English, Arabic, Kurdish (RTL support)
 - **Axios** with auth/refresh/error interceptors
+- **Theme presets** — 6 switchable color schemes (Warm Copper, Ocean Blue, Deep Indigo, Midnight Sapphire, Rose, Emerald)
+- **IBM Plex Sans** font with Arabic variant for RTL
 
 ## Features
 
@@ -50,6 +55,33 @@ A production-ready full-stack boilerplate with **.NET 10 Backend** (Clean Archit
 - JSON diff of old/new values
 - Filterable audit log viewer (entity type, action, date, user)
 
+### System Settings
+- Key-value configuration per tenant with admin override
+- Grouped by category (Application, Email, Security, etc.)
+- Toggle, text, number, URL, and password field types
+
+### File Management
+- Upload, browse, and delete files via S3/MinIO storage
+- Grid and list view toggle
+- Category and status filtering
+- Presigned download URLs with configurable expiration
+
+### Reports
+- Async report generation (CSV/Excel)
+- Status tracking (Pending → Processing → Completed)
+- Download and delete with permission guards
+
+### Notifications
+- In-app notification center with unread count
+- Per-user email/in-app preference toggles
+- Real-time delivery via Ably (optional)
+
+### API Key Management
+- Tenant-scoped and platform-scoped API keys
+- Scoped permissions with expiration dates
+- Secret shown once on creation
+- Emergency revoke for platform admins
+
 ### Email & SMS
 - **SMTP email service** with HTML templates (verification, password reset)
 - **Twilio SMS service** (optional, toggle via config)
@@ -57,6 +89,9 @@ A production-ready full-stack boilerplate with **.NET 10 Backend** (Clean Archit
 
 ### Infrastructure
 - Docker Compose for local development (PostgreSQL, Redis, RabbitMQ, Mailpit)
+- **MinIO** — S3-compatible file storage (ports 9000, 9001)
+- **Jaeger** — Distributed tracing UI and OTLP collector (port 16686)
+- **Prometheus** — Metrics collection (port 9090)
 - Health checks for all external services
 - API versioning + Swagger/OpenAPI
 - Rate limiting per endpoint
@@ -179,7 +214,7 @@ boilerplateFE/
 │   ├── components/    # ui/ (shadcn), common/, layout/, guards/
 │   ├── config/        # API endpoints, routes, query config
 │   ├── constants/     # Permissions, languages
-│   ├── features/      # auth, dashboard, users, roles, audit-logs
+│   ├── features/      # auth, dashboard, users, roles, tenants, files, reports, notifications, settings, audit-logs, profile, api-keys, landing
 │   ├── hooks/         # usePermissions, useClickOutside, useDebounce
 │   ├── i18n/          # Translations (en, ar, ku)
 │   ├── lib/           # Axios client, React Query, validation schemas
@@ -213,10 +248,15 @@ boilerplateFE/
 
 ## Theme Customization
 
-Edit `boilerplateFE/src/styles/index.css` to change the color scheme:
-- `--color-primary-*` — Primary color scale (default: blue)
-- `--color-accent-*` — Accent color scale (default: emerald)
-- Dark mode overrides in `.dark { }` block
+The app ships with 6 theme presets. To switch, edit `boilerplateFE/src/config/theme.config.ts`:
+
+```ts
+export const activePreset: ThemePresetName = 'warm-copper'; // change this
+```
+
+Available: `warm-copper` (default), `ocean-blue`, `deep-indigo`, `midnight-sapphire`, `rose`, `emerald`.
+
+To create a custom theme, generate a color scale at [uicolors.app](https://uicolors.app) and add it to the presets object. See `docs/theming-guide.md` for the full guide.
 
 ## Subdomain Tenant Routing
 
