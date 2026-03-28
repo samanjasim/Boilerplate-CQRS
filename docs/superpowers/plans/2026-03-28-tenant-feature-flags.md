@@ -2,11 +2,29 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add platform-defined feature flags with per-tenant value overrides, cached in Redis, with full CRUD API and frontend management UI.
+**Goal:** Add platform-defined feature flags with per-tenant value overrides, cached in Redis, with full CRUD API, frontend management UI, and enforcement checks in existing handlers as reference implementations.
 
-**Architecture:** Two entities — `FeatureFlag` (platform-level, no TenantId, no global query filter) and `TenantFeatureFlag` (per-tenant override with standard tenant filter). Resolution: tenant override → platform default. Cached per-tenant in Redis with 5-min TTL, busted on write. `IFeatureFlagService` provides a clean API for checking flags from any handler. Frontend: standalone `/feature-flags` route with platform admin view (CRUD + overrides) and tenant admin view (read-only + toggle non-system booleans).
+**Architecture:** Two entities — `FeatureFlag` (platform-level, no TenantId, no global query filter) and `TenantFeatureFlag` (per-tenant override with standard tenant filter). Resolution: tenant override → platform default. Cached per-tenant in Redis with 5-min TTL, busted on write. `IFeatureFlagService` provides a clean API for checking flags from any handler. Enforcement pattern: boolean gate (`IsEnabledAsync`) for feature toggles, quota check (`GetValueAsync<int>`) for limits. Frontend: standalone `/feature-flags` route with platform admin view (CRUD + overrides) and tenant admin view (read-only + toggle non-system booleans).
 
 **Tech Stack:** .NET 10, EF Core/PostgreSQL, Redis (ICacheService), MediatR, React 19, TanStack Query, shadcn/ui, i18next
+
+### System Ownership Boundary (Feature Flags ↔ Billing)
+
+**Feature Flags owns:**
+- Flag definitions (`feature_flags` table) and per-tenant overrides (`tenant_feature_flags` table)
+- Resolution logic (tenant override → platform default), Redis caching, invalidation
+- `IFeatureFlagService` API consumed by all handlers
+- Enforcement guard pattern in command handlers (boolean gates + quota checks)
+- Seed data for all system-level flags
+
+**Billing/Subscriptions will own (documented here as contract for the next feature):**
+- Plans with entitlements (`SubscriptionPlan.Features` JSON mapping flag keys to values)
+- `SubscriptionChangedEvent` handler that calls `SetTenantOverrideCommand` to sync plan entitlements to `tenant_feature_flags`
+- An `OverrideSource` enum (`Manual`, `PlanSubscription`) added to `TenantFeatureFlag` via migration — plan changes only overwrite plan-sourced values, preserving manual tenant overrides
+- Usage tracking counters for dashboard display (Redis atomic counters as upgrade from COUNT queries)
+- "Upgrade your plan" prompts when limits are approached
+
+**Race condition strategy:** Optimistic — accept small overages on concurrent requests, check on next request. Documented upgrade path to Redis atomic counters when Billing arrives.
 
 ---
 
@@ -48,7 +66,13 @@
 - `Starter.Application/Common/Interfaces/IApplicationDbContext.cs` — Add 2 DbSets
 - `Starter.Infrastructure/Persistence/ApplicationDbContext.cs` — Add 2 DbSets + query filter for TenantFeatureFlag only (FeatureFlag gets NO filter)
 - `Starter.Infrastructure/DependencyInjection.cs` — Register `IFeatureFlagService`
-- `Starter.Infrastructure/Persistence/Seeds/DataSeeder.cs` — Seed default feature flags
+- `Starter.Infrastructure/Persistence/Seeds/DataSeeder.cs` — Seed ALL system feature flags (11 flags)
+- `Starter.Application/Features/Users/Commands/CreateUser/CreateUserCommandHandler.cs` — Add `users.max_count` quota enforcement
+- `Starter.Application/Features/Files/Commands/UploadFile/UploadFileCommandHandler.cs` — Add `files.max_upload_size_mb` + `files.max_storage_mb` quota enforcement
+- `Starter.Application/Features/ApiKeys/Commands/CreateApiKey/CreateApiKeyCommandHandler.cs` — Add `api_keys.max_count` quota + `api_keys.enabled` gate enforcement
+
+**Documentation — New:**
+- `boilerplateBE/docs/feature-flags.md` — Developer guide: adding flags, enforcement patterns, cache behavior, Billing integration contract
 
 **Frontend — New files:**
 - `boilerplateFE/src/features/feature-flags/api/feature-flags.api.ts`
@@ -242,6 +266,14 @@ public static class FeatureFlagErrors
     public static readonly Error InvalidValueForType = Error.Validation(
         "FeatureFlag.InvalidValueForType",
         "The provided value is not valid for the flag's value type.");
+
+    public static Error FeatureDisabled(string feature) => Error.Validation(
+        "FeatureFlag.FeatureDisabled",
+        $"The feature '{feature}' is not enabled for your tenant.");
+
+    public static Error QuotaExceeded(string resource, int limit) => Error.Validation(
+        "FeatureFlag.QuotaExceeded",
+        $"Quota exceeded: maximum {limit} {resource} allowed for your tenant.");
 }
 ```
 
@@ -1321,11 +1353,22 @@ private static async Task SeedFeatureFlagsAsync(ApplicationDbContext context, IL
 
     var flags = new[]
     {
-        FeatureFlag.Create("billing.enabled", "Billing Enabled", "Enable billing and subscription features", "false", FlagValueType.Boolean, "billing", true),
-        FeatureFlag.Create("reports.pdf_export", "PDF Export", "Enable PDF export for reports", "true", FlagValueType.Boolean, "reports", false),
+        // User limits
+        FeatureFlag.Create("users.max_count", "Max Users", "Maximum number of users per tenant", "100", FlagValueType.Integer, "users", false),
+        FeatureFlag.Create("users.invitations_enabled", "Invitations Enabled", "Allow sending user invitations", "true", FlagValueType.Boolean, "users", false),
+        // File limits
+        FeatureFlag.Create("files.max_upload_size_mb", "Max Upload Size (MB)", "Maximum single file upload size in megabytes", "50", FlagValueType.Integer, "files", false),
+        FeatureFlag.Create("files.max_storage_mb", "Max Storage (MB)", "Maximum total storage per tenant in megabytes", "5120", FlagValueType.Integer, "files", false),
+        // Report limits
+        FeatureFlag.Create("reports.enabled", "Reports Enabled", "Enable report generation", "true", FlagValueType.Boolean, "reports", false),
         FeatureFlag.Create("reports.max_concurrent", "Max Concurrent Reports", "Maximum concurrent report generation jobs", "3", FlagValueType.Integer, "reports", false),
-        FeatureFlag.Create("files.max_upload_size_mb", "Max Upload Size (MB)", "Maximum file upload size in megabytes", "50", FlagValueType.Integer, "files", false),
+        FeatureFlag.Create("reports.pdf_export", "PDF Export", "Enable PDF export for reports", "true", FlagValueType.Boolean, "reports", false),
+        // API key limits
+        FeatureFlag.Create("api_keys.enabled", "API Keys Enabled", "Enable API key management", "true", FlagValueType.Boolean, "api_keys", false),
+        FeatureFlag.Create("api_keys.max_count", "Max API Keys", "Maximum number of API keys per tenant", "10", FlagValueType.Integer, "api_keys", false),
+        // System flags (platform admin only, IsSystem=true)
         FeatureFlag.Create("ui.maintenance_mode", "Maintenance Mode", "Show maintenance page to non-admin users", "false", FlagValueType.Boolean, "system", true),
+        FeatureFlag.Create("billing.enabled", "Billing Enabled", "Enable billing and subscription features", "false", FlagValueType.Boolean, "billing", true),
     };
 
     context.FeatureFlags.AddRange(flags);
@@ -1759,7 +1802,131 @@ git commit -m "feat(feature-flags): add i18n translations and useFeatureFlag hoo
 
 ---
 
-## Task 12: Backend & Frontend Build Verification
+## Task 12: Enforcement in Existing Handlers (3 Reference Implementations)
+
+**Files:**
+- Modify: `boilerplateBE/src/Starter.Application/Features/Users/Commands/CreateUser/CreateUserCommandHandler.cs`
+- Modify: `boilerplateBE/src/Starter.Application/Features/Files/Commands/UploadFile/UploadFileCommandHandler.cs`
+- Modify: `boilerplateBE/src/Starter.Application/Features/ApiKeys/Commands/CreateApiKey/CreateApiKeyCommandHandler.cs`
+
+- [ ] **Step 1: Add quota enforcement to CreateUserCommandHandler**
+
+Inject `IFeatureFlagService flags` into the handler's primary constructor. Add this check at the start of the `Handle` method, before any existing logic:
+
+```csharp
+var maxUsers = await flags.GetValueAsync<int>("users.max_count", cancellationToken);
+var currentCount = await context.Users.CountAsync(cancellationToken);
+if (currentCount >= maxUsers)
+    return Result.Failure<Guid>(FeatureFlagErrors.QuotaExceeded("users", maxUsers));
+```
+
+Add using: `using Starter.Domain.FeatureFlags.Errors;`
+
+- [ ] **Step 2: Add quota enforcement to UploadFileCommandHandler**
+
+Inject `IFeatureFlagService flags`. Add at the start of `Handle`:
+
+```csharp
+// Check single file size limit
+var maxSizeMb = await flags.GetValueAsync<int>("files.max_upload_size_mb", cancellationToken);
+var fileSizeMb = (int)(request.FileSize / (1024 * 1024));
+if (fileSizeMb > maxSizeMb)
+    return Result.Failure<Guid>(FeatureFlagErrors.QuotaExceeded($"MB per file (max {maxSizeMb}MB)", maxSizeMb));
+
+// Check total storage limit
+var maxStorageMb = await flags.GetValueAsync<int>("files.max_storage_mb", cancellationToken);
+var usedBytes = await context.FileMetadata.SumAsync(f => f.Size, cancellationToken);
+var usedMb = (int)(usedBytes / (1024 * 1024));
+if (usedMb + fileSizeMb > maxStorageMb)
+    return Result.Failure<Guid>(FeatureFlagErrors.QuotaExceeded($"MB storage (max {maxStorageMb}MB)", maxStorageMb));
+```
+
+- [ ] **Step 3: Add quota + gate enforcement to CreateApiKeyCommandHandler**
+
+Inject `IFeatureFlagService flags`. Add at the start of `Handle`:
+
+```csharp
+if (!await flags.IsEnabledAsync("api_keys.enabled", cancellationToken))
+    return Result.Failure<CreateApiKeyResponse>(FeatureFlagErrors.FeatureDisabled("API Keys"));
+
+var maxKeys = await flags.GetValueAsync<int>("api_keys.max_count", cancellationToken);
+var currentCount = await context.ApiKeys.CountAsync(k => !k.IsRevoked, cancellationToken);
+if (currentCount >= maxKeys)
+    return Result.Failure<CreateApiKeyResponse>(FeatureFlagErrors.QuotaExceeded("API keys", maxKeys));
+```
+
+- [ ] **Step 4: Verify build**
+
+Run: `cd boilerplateBE && dotnet build --verbosity quiet`
+Expected: 0 errors
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add boilerplateBE/src/Starter.Application/Features/Users/Commands/CreateUser/ \
+       boilerplateBE/src/Starter.Application/Features/Files/Commands/UploadFile/ \
+       boilerplateBE/src/Starter.Application/Features/ApiKeys/Commands/CreateApiKey/
+git commit -m "feat(feature-flags): add enforcement to CreateUser, UploadFile, CreateApiKey handlers"
+```
+
+---
+
+## Task 13: Developer Documentation
+
+**Files:**
+- Create: `boilerplateBE/docs/feature-flags.md`
+
+- [ ] **Step 1: Create the developer guide**
+
+Create `boilerplateBE/docs/feature-flags.md` with these sections:
+
+1. **Overview** — What feature flags are, resolution chain (tenant override → platform default), caching behavior (Redis, 5-min TTL, prefix-based invalidation)
+
+2. **Adding a New Feature Flag** — Step-by-step:
+   - Add seed data to `DataSeeder.SeedFeatureFlagsAsync()` with key, name, description, default value, value type, category, isSystem
+   - Run migration if changing schema (usually not needed — just adding a row)
+   - Add enforcement check in the relevant command handler
+
+3. **Enforcement Patterns** — Two patterns with code examples:
+   - **Boolean gate:** `if (!await flags.IsEnabledAsync("feature.key")) return FeatureDisabled(...)`
+   - **Quota check:** `var limit = await flags.GetValueAsync<int>("resource.max_count"); var current = await context.Entity.CountAsync(); if (current >= limit) return QuotaExceeded(...)`
+
+4. **Existing Enforced Flags** — Table of all 11 flags with enforcement status:
+   - `users.max_count` — ✅ Enforced in CreateUserCommandHandler
+   - `files.max_upload_size_mb` — ✅ Enforced in UploadFileCommandHandler
+   - `files.max_storage_mb` — ✅ Enforced in UploadFileCommandHandler
+   - `api_keys.enabled` — ✅ Enforced in CreateApiKeyCommandHandler
+   - `api_keys.max_count` — ✅ Enforced in CreateApiKeyCommandHandler
+   - `users.invitations_enabled` — ⬜ TODO: enforce in CreateInvitationCommandHandler
+   - `reports.enabled` — ⬜ TODO: enforce in RequestReportCommandHandler
+   - `reports.max_concurrent` — ⬜ TODO: enforce in RequestReportCommandHandler
+   - `reports.pdf_export` — ⬜ TODO: enforce in RequestReportCommandHandler (format check)
+   - `ui.maintenance_mode` — ⬜ TODO: enforce in middleware (block non-admin requests)
+   - `billing.enabled` — ⬜ Placeholder for Billing feature
+
+5. **Cache Behavior** — Redis key format `ff:{tenantId}`, 5-min TTL, `InvalidateCacheAsync()` called on any write operation, `RemoveByPrefixAsync("ff")` clears all tenants
+
+6. **Race Conditions & Performance** — Optimistic strategy: small overages possible on concurrent requests. Upgrade path: Redis atomic counters (`INCR`/`DECR`) when Billing arrives for real-time usage tracking
+
+7. **Billing Integration Contract** — What the Billing feature MUST implement:
+   - Add `OverrideSource` enum (`Manual = 0`, `PlanSubscription = 1`) to `TenantFeatureFlag` entity via migration
+   - `SubscriptionChangedEvent` domain event on plan change
+   - `SyncPlanFeaturesHandler` listens to event, reads `SubscriptionPlan.Features` JSON, calls `SetTenantOverrideCommand` for each flag, sets source = `PlanSubscription`
+   - Plan changes only overwrite `PlanSubscription`-sourced overrides, preserving `Manual` overrides
+   - Usage counters: Redis `usage:{tenantId}:{resource}` keys with atomic INCR/DECR, synced periodically with DB counts
+
+8. **API Key Access** — API key authenticated requests automatically resolve feature flags via `ICurrentUserService.TenantId` which `ApiKeyAuthenticationHandler` sets. No special configuration needed.
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add boilerplateBE/docs/feature-flags.md
+git commit -m "docs(feature-flags): add developer guide with enforcement patterns and billing contract"
+```
+
+---
+
+## Task 14: Backend & Frontend Build Verification
 
 - [ ] **Step 1: Full backend build**
 
