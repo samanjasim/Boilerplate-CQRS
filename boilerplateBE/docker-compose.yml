@@ -52,6 +52,40 @@ services:
       - minio-data:/data
     restart: unless-stopped
 
+  jaeger:
+    image: jaegertracing/jaeger:2.16.0
+    container_name: starter-jaeger
+    networks:
+      backend:
+        aliases: [spm_metrics_source]
+    volumes:
+      - ./jaeger-config.yaml:/etc/jaeger/config.yaml
+    command: ["--config", "/etc/jaeger/config.yaml"]
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+      - "8888:8888"
+      - "8889:8889"
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.10.0
+    container_name: starter-prometheus
+    networks:
+      - backend
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus-rules.yml:/etc/prometheus/rules.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+networks:
+  backend:
+
 volumes:
   postgres-data:
   minio-data:
+  prometheus-data:

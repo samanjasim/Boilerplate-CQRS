@@ -21,10 +21,10 @@ public class RequestLoggingMiddleware
     public async Task InvokeAsync(HttpContext context)
     {
         var stopwatch = Stopwatch.StartNew();
-        var requestId = context.TraceIdentifier;
+        var requestId = Activity.Current?.TraceId.ToString() ?? context.TraceIdentifier;
 
         _logger.LogInformation(
-            "Request started: {Method} {Path} | RequestId: {RequestId}",
+            "Request started: {Method} {Path} | TraceId: {TraceId}",
             context.Request.Method,
             context.Request.Path,
             requestId);
@@ -38,7 +38,7 @@ public class RequestLoggingMiddleware
             stopwatch.Stop();
 
             _logger.LogInformation(
-                "Request completed: {Method} {Path} | Status: {StatusCode} | Duration: {Duration}ms | RequestId: {RequestId}",
+                "Request completed: {Method} {Path} | Status: {StatusCode} | Duration: {Duration}ms | TraceId: {TraceId}",
                 context.Request.Method,
                 context.Request.Path,
                 context.Response.StatusCode,

@@ -1,0 +1,47 @@
+groups:
+  - name: api_red_metrics
+    interval: 15s
+    rules:
+      # ── Request Rate (per second, 5-minute window) ──
+      - record: api:request_rate:5m
+        expr: sum by (service_name, span_name) (rate(traces_span_metrics_calls_total[5m]))
+
+      - record: api:request_rate_total:5m
+        expr: sum by (service_name) (rate(traces_span_metrics_calls_total[5m]))
+
+      # ── Error Rate (percentage, 5-minute window) ──
+      - record: api:error_rate:5m
+        expr: |
+          sum by (service_name, span_name) (rate(traces_span_metrics_calls_total{status_code="STATUS_CODE_ERROR"}[5m]))
+          / clamp_min(sum by (service_name, span_name) (rate(traces_span_metrics_calls_total[5m])), 1e-10)
+
+      - record: api:error_rate_total:5m
+        expr: |
+          sum by (service_name) (rate(traces_span_metrics_calls_total{status_code="STATUS_CODE_ERROR"}[5m]))
+          / clamp_min(sum by (service_name) (rate(traces_span_metrics_calls_total[5m])), 1e-10)
+
+      # ── Latency Percentiles (5-minute window) ──
+      - record: api:latency_p50:5m
+        expr: |
+          histogram_quantile(0.50,
+            sum by (service_name, span_name, le) (rate(traces_span_metrics_duration_milliseconds_bucket[5m]))
+          )
+
+      - record: api:latency_p95:5m
+        expr: |
+          histogram_quantile(0.95,
+            sum by (service_name, span_name, le) (rate(traces_span_metrics_duration_milliseconds_bucket[5m]))
+          )
+
+      - record: api:latency_p99:5m
+        expr: |
+          histogram_quantile(0.99,
+            sum by (service_name, span_name, le) (rate(traces_span_metrics_duration_milliseconds_bucket[5m]))
+          )
+
+      # ── Request Count (total in last hour, for quick glance) ──
+      - record: api:request_count:1h
+        expr: sum by (service_name, span_name) (increase(traces_span_metrics_calls_total[1h]))
+
+      - record: api:error_count:1h
+        expr: sum by (service_name, span_name) (increase(traces_span_metrics_calls_total{status_code="STATUS_CODE_ERROR"}[1h]))

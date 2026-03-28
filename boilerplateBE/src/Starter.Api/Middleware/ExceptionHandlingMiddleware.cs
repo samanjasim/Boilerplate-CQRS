@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using FluentValidation;
 using Starter.Domain.Exceptions;
@@ -53,10 +54,12 @@ public class ExceptionHandlingMiddleware
             _ => HandleUnknownException(exception)
         };
 
+        var traceId = Activity.Current?.TraceId.ToString() ?? context.TraceIdentifier;
+
         _logger.LogError(exception,
             "Exception occurred: {Message}. TraceId: {TraceId}",
             exception.Message,
-            context.TraceIdentifier);
+            traceId);
 
         context.Response.StatusCode = statusCode;
         context.Response.ContentType = "application/json";
