@@ -46,6 +46,8 @@ public static class Roles
             Permissions.ApiKeys.Create,
             Permissions.ApiKeys.Update,
             Permissions.ApiKeys.Delete,
+            // Feature Flags
+            Permissions.FeatureFlags.View,
             // System
             Permissions.System.ViewDashboard,
             Permissions.System.ExportData,
