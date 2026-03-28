@@ -10,7 +10,7 @@ public sealed class FeatureFlag : AggregateRoot
     public string? Description { get; private set; }
     public string DefaultValue { get; private set; } = default!;
     public FlagValueType ValueType { get; private set; }
-    public string? Category { get; private set; }
+    public FlagCategory Category { get; private set; }
     public bool IsSystem { get; private set; }
 
     private readonly List<TenantFeatureFlag> _tenantOverrides = [];
@@ -20,7 +20,7 @@ public sealed class FeatureFlag : AggregateRoot
 
     private FeatureFlag(
         Guid id, string key, string name, string? description,
-        string defaultValue, FlagValueType valueType, string? category, bool isSystem) : base(id)
+        string defaultValue, FlagValueType valueType, FlagCategory category, bool isSystem) : base(id)
     {
         Key = key;
         Name = name;
@@ -33,18 +33,18 @@ public sealed class FeatureFlag : AggregateRoot
 
     public static FeatureFlag Create(
         string key, string name, string? description,
-        string defaultValue, FlagValueType valueType, string? category, bool isSystem)
+        string defaultValue, FlagValueType valueType, FlagCategory category, bool isSystem)
     {
         return new FeatureFlag(Guid.NewGuid(), key.Trim().ToLowerInvariant(), name.Trim(),
-            description?.Trim(), defaultValue, valueType, category?.Trim(), isSystem);
+            description?.Trim(), defaultValue, valueType, category, isSystem);
     }
 
-    public void Update(string name, string? description, string defaultValue, string? category)
+    public void Update(string name, string? description, string defaultValue, FlagCategory category)
     {
         Name = name.Trim();
         Description = description?.Trim();
         DefaultValue = defaultValue;
-        Category = category?.Trim();
+        Category = category;
         ModifiedAt = DateTime.UtcNow;
     }
 }

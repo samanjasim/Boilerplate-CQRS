@@ -10,6 +10,6 @@ public sealed class UpdateFeatureFlagCommandValidator : AbstractValidator<Update
         RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Description).MaximumLength(1000);
         RuleFor(x => x.DefaultValue).NotEmpty().MaximumLength(4000);
-        RuleFor(x => x.Category).MaximumLength(100);
+        RuleFor(x => x.Category).IsInEnum();
     }
 }

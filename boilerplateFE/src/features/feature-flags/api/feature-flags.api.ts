@@ -8,7 +8,7 @@ export interface FeatureFlagDto {
   description: string | null;
   defaultValue: string;
   valueType: 'Boolean' | 'String' | 'Integer' | 'Json';
-  category: string | null;
+  category: number | null;
   isSystem: boolean;
   tenantOverrideValue: string | null;
   resolvedValue: string;
@@ -22,7 +22,7 @@ export interface CreateFeatureFlagData {
   description?: string | null;
   defaultValue: string;
   valueType: number;
-  category?: string | null;
+  category?: number;
   isSystem: boolean;
 }
 
@@ -31,7 +31,7 @@ export interface UpdateFeatureFlagData {
   name: string;
   description?: string | null;
   defaultValue: string;
-  category?: string | null;
+  category?: number;
 }
 
 export interface SetTenantOverrideData {

@@ -6,4 +6,4 @@ namespace Starter.Application.Features.FeatureFlags.Commands.CreateFeatureFlag;
 
 public sealed record CreateFeatureFlagCommand(
     string Key, string Name, string? Description, string DefaultValue,
-    FlagValueType ValueType, string? Category, bool IsSystem) : IRequest<Result<Guid>>;
+    FlagValueType ValueType, FlagCategory Category, bool IsSystem) : IRequest<Result<Guid>>;

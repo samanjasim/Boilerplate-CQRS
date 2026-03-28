@@ -9,7 +9,7 @@ public sealed record FeatureFlagDto(
     string? Description,
     string DefaultValue,
     FlagValueType ValueType,
-    string? Category,
+    FlagCategory Category,
     bool IsSystem,
     string? TenantOverrideValue,
     string ResolvedValue,

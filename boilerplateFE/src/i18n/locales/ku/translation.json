@@ -664,6 +664,13 @@
     "deleteDescription": "دڵنیایت لە سڕینەوەی \"{{name}}\"؟ ئەم کردارە ناگەڕێتەوە.",
     "deleteConfirm": "سڕینەوە",
     "emptyTitle": "هیچ ئاڵای تایبەتمەندی نییە",
-    "emptyDescription": "یەکەم ئاڵای تایبەتمەندی دروست بکە بۆ دەستپێکردن"
+    "emptyDescription": "یەکەم ئاڵای تایبەتمەندی دروست بکە بۆ دەستپێکردن",
+    "categoryUsers": "بەکارهێنەرەکان",
+    "categoryFiles": "فایلەکان",
+    "categoryReports": "ڕاپۆرتەکان",
+    "categoryApiKeys": "کلیلەکانی API",
+    "categoryBilling": "پارەدان",
+    "categorySystem": "سیستەم",
+    "categoryCustom": "تایبەت"
   }
 }

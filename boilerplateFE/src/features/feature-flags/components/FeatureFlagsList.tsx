@@ -33,6 +33,16 @@ const VALUE_TYPE_LABEL_KEYS: Record<string | number, string> = {
   Json: 'featureFlags.json',
 };
 
+const FLAG_CATEGORY_LABEL_KEYS: Record<number, string> = {
+  0: 'featureFlags.categoryUsers',
+  1: 'featureFlags.categoryFiles',
+  2: 'featureFlags.categoryReports',
+  3: 'featureFlags.categoryApiKeys',
+  4: 'featureFlags.categoryBilling',
+  5: 'featureFlags.categorySystem',
+  6: 'featureFlags.categoryCustom',
+};
+
 export function FeatureFlagsList({ flags, pagination, onPageChange, onPageSizeChange }: FeatureFlagsListProps) {
   const { t } = useTranslation();
   const { hasPermission } = usePermissions();
@@ -89,7 +99,9 @@ export function FeatureFlagsList({ flags, pagination, onPageChange, onPageSizeCh
                   {t(VALUE_TYPE_LABEL_KEYS[flag.valueType] ?? 'featureFlags.string')}
                 </Badge>
               </TableCell>
-              <TableCell className="text-muted-foreground">{flag.category ?? '-'}</TableCell>
+              <TableCell className="text-muted-foreground">
+                {flag.category !== null ? t(FLAG_CATEGORY_LABEL_KEYS[flag.category] ?? 'featureFlags.categoryCustom') : '-'}
+              </TableCell>
               <TableCell className="text-muted-foreground text-sm">{flag.defaultValue}</TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">

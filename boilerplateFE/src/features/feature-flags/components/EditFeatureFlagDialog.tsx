@@ -12,8 +12,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useUpdateFeatureFlag } from '../api';
 import type { FeatureFlagDto } from '../api';
+
+const CATEGORY_OPTIONS = [
+  { labelKey: 'featureFlags.categoryUsers', value: 0 },
+  { labelKey: 'featureFlags.categoryFiles', value: 1 },
+  { labelKey: 'featureFlags.categoryReports', value: 2 },
+  { labelKey: 'featureFlags.categoryApiKeys', value: 3 },
+  { labelKey: 'featureFlags.categoryBilling', value: 4 },
+  { labelKey: 'featureFlags.categorySystem', value: 5 },
+  { labelKey: 'featureFlags.categoryCustom', value: 6 },
+] as const;
 
 interface EditFeatureFlagDialogProps {
   open: boolean;
@@ -28,7 +45,7 @@ export function EditFeatureFlagDialog({ open, onOpenChange, flag }: EditFeatureF
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [defaultValue, setDefaultValue] = useState('');
-  const [category, setCategory] = useState('');
+  const [category, setCategory] = useState<number>(0);
 
   const isBooleanType = flag?.valueType === 'Boolean' || (flag?.valueType as unknown) === 0;
 
@@ -37,7 +54,7 @@ export function EditFeatureFlagDialog({ open, onOpenChange, flag }: EditFeatureF
       setName(flag.name);
       setDescription(flag.description ?? '');
       setDefaultValue(flag.defaultValue);
-      setCategory(flag.category ?? '');
+      setCategory(flag.category ?? 0);
     }
   }, [flag]);
 
@@ -49,7 +66,7 @@ export function EditFeatureFlagDialog({ open, onOpenChange, flag }: EditFeatureF
       name,
       description: description || null,
       defaultValue,
-      category: category || null,
+      category,
     });
     onOpenChange(false);
   };
@@ -110,12 +127,19 @@ export function EditFeatureFlagDialog({ open, onOpenChange, flag }: EditFeatureF
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="ff-edit-category">{t('featureFlags.category')}</Label>
-            <Input
-              id="ff-edit-category"
-              value={category}
-              onChange={e => setCategory(e.target.value)}
-            />
+            <Label>{t('featureFlags.category')}</Label>
+            <Select value={String(category)} onValueChange={val => setCategory(Number(val))}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORY_OPTIONS.map(opt => (
+                  <SelectItem key={opt.value} value={String(opt.value)}>
+                    {t(opt.labelKey)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <DialogFooter>

@@ -8,6 +8,7 @@ using Starter.Application.Features.FeatureFlags.Commands.SetTenantOverride;
 using Starter.Application.Features.FeatureFlags.Commands.UpdateFeatureFlag;
 using Starter.Application.Features.FeatureFlags.Queries.GetFeatureFlagByKey;
 using Starter.Application.Features.FeatureFlags.Queries.GetFeatureFlags;
+using Starter.Domain.FeatureFlags.Enums;
 using Starter.Shared.Constants;
 
 namespace Starter.Api.Controllers;
@@ -18,7 +19,7 @@ public sealed class FeatureFlagsController(ISender mediator) : BaseApiController
     [Authorize(Policy = Permissions.FeatureFlags.View)]
     public async Task<IActionResult> GetAll(
         [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 50,
-        [FromQuery] string? category = null, [FromQuery] string? search = null,
+        [FromQuery] FlagCategory? category = null, [FromQuery] string? search = null,
         CancellationToken ct = default)
     {
         var result = await Mediator.Send(new GetFeatureFlagsQuery(pageNumber, pageSize, category, search), ct);

@@ -16,11 +16,10 @@ internal sealed class FeatureFlagConfiguration : IEntityTypeConfiguration<Featur
         builder.Property(f => f.Description).HasColumnName("description").HasMaxLength(1000);
         builder.Property(f => f.DefaultValue).HasColumnName("default_value").HasMaxLength(4000).IsRequired();
         builder.Property(f => f.ValueType).HasColumnName("value_type").IsRequired();
-        builder.Property(f => f.Category).HasColumnName("category").HasMaxLength(100);
+        builder.Property(f => f.Category).HasColumnName("category").IsRequired();
         builder.Property(f => f.IsSystem).HasColumnName("is_system").IsRequired();
 
         builder.HasIndex(f => f.Key).IsUnique();
-        builder.HasIndex(f => f.Category);
 
         builder.HasMany(f => f.TenantOverrides)
             .WithOne(t => t.FeatureFlag)

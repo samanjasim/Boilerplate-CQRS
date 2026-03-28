@@ -35,6 +35,16 @@ const VALUE_TYPE_LABELS: Record<number, string> = {
   3: 'Json',
 };
 
+const CATEGORY_OPTIONS = [
+  { labelKey: 'featureFlags.categoryUsers', value: 0 },
+  { labelKey: 'featureFlags.categoryFiles', value: 1 },
+  { labelKey: 'featureFlags.categoryReports', value: 2 },
+  { labelKey: 'featureFlags.categoryApiKeys', value: 3 },
+  { labelKey: 'featureFlags.categoryBilling', value: 4 },
+  { labelKey: 'featureFlags.categorySystem', value: 5 },
+  { labelKey: 'featureFlags.categoryCustom', value: 6 },
+] as const;
+
 interface CreateFeatureFlagDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -49,7 +59,7 @@ export function CreateFeatureFlagDialog({ open, onOpenChange }: CreateFeatureFla
   const [description, setDescription] = useState('');
   const [valueType, setValueType] = useState<number>(0);
   const [defaultValue, setDefaultValue] = useState('false');
-  const [category, setCategory] = useState('');
+  const [category, setCategory] = useState<number>(0);
   const [isSystem, setIsSystem] = useState(false);
 
   const isBooleanType = VALUE_TYPE_LABELS[valueType] === 'Boolean';
@@ -60,7 +70,7 @@ export function CreateFeatureFlagDialog({ open, onOpenChange }: CreateFeatureFla
     setDescription('');
     setValueType(0);
     setDefaultValue('false');
-    setCategory('');
+    setCategory(0);
     setIsSystem(false);
   };
 
@@ -82,7 +92,7 @@ export function CreateFeatureFlagDialog({ open, onOpenChange }: CreateFeatureFla
       description: description || null,
       defaultValue,
       valueType,
-      category: category || null,
+      category,
       isSystem,
     });
     resetForm();
@@ -175,13 +185,19 @@ export function CreateFeatureFlagDialog({ open, onOpenChange }: CreateFeatureFla
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="ff-category">{t('featureFlags.category')}</Label>
-            <Input
-              id="ff-category"
-              value={category}
-              onChange={e => setCategory(e.target.value)}
-              placeholder={t('featureFlags.categoryPlaceholder')}
-            />
+            <Label>{t('featureFlags.category')}</Label>
+            <Select value={String(category)} onValueChange={val => setCategory(Number(val))}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORY_OPTIONS.map(opt => (
+                  <SelectItem key={opt.value} value={String(opt.value)}>
+                    {t(opt.labelKey)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex items-center gap-2">

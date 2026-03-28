@@ -664,6 +664,13 @@
     "deleteDescription": "Are you sure you want to delete \"{{name}}\"? This cannot be undone.",
     "deleteConfirm": "Delete",
     "emptyTitle": "No Feature Flags",
-    "emptyDescription": "Create your first feature flag to get started"
+    "emptyDescription": "Create your first feature flag to get started",
+    "categoryUsers": "Users",
+    "categoryFiles": "Files",
+    "categoryReports": "Reports",
+    "categoryApiKeys": "API Keys",
+    "categoryBilling": "Billing",
+    "categorySystem": "System",
+    "categoryCustom": "Custom"
   }
 }

@@ -17,8 +17,8 @@ internal sealed class GetFeatureFlagsQueryHandler(
         var tenantId = currentUser.TenantId;
         var query = context.FeatureFlags.AsNoTracking().AsQueryable();
 
-        if (!string.IsNullOrWhiteSpace(request.Category))
-            query = query.Where(f => f.Category == request.Category);
+        if (request.Category.HasValue)
+            query = query.Where(f => f.Category == request.Category.Value);
 
         if (!string.IsNullOrWhiteSpace(request.Search))
             query = query.Where(f => f.Key.Contains(request.Search) || f.Name.Contains(request.Search));

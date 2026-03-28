@@ -664,6 +664,13 @@
     "deleteDescription": "هل أنت متأكد من حذف \"{{name}}\"؟ لا يمكن التراجع عن هذا الإجراء.",
     "deleteConfirm": "حذف",
     "emptyTitle": "لا توجد أعلام ميزات",
-    "emptyDescription": "أنشئ أول علم ميزة للبدء"
+    "emptyDescription": "أنشئ أول علم ميزة للبدء",
+    "categoryUsers": "المستخدمون",
+    "categoryFiles": "الملفات",
+    "categoryReports": "التقارير",
+    "categoryApiKeys": "مفاتيح API",
+    "categoryBilling": "الفوترة",
+    "categorySystem": "النظام",
+    "categoryCustom": "مخصص"
   }
 }
