@@ -5,6 +5,7 @@ using Starter.Application.Common.Interfaces;
 using Starter.Application.Features.ApiKeys.DTOs;
 using Starter.Domain.ApiKeys.Entities;
 using Starter.Domain.ApiKeys.Errors;
+using Starter.Domain.FeatureFlags.Errors;
 using Starter.Shared.Results;
 
 namespace Starter.Application.Features.ApiKeys.Commands.CreateApiKey;
@@ -12,13 +13,22 @@ namespace Starter.Application.Features.ApiKeys.Commands.CreateApiKey;
 public sealed class CreateApiKeyCommandHandler(
     IApplicationDbContext dbContext,
     ICurrentUserService currentUserService,
-    IPasswordService passwordService)
+    IPasswordService passwordService,
+    IFeatureFlagService flags)
     : IRequestHandler<CreateApiKeyCommand, Result<CreateApiKeyResponse>>
 {
     public async Task<Result<CreateApiKeyResponse>> Handle(
         CreateApiKeyCommand request,
         CancellationToken cancellationToken)
     {
+        if (!await flags.IsEnabledAsync("api_keys.enabled", cancellationToken))
+            return Result.Failure<CreateApiKeyResponse>(FeatureFlagErrors.FeatureDisabled("API Keys"));
+
+        var maxKeys = await flags.GetValueAsync<int>("api_keys.max_count", cancellationToken);
+        var currentCount = await dbContext.ApiKeys.CountAsync(k => !k.IsRevoked, cancellationToken);
+        if (currentCount >= maxKeys)
+            return Result.Failure<CreateApiKeyResponse>(FeatureFlagErrors.QuotaExceeded("API keys", maxKeys));
+
         // Determine tenant scope
         Guid? tenantId;
         if (currentUserService.TenantId.HasValue)
