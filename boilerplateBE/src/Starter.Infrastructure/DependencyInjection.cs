@@ -143,6 +143,7 @@ public static class DependencyInjection
         services.AddScoped<IMessagePublisher, MassTransitMessagePublisher>();
         services.AddScoped<ISettingsService, SettingsService>();
         services.AddScoped<ISettingsProvider, SettingsProvider>();
+        services.AddScoped<IFeatureFlagService, FeatureFlagService>();
 
         return services;
     }
