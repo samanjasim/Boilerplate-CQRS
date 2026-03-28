@@ -251,6 +251,7 @@
     "branding": "Branding",
     "businessInfo": "Business Info",
     "customText": "Custom Text",
+    "featureFlags": "Feature Flags",
     "logo": "Logo",
     "favicon": "Favicon",
     "primaryColor": "Primary Color",
@@ -671,6 +672,10 @@
     "categoryApiKeys": "API Keys",
     "categoryBilling": "Billing",
     "categorySystem": "System",
-    "categoryCustom": "Custom"
+    "categoryCustom": "Custom",
+    "tenantFlags": "Tenant Feature Flags",
+    "tenantDescription": "View your resolved feature flags",
+    "optOut": "Opt Out",
+    "noOverride": "Default"
   }
 }

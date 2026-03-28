@@ -251,6 +251,7 @@
     "branding": "ناسنامەی بەصیری",
     "businessInfo": "زانیاری بازرگانی",
     "customText": "دەقی تایبەت",
+    "featureFlags": "ئاڵای تایبەتمەندییەکان",
     "logo": "لۆگۆ",
     "favicon": "ئایکۆنی ماڵپەڕ",
     "primaryColor": "ڕەنگی سەرەکی",
@@ -671,6 +672,10 @@
     "categoryApiKeys": "کلیلەکانی API",
     "categoryBilling": "پارەدان",
     "categorySystem": "سیستەم",
-    "categoryCustom": "تایبەت"
+    "categoryCustom": "تایبەت",
+    "tenantFlags": "ئاڵای تایبەتمەندییەکانی خاوەنکار",
+    "tenantDescription": "بینینی ئاڵای تایبەتمەندییە چارەسەرکراوەکانت",
+    "optOut": "دەرچوون",
+    "noOverride": "بنەڕەت"
   }
 }

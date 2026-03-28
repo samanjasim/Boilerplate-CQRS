@@ -251,6 +251,7 @@
     "branding": "الهوية البصرية",
     "businessInfo": "معلومات العمل",
     "customText": "النصوص المخصصة",
+    "featureFlags": "أعلام الميزات",
     "logo": "الشعار",
     "favicon": "أيقونة الموقع",
     "primaryColor": "اللون الرئيسي",
@@ -671,6 +672,10 @@
     "categoryApiKeys": "مفاتيح API",
     "categoryBilling": "الفوترة",
     "categorySystem": "النظام",
-    "categoryCustom": "مخصص"
+    "categoryCustom": "مخصص",
+    "tenantFlags": "أعلام ميزات المستأجر",
+    "tenantDescription": "عرض أعلام الميزات المحددة الخاصة بك",
+    "optOut": "إلغاء الاشتراك",
+    "noOverride": "افتراضي"
   }
 }

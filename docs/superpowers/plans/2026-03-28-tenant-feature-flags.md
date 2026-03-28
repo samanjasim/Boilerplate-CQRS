@@ -505,17 +505,7 @@ modelBuilder.Entity<TenantFeatureFlag>().HasQueryFilter(t =>
 
 **Do NOT add a query filter for FeatureFlag** — it is a platform-level entity visible to all tenants.
 
-- [ ] **Step 5: Create EF Core migration**
-
-Run:
-```bash
-cd boilerplateBE/src/Starter.Api
-dotnet ef migrations add AddFeatureFlags --project ../Starter.Infrastructure --startup-project .
-```
-
-Review the generated migration to confirm it creates `feature_flags` and `tenant_feature_flags` tables.
-
-- [ ] **Step 6: Verify build**
+- [ ] **Step 5: Verify build** (migration created during post-feature testing only)
 
 Run: `cd boilerplateBE && dotnet build --verbosity quiet`
 Expected: 0 errors
