@@ -1,26 +1,52 @@
 # Platform Features Design Spec
 
 **Date:** 2026-03-26
-**Scope:** 8 features for the Starter boilerplate (SaaS launch, boilerplate product, internal foundation)
+**Updated:** 2026-03-28
+**Scope:** 7 features for the Starter boilerplate (SaaS launch, boilerplate product, internal foundation)
 
 **Stack:**
 - Backend: .NET 10, Clean Architecture, CQRS/MediatR, EF Core/PostgreSQL, MassTransit/RabbitMQ, Redis
 - Frontend: React 19, Vite, TypeScript, Tailwind CSS 4, Shadcn/Radix UI, React Query, Zustand, i18next (en/ar/ku), React Hook Form + Zod
 
-## Priority & Parallel Streams
+## Status & Execution Order
 
-| Tier | Feature | Stream | Dependencies |
-|------|---------|--------|-------------|
-| T1 | API Key Management | A | None |
-| T1 | OpenTelemetry | C | None |
-| T2 | Tenant Feature Flags | B | None (tenant resolution already done) |
-| T2 | Webhook System | A | None (uses own per-endpoint HMAC secret) |
-| T2 | Billing / Subscriptions | B | Feature Flags (plan→flag sync) |
-| T3 | Dashboard Analytics | D | None |
-| T3 | Push Notifications | D | None |
-| T3 | Data Import/Export | D | None |
+| Order | Feature | Status | Dependencies |
+|-------|---------|--------|-------------|
+| 1 | API Key Management | ✅ Complete | None |
+| 2 | OpenTelemetry | ✅ Complete | None |
+| 3 | Tenant Feature Flags | 🔄 In Progress | None |
+| 4 | Billing / Subscriptions | ⬜ Planned | Feature Flags (plan→flag sync) |
+| 5 | Webhook System | ⬜ Planned | None |
+| 6 | Dashboard Analytics | ⬜ Planned | None |
+| 7 | Data Import/Export | ⬜ Planned | None |
 
-**Parallel execution:** Streams A, B, C can run simultaneously. Stream D features are all independent and can be parallelized after T1/T2.
+**Dropped:** Push Notifications — primarily a mobile concern, low value for web-only boilerplate.
+
+### Key Decisions (2026-03-28)
+
+- **Execution order** changed to SaaS fundamentals first: Feature Flags → Billing → Webhooks → Analytics → Import/Export
+- **Billing** will use abstract `IBillingProvider` with mock provider (no Stripe dependency). Wire Stripe later.
+- **Feature Flags** serves as infrastructure for Billing — flags define both boolean toggles AND quota/limit values (Integer type). Billing auto-sets tenant overrides from plan entitlements via `SubscriptionChangedEvent`.
+- **Feature Flags enforcement** — 3 reference handler implementations (CreateUser, UploadFile, CreateApiKey) with developer docs for adding more. Optimistic race condition strategy; upgrade to Redis atomic counters documented for Billing.
+- **Tenants can self-manage** flags within plan limits (opt-out of features, not opt-in beyond plan ceiling). Plan ceiling enforcement added when Billing arrives.
+- **API key access** to feature flags works automatically — `IFeatureFlagService` resolves via `ICurrentUserService.TenantId` which `ApiKeyAuthenticationHandler` sets.
+
+### System Ownership Boundaries
+
+```
+Feature Flags owns:
+  • Flag definitions (feature_flags table) + per-tenant overrides (tenant_feature_flags table)
+  • Resolution: tenant override → platform default, Redis cached (5-min TTL)
+  • IFeatureFlagService API + enforcement guard pattern in handlers
+  • 11 seed flags for all system features
+
+Billing/Subscriptions will own:
+  • SubscriptionPlan.Features JSON → flag key/value mapping
+  • SubscriptionChangedEvent → SetTenantOverrideCommand (auto-sync plan entitlements)
+  • OverrideSource enum (Manual vs PlanSubscription) on TenantFeatureFlag via migration
+  • Usage tracking counters (Redis atomic INCR/DECR for real-time dashboard)
+  • Plan ceiling enforcement (tenants cannot exceed plan limits)
+```
 
 ---
 
@@ -177,9 +203,23 @@ TenantFeatureFlag : BaseEntity<Guid> (per-tenant override)
 
 **Tenant scoping note:** `FeatureFlag` is a platform-level entity with no `TenantId`. It must be excluded from global query filters in `ApplicationDbContext` (no `.HasQueryFilter()` applied). `TenantFeatureFlag` has `TenantId` and uses the standard tenant filter.
 
+**Tenant self-management:** Tenant admins can toggle flags within limits (opt-out of features they're entitled to). Cannot enable beyond plan ceiling (ceiling enforcement added when Billing arrives). System flags (`IsSystem = true`) are platform-admin only.
+
 ### Resolution
 
 Tenant override → Platform default. Cached per-tenant in Redis (`ff:{tenantId}`, 5 min TTL). Cache busted on update.
+
+### Enforcement
+
+Handlers inject `IFeatureFlagService` and check before allowing actions:
+- **Boolean gate:** `IsEnabledAsync("feature.key")` → block if disabled
+- **Quota check:** `GetValueAsync<int>("resource.max_count")` → compare against `COUNT(*)` query
+
+**Reference implementations:** CreateUserCommandHandler, UploadFileCommandHandler, CreateApiKeyCommandHandler. See `docs/feature-flags.md` for patterns.
+
+### Seed Flags
+
+11 flags covering: `users.max_count`, `users.invitations_enabled`, `files.max_upload_size_mb`, `files.max_storage_mb`, `reports.enabled`, `reports.max_concurrent`, `reports.pdf_export`, `api_keys.enabled`, `api_keys.max_count`, `ui.maintenance_mode`, `billing.enabled`.
 
 ### API Endpoints
 
@@ -394,6 +434,8 @@ PaymentHistory
 
 ### Abstraction
 
+**Implementation approach:** Abstract `IBillingProvider` interface with `MockBillingProvider` as default. Wire Stripe later by swapping the implementation. This keeps the boilerplate usable without a Stripe account.
+
 ```csharp
 public interface IBillingProvider
 {
@@ -405,6 +447,8 @@ public interface IBillingProvider
     Task<bool> ValidateWebhookAsync(string payload, string signature);
 }
 ```
+
+**MockBillingProvider:** Simulates checkout by directly setting subscription status. No external HTTP calls. Plans are managed via seed data. Useful for development, demos, and testing the full subscription flow without Stripe.
 
 ### API Endpoints
 
@@ -434,9 +478,27 @@ public interface IBillingProvider
 - New: `Application/Features/Billing/` (Commands + Queries)
 - New: `Application/Features/Billing/EventHandlers/SyncPlanFeaturesHandler.cs`
 - New: `Application/Common/Interfaces/IBillingProvider.cs`
-- New: `Infrastructure/Services/Billing/StripeBillingProvider.cs`
+- New: `Infrastructure/Services/Billing/MockBillingProvider.cs` (default, no external deps)
+- New: `Infrastructure/Services/Billing/StripeBillingProvider.cs` (optional, wire later)
 - New: `Infrastructure/Consumers/ProcessBillingWebhookConsumer.cs`
 - New: `Api/Controllers/BillingController.cs`
+- Modify: `Domain/FeatureFlags/Entities/TenantFeatureFlag.cs` — Add `OverrideSource` enum (Manual, PlanSubscription)
+- New migration: Add `override_source` column to `tenant_feature_flags`
+
+### Feature Flag Integration (critical dependency)
+
+Billing MUST implement these to connect with the Feature Flags system built in Feature 3:
+
+1. **`SubscriptionPlan.Features`** — JSON column mapping flag keys to plan-entitled values:
+   ```json
+   {"users.max_count": "50", "reports.pdf_export": "true", "files.max_storage_mb": "20480"}
+   ```
+
+2. **`SyncPlanFeaturesHandler`** — Listens to `SubscriptionChangedEvent`, iterates `plan.Features`, calls `SetTenantOverrideCommand` for each key/value with `OverrideSource = PlanSubscription`
+
+3. **Override source logic** — Plan syncs only overwrite `PlanSubscription`-sourced overrides. Manual tenant overrides are preserved. If a tenant manually set a lower value (opt-out), the plan sync does NOT raise it back up.
+
+4. **Usage counters** (optional upgrade) — Redis atomic counters `usage:{tenantId}:{resource}` for real-time dashboard. Periodically reconciled with DB counts. Replaces COUNT queries in handlers for high-throughput scenarios.
 
 ### Permissions
 
@@ -533,89 +595,13 @@ public interface IBillingProvider
 
 ---
 
-## Feature 7: Push Notifications
+## ~~Feature 7: Push Notifications~~ (DROPPED)
 
-**Purpose:** Abstract push layer (`IPushNotificationProvider`) with FCM default. Device token management.
-
-### ERD
-
-```
-UserDevice : BaseEntity<Guid>
-├── Id (Guid, PK)
-├── TenantId (Guid, FK → Tenant) — required for tenant query filter
-├── UserId (Guid, FK → User)
-├── DeviceToken (string)
-├── Platform (enum: Android, iOS, Web)
-├── DeviceName (string?)
-├── LastActiveAt (DateTime)
-├── IsActive (bool)
-├── CreatedAt, ModifiedAt
-├── UNIQUE(UserId, DeviceToken)
-```
-
-### Abstraction
-
-```csharp
-public interface IPushNotificationProvider
-{
-    Task<PushResult> SendAsync(string deviceToken, PushMessage message);
-    Task<BatchPushResult> SendBatchAsync(IEnumerable<string> tokens, PushMessage message);
-    Task<bool> ValidateTokenAsync(string token);
-}
-```
-
-### Integration
-
-Extend `NotificationService.CreateAsync()` — after creating in-app notification, check user devices + preferences → send push via provider. Stale tokens (FCM `InvalidRegistration`) auto-deactivate device.
-
-### API Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/v1/devices` | Register device |
-| GET | `/api/v1/devices` | List user's devices |
-| PUT | `/api/v1/devices/{id}` | Update token |
-| DELETE | `/api/v1/devices/{id}` | Unregister device |
-
-### Key Files
-
-- New: `Domain/Notifications/Entities/UserDevice.cs`
-- New: `Domain/Notifications/Enums/DevicePlatform.cs`
-- New: `Application/Features/Devices/` (Commands + Queries)
-- New: `Application/Common/Interfaces/IPushNotificationProvider.cs`
-- New: `Infrastructure/Services/FcmPushNotificationProvider.cs`
-- Modify: `Infrastructure/Services/NotificationService.cs` (add push sending)
-- New: `Api/Controllers/DevicesController.cs`
-
-### Permissions
-
-`Devices.View`, `Devices.Register`, `Devices.Delete`
-
-### Frontend
-
-**Page:** Settings → Devices tab (for device management). Push notification delivery is automatic — no UI needed for sending.
-
-**Components:**
-- `DevicesList` — Table: device name, platform icon (Android/iOS/Web), last active, status (active/inactive). Action: Remove.
-- `RegisterDeviceInfo` — Info card explaining that devices are registered automatically by the mobile app. No manual registration UI (device tokens come from the mobile app's FCM/APNs SDK).
-
-**Notification preferences:** Extend existing notification preferences UI to include a "Push Notifications" toggle per notification type (alongside email, SMS, in-app).
-
-**Note:** The primary frontend work for push notifications is in the **mobile app** (React Native or similar), not the web admin. The web admin only shows device management and preferences.
-
-**API hooks:**
-- `useDevices()` — list user's devices
-- `useRemoveDevice()` — mutation
-
-**Frontend files:**
-- `features/devices/pages/DevicesPage.tsx`
-- `features/devices/components/DevicesList.tsx`
-- `features/devices/api/devices.api.ts`, `devices.queries.ts`
-- Modify: notification preferences components to add push toggle
+> **Decision (2026-03-28):** Dropped from scope. Primarily a mobile concern with low value for a web-only boilerplate. Can be added later if mobile app support is needed.
 
 ---
 
-## Feature 8: Data Import/Export
+## Feature 7: Data Import/Export
 
 **Purpose:** Bulk CSV + JSON import/export for all major entities. Builds on the existing async report generation pattern — no new job entity or duplicate infrastructure.
 
