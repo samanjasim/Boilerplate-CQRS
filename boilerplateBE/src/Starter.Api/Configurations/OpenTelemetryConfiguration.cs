@@ -1,3 +1,4 @@
+using OpenTelemetry;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -26,6 +27,12 @@ public static class OpenTelemetryConfiguration
         // Enable unencrypted HTTP/2 for gRPC on localhost (Windows/.NET requirement)
         AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
 
+        // Per-signal AddOtlpExporter with explicit full endpoint paths.
+        // The Endpoint property setter disables auto path-appending, so we
+        // provide the complete URL including /v1/traces and /v1/metrics.
+        var tracesEndpoint = new Uri($"{otlpEndpoint}/v1/traces");
+        var metricsEndpoint = new Uri($"{otlpEndpoint}/v1/metrics");
+
         services.AddOpenTelemetry()
             .ConfigureResource(resource => resource.AddService(serviceName))
             .WithTracing(tracing => tracing
@@ -48,7 +55,7 @@ public static class OpenTelemetryConfiguration
                 .AddSource("Starter.Api")
                 .AddOtlpExporter(options =>
                 {
-                    options.Endpoint = new Uri(otlpEndpoint);
+                    options.Endpoint = tracesEndpoint;
                     options.Protocol = OtlpExportProtocol.HttpProtobuf;
                 }))
             .WithMetrics(metrics => metrics
@@ -56,7 +63,7 @@ public static class OpenTelemetryConfiguration
                 .AddHttpClientInstrumentation()
                 .AddOtlpExporter(options =>
                 {
-                    options.Endpoint = new Uri(otlpEndpoint);
+                    options.Endpoint = metricsEndpoint;
                     options.Protocol = OtlpExportProtocol.HttpProtobuf;
                 }));
 
