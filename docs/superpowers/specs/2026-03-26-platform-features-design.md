@@ -39,6 +39,9 @@ Feature Flags owns:
   • Resolution: tenant override → platform default, Redis cached (5-min TTL)
   • IFeatureFlagService API + enforcement guard pattern in handlers
   • 11 seed flags for all system features
+  • FlagCategory enum (Users, Files, Reports, ApiKeys, Billing, System, Custom)
+  • SuperAdmin: Tenant Detail → Feature Flags tab (cross-tenant override management)
+  • Tenant Admin: read-only flag view with opt-out for non-system boolean flags
 
 Billing/Subscriptions will own:
   • SubscriptionPlan.Features JSON → flag key/value mapping
@@ -47,6 +50,25 @@ Billing/Subscriptions will own:
   • Usage tracking counters (Redis atomic INCR/DECR for real-time dashboard)
   • Plan ceiling enforcement (tenants cannot exceed plan limits)
 ```
+
+### New Task: SuperAdmin Tenant Onboarding (before Billing)
+
+**Gap identified:** Currently no flow for SuperAdmin to create a tenant with a default admin user. Register Tenant creates the tenant + registering user becomes admin, but SuperAdmin can't onboard a new customer on their behalf.
+
+**Required flow:**
+1. SuperAdmin creates a new tenant (existing CRUD)
+2. SuperAdmin creates a default admin user for that tenant (NEW)
+3. System sends a "set your password" invitation email to the new admin
+4. New admin clicks link, sets password, logs in as tenant admin
+
+**Implementation:**
+- Add `POST /api/v1/Tenants/{tenantId}/admin` endpoint — creates a user with Admin role in the specified tenant
+- Send invitation email with password-set link (reuse existing invitation flow)
+- Frontend: "Create Admin" button on Tenant Detail page
+
+| Order | Feature | Status |
+|-------|---------|--------|
+| 3.5 | SuperAdmin Tenant Onboarding | ⬜ Planned (before Billing) |
 
 ---
 
