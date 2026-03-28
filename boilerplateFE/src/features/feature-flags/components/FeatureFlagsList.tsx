@@ -22,6 +22,17 @@ interface FeatureFlagsListProps {
   onPageSizeChange: (size: number) => void;
 }
 
+const VALUE_TYPE_LABEL_KEYS: Record<string | number, string> = {
+  0: 'featureFlags.boolean',
+  1: 'featureFlags.string',
+  2: 'featureFlags.integer',
+  3: 'featureFlags.json',
+  Boolean: 'featureFlags.boolean',
+  String: 'featureFlags.string',
+  Integer: 'featureFlags.integer',
+  Json: 'featureFlags.json',
+};
+
 export function FeatureFlagsList({ flags, pagination, onPageChange, onPageSizeChange }: FeatureFlagsListProps) {
   const { t } = useTranslation();
   const { hasPermission } = usePermissions();
@@ -74,7 +85,9 @@ export function FeatureFlagsList({ flags, pagination, onPageChange, onPageSizeCh
               </TableCell>
               <TableCell className="text-foreground">{flag.name}</TableCell>
               <TableCell>
-                <Badge variant="outline" className="text-xs">{flag.valueType}</Badge>
+                <Badge variant="outline" className="text-xs">
+                  {t(VALUE_TYPE_LABEL_KEYS[flag.valueType] ?? 'featureFlags.string')}
+                </Badge>
               </TableCell>
               <TableCell className="text-muted-foreground">{flag.category ?? '-'}</TableCell>
               <TableCell className="text-muted-foreground text-sm">{flag.defaultValue}</TableCell>

@@ -43,7 +43,7 @@ export function TenantOverrideDialog({ open, onOpenChange, flag }: TenantOverrid
   const [tenantId, setTenantId] = useState('');
   const [overrideValue, setOverrideValue] = useState('');
 
-  const isBooleanType = flag?.valueType === 'Boolean';
+  const isBooleanType = flag?.valueType === 'Boolean' || (flag?.valueType as unknown) === 0;
 
   useEffect(() => {
     if (flag) {

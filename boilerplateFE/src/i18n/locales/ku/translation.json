@@ -646,6 +646,24 @@
     "enabled": "چالاک",
     "disabled": "ناچالاک",
     "actions": "کردارەکان",
-    "description_label": "وەسف"
+    "description_label": "وەسف",
+    "type": "جۆر",
+    "createTitle": "دروستکردنی ئاڵای تایبەتمەندی",
+    "createDescription": "پێناسەکردنی ئاڵای تایبەتمەندی نوێ بۆ پلاتفۆرم",
+    "descriptionLabel": "وەسف",
+    "namePlaceholder": "بۆ نموونە: تایبەتمەندی فاتورە",
+    "descriptionPlaceholder": "وەسفی ئارەزووی بۆ ئەم ئاڵایە",
+    "categoryPlaceholder": "بۆ نموونە: billing",
+    "editTitle": "دەستکاریکردنی ئاڵای تایبەتمەندی",
+    "editDescription": "دەستکاریکردنی ئاڵا: {{key}}",
+    "overrideTitle": "سەرنووسینی خاوەنکار",
+    "overrideDescription": "دانانی بەهایەکی تایبەت بە خاوەنکار بۆ ئاڵا: {{key}}",
+    "currentOverride": "سەرنووسینی ئێستا",
+    "tenant": "خاوەنکار",
+    "deleteTitle": "سڕینەوەی ئاڵای تایبەتمەندی",
+    "deleteDescription": "دڵنیایت لە سڕینەوەی \"{{name}}\"؟ ئەم کردارە ناگەڕێتەوە.",
+    "deleteConfirm": "سڕینەوە",
+    "emptyTitle": "هیچ ئاڵای تایبەتمەندی نییە",
+    "emptyDescription": "یەکەم ئاڵای تایبەتمەندی دروست بکە بۆ دەستپێکردن"
   }
 }

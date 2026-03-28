@@ -646,6 +646,24 @@
     "enabled": "Enabled",
     "disabled": "Disabled",
     "actions": "Actions",
-    "description_label": "Description"
+    "description_label": "Description",
+    "type": "Type",
+    "createTitle": "Create Feature Flag",
+    "createDescription": "Define a new feature flag for the platform",
+    "descriptionLabel": "Description",
+    "namePlaceholder": "e.g. Billing Feature",
+    "descriptionPlaceholder": "Optional description for this flag",
+    "categoryPlaceholder": "e.g. billing",
+    "editTitle": "Edit Feature Flag",
+    "editDescription": "Editing flag: {{key}}",
+    "overrideTitle": "Tenant Override",
+    "overrideDescription": "Set a tenant-specific value for flag: {{key}}",
+    "currentOverride": "Current Override",
+    "tenant": "Tenant",
+    "deleteTitle": "Delete Feature Flag",
+    "deleteDescription": "Are you sure you want to delete \"{{name}}\"? This cannot be undone.",
+    "deleteConfirm": "Delete",
+    "emptyTitle": "No Feature Flags",
+    "emptyDescription": "Create your first feature flag to get started"
   }
 }

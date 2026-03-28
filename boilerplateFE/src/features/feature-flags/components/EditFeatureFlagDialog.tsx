@@ -30,7 +30,7 @@ export function EditFeatureFlagDialog({ open, onOpenChange, flag }: EditFeatureF
   const [defaultValue, setDefaultValue] = useState('');
   const [category, setCategory] = useState('');
 
-  const isBooleanType = flag?.valueType === 'Boolean';
+  const isBooleanType = flag?.valueType === 'Boolean' || (flag?.valueType as unknown) === 0;
 
   useEffect(() => {
     if (flag) {

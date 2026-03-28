@@ -646,6 +646,24 @@
     "enabled": "مفعّل",
     "disabled": "معطّل",
     "actions": "الإجراءات",
-    "description_label": "الوصف"
+    "description_label": "الوصف",
+    "type": "النوع",
+    "createTitle": "إنشاء علم ميزة",
+    "createDescription": "تعريف علم ميزة جديد للمنصة",
+    "descriptionLabel": "الوصف",
+    "namePlaceholder": "مثال: ميزة الفوترة",
+    "descriptionPlaceholder": "وصف اختياري لهذا العلم",
+    "categoryPlaceholder": "مثال: billing",
+    "editTitle": "تعديل علم الميزة",
+    "editDescription": "تعديل العلم: {{key}}",
+    "overrideTitle": "تجاوز المستأجر",
+    "overrideDescription": "تعيين قيمة خاصة بالمستأجر للعلم: {{key}}",
+    "currentOverride": "التجاوز الحالي",
+    "tenant": "المستأجر",
+    "deleteTitle": "حذف علم الميزة",
+    "deleteDescription": "هل أنت متأكد من حذف \"{{name}}\"؟ لا يمكن التراجع عن هذا الإجراء.",
+    "deleteConfirm": "حذف",
+    "emptyTitle": "لا توجد أعلام ميزات",
+    "emptyDescription": "أنشئ أول علم ميزة للبدء"
   }
 }
