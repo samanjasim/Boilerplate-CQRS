@@ -2,6 +2,7 @@ using System.Reflection;
 using Starter.Application.Common.Interfaces;
 using Starter.Domain.ApiKeys.Entities;
 using Starter.Domain.Common;
+using Starter.Domain.FeatureFlags.Entities;
 using Starter.Domain.Identity.Entities;
 using Starter.Domain.Tenants.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -28,6 +29,8 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<ReportRequest> ReportRequests => Set<ReportRequest>();
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
+    public DbSet<FeatureFlag> FeatureFlags => Set<FeatureFlag>();
+    public DbSet<TenantFeatureFlag> TenantFeatureFlags => Set<TenantFeatureFlag>();
 
     // EF Core evaluates this per-query via the expression tree.
     // Must be a property (not a method) for EF to parameterize it.
@@ -78,6 +81,9 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
 
         modelBuilder.Entity<ApiKey>().HasQueryFilter(a =>
             TenantId == null || a.TenantId == TenantId);
+
+        modelBuilder.Entity<TenantFeatureFlag>().HasQueryFilter(t =>
+            TenantId == null || t.TenantId == TenantId);
 
         // Tenant entity: tenant users see only their own tenant; platform admins see all
         modelBuilder.Entity<Tenant>().HasQueryFilter(t =>

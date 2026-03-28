@@ -1,5 +1,6 @@
 using Starter.Domain.ApiKeys.Entities;
 using Starter.Domain.Common;
+using Starter.Domain.FeatureFlags.Entities;
 using Starter.Domain.Identity.Entities;
 using Starter.Domain.Tenants.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -24,6 +25,8 @@ public interface IApplicationDbContext
     DbSet<ReportRequest> ReportRequests { get; }
     DbSet<SystemSetting> SystemSettings { get; }
     DbSet<ApiKey> ApiKeys { get; }
+    DbSet<FeatureFlag> FeatureFlags { get; }
+    DbSet<TenantFeatureFlag> TenantFeatureFlags { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
