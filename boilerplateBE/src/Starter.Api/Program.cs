@@ -5,17 +5,29 @@ using Starter.Infrastructure;
 using Starter.Infrastructure.Identity;
 using Starter.Infrastructure.Persistence.Seeds;
 using Serilog;
+using Serilog.Sinks.OpenTelemetry;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Serilog
-Log.Logger = new LoggerConfiguration()
+var loggerConfig = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .Enrich.FromLogContext()
     .Enrich.WithEnvironmentName()
     .Enrich.WithMachineName()
-    .Enrich.WithThreadId()
-    .CreateLogger();
+    .Enrich.WithThreadId();
+
+if (builder.Configuration.GetValue<bool>("OpenTelemetry:Enabled"))
+{
+    var otlpEndpoint = builder.Configuration.GetValue<string>("OpenTelemetry:OtlpEndpoint") ?? "http://127.0.0.1:4318";
+    loggerConfig.WriteTo.OpenTelemetry(options =>
+    {
+        options.Endpoint = $"{otlpEndpoint}/v1/logs";
+        options.Protocol = OtlpProtocol.HttpProtobuf;
+    });
+}
+
+Log.Logger = loggerConfig.CreateLogger();
 
 builder.Host.UseSerilog();
 
