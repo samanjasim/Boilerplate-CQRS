@@ -12,6 +12,7 @@ import {
   FileText,
   Settings2,
   KeyRound,
+  ToggleRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore, useAuthStore, selectSidebarCollapsed, selectUser } from '@/stores';
@@ -52,6 +53,9 @@ export function Sidebar() {
       : []),
     ...(hasPermission(PERMISSIONS.ApiKeys.View)
       ? [{ label: t('nav.apiKeys'), icon: KeyRound, path: ROUTES.API_KEYS.LIST }]
+      : []),
+    ...(hasPermission(PERMISSIONS.FeatureFlags.View)
+      ? [{ label: t('nav.featureFlags'), icon: ToggleRight, path: ROUTES.FEATURE_FLAGS.LIST }]
       : []),
     ...(hasPermission(PERMISSIONS.System.ManageSettings)
       ? [{ label: t('nav.settings'), icon: Settings2, path: ROUTES.SETTINGS }]

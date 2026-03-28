@@ -31,6 +31,7 @@ const FilesPage = lazy(() => import('@/features/files/pages/FilesPage'));
 const ReportsPage = lazy(() => import('@/features/reports/pages/ReportsPage'));
 const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage'));
 const ApiKeysPage = lazy(() => import('@/features/api-keys/pages/ApiKeysPage'));
+const FeatureFlagsPage = lazy(() => import('@/features/feature-flags/pages/FeatureFlagsPage'));
 const NotFoundPage = lazy(() => import('@/routes/NotFoundPage'));
 
 export const routes: RouteObject[] = [
@@ -153,6 +154,14 @@ export const routes: RouteObject[] = [
             element: <PermissionGuard permission={PERMISSIONS.ApiKeys.View} />,
             children: [
               { path: ROUTES.API_KEYS.LIST, element: <ApiKeysPage /> },
+            ],
+          },
+
+          // Feature Flags
+          {
+            element: <PermissionGuard permission={PERMISSIONS.FeatureFlags.View} />,
+            children: [
+              { path: ROUTES.FEATURE_FLAGS.LIST, element: <FeatureFlagsPage /> },
             ],
           },
         ],
