@@ -20,9 +20,10 @@ public sealed class FeatureFlagsController(ISender mediator) : BaseApiController
     public async Task<IActionResult> GetAll(
         [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 50,
         [FromQuery] FlagCategory? category = null, [FromQuery] string? search = null,
+        [FromQuery] Guid? tenantId = null,
         CancellationToken ct = default)
     {
-        var result = await Mediator.Send(new GetFeatureFlagsQuery(pageNumber, pageSize, category, search), ct);
+        var result = await Mediator.Send(new GetFeatureFlagsQuery(pageNumber, pageSize, category, search, tenantId), ct);
         return HandlePagedResult(result);
     }
 

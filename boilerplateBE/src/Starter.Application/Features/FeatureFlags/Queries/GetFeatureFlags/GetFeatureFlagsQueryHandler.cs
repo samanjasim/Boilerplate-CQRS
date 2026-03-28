@@ -14,7 +14,10 @@ internal sealed class GetFeatureFlagsQueryHandler(
     public async Task<Result<PaginatedList<FeatureFlagDto>>> Handle(
         GetFeatureFlagsQuery request, CancellationToken cancellationToken)
     {
-        var tenantId = currentUser.TenantId;
+        // Platform admins (TenantId=null) can view any tenant's resolved flags
+        var tenantId = request.TenantId.HasValue && !currentUser.TenantId.HasValue
+            ? request.TenantId
+            : currentUser.TenantId;
         var query = context.FeatureFlags.AsNoTracking().AsQueryable();
 
         if (request.Category.HasValue)
