@@ -38,7 +38,7 @@ public sealed class FeatureFlagsController(ISender mediator) : BaseApiController
     public async Task<IActionResult> Create(CreateFeatureFlagCommand command, CancellationToken ct = default)
     {
         var result = await Mediator.Send(command, ct);
-        return HandleCreatedResult(result, nameof(GetByKey));
+        return HandleResult(result);
     }
 
     [HttpPut("{id:guid}")]
