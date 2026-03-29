@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Starter.Application.Features.FeatureFlags.Commands.CreateFeatureFlag;
 using Starter.Application.Features.FeatureFlags.Commands.DeleteFeatureFlag;
+using Starter.Application.Features.FeatureFlags.Commands.OptOutFeatureFlag;
+using Starter.Application.Features.FeatureFlags.Commands.RemoveOptOut;
 using Starter.Application.Features.FeatureFlags.Commands.RemoveTenantOverride;
 using Starter.Application.Features.FeatureFlags.Commands.SetTenantOverride;
 using Starter.Application.Features.FeatureFlags.Commands.UpdateFeatureFlag;
@@ -75,6 +77,21 @@ public sealed class FeatureFlagsController(ISender mediator) : BaseApiController
         Guid id, Guid tenantId, CancellationToken ct = default)
     {
         var result = await Mediator.Send(new RemoveTenantOverrideCommand(id, tenantId), ct);
+        return HandleResult(result);
+    }
+    [HttpPost("{id:guid}/opt-out")]
+    [Authorize(Policy = Permissions.FeatureFlags.OptOut)]
+    public async Task<IActionResult> OptOut(Guid id, CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(new OptOutFeatureFlagCommand(id), ct);
+        return HandleResult(result);
+    }
+
+    [HttpDelete("{id:guid}/opt-out")]
+    [Authorize(Policy = Permissions.FeatureFlags.OptOut)]
+    public async Task<IActionResult> RemoveOptOut(Guid id, CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(new RemoveOptOutCommand(id), ct);
         return HandleResult(result);
     }
 }

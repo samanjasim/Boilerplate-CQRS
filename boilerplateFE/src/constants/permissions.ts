@@ -59,6 +59,7 @@ export const PERMISSIONS = {
     Update: 'FeatureFlags.Update',
     Delete: 'FeatureFlags.Delete',
     ManageTenantOverrides: 'FeatureFlags.ManageTenantOverrides',
+    OptOut: 'FeatureFlags.OptOut',
   },
   System: {
     ViewAuditLogs: 'System.ViewAuditLogs',

@@ -102,6 +102,7 @@ public static class Permissions
         public const string Update = "FeatureFlags.Update";
         public const string Delete = "FeatureFlags.Delete";
         public const string ManageTenantOverrides = "FeatureFlags.ManageTenantOverrides";
+        public const string OptOut = "FeatureFlags.OptOut";
     }
 
     // ─── Tenants ─────────────────────────────────────
@@ -187,6 +188,7 @@ public static class Permissions
         yield return (FeatureFlags.Update, "Update feature flags", "FeatureFlags");
         yield return (FeatureFlags.Delete, "Delete feature flags", "FeatureFlags");
         yield return (FeatureFlags.ManageTenantOverrides, "Manage tenant feature flag overrides", "FeatureFlags");
+        yield return (FeatureFlags.OptOut, "Opt out of non-system boolean feature flags", "FeatureFlags");
 
         // ─── Tenants ───
         yield return (Tenants.View, "View tenants list", "Tenants");

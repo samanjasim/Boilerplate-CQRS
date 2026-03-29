@@ -24,6 +24,10 @@ public static class FeatureFlagErrors
         "FeatureFlag.InvalidValueForType",
         "The provided value is not valid for the flag's value type.");
 
+    public static readonly Error CannotOptOut = Error.Validation(
+        "FeatureFlag.CannotOptOut",
+        "Can only opt out of non-system boolean feature flags.");
+
     public static Error FeatureDisabled(string feature) => Error.Validation(
         "FeatureFlag.FeatureDisabled",
         $"The feature '{feature}' is not enabled for your tenant.");

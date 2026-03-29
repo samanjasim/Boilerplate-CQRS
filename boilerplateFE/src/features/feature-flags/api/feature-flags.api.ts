@@ -59,4 +59,10 @@ export const featureFlagsApi = {
 
   removeTenantOverride: (flagId: string, tenantId: string) =>
     apiClient.delete(API_ENDPOINTS.FEATURE_FLAGS.TENANT_OVERRIDE(flagId, tenantId)).then(r => r.data),
+
+  optOut: (flagId: string) =>
+    apiClient.post(API_ENDPOINTS.FEATURE_FLAGS.OPT_OUT(flagId)).then(r => r.data),
+
+  removeOptOut: (flagId: string) =>
+    apiClient.delete(API_ENDPOINTS.FEATURE_FLAGS.OPT_OUT(flagId)).then(r => r.data),
 };

@@ -8,7 +8,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { PageHeader, EmptyState, getPersistedPageSize, Pagination } from '@/components/common';
-import { useFeatureFlags, useSetTenantOverride, useRemoveTenantOverride } from '../api';
+import { useFeatureFlags, useOptOutFeatureFlag, useRemoveOptOut } from '../api';
 import type { FeatureFlagDto } from '../api';
 import { FeatureFlagsList } from '../components/FeatureFlagsList';
 import { CreateFeatureFlagDialog } from '../components/CreateFeatureFlagDialog';
@@ -113,7 +113,6 @@ export default function FeatureFlagsPage() {
 /** Simplified flag list for tenant admins with opt-out toggles */
 function TenantFlagsList({
   flags,
-  tenantId,
   pagination,
   onPageChange,
   onPageSizeChange,
@@ -125,23 +124,18 @@ function TenantFlagsList({
   onPageSizeChange: (size: number) => void;
 }) {
   const { t } = useTranslation();
-  const setOverrideMutation = useSetTenantOverride();
-  const removeOverrideMutation = useRemoveTenantOverride();
+  const optOutMutation = useOptOutFeatureFlag();
+  const removeOptOutMutation = useRemoveOptOut();
 
   const isBooleanFlag = (flag: FeatureFlagDto) =>
     flag.valueType === 'Boolean' || (flag.valueType as unknown) === 0;
 
   const handleOptOut = async (flag: FeatureFlagDto) => {
-    // Toggle: if currently true, set override to false. If overridden to false, remove override.
-    if (flag.tenantOverrideValue !== null) {
-      await removeOverrideMutation.mutateAsync({ flagId: flag.id, tenantId });
-    } else {
-      await setOverrideMutation.mutateAsync({
-        flagId: flag.id,
-        tenantId,
-        data: { value: 'false' },
-      });
-    }
+    await optOutMutation.mutateAsync(flag.id);
+  };
+
+  const handleRemoveOptOut = async (flag: FeatureFlagDto) => {
+    await removeOptOutMutation.mutateAsync(flag.id);
   };
 
   if (flags.length === 0) {
@@ -197,18 +191,29 @@ function TenantFlagsList({
                 </div>
               </TableCell>
               <TableCell className="text-end">
-                {/* Only non-system boolean flags can be toggled by tenant admins */}
+                {/* Only non-system boolean flags can be opted out by tenant admins */}
                 {isBooleanFlag(flag) && !flag.isSystem && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleOptOut(flag)}
-                    disabled={setOverrideMutation.isPending || removeOverrideMutation.isPending}
-                  >
-                    {flag.tenantOverrideValue !== null
-                      ? t('featureFlags.removeOverride')
-                      : t('featureFlags.optOut')}
-                  </Button>
+                  <>
+                    {flag.tenantOverrideValue === 'false' ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveOptOut(flag)}
+                        disabled={removeOptOutMutation.isPending}
+                      >
+                        {t('featureFlags.removeOverride')}
+                      </Button>
+                    ) : flag.resolvedValue === 'true' ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleOptOut(flag)}
+                        disabled={optOutMutation.isPending}
+                      >
+                        {t('featureFlags.optOut')}
+                      </Button>
+                    ) : null}
+                  </>
                 )}
               </TableCell>
             </TableRow>

@@ -76,3 +76,25 @@ export function useRemoveTenantOverride() {
     },
   });
 }
+
+export function useOptOutFeatureFlag() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (flagId: string) => featureFlagsApi.optOut(flagId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.featureFlags.all });
+      toast.success(i18n.t('featureFlags.optOutSuccess'));
+    },
+  });
+}
+
+export function useRemoveOptOut() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (flagId: string) => featureFlagsApi.removeOptOut(flagId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.featureFlags.all });
+      toast.success(i18n.t('featureFlags.optInSuccess'));
+    },
+  });
+}

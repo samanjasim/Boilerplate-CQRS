@@ -676,6 +676,9 @@
     "tenantFlags": "Tenant Feature Flags",
     "tenantDescription": "View your resolved feature flags",
     "optOut": "Opt Out",
-    "noOverride": "Default"
+    "noOverride": "Default",
+    "optOutSuccess": "Feature opted out successfully",
+    "optInSuccess": "Opt-out removed, feature restored to default",
+    "cannotOptOut": "Can only opt out of enabled boolean features"
   }
 }

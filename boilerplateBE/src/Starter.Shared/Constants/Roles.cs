@@ -48,7 +48,7 @@ public static class Roles
             Permissions.ApiKeys.Delete,
             // Feature Flags
             Permissions.FeatureFlags.View,
-            Permissions.FeatureFlags.ManageTenantOverrides,
+            Permissions.FeatureFlags.OptOut,
             // System
             Permissions.System.ViewDashboard,
             Permissions.System.ExportData,
