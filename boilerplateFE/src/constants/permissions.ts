@@ -53,6 +53,14 @@ export const PERMISSIONS = {
     DeletePlatform: 'ApiKeys.DeletePlatform',
     EmergencyRevoke: 'ApiKeys.EmergencyRevoke',
   },
+  FeatureFlags: {
+    View: 'FeatureFlags.View',
+    Create: 'FeatureFlags.Create',
+    Update: 'FeatureFlags.Update',
+    Delete: 'FeatureFlags.Delete',
+    ManageTenantOverrides: 'FeatureFlags.ManageTenantOverrides',
+    OptOut: 'FeatureFlags.OptOut',
+  },
   System: {
     ViewAuditLogs: 'System.ViewAuditLogs',
     ManageSettings: 'System.ManageSettings',

@@ -94,6 +94,17 @@ public static class Permissions
         public const string EmergencyRevoke = "ApiKeys.EmergencyRevoke";
     }
 
+    // ─── Feature Flags ───────────────────────────────
+    public static class FeatureFlags
+    {
+        public const string View = "FeatureFlags.View";
+        public const string Create = "FeatureFlags.Create";
+        public const string Update = "FeatureFlags.Update";
+        public const string Delete = "FeatureFlags.Delete";
+        public const string ManageTenantOverrides = "FeatureFlags.ManageTenantOverrides";
+        public const string OptOut = "FeatureFlags.OptOut";
+    }
+
     // ─── Tenants ─────────────────────────────────────
     public static class Tenants
     {
@@ -170,6 +181,14 @@ public static class Permissions
         yield return (ApiKeys.UpdatePlatform, "Update platform API keys", "ApiKeys");
         yield return (ApiKeys.DeletePlatform, "Revoke platform API keys", "ApiKeys");
         yield return (ApiKeys.EmergencyRevoke, "Emergency revoke any tenant API key", "ApiKeys");
+
+        // ─── Feature Flags ───
+        yield return (FeatureFlags.View, "View feature flags", "FeatureFlags");
+        yield return (FeatureFlags.Create, "Create feature flags", "FeatureFlags");
+        yield return (FeatureFlags.Update, "Update feature flags", "FeatureFlags");
+        yield return (FeatureFlags.Delete, "Delete feature flags", "FeatureFlags");
+        yield return (FeatureFlags.ManageTenantOverrides, "Manage tenant feature flag overrides", "FeatureFlags");
+        yield return (FeatureFlags.OptOut, "Opt out of non-system boolean feature flags", "FeatureFlags");
 
         // ─── Tenants ───
         yield return (Tenants.View, "View tenants list", "Tenants");

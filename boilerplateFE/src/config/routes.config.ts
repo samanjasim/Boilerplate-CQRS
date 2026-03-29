@@ -66,4 +66,9 @@ export const ROUTES = {
   API_KEYS: {
     LIST: '/api-keys',
   },
+
+  // Feature Flags
+  FEATURE_FLAGS: {
+    LIST: '/feature-flags',
+  },
 } as const;

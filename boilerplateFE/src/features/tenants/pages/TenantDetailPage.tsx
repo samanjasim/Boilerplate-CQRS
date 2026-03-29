@@ -31,12 +31,14 @@ import { ROUTES } from '@/config';
 import { formatDate } from '@/utils/format';
 import { toast } from 'sonner';
 
-import { STATUS_BADGE_VARIANT } from '@/constants';
+import { STATUS_BADGE_VARIANT, PERMISSIONS } from '@/constants';
+import { usePermissions } from '@/hooks';
+import { TenantFeatureFlagsTab } from '../components/TenantFeatureFlagsTab';
 
-type TabKey = 'overview' | 'branding' | 'businessInfo' | 'customText';
+type TabKey = 'overview' | 'branding' | 'businessInfo' | 'customText' | 'featureFlags';
 type LangKey = 'en' | 'ar' | 'ku';
 
-const TABS: TabKey[] = ['overview', 'branding', 'businessInfo', 'customText'];
+const BASE_TABS: TabKey[] = ['overview', 'branding', 'businessInfo', 'customText'];
 const LANGUAGES: LangKey[] = ['en', 'ar', 'ku'];
 
 /** Safely parse a JSON string into a per-language object. */
@@ -60,7 +62,12 @@ export default function TenantDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const { data: tenant, isLoading } = useTenant(id!);
+  const { hasPermission } = usePermissions();
   useBackNavigation(ROUTES.TENANTS.LIST, t('tenants.backToTenants'));
+
+  const TABS: TabKey[] = hasPermission(PERMISSIONS.FeatureFlags.View)
+    ? [...BASE_TABS, 'featureFlags']
+    : BASE_TABS;
 
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [statusAction, setStatusAction] = useState<'suspend' | 'deactivate' | null>(null);
@@ -534,6 +541,11 @@ export default function TenantDetailPage() {
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {/* -- Feature Flags Tab -- */}
+          {activeTab === 'featureFlags' && id && (
+            <TenantFeatureFlagsTab tenantId={id} />
           )}
 
           {/* -- Custom Text Tab -- */}

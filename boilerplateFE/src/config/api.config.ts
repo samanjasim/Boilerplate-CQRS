@@ -89,4 +89,11 @@ export const API_ENDPOINTS = {
     DETAIL: (id: string) => `/ApiKeys/${id}`,
     EMERGENCY_REVOKE: (id: string) => `/ApiKeys/${id}/emergency-revoke`,
   },
+  FEATURE_FLAGS: {
+    LIST: '/FeatureFlags',
+    BY_KEY: (key: string) => `/FeatureFlags/${key}`,
+    DETAIL: (id: string) => `/FeatureFlags/${id}`,
+    TENANT_OVERRIDE: (id: string, tenantId: string) => `/FeatureFlags/${id}/tenants/${tenantId}`,
+    OPT_OUT: (id: string) => `/FeatureFlags/${id}/opt-out`,
+  },
 } as const;

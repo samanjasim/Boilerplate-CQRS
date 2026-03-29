@@ -1,5 +1,6 @@
 using Starter.Application.Common.Constants;
 using Starter.Application.Common.Interfaces;
+using Starter.Domain.FeatureFlags.Errors;
 using Starter.Domain.Identity.Entities;
 using Starter.Domain.Identity.Errors;
 using Starter.Domain.Identity.ValueObjects;
@@ -15,10 +16,16 @@ internal sealed class RegisterUserCommandHandler(
     IPasswordService passwordService,
     IOtpService otpService,
     IEmailService emailService,
-    IEmailTemplateService emailTemplateService) : IRequestHandler<RegisterUserCommand, Result<Guid>>
+    IEmailTemplateService emailTemplateService,
+    IFeatureFlagService flags) : IRequestHandler<RegisterUserCommand, Result<Guid>>
 {
     public async Task<Result<Guid>> Handle(RegisterUserCommand request, CancellationToken cancellationToken)
     {
+        var maxUsers = await flags.GetValueAsync<int>("users.max_count", cancellationToken);
+        var currentCount = await context.Users.CountAsync(cancellationToken);
+        if (currentCount >= maxUsers)
+            return Result.Failure<Guid>(FeatureFlagErrors.QuotaExceeded("users", maxUsers));
+
         var emailExists = await context.Users
             .AnyAsync(u => u.Email.Value == Email.Normalize(request.Email), cancellationToken);
 

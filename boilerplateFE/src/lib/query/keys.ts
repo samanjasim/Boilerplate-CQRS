@@ -79,4 +79,12 @@ export const queryKeys = {
     details: () => [...queryKeys.apiKeys.all, 'detail'] as const,
     detail: (id: string) => [...queryKeys.apiKeys.details(), id] as const,
   },
+
+  featureFlags: {
+    all: ['featureFlags'] as const,
+    lists: () => [...queryKeys.featureFlags.all, 'list'] as const,
+    list: (filters?: object) => [...queryKeys.featureFlags.lists(), filters ?? {}] as const,
+    details: () => [...queryKeys.featureFlags.all, 'detail'] as const,
+    detail: (key: string) => [...queryKeys.featureFlags.details(), key] as const,
+  },
 } as const;
