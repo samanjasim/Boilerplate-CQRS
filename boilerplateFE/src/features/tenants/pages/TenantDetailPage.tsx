@@ -65,7 +65,7 @@ export default function TenantDetailPage() {
   const { hasPermission } = usePermissions();
   useBackNavigation(ROUTES.TENANTS.LIST, t('tenants.backToTenants'));
 
-  const TABS: TabKey[] = hasPermission(PERMISSIONS.FeatureFlags.View)
+  const TABS: TabKey[] = hasPermission(PERMISSIONS.FeatureFlags.ManageTenantOverrides)
     ? [...BASE_TABS, 'featureFlags']
     : BASE_TABS;
 
