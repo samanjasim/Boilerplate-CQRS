@@ -9,12 +9,18 @@ namespace Starter.Application.Features.FeatureFlags.Commands.SetTenantOverride;
 
 internal sealed class SetTenantOverrideCommandHandler(
     IApplicationDbContext context,
-    IFeatureFlagService featureFlagService) : IRequestHandler<SetTenantOverrideCommand, Result>
+    IFeatureFlagService featureFlagService,
+    ICurrentUserService currentUser) : IRequestHandler<SetTenantOverrideCommand, Result>
 {
     public async Task<Result> Handle(SetTenantOverrideCommand request, CancellationToken cancellationToken)
     {
         var flagExists = await context.FeatureFlags.AnyAsync(f => f.Id == request.FeatureFlagId, cancellationToken);
         if (!flagExists) return Result.Failure(FeatureFlagErrors.NotFound);
+
+        // If caller is a tenant user (not platform admin), they can only override their own tenant
+        var callerTenantId = currentUser.TenantId;
+        if (callerTenantId.HasValue && callerTenantId.Value != request.TenantId)
+            return Result.Failure(Error.Forbidden("You can only manage overrides for your own tenant."));
 
         var existing = await context.TenantFeatureFlags.IgnoreQueryFilters()
             .FirstOrDefaultAsync(t => t.FeatureFlagId == request.FeatureFlagId && t.TenantId == request.TenantId, cancellationToken);

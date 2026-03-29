@@ -10,8 +10,10 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { EmptyState } from '@/components/common';
-import { useFeatureFlags, useSetTenantOverride, useRemoveTenantOverride } from '@/features/feature-flags/api';
+import { useFeatureFlags, useSetTenantOverride, useRemoveTenantOverride, useOptOutFeatureFlag, useRemoveOptOut } from '@/features/feature-flags/api';
 import type { FeatureFlagDto } from '@/features/feature-flags/api';
+import { PERMISSIONS } from '@/constants/permissions';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const VALUE_TYPE_LABEL_KEYS: Record<string | number, string> = {
   0: 'featureFlags.boolean',
@@ -30,9 +32,15 @@ interface TenantFeatureFlagsTabProps {
 
 export function TenantFeatureFlagsTab({ tenantId }: TenantFeatureFlagsTabProps) {
   const { t } = useTranslation();
+  const { hasPermission } = usePermissions();
   const { data, isLoading } = useFeatureFlags({ tenantId, pageSize: 200 });
   const setOverrideMutation = useSetTenantOverride();
   const removeOverrideMutation = useRemoveTenantOverride();
+  const optOutMutation = useOptOutFeatureFlag();
+  const removeOptOutMutation = useRemoveOptOut();
+
+  const canManageOverrides = hasPermission(PERMISSIONS.FeatureFlags.ManageTenantOverrides);
+  const canOptOut = hasPermission(PERMISSIONS.FeatureFlags.OptOut);
 
   const [editingFlag, setEditingFlag] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -142,68 +150,96 @@ export function TenantFeatureFlagsTab({ tenantId }: TenantFeatureFlagsTabProps) 
                       <ShieldAlert className="h-4 w-4 text-muted-foreground" />
                     )}
 
-                    {/* Boolean flags: toggle override */}
-                    {isBooleanFlag(flag) && !flag.isSystem && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleToggleBoolean(flag)}
-                        disabled={setOverrideMutation.isPending}
-                      >
-                        {flag.resolvedValue === 'true' ? t('featureFlags.disabled') : t('featureFlags.enabled')}
-                      </Button>
-                    )}
-
-                    {/* Non-boolean flags: inline edit */}
-                    {!isBooleanFlag(flag) && !flag.isSystem && (
+                    {canManageOverrides ? (
                       <>
-                        {editingFlag === flag.id ? (
-                          <div className="flex items-center gap-1">
-                            <Input
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              className="h-8 w-32"
-                            />
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={() => handleSetOverride(flag, editValue)}
-                              disabled={setOverrideMutation.isPending || !editValue}
-                            >
-                              {t('common.save')}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setEditingFlag(null)}
-                            >
-                              {t('common.cancel')}
-                            </Button>
-                          </div>
-                        ) : (
+                        {/* Platform admin: full override controls */}
+                        {isBooleanFlag(flag) && !flag.isSystem && (
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => startEditing(flag)}
+                            onClick={() => handleToggleBoolean(flag)}
+                            disabled={setOverrideMutation.isPending}
                           >
-                            {t('featureFlags.setOverride')}
+                            {flag.resolvedValue === 'true' ? t('featureFlags.disabled') : t('featureFlags.enabled')}
+                          </Button>
+                        )}
+
+                        {!isBooleanFlag(flag) && !flag.isSystem && (
+                          <>
+                            {editingFlag === flag.id ? (
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  value={editValue}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  className="h-8 w-32"
+                                />
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => handleSetOverride(flag, editValue)}
+                                  disabled={setOverrideMutation.isPending || !editValue}
+                                >
+                                  {t('common.save')}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setEditingFlag(null)}
+                                >
+                                  {t('common.cancel')}
+                                </Button>
+                              </div>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => startEditing(flag)}
+                              >
+                                {t('featureFlags.setOverride')}
+                              </Button>
+                            )}
+                          </>
+                        )}
+
+                        {flag.tenantOverrideValue !== null && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive"
+                            onClick={() => handleRemoveOverride(flag)}
+                            disabled={removeOverrideMutation.isPending}
+                          >
+                            {t('featureFlags.removeOverride')}
                           </Button>
                         )}
                       </>
-                    )}
+                    ) : canOptOut ? (
+                      <>
+                        {/* Tenant admin: opt-out toggle for boolean non-system flags only */}
+                        {isBooleanFlag(flag) && !flag.isSystem && flag.resolvedValue === 'true' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => optOutMutation.mutateAsync(flag.id)}
+                            disabled={optOutMutation.isPending}
+                          >
+                            {t('featureFlags.disabled')}
+                          </Button>
+                        )}
 
-                    {/* Remove override button */}
-                    {flag.tenantOverrideValue !== null && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive"
-                        onClick={() => handleRemoveOverride(flag)}
-                        disabled={removeOverrideMutation.isPending}
-                      >
-                        {t('featureFlags.removeOverride')}
-                      </Button>
-                    )}
+                        {isBooleanFlag(flag) && !flag.isSystem && flag.resolvedValue === 'false' && flag.tenantOverrideValue !== null && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive"
+                            onClick={() => removeOptOutMutation.mutateAsync(flag.id)}
+                            disabled={removeOptOutMutation.isPending}
+                          >
+                            {t('featureFlags.removeOverride')}
+                          </Button>
+                        )}
+                      </>
+                    ) : null}
                   </div>
                 </TableCell>
               </TableRow>
