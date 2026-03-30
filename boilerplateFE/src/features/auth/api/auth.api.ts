@@ -91,7 +91,7 @@ export const authApi = {
     await apiClient.post(API_ENDPOINTS.AUTH.DISABLE_2FA, data);
   },
 
-  inviteUser: (data: { email: string; roleId: string }) =>
+  inviteUser: (data: { email: string; roleId?: string; tenantId?: string }) =>
     apiClient.post<ApiResponse<string>>(API_ENDPOINTS.AUTH.INVITE_USER, data).then((r) => r.data.data),
 
   acceptInvite: (data: {

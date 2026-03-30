@@ -13,6 +13,7 @@ export interface Role {
   isSystemRole: boolean;
   isActive: boolean;
   createdAt: string;
+  tenantId?: string | null;
   modifiedAt?: string;
   userCount: number;
   permissions?: Permission[];

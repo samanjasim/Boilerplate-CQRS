@@ -80,6 +80,14 @@ export function useUpdateRolePermissions() {
   });
 }
 
+export function useAssignableRoles(tenantId?: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: queryKeys.assignableRoles.list(tenantId),
+    queryFn: () => rolesApi.getAssignableRoles(tenantId),
+    enabled: options?.enabled,
+  });
+}
+
 export function useAssignUserRole() {
   const queryClient = useQueryClient();
 

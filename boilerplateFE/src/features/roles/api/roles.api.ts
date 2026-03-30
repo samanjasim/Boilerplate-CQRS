@@ -48,4 +48,10 @@ export const rolesApi = {
   removeUserFromRole: async (roleId: string, userId: string): Promise<void> => {
     await apiClient.delete(API_ENDPOINTS.ROLES.REMOVE_USER(roleId, userId));
   },
+
+  getAssignableRoles: async (tenantId?: string): Promise<Role[]> => {
+    const params = tenantId ? { tenantId } : {};
+    const response = await apiClient.get<ApiResponse<Role[]>>(API_ENDPOINTS.ROLES.ASSIGNABLE, { params });
+    return response.data.data;
+  },
 };
