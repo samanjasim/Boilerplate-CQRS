@@ -550,9 +550,10 @@
     "fileExpirationHours": "بەسەرچوونی ڕاپۆرت (کاتژمێر)",
     "unsavedChanges": "{{count}} گۆڕانکاری پاشەکەوت نەکراو",
     "selectRole": "ڕۆڵێک هەڵبژێرە...",
-    "noDefaultRole": "هیچ (ڕۆڵی بەکارهێنەری سیستەم)",
+    "noDefaultRole": "هیچ (بنەڕەتی سیستەم بەکاردێت)",
     "registration": "تۆمارکردن",
-    "default_role_id": "ڕۆڵی تۆمارکردنی بنەڕەتی"
+    "default_role_id": "ڕۆڵی تۆمارکردنی بنەڕەتی",
+    "tenant_owner_role_id": "ڕۆڵی خاوەنی دامەزراوە"
   },
   "validation": {
     "required": "{{field}} پێویستە",

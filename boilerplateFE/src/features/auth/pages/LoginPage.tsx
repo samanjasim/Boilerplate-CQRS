@@ -24,7 +24,7 @@ export default function LoginPage() {
 
         <div className="text-center text-sm text-muted-foreground">
           {t('auth.noAccount')}{' '}
-          <Link to={ROUTES.REGISTER} className="font-medium text-primary hover:text-primary/80 transition-colors">
+          <Link to={ROUTES.REGISTER_TENANT} className="font-medium text-primary hover:text-primary/80 transition-colors">
             {t('auth.createOne')}
           </Link>
         </div>

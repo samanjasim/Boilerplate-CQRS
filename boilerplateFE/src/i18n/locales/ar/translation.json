@@ -550,9 +550,10 @@
     "fileExpirationHours": "انتهاء صلاحية التقرير (ساعات)",
     "unsavedChanges": "{{count}} تغييرات غير محفوظة",
     "selectRole": "اختر دوراً...",
-    "noDefaultRole": "لا شيء (دور المستخدم الافتراضي)",
+    "noDefaultRole": "لا شيء (يستخدم الافتراضي)",
     "registration": "التسجيل",
-    "default_role_id": "دور التسجيل الافتراضي"
+    "default_role_id": "دور التسجيل الافتراضي",
+    "tenant_owner_role_id": "دور مالك المؤسسة"
   },
   "validation": {
     "required": "{{field}} مطلوب",

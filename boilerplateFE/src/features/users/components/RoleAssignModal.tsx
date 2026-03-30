@@ -34,7 +34,7 @@ export function RoleAssignModal({
   const roles = rolesData?.data ?? [];
   // Filter out roles the user already has
   const availableRoles = roles.filter(
-    (role) => role.isActive && !currentRoles.includes(role.name)
+    (role) => role.isActive && !currentRoles.includes(role.id)
   );
 
   const handleAssign = () => {

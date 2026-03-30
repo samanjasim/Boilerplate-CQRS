@@ -251,6 +251,7 @@ public static class DataSeeder
 
             // Registration
             ("registration.default_role_id", "", "Default role ID for new user registrations (leave empty for system User role)", "Registration", false, "role-select"),
+            ("registration.tenant_owner_role_id", "", "Default role for users who register a new tenant via Get Started (leave empty for system Admin role)", "Registration", false, "role-select"),
         };
 
         var existingSettings = await context.SystemSettings
