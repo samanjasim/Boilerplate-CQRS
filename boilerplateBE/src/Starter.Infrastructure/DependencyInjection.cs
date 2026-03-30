@@ -144,6 +144,7 @@ public static class DependencyInjection
         services.AddScoped<ISettingsService, SettingsService>();
         services.AddScoped<ISettingsProvider, SettingsProvider>();
         services.AddScoped<IFeatureFlagService, FeatureFlagService>();
+        services.AddScoped<IPermissionHierarchyService, PermissionHierarchyService>();
 
         return services;
     }
