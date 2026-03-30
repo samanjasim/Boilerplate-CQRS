@@ -548,7 +548,11 @@
     "orphanCleanupIntervalMinutes": "فترة تنظيف الملفات اليتيمة (دقائق)",
     "maxUploadSizeMb": "أقصى حجم للرفع (ميغابايت)",
     "fileExpirationHours": "انتهاء صلاحية التقرير (ساعات)",
-    "unsavedChanges": "{{count}} تغييرات غير محفوظة"
+    "unsavedChanges": "{{count}} تغييرات غير محفوظة",
+    "selectRole": "اختر دوراً...",
+    "noDefaultRole": "لا شيء (دور المستخدم الافتراضي)",
+    "registration": "التسجيل",
+    "default_role_id": "دور التسجيل الافتراضي"
   },
   "validation": {
     "required": "{{field}} مطلوب",

@@ -10,6 +10,8 @@ import { Spinner } from '@/components/ui/spinner';
 import { PageHeader } from '@/components/common';
 import { cn } from '@/lib/utils';
 import { useSettings, useUpdateSettings } from '@/features/settings/api';
+import { useAssignableRoles } from '@/features/roles/api/roles.queries';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { SystemSetting, UpdateSettingData } from '@/types';
 
 /** Resolves an i18n label for a setting key.
@@ -40,6 +42,29 @@ function resolveCategoryLabel(t: (key: string) => string, category: string): str
 }
 
 // ---------------------------------------------------------------------------
+// RoleSelectInput — dropdown for role-select settings (e.g. default role)
+// ---------------------------------------------------------------------------
+
+function RoleSelectInput({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+  const { t } = useTranslation();
+  const { data: roles = [], isLoading } = useAssignableRoles(undefined, { enabled: true });
+
+  return (
+    <Select value={value || 'none'} onValueChange={(val) => onChange(val === 'none' ? '' : val)}>
+      <SelectTrigger className="max-w-md" disabled={isLoading}>
+        <SelectValue placeholder={t('settings.selectRole')} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="none">{t('settings.noDefaultRole')}</SelectItem>
+        {roles.map((role) => (
+          <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // SettingInput — renders the correct input based on dataType
 // ---------------------------------------------------------------------------
 
@@ -63,6 +88,11 @@ function SettingInput({
   t,
 }: SettingInputProps) {
   const { dataType, key: settingKey, isSecret } = setting;
+
+  // Role select dropdown (e.g. registration.default_role_id)
+  if (dataType === 'role-select') {
+    return <RoleSelectInput value={value} onChange={(val) => onChange(settingKey, val)} />;
+  }
 
   // Boolean toggle
   if (dataType === 'boolean') {

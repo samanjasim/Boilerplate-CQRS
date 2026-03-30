@@ -250,7 +250,7 @@ public static class DataSeeder
             ("Reports.FileExpirationHours", "24", "Hours until time-sensitive report files expire", "Reports", false, "number"),
 
             // Registration
-            ("registration.default_role_id", "", "Default role ID for new user registrations (leave empty for system User role)", "Registration", false, "text"),
+            ("registration.default_role_id", "", "Default role ID for new user registrations (leave empty for system User role)", "Registration", false, "role-select"),
         };
 
         var existingSettings = await context.SystemSettings

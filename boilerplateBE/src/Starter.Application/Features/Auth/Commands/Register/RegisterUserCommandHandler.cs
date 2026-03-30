@@ -44,9 +44,7 @@ internal sealed class RegisterUserCommandHandler(
 
         var user = User.Create(request.Username.Trim(), email, fullName, passwordHash);
 
-        var defaultRole = await context.Roles
-            .FirstOrDefaultAsync(r => r.Name == RoleConstants.User, cancellationToken);
-
+        var defaultRole = await ResolveDefaultRoleAsync(cancellationToken);
         if (defaultRole is not null)
             user.AddRole(defaultRole);
 
@@ -58,5 +56,34 @@ internal sealed class RegisterUserCommandHandler(
         await emailService.SendAsync(emailMessage, cancellationToken);
 
         return Result.Success(user.Id);
+    }
+
+    /// <summary>
+    /// Resolves the default role for self-registration:
+    /// 1. Global setting registration.default_role_id → 2. Fallback to system "User" role
+    /// </summary>
+    private async Task<Role?> ResolveDefaultRoleAsync(CancellationToken cancellationToken)
+    {
+        // Check global default role setting
+        var defaultRoleSetting = await context.SystemSettings
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(s =>
+                s.Key == "registration.default_role_id" &&
+                s.TenantId == null,
+                cancellationToken);
+
+        if (defaultRoleSetting is not null && Guid.TryParse(defaultRoleSetting.Value, out var settingRoleId))
+        {
+            var role = await context.Roles
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(r => r.Id == settingRoleId, cancellationToken);
+
+            if (role is not null) return role;
+        }
+
+        // Fallback: system "User" role
+        return await context.Roles
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(r => r.Name == RoleConstants.User && r.IsSystemRole, cancellationToken);
     }
 }
