@@ -548,7 +548,11 @@
     "orphanCleanupIntervalMinutes": "ماوەی پاککردنەوەی فایلە یەتیمەکان (خولەک)",
     "maxUploadSizeMb": "زۆرترین قەبارەی بارکردن (مێگابایت)",
     "fileExpirationHours": "بەسەرچوونی ڕاپۆرت (کاتژمێر)",
-    "unsavedChanges": "{{count}} گۆڕانکاری پاشەکەوت نەکراو"
+    "unsavedChanges": "{{count}} گۆڕانکاری پاشەکەوت نەکراو",
+    "selectRole": "ڕۆڵێک هەڵبژێرە...",
+    "noDefaultRole": "هیچ (ڕۆڵی بەکارهێنەری سیستەم)",
+    "registration": "تۆمارکردن",
+    "default_role_id": "ڕۆڵی تۆمارکردنی بنەڕەتی"
   },
   "validation": {
     "required": "{{field}} پێویستە",

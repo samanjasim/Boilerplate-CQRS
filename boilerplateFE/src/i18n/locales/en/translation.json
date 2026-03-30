@@ -548,7 +548,11 @@
     "orphanCleanupIntervalMinutes": "Orphan Cleanup Interval (minutes)",
     "maxUploadSizeMb": "Max Upload Size (MB)",
     "fileExpirationHours": "Report Expiration (hours)",
-    "unsavedChanges": "{{count}} unsaved changes"
+    "unsavedChanges": "{{count}} unsaved changes",
+    "selectRole": "Select a role...",
+    "noDefaultRole": "None (System User role)",
+    "registration": "Registration",
+    "default_role_id": "Default Registration Role"
   },
   "validation": {
     "required": "{{field}} is required",
