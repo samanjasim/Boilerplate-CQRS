@@ -21,4 +21,7 @@ public static class TenantErrors
 
     public static Error AlreadyInactive() =>
         Error.Failure("Tenant.AlreadyInactive", "Tenant is already inactive.");
+
+    public static Error DefaultRoleNotFound(Guid roleId) =>
+        Error.NotFound("Tenant.DefaultRoleNotFound", $"Role with ID '{roleId}' was not found or is not accessible to this tenant.");
 }

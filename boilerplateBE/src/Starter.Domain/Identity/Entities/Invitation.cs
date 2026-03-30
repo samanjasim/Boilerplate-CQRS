@@ -9,7 +9,7 @@ public sealed class Invitation : BaseAuditableEntity
     public string Email { get; private set; } = null!;
     public string Token { get; private set; } = null!;
     public Guid RoleId { get; private set; }
-    public Guid TenantId { get; private set; }
+    public Guid? TenantId { get; private set; }
     public Guid InvitedBy { get; private set; }
     public DateTime ExpiresAt { get; private set; }
     public bool IsAccepted { get; private set; }
@@ -17,7 +17,7 @@ public sealed class Invitation : BaseAuditableEntity
 
     private Invitation() { }
 
-    public static Invitation Create(string email, Guid roleId, Guid tenantId, Guid invitedBy, int expirationDays = 7)
+    public static Invitation Create(string email, Guid roleId, Guid? tenantId, Guid invitedBy, int expirationDays = 7)
     {
         return new Invitation(Guid.NewGuid())
         {

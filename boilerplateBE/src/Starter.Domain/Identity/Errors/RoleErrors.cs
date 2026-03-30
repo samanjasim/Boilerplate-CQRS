@@ -21,4 +21,10 @@ public static class RoleErrors
 
     public static Error RoleInUse(string name) =>
         Error.Conflict("Role.InUse", $"Role '{name}' is currently assigned to users and cannot be deleted.");
+
+    public static Error PermissionCeiling() =>
+        Error.Forbidden("The requested permissions exceed your own permission set. You can only assign permissions you hold.");
+
+    public static Error CustomRolesDisabled() =>
+        Error.Failure("Role.CustomRolesDisabled", "Custom tenant roles are not enabled. Contact your platform administrator.");
 }
