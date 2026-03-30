@@ -15,6 +15,7 @@ public static partial class RoleMapper
             role.IsSystemRole,
             role.IsActive,
             role.CreatedAt,
+            role.TenantId,
             role.RolePermissions
                 .Where(rp => rp.Permission is not null)
                 .Select(rp => rp.Permission!.ToDto())

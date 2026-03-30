@@ -7,6 +7,7 @@ public sealed record RoleDto(
     bool IsSystemRole,
     bool IsActive,
     DateTime CreatedAt,
+    Guid? TenantId,
     IReadOnlyList<PermissionDto> Permissions);
 
 public sealed record PermissionDto(

@@ -9,11 +9,20 @@ namespace Starter.Application.Features.Roles.Commands.CreateRole;
 
 internal sealed class CreateRoleCommandHandler(
     IApplicationDbContext context,
-    ICurrentUserService currentUserService) : IRequestHandler<CreateRoleCommand, Result<Guid>>
+    ICurrentUserService currentUserService,
+    IFeatureFlagService featureFlagService) : IRequestHandler<CreateRoleCommand, Result<Guid>>
 {
     public async Task<Result<Guid>> Handle(CreateRoleCommand request, CancellationToken cancellationToken)
     {
         var tenantId = currentUserService.TenantId;
+
+        // Tenant users need the feature flag enabled to create custom roles
+        if (tenantId is not null)
+        {
+            var customRolesEnabled = await featureFlagService.IsEnabledAsync("roles.tenant_custom_enabled", cancellationToken);
+            if (!customRolesEnabled)
+                return Result.Failure<Guid>(RoleErrors.CustomRolesDisabled());
+        }
 
         // Check name is unique within the same tenant scope
         var nameExists = await context.Roles
