@@ -114,6 +114,14 @@ The test database can be dropped:
 | Dev      | 5000    | 3000     |
 | Test     | 5100    | 3100     |
 
+## Known Issues with Underscore-Prefixed Names
+
+When using `_test` prefixed names (e.g., `_testFeatureName`), two things break:
+
+1. **Seed email domain** — `superadmin@_testfeaturename.com` fails Zod `.email()` validation (domains can't start with `_`). Fix: edit `appsettings.Development.json` and change the seed email to `superadmin@testfeaturename.com` (no underscore prefix) before first run.
+
+2. **MinIO bucket name** — S3 bucket names cannot start with `_`. The rename script generates `_testfeaturename-files` which MinIO rejects. Fix: edit `appsettings.Development.json` → `StorageSettings:BucketName` and remove the leading underscore (e.g., `testfeaturename-files`). Then create the bucket manually or let the app's `StorageBucketInitializer` create it on startup.
+
 ## Notes
 
 - The rename script replaces ALL instances of "Starter"/"starter" with the new name
