@@ -45,19 +45,18 @@ public sealed class AuthController(ISender mediator) : BaseApiController(mediato
         return HandleResult(result);
     }
 
-    /// <summary>
-    /// Register a new user account.
-    /// </summary>
-    [HttpPost("register")]
-    [AllowAnonymous]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> Register([FromBody] RegisterUserCommand command)
-    {
-        var result = await Mediator.Send(command);
-        return HandleResult(result);
-    }
+    // NOTE: Public self-registration is disabled. In a multi-tenant SaaS, users
+    // should register via /register-tenant (creates tenant + owner) or accept an
+    // invitation. Re-enable this endpoint when a tenant-aware registration flow
+    // is implemented (e.g. registration.self_registration_enabled feature flag).
+    //
+    // [HttpPost("register")]
+    // [AllowAnonymous]
+    // public async Task<IActionResult> Register([FromBody] RegisterUserCommand command)
+    // {
+    //     var result = await Mediator.Send(command);
+    //     return HandleResult(result);
+    // }
 
     /// <summary>
     /// Refresh access token using a valid refresh token.

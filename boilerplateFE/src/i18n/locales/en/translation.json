@@ -550,9 +550,10 @@
     "fileExpirationHours": "Report Expiration (hours)",
     "unsavedChanges": "{{count}} unsaved changes",
     "selectRole": "Select a role...",
-    "noDefaultRole": "None (System User role)",
+    "noDefaultRole": "None (uses system default)",
     "registration": "Registration",
-    "default_role_id": "Default Registration Role"
+    "default_role_id": "Default Registration Role",
+    "tenant_owner_role_id": "Tenant Owner Role"
   },
   "validation": {
     "required": "{{field}} is required",

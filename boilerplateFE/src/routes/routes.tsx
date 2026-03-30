@@ -10,7 +10,8 @@ import { PERMISSIONS } from '@/constants';
 // Lazy-loaded pages
 const LandingPage = lazy(() => import('@/features/landing/pages/LandingPage'));
 const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'));
-const RegisterPage = lazy(() => import('@/features/auth/pages/RegisterPage'));
+// NOTE: Public self-registration disabled — users register via /register-tenant or invitation
+// const RegisterPage = lazy(() => import('@/features/auth/pages/RegisterPage'));
 const RegisterTenantPage = lazy(() => import('@/features/auth/pages/RegisterTenantPage'));
 const DashboardPage = lazy(() => import('@/features/dashboard/pages/DashboardPage'));
 const UsersListPage = lazy(() => import('@/features/users/pages/UsersListPage'));
@@ -51,7 +52,7 @@ export const routes: RouteObject[] = [
         element: <AuthLayout />,
         children: [
           { path: ROUTES.LOGIN, element: <LoginPage /> },
-          { path: ROUTES.REGISTER, element: <RegisterPage /> },
+          // { path: ROUTES.REGISTER, element: <RegisterPage /> },
           { path: ROUTES.REGISTER_TENANT, element: <RegisterTenantPage /> },
           { path: ROUTES.FORGOT_PASSWORD, element: <ForgotPasswordPage /> },
           { path: ROUTES.RESET_PASSWORD, element: <ForgotPasswordPage /> },

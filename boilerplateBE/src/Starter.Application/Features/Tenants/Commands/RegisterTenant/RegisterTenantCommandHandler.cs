@@ -58,13 +58,10 @@ internal sealed class RegisterTenantCommandHandler(
             passwordHash,
             tenantId: tenant.Id);
 
-        // Find the "Admin" system role and assign it
-        var adminRole = await context.Roles
-            .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(r => r.Name == RoleConstants.Admin && r.IsSystemRole, cancellationToken);
-
-        if (adminRole is not null)
-            user.AddRole(adminRole);
+        // Resolve tenant owner role: setting → fallback to system "Admin"
+        var ownerRole = await ResolveTenantOwnerRoleAsync(cancellationToken);
+        if (ownerRole is not null)
+            user.AddRole(ownerRole);
 
         context.Users.Add(user);
         await context.SaveChangesAsync(cancellationToken);
@@ -75,6 +72,34 @@ internal sealed class RegisterTenantCommandHandler(
         await emailService.SendAsync(emailMessage, cancellationToken);
 
         return Result.Success(tenant.Id);
+    }
+
+    /// <summary>
+    /// Resolves the role for a new tenant owner:
+    /// 1. registration.tenant_owner_role_id setting → 2. Fallback to system "Admin" role
+    /// </summary>
+    private async Task<Role?> ResolveTenantOwnerRoleAsync(CancellationToken cancellationToken)
+    {
+        var setting = await context.SystemSettings
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(s =>
+                s.Key == "registration.tenant_owner_role_id" &&
+                s.TenantId == null,
+                cancellationToken);
+
+        if (setting is not null && Guid.TryParse(setting.Value, out var roleId))
+        {
+            var role = await context.Roles
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(r => r.Id == roleId, cancellationToken);
+
+            if (role is not null) return role;
+        }
+
+        // Fallback: system "Admin" role
+        return await context.Roles
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(r => r.Name == RoleConstants.Admin && r.IsSystemRole, cancellationToken);
     }
 
     private static string GenerateSlug(string companyName)
