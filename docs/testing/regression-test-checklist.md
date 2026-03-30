@@ -263,48 +263,69 @@ This checklist covers every user-facing feature in the boilerplate. Run through 
 | 19.11 | Non-admin cannot access API keys page | Access denied, redirect |
 | 19.12 | Keys from one tenant not visible to another | Tenant isolation verified |
 
-## 20. Notifications
+## 20. Feature Flags
 
 | # | Test Case | Expected |
 |---|-----------|----------|
-| 20.1 | Bell icon in header | Shows unread count badge |
-| 20.2 | Click bell → dropdown | Shows recent notifications |
-| 20.3 | Click notification → marks as read | Unread count decrements |
-| 20.4 | "View All" link → notifications page | Full paginated list |
-| 20.5 | Mark all as read | All notifications marked read |
-| 20.6 | Polling fallback (no Ably) | Unread count refreshes every 30s |
+| 20.1 | Navigate to `/feature-flags` as SuperAdmin | Feature flags list with all seeded flags |
+| 20.2 | Search flags by name | Filtered list updates |
+| 20.3 | Filter flags by category | Only matching category shown |
+| 20.4 | Create a new feature flag | Flag appears in list with default value |
+| 20.5 | Update flag name and description | Changes saved, success toast |
+| 20.6 | Update flag default value | New default applies to tenants without overrides |
+| 20.7 | Delete a non-system flag | Flag removed from list |
+| 20.8 | Try to delete a system flag | Error: system flags cannot be deleted |
+| 20.9 | Set tenant override value on a flag | Override saved, resolved value changes for that tenant |
+| 20.10 | Remove tenant override | Tenant falls back to default value |
+| 20.11 | Opt out of a non-system boolean flag | Opt-out recorded for current tenant |
+| 20.12 | Remove opt-out | Flag re-enabled for tenant |
+| 20.13 | Enforcement: set users.max_count to 1, try creating a second user | Error: user limit reached |
+| 20.14 | Enforcement: disable api_keys.enabled, try creating API key | Error: feature disabled |
+| 20.15 | Non-admin cannot access feature flags page | Access denied, redirect to dashboard |
+| 20.16 | Tenant admin with ManageTenantOverrides sees only their tenant's overrides | Cross-tenant data not visible |
 
-## 21. Theme & Language
-
-| # | Test Case | Expected |
-|---|-----------|----------|
-| 21.1 | Toggle dark mode | HTML gets `class="dark"`, UI colors change |
-| 21.2 | Toggle back to light mode | `class="light"`, UI reverts |
-| 21.3 | Switch to Arabic | All text in Arabic, `dir="rtl"`, `lang="ar"` |
-| 21.4 | Switch to Kurdish | All text in Kurdish, RTL layout |
-| 21.5 | Switch back to English | All text in English, `dir="ltr"` |
-| 21.6 | Theme persists on page reload | Theme stays after F5 |
-| 21.7 | Language persists on page reload | Language stays after F5 |
-
-## 22. Tenant Data Isolation
+## 21. Notifications
 
 | # | Test Case | Expected |
 |---|-----------|----------|
-| 22.1 | Tenant user cannot see SuperAdmin | Not in users list |
-| 22.2 | Tenant user cannot see other tenants' users | Only own tenant's users |
-| 22.3 | Tenant user sees only own tenant in tenants list | Single row |
-| 22.4 | Tenant user files isolated | Only own tenant's files |
-| 22.5 | Tenant user audit logs isolated | Only own tenant's logs |
-| 22.6 | Tenant user reports isolated | Only own tenant's reports |
-| 22.7 | SuperAdmin sees all data across tenants | Full access |
+| 21.1 | Bell icon in header | Shows unread count badge |
+| 21.2 | Click bell → dropdown | Shows recent notifications |
+| 21.3 | Click notification → marks as read | Unread count decrements |
+| 21.4 | "View All" link → notifications page | Full paginated list |
+| 21.5 | Mark all as read | All notifications marked read |
+| 21.6 | Polling fallback (no Ably) | Unread count refreshes every 30s |
 
-## 23. Logout
+## 22. Theme & Language
 
 | # | Test Case | Expected |
 |---|-----------|----------|
-| 23.1 | Click user dropdown → Logout | Clears tokens, redirects to `/login` |
-| 23.2 | After logout, cannot access protected routes | Redirects to `/login` |
-| 23.3 | After logout, API calls return 401 | No stale data |
+| 22.1 | Toggle dark mode | HTML gets `class="dark"`, UI colors change |
+| 22.2 | Toggle back to light mode | `class="light"`, UI reverts |
+| 22.3 | Switch to Arabic | All text in Arabic, `dir="rtl"`, `lang="ar"` |
+| 22.4 | Switch to Kurdish | All text in Kurdish, RTL layout |
+| 22.5 | Switch back to English | All text in English, `dir="ltr"` |
+| 22.6 | Theme persists on page reload | Theme stays after F5 |
+| 22.7 | Language persists on page reload | Language stays after F5 |
+
+## 23. Tenant Data Isolation
+
+| # | Test Case | Expected |
+|---|-----------|----------|
+| 23.1 | Tenant user cannot see SuperAdmin | Not in users list |
+| 23.2 | Tenant user cannot see other tenants' users | Only own tenant's users |
+| 23.3 | Tenant user sees only own tenant in tenants list | Single row |
+| 23.4 | Tenant user files isolated | Only own tenant's files |
+| 23.5 | Tenant user audit logs isolated | Only own tenant's logs |
+| 23.6 | Tenant user reports isolated | Only own tenant's reports |
+| 23.7 | SuperAdmin sees all data across tenants | Full access |
+
+## 24. Logout
+
+| # | Test Case | Expected |
+|---|-----------|----------|
+| 24.1 | Click user dropdown → Logout | Clears tokens, redirects to `/login` |
+| 24.2 | After logout, cannot access protected routes | Redirects to `/login` |
+| 24.3 | After logout, API calls return 401 | No stale data |
 
 ---
 

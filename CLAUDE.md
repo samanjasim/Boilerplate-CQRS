@@ -33,7 +33,7 @@ API (Controllers) → Application (MediatR CQRS) → Domain (Entities) ← Infra
 
 ## Feature Inventory
 
-### Backend (11 features, 12 controllers)
+### Backend (12 features, 13 controllers)
 
 | Feature | Key Operations | Controller | Domain Entity |
 |---------|---------------|------------|---------------|
@@ -48,8 +48,9 @@ API (Controllers) → Application (MediatR CQRS) → Domain (Entities) ← Infra
 | Audit Logs | List with filters (read-only) | AuditLogsController | AuditLog |
 | Permissions | List (read-only) | PermissionsController | Permission |
 | API Keys | Create, Update, Revoke, Emergency Revoke | ApiKeysController | ApiKey |
+| Feature Flags | CRUD, Tenant Overrides, Opt-Out, Enforcement | FeatureFlagsController | FeatureFlag, TenantFeatureFlag |
 
-### Frontend (13 feature modules)
+### Frontend (14 feature modules)
 
 | Feature | Pages | Key Hooks |
 |---------|-------|-----------|
@@ -65,6 +66,7 @@ API (Controllers) → Application (MediatR CQRS) → Domain (Entities) ← Infra
 | audit-logs | AuditLogsPage | useAuditLogs |
 | profile | ProfilePage | useProfile, useLoginHistory |
 | api-keys | ApiKeysPage | useApiKeys |
+| feature-flags | FeatureFlagsPage | useFeatureFlags, useFeatureFlag |
 | landing | LandingPage | — |
 
 ## Backend Development Patterns

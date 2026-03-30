@@ -82,6 +82,14 @@ A production-ready full-stack boilerplate with **.NET 10 Backend** (Clean Archit
 - Secret shown once on creation
 - Emergency revoke for platform admins
 
+### Feature Flags
+- Platform-level feature flag definitions with categories
+- Tenant-specific override values
+- Boolean, string, integer, and JSON value types
+- Opt-out capability for non-system flags
+- Enforcement hooks in user creation, file upload, and API key creation
+- Caching with 5-minute TTL and invalidation on updates
+
 ### Email & SMS
 - **SMTP email service** with HTML templates (verification, password reset)
 - **Twilio SMS service** (optional, toggle via config)
@@ -214,7 +222,7 @@ boilerplateFE/
 │   ├── components/    # ui/ (shadcn), common/, layout/, guards/
 │   ├── config/        # API endpoints, routes, query config
 │   ├── constants/     # Permissions, languages
-│   ├── features/      # auth, dashboard, users, roles, tenants, files, reports, notifications, settings, audit-logs, profile, api-keys, landing
+│   ├── features/      # auth, dashboard, users, roles, tenants, files, reports, notifications, settings, audit-logs, profile, api-keys, feature-flags, landing
 │   ├── hooks/         # usePermissions, useClickOutside, useDebounce
 │   ├── i18n/          # Translations (en, ar, ku)
 │   ├── lib/           # Axios client, React Query, validation schemas

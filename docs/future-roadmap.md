@@ -13,7 +13,7 @@ Features planned for future implementation. The architecture supports all of the
 - Tenant settings page (logo, custom branding, config)
 - ~~Subdomain-based tenant resolution~~ — **Implemented** (e.g., `acme.starter.com` with SSO)
 - Per-tenant database isolation (connection string field exists on Tenant entity)
-- Tenant-level feature flags
+- ~~Tenant-level feature flags~~ — **Implemented** (platform definitions, tenant overrides, enforcement hooks, caching)
 
 ## Integration & Extensibility
 - Webhook system for external integrations (register URLs, HMAC signatures, retry)
@@ -50,3 +50,4 @@ These were on the roadmap and are now part of the boilerplate:
 - ~~Subdomain-based tenant resolution~~ — Implemented with SSO and shared cookie auth
 - ~~API key management~~ — Implemented with tenant/platform scopes, expiration, emergency revoke
 - ~~OpenTelemetry distributed tracing~~ — Implemented with Jaeger UI and Prometheus metrics
+- ~~Tenant-level feature flags~~ — Implemented with tenant overrides, enforcement, opt-out, and caching
