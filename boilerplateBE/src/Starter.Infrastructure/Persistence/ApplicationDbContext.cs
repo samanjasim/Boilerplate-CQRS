@@ -64,8 +64,9 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<AuditLog>().HasQueryFilter(a =>
             TenantId == null || a.TenantId == TenantId);
 
+        // Invitations: platform admin sees all; tenant user sees their tenant's + platform-level (null TenantId)
         modelBuilder.Entity<Invitation>().HasQueryFilter(i =>
-            TenantId == null || i.TenantId == TenantId);
+            TenantId == null || i.TenantId == null || i.TenantId == TenantId);
 
         modelBuilder.Entity<Notification>().HasQueryFilter(n =>
             TenantId == null || n.TenantId == TenantId);

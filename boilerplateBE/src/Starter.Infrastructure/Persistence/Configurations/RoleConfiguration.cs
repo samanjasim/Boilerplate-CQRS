@@ -21,7 +21,7 @@ public sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
             .HasMaxLength(Role.MaxNameLength)
             .IsRequired();
 
-        builder.HasIndex(r => r.Name)
+        builder.HasIndex(r => new { r.Name, r.TenantId })
             .IsUnique();
 
         builder.Property(r => r.Description)

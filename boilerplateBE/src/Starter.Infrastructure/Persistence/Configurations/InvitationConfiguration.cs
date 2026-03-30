@@ -37,7 +37,7 @@ public sealed class InvitationConfiguration : IEntityTypeConfiguration<Invitatio
 
         builder.Property(i => i.TenantId)
             .HasColumnName("tenant_id")
-            .IsRequired();
+            .IsRequired(false);
 
         builder.HasIndex(i => i.TenantId);
 
