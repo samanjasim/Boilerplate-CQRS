@@ -228,7 +228,10 @@
     "permissionsInfoTitle": "يمكن تعديل الصلاحيات لاحقاً",
     "permissionsInfoDesc": "يمكنك دائماً تحديث الصلاحيات المعينة لهذا الدور من صفحة تفاصيل الدور.",
     "namePlaceholder": "مثال: مدير",
-    "descriptionPlaceholder": "وصف الغرض من الدور..."
+    "descriptionPlaceholder": "وصف الغرض من الدور...",
+    "system": "نظامي",
+    "custom": "مخصص",
+    "customRolesDisabled": "الأدوار المخصصة غير مفعلة لمؤسستك"
   },
   "tenants": {
     "title": "المستأجرون",
@@ -273,7 +276,11 @@
     "customTextSaved": "تم تحديث النصوص المخصصة بنجاح",
     "languageTab": "اللغة",
     "preview": "معاينة",
-    "invalidColor": "صيغة لون غير صالحة. استخدم صيغة hex (مثال: #2563eb)."
+    "invalidColor": "صيغة لون غير صالحة. استخدم صيغة hex (مثال: #2563eb).",
+    "defaultRegistrationRole": "دور التسجيل الافتراضي",
+    "defaultRegistrationRoleDesc": "سيتم تعيين هذا الدور افتراضياً للمستخدمين الجدد المدعوين لهذا المستأجر",
+    "useGlobalDefault": "استخدم الافتراضي العام",
+    "defaultRoleUpdated": "تم تحديث دور التسجيل الافتراضي"
   },
   "auditLogs": {
     "title": "سجلات التدقيق",
@@ -344,7 +351,13 @@
     "expiresAt": "تنتهي في",
     "revoke": "إلغاء",
     "invalidToken": "دعوة غير صالحة",
-    "invalidTokenDesc": "رابط الدعوة هذا غير صالح أو مفقود. يرجى التحقق من الرابط في بريدك الإلكتروني."
+    "invalidTokenDesc": "رابط الدعوة هذا غير صالح أو مفقود. يرجى التحقق من الرابط في بريدك الإلكتروني.",
+    "tenant": "المستأجر",
+    "selectTenant": "اختر مستأجر",
+    "platformLevel": "مستوى المنصة (بدون مستأجر)",
+    "tenantHint": "اتركه فارغاً لدعوة على مستوى المنصة",
+    "useDefaultRole": "استخدم الدور الافتراضي",
+    "roleHint": "اتركه كافتراضي لاستخدام الدور الافتراضي للمستأجر أو العام"
   },
   "sessions": {
     "title": "الجلسات النشطة",
