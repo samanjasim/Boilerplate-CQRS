@@ -9,6 +9,7 @@ using Starter.Application.Features.Roles.Commands.AssignUserRole;
 using Starter.Application.Features.Roles.Commands.RemoveUserRole;
 using Starter.Application.Features.Roles.Queries.GetRoles;
 using Starter.Application.Features.Roles.Queries.GetRoleById;
+using Starter.Application.Features.Roles.Queries.GetAssignableRoles;
 using Starter.Shared.Constants;
 
 namespace Starter.Api.Controllers;
@@ -44,6 +45,21 @@ public sealed class RolesController(ISender mediator) : BaseApiController(mediat
     public async Task<IActionResult> GetRole(Guid id)
     {
         var query = new GetRoleByIdQuery(id);
+        var result = await Mediator.Send(query);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Get roles assignable by the current user (filtered by permission hierarchy).
+    /// </summary>
+    [HttpGet("assignable")]
+    [Authorize(Policy = Permissions.Users.Create)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetAssignableRoles([FromQuery] Guid? tenantId = null)
+    {
+        var query = new GetAssignableRolesQuery(tenantId);
         var result = await Mediator.Send(query);
         return HandleResult(result);
     }

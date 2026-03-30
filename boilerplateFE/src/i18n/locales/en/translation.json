@@ -228,7 +228,10 @@
     "permissionsInfoTitle": "Permissions can be modified later",
     "permissionsInfoDesc": "You can always update the permissions assigned to this role from the role detail page.",
     "namePlaceholder": "e.g. Admin",
-    "descriptionPlaceholder": "Describe the role's purpose..."
+    "descriptionPlaceholder": "Describe the role's purpose...",
+    "system": "System",
+    "custom": "Custom",
+    "customRolesDisabled": "Custom roles are not enabled for your organization"
   },
   "tenants": {
     "title": "Tenants",
@@ -273,7 +276,11 @@
     "customTextSaved": "Custom text updated successfully",
     "languageTab": "Language",
     "preview": "Preview",
-    "invalidColor": "Invalid color format. Use hex format (e.g., #2563eb)."
+    "invalidColor": "Invalid color format. Use hex format (e.g., #2563eb).",
+    "defaultRegistrationRole": "Default Registration Role",
+    "defaultRegistrationRoleDesc": "New users invited to this tenant will be assigned this role by default",
+    "useGlobalDefault": "Use Global Default",
+    "defaultRoleUpdated": "Default registration role updated"
   },
   "auditLogs": {
     "title": "Audit Logs",
@@ -344,7 +351,13 @@
     "expiresAt": "Expires",
     "revoke": "Revoke",
     "invalidToken": "Invalid Invitation",
-    "invalidTokenDesc": "This invitation link is invalid or missing. Please check the link from your email."
+    "invalidTokenDesc": "This invitation link is invalid or missing. Please check the link from your email.",
+    "tenant": "Tenant",
+    "selectTenant": "Select a tenant",
+    "platformLevel": "Platform Level (no tenant)",
+    "tenantHint": "Leave empty for platform-level invitation",
+    "useDefaultRole": "Use Default Role",
+    "roleHint": "Leave as default to use the tenant or global default role"
   },
   "sessions": {
     "title": "Active Sessions",

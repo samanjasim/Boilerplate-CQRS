@@ -103,5 +103,9 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
 
         builder.Property(t => t.ModifiedBy)
             .HasColumnName("modified_by");
+
+        // Registration
+        builder.Property(t => t.DefaultRegistrationRoleId)
+            .HasColumnName("default_registration_role_id");
     }
 }

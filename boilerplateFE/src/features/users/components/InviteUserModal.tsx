@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -19,12 +20,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useRoles } from '@/features/roles/api';
+import { useAssignableRoles } from '@/features/roles/api';
 import { useInviteUser } from '@/features/auth/api';
+import { useTenants } from '@/features/tenants/api';
+import { useAuthStore } from '@/stores';
+import type { Tenant } from '@/types';
 
 const inviteUserSchema = z.object({
   email: z.string().min(1, 'Email is required').email('Invalid email address'),
-  roleId: z.string().min(1, 'Role is required'),
+  roleId: z.string().optional(),
+  tenantId: z.string().optional(),
 });
 
 type InviteUserFormData = z.infer<typeof inviteUserSchema>;
@@ -36,24 +41,51 @@ interface InviteUserModalProps {
 
 export function InviteUserModal({ open, onOpenChange }: InviteUserModalProps) {
   const { t } = useTranslation();
-  const { data: rolesData } = useRoles({ enabled: open });
-  const { mutate: inviteUser, isPending } = useInviteUser();
-
-  const roles = rolesData?.data ?? [];
+  const user = useAuthStore((state) => state.user);
+  const isPlatformAdmin = !user?.tenantId;
 
   const {
     register,
     handleSubmit,
     setValue,
+    watch,
     reset,
     formState: { errors },
   } = useForm<InviteUserFormData>({
     resolver: zodResolver(inviteUserSchema),
-    defaultValues: { email: '', roleId: '' },
+    defaultValues: { email: '', roleId: '', tenantId: '' },
   });
 
+  const selectedTenantId = watch('tenantId');
+
+  // Platform admin: load tenants for the dropdown
+  const { data: tenantsData } = useTenants(
+    isPlatformAdmin && open ? { pageNumber: 1, pageSize: 100 } : undefined
+  );
+  const tenants: Tenant[] = tenantsData?.data ?? [];
+
+  // Load assignable roles filtered by selected tenant
+  const { data: assignableRoles } = useAssignableRoles(
+    isPlatformAdmin ? (selectedTenantId || undefined) : undefined,
+    { enabled: open }
+  );
+  const roles = assignableRoles ?? [];
+
+  const { mutate: inviteUser, isPending } = useInviteUser();
+
+  // Reset role when tenant changes
+  useEffect(() => {
+    setValue('roleId', '');
+  }, [selectedTenantId, setValue]);
+
   const onSubmit = (data: InviteUserFormData) => {
-    inviteUser(data, {
+    const payload: { email: string; roleId?: string; tenantId?: string } = {
+      email: data.email,
+    };
+    if (data.roleId) payload.roleId = data.roleId;
+    if (isPlatformAdmin && data.tenantId) payload.tenantId = data.tenantId;
+
+    inviteUser(payload, {
       onSuccess: () => {
         reset();
         onOpenChange(false);
@@ -88,13 +120,35 @@ export function InviteUserModal({ open, onOpenChange }: InviteUserModalProps) {
             )}
           </div>
 
+          {/* Tenant selector — platform admin only */}
+          {isPlatformAdmin && (
+            <div className="space-y-2">
+              <Label>{t('invitations.tenant')}</Label>
+              <Select onValueChange={(value) => setValue('tenantId', value === '__platform__' ? '' : value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t('invitations.selectTenant')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__platform__">{t('invitations.platformLevel')}</SelectItem>
+                  {tenants.map((tenant) => (
+                    <SelectItem key={tenant.id} value={tenant.id}>
+                      {tenant.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">{t('invitations.tenantHint')}</p>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label>{t('invitations.role')}</Label>
-            <Select onValueChange={(value) => setValue('roleId', value)}>
+            <Select onValueChange={(value) => setValue('roleId', value === '__default__' ? '' : value)}>
               <SelectTrigger>
                 <SelectValue placeholder={t('invitations.selectRole')} />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="__default__">{t('invitations.useDefaultRole')}</SelectItem>
                 {roles.map((role) => (
                   <SelectItem key={role.id} value={role.id}>
                     {role.name}
@@ -102,9 +156,7 @@ export function InviteUserModal({ open, onOpenChange }: InviteUserModalProps) {
                 ))}
               </SelectContent>
             </Select>
-            {errors.roleId && (
-              <p className="text-sm text-destructive">{errors.roleId.message}</p>
-            )}
+            <p className="text-xs text-muted-foreground">{t('invitations.roleHint')}</p>
           </div>
 
           <div className="flex justify-end gap-2">

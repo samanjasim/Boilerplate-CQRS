@@ -96,6 +96,18 @@ export function useUpdateTenantCustomText() {
   });
 }
 
+export function useSetTenantDefaultRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, roleId }: { id: string; roleId: string | null }) =>
+      tenantsApi.setDefaultRole(id, roleId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tenants.detail(variables.id) });
+      toast.success(i18n.t('tenants.defaultRoleUpdated'));
+    },
+  });
+}
+
 export function useTenantBranding(slug?: string) {
   return useQuery({
     queryKey: [...queryKeys.tenants.all, 'branding', slug ?? 'default'],

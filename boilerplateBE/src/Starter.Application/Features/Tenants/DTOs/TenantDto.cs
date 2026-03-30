@@ -22,4 +22,7 @@ public sealed record TenantDto(
     // Custom Text
     string? LoginPageTitle = null,
     string? LoginPageSubtitle = null,
-    string? EmailFooterText = null);
+    string? EmailFooterText = null,
+    // Registration
+    Guid? DefaultRegistrationRoleId = null,
+    string? DefaultRoleName = null);

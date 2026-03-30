@@ -22,6 +22,11 @@ export const queryKeys = {
     detail: (id: string) => [...queryKeys.roles.details(), id] as const,
   },
 
+  assignableRoles: {
+    all: ['assignableRoles'] as const,
+    list: (tenantId?: string) => [...['assignableRoles'], 'list', tenantId ?? 'none'] as const,
+  },
+
   permissions: {
     all: ['permissions'] as const,
     list: () => [...queryKeys.permissions.all, 'list'] as const,

@@ -18,6 +18,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { PageHeader, InfoField, ConfirmDialog, FileUpload } from '@/components/common';
 import { cn } from '@/lib/utils';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   useTenant,
   useActivateTenant,
   useSuspendTenant,
@@ -25,7 +32,9 @@ import {
   useUpdateTenantBranding,
   useUpdateTenantBusinessInfo,
   useUpdateTenantCustomText,
+  useSetTenantDefaultRole,
 } from '../api';
+import { useAssignableRoles } from '@/features/roles/api';
 import { useBackNavigation } from '@/hooks';
 import { ROUTES } from '@/config';
 import { formatDate } from '@/utils/format';
@@ -76,6 +85,11 @@ export default function TenantDetailPage() {
   const { mutate: activateTenant } = useActivateTenant();
   const { mutate: suspendTenant, isPending: isSuspending } = useSuspendTenant();
   const { mutate: deactivateTenant, isPending: isDeactivating } = useDeactivateTenant();
+
+  // Default registration role
+  const { mutate: setDefaultRole, isPending: isSavingDefaultRole } = useSetTenantDefaultRole();
+  const { data: assignableRoles } = useAssignableRoles(id, { enabled: !!id && activeTab === 'overview' });
+  const availableRoles = assignableRoles ?? [];
 
   // Branding state
   const [uploadedLogoId, setUploadedLogoId] = useState<string | null>(null);
@@ -290,6 +304,36 @@ export default function TenantDetailPage() {
                     {tenant.createdAt ? formatDate(tenant.createdAt, 'long') : '-'}
                   </InfoField>
                 </div>
+
+                {/* Default Registration Role */}
+                {hasPermission(PERMISSIONS.Tenants.Update) && (
+                  <div className="border-t pt-4 mt-6">
+                    <h4 className="text-sm font-medium text-foreground mb-2">{t('tenants.defaultRegistrationRole')}</h4>
+                    <p className="text-xs text-muted-foreground mb-3">{t('tenants.defaultRegistrationRoleDesc')}</p>
+                    <div className="flex items-center gap-3">
+                      <Select
+                        value={tenant.defaultRegistrationRoleId ?? '__none__'}
+                        onValueChange={(value) => {
+                          const roleId = value === '__none__' ? null : value;
+                          setDefaultRole({ id: id!, roleId });
+                        }}
+                      >
+                        <SelectTrigger className="max-w-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">{t('tenants.useGlobalDefault')}</SelectItem>
+                          {availableRoles.map((role) => (
+                            <SelectItem key={role.id} value={role.id}>
+                              {role.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {isSavingDefaultRole && <Spinner size="sm" />}
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-center gap-2 border-t pt-4 mt-6">
                   {(tenant.status === 'Suspended' || tenant.status === 'Deactivated') && (

@@ -18,6 +18,9 @@ public sealed class Tenant : AggregateRoot
     public string? SecondaryColor { get; private set; }
     public string? Description { get; private set; }
 
+    // Registration
+    public Guid? DefaultRegistrationRoleId { get; private set; }
+
     // Business Info
     public string? Address { get; private set; }
     public string? Phone { get; private set; }
@@ -87,6 +90,11 @@ public sealed class Tenant : AggregateRoot
         LoginPageTitle = loginPageTitle;
         LoginPageSubtitle = loginPageSubtitle;
         EmailFooterText = emailFooterText;
+    }
+
+    public void SetDefaultRegistrationRole(Guid? roleId)
+    {
+        DefaultRegistrationRoleId = roleId;
     }
 
     public void Activate()

@@ -191,7 +191,7 @@ export function useDisable2FA() {
 export function useInviteUser() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { email: string; roleId: string }) => authApi.inviteUser(data),
+    mutationFn: (data: { email: string; roleId?: string; tenantId?: string }) => authApi.inviteUser(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.invitations.all });
       toast.success(i18n.t('invitations.inviteSent'));

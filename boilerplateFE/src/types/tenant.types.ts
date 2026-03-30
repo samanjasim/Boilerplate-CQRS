@@ -18,6 +18,8 @@ export interface Tenant {
   emailFooterText: string | null;
   logoUrl: string | null;
   faviconUrl: string | null;
+  defaultRegistrationRoleId: string | null;
+  defaultRoleName: string | null;
 }
 
 export interface TenantBranding {

@@ -9,17 +9,29 @@ import { Spinner } from '@/components/ui/spinner';
 import { PageHeader, EmptyState, Pagination, getPersistedPageSize } from '@/components/common';
 import { useRoles } from '../api';
 import { usePermissions } from '@/hooks';
+import { useAuthStore } from '@/stores';
 import { PERMISSIONS } from '@/constants';
 import { ROUTES } from '@/config';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 
 export default function RolesListPage() {
   const { t } = useTranslation();
   const { hasPermission } = usePermissions();
+  const user = useAuthStore((state) => state.user);
+  const isTenantUser = !!user?.tenantId;
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(getPersistedPageSize);
   const { data, isLoading, isError } = useRoles({ params: { pageNumber, pageSize } });
   const roles = data?.data ?? [];
   const pagination = data?.pagination;
+
+  // Feature flag: tenant custom roles enabled
+  const { isEnabled: customRolesEnabled } = useFeatureFlag('roles.tenant_custom_enabled');
+
+  // Show Create button only if:
+  // - User has Roles.Create permission
+  // - AND either: user is platform admin OR custom roles flag is enabled for tenant users
+  const canCreate = hasPermission(PERMISSIONS.Roles.Create) && (!isTenantUser || customRolesEnabled);
 
   if (isError) {
     return (
@@ -44,7 +56,7 @@ export default function RolesListPage() {
         title={t('roles.title')}
         subtitle={t('roles.allRoles')}
         actions={
-          hasPermission(PERMISSIONS.Roles.Create) ? (
+          canCreate ? (
             <Link to={ROUTES.ROLES.CREATE}>
               <Button>
                 <Plus className="h-4 w-4" />
@@ -67,9 +79,16 @@ export default function RolesListPage() {
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg [background:var(--active-bg)]">
                       <Shield className="h-5 w-5 [color:var(--active-text)]" />
                     </div>
-                    <Badge variant={role.isActive ? 'default' : 'secondary'}>
-                      {role.isActive ? t('common.active') : t('common.inactive')}
-                    </Badge>
+                    <div className="flex items-center gap-1.5">
+                      {role.isSystemRole ? (
+                        <Badge variant="outline">{t('roles.system')}</Badge>
+                      ) : (
+                        <Badge variant="secondary">{t('roles.custom')}</Badge>
+                      )}
+                      <Badge variant={role.isActive ? 'default' : 'secondary'}>
+                        {role.isActive ? t('common.active') : t('common.inactive')}
+                      </Badge>
+                    </div>
                   </div>
                   <h3 className="font-semibold text-foreground">{role.name}</h3>
                   {role.description && (

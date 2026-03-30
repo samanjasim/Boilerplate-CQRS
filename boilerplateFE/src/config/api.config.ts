@@ -40,6 +40,7 @@ export const API_ENDPOINTS = {
     PERMISSIONS: (id: string) => `/Roles/${id}/permissions`,
     ASSIGN_USER: (roleId: string, userId: string) => `/Roles/${roleId}/users/${userId}`,
     REMOVE_USER: (roleId: string, userId: string) => `/Roles/${roleId}/users/${userId}`,
+    ASSIGNABLE: '/Roles/assignable',
   },
   TENANTS: {
     LIST: '/Tenants',
@@ -51,6 +52,7 @@ export const API_ENDPOINTS = {
     BUSINESS_INFO: (id: string) => `/Tenants/${id}/business-info`,
     CUSTOM_TEXT: (id: string) => `/Tenants/${id}/custom-text`,
     PUBLIC_BRANDING: '/Tenants/branding',
+    DEFAULT_ROLE: (id: string) => `/Tenants/${id}/default-role`,
   },
   PERMISSIONS: {
     LIST: '/Permissions',

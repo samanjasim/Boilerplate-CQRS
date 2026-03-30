@@ -12,8 +12,5 @@ public sealed class InviteUserCommandValidator : AbstractValidator<InviteUserCom
             .EmailAddress().WithMessage("A valid email address is required.")
             .MaximumLength(Email.MaxLength)
             .WithMessage($"Email must not exceed {Email.MaxLength} characters.");
-
-        RuleFor(x => x.RoleId)
-            .NotEmpty().WithMessage("Role is required.");
     }
 }

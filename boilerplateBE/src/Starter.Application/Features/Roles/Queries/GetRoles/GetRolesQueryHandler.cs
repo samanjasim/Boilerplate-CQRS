@@ -8,7 +8,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Starter.Application.Features.Roles.Queries.GetRoles;
 
 internal sealed class GetRolesQueryHandler(
-    IApplicationDbContext context) : IRequestHandler<GetRolesQuery, Result<PaginatedList<RoleDto>>>
+    IApplicationDbContext context,
+    ICurrentUserService currentUserService) : IRequestHandler<GetRolesQuery, Result<PaginatedList<RoleDto>>>
 {
     public async Task<Result<PaginatedList<RoleDto>>> Handle(GetRolesQuery request, CancellationToken cancellationToken)
     {
@@ -17,6 +18,15 @@ internal sealed class GetRolesQueryHandler(
             .Include(r => r.RolePermissions)
                 .ThenInclude(rp => rp.Permission)
             .AsQueryable();
+
+        // Platform admin with tenant filter: show system roles + that tenant's custom roles
+        if (currentUserService.TenantId is null && request.TenantId is not null)
+        {
+            query = query.Where(r => r.TenantId == null || r.TenantId == request.TenantId);
+        }
+        // The global query filter already handles:
+        // - Platform admin (no tenant filter): sees all roles
+        // - Tenant user: sees system roles (TenantId=null) + own custom roles
 
         if (!string.IsNullOrWhiteSpace(request.SearchTerm))
         {

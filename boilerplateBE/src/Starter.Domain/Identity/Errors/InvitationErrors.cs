@@ -27,4 +27,13 @@ public static class InvitationErrors
 
     public static Error TenantRequired() =>
         Error.Validation("Invitation.TenantRequired", "You must belong to a tenant to invite users.");
+
+    public static Error PermissionEscalation() =>
+        Error.Forbidden("The target role has permissions that exceed your own. You cannot assign a role with more privileges than you have.");
+
+    public static Error SuperAdminOnly() =>
+        Error.Forbidden("Only a SuperAdmin can assign the SuperAdmin role.");
+
+    public static Error TenantNotFound(Guid tenantId) =>
+        Error.NotFound("Invitation.TenantNotFound", $"Tenant with ID '{tenantId}' was not found.");
 }

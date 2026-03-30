@@ -31,6 +31,8 @@ public static class Roles
             // Roles
             Permissions.Roles.View,
             Permissions.Roles.Show,
+            Permissions.Roles.Create,
+            Permissions.Roles.Update,
             // Tenants
             Permissions.Tenants.View,
             Permissions.Tenants.Show,

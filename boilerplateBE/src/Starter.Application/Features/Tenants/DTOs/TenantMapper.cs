@@ -23,10 +23,11 @@ public static class TenantMapper
             TaxId: tenant.TaxId,
             LoginPageTitle: tenant.LoginPageTitle,
             LoginPageSubtitle: tenant.LoginPageSubtitle,
-            EmailFooterText: tenant.EmailFooterText);
+            EmailFooterText: tenant.EmailFooterText,
+            DefaultRegistrationRoleId: tenant.DefaultRegistrationRoleId);
     }
 
-    public static TenantDto ToDto(this Tenant tenant, string? logoUrl, string? faviconUrl)
+    public static TenantDto ToDto(this Tenant tenant, string? logoUrl, string? faviconUrl, string? defaultRoleName = null)
     {
         return new TenantDto(
             tenant.Id,
@@ -47,7 +48,9 @@ public static class TenantMapper
             TaxId: tenant.TaxId,
             LoginPageTitle: tenant.LoginPageTitle,
             LoginPageSubtitle: tenant.LoginPageSubtitle,
-            EmailFooterText: tenant.EmailFooterText);
+            EmailFooterText: tenant.EmailFooterText,
+            DefaultRegistrationRoleId: tenant.DefaultRegistrationRoleId,
+            DefaultRoleName: defaultRoleName);
     }
 
     public static IReadOnlyList<TenantDto> ToDtoList(this IEnumerable<Tenant> tenants)

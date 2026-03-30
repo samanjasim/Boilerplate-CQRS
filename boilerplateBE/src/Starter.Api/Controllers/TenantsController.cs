@@ -11,6 +11,7 @@ using Starter.Application.Features.Tenants.Commands.UpdateTenantCustomText;
 using Starter.Application.Features.Tenants.Queries.GetTenants;
 using Starter.Application.Features.Tenants.Queries.GetTenantById;
 using Starter.Application.Features.Tenants.Queries.GetTenantBranding;
+using Starter.Application.Features.Tenants.Commands.SetTenantDefaultRole;
 using Starter.Shared.Constants;
 
 namespace Starter.Api.Controllers;
@@ -174,6 +175,23 @@ public sealed class TenantsController(ISender mediator) : BaseApiController(medi
     }
 
     /// <summary>
+    /// Set the default registration role for a tenant.
+    /// </summary>
+    [HttpPut("{id:guid}/default-role")]
+    [Authorize(Policy = Permissions.Tenants.Update)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SetDefaultRole(Guid id, [FromBody] SetDefaultRoleRequest request)
+    {
+        var command = new SetTenantDefaultRoleCommand(id, request.RoleId);
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
     /// Get tenant branding (public — needed for login page customization).
     /// </summary>
     [HttpGet("branding")]
@@ -224,5 +242,10 @@ public sealed record UpdateTenantCustomTextRequest(
     string? LoginPageTitle,
     string? LoginPageSubtitle,
     string? EmailFooterText);
+
+/// <summary>
+/// Request to set a tenant's default registration role.
+/// </summary>
+public sealed record SetDefaultRoleRequest(Guid? RoleId);
 
 #endregion
