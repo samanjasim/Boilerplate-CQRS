@@ -29,6 +29,16 @@ internal sealed class GetTenantByIdQueryHandler(
         if (tenant.FaviconFileId.HasValue)
             faviconUrl = await fileService.GetUrlAsync(tenant.FaviconFileId.Value, cancellationToken);
 
-        return Result.Success(tenant.ToDto(logoUrl, faviconUrl));
+        string? defaultRoleName = null;
+        if (tenant.DefaultRegistrationRoleId is not null)
+        {
+            defaultRoleName = await context.Roles
+                .IgnoreQueryFilters()
+                .Where(r => r.Id == tenant.DefaultRegistrationRoleId.Value)
+                .Select(r => r.Name)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+
+        return Result.Success(tenant.ToDto(logoUrl, faviconUrl, defaultRoleName));
     }
 }

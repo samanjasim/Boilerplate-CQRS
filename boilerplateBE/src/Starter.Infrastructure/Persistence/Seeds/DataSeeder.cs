@@ -248,6 +248,9 @@ public static class DataSeeder
             ("Files.OrphanCleanupIntervalMinutes", "30", "Interval between orphan file cleanup runs in minutes", "Files", false, "number"),
             ("Files.MaxUploadSizeMb", "50", "Maximum file upload size in MB", "Files", false, "number"),
             ("Reports.FileExpirationHours", "24", "Hours until time-sensitive report files expire", "Reports", false, "number"),
+
+            // Registration
+            ("registration.default_role_id", "", "Default role ID for new user registrations (leave empty for system User role)", "Registration", false, "text"),
         };
 
         var existingSettings = await context.SystemSettings
@@ -319,6 +322,7 @@ public static class DataSeeder
             FeatureFlag.Create("api_keys.max_count", "Max API Keys", "Maximum number of API keys per tenant", "10", FlagValueType.Integer, FlagCategory.ApiKeys, false),
             FeatureFlag.Create("ui.maintenance_mode", "Maintenance Mode", "Show maintenance page to non-admin users", "false", FlagValueType.Boolean, FlagCategory.System, true),
             FeatureFlag.Create("billing.enabled", "Billing Enabled", "Enable billing and subscription features", "false", FlagValueType.Boolean, FlagCategory.Billing, true),
+            FeatureFlag.Create("roles.tenant_custom_enabled", "Tenant Custom Roles", "Allow tenants to create custom roles", "false", FlagValueType.Boolean, FlagCategory.System, false),
         };
 
         context.FeatureFlags.AddRange(flags);
