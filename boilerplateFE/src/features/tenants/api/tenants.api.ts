@@ -30,6 +30,9 @@ export const tenantsApi = {
   updateCustomText: (id: string, data: Record<string, unknown>) =>
     apiClient.put(API_ENDPOINTS.TENANTS.CUSTOM_TEXT(id), data).then((r) => r.data),
 
+  setDefaultRole: (id: string, roleId: string | null) =>
+    apiClient.put(API_ENDPOINTS.TENANTS.DEFAULT_ROLE(id), { roleId }).then((r) => r.data),
+
   getBranding: async (slug?: string): Promise<TenantBranding> => {
     const publicClient = axios.create({
       baseURL: API_CONFIG.BASE_URL,
