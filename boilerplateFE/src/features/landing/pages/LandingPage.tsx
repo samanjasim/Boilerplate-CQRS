@@ -33,7 +33,7 @@ export default function LandingPage() {
           <Button
             asChild
             size="lg"
-            className="bg-white [color:var(--active-text)] hover:bg-white/90 shadow-lg"
+            className="bg-white text-foreground hover:bg-white/90 shadow-lg"
           >
             <Link to={ROUTES.REGISTER_TENANT}>{t('landing.getStarted')}</Link>
           </Button>
@@ -41,7 +41,7 @@ export default function LandingPage() {
             asChild
             variant="outline"
             size="lg"
-            className="border-white/40 text-white hover:bg-white/10"
+            className="border-white/30 bg-white/10 text-white hover:bg-white/15"
           >
             <Link to={ROUTES.LOGIN}>{t('landing.signIn')}</Link>
           </Button>
