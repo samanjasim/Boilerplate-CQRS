@@ -1,3 +1,5 @@
+using Starter.Domain.Billing.Entities;
+using Starter.Domain.Billing.Enums;
 using Starter.Domain.Common;
 using Starter.Domain.FeatureFlags.Entities;
 using Starter.Domain.FeatureFlags.Enums;
@@ -40,6 +42,7 @@ public static class DataSeeder
             await SeedSuperAdminUserAsync(context, configuration, logger);
             await SeedDefaultSettingsAsync(context, logger);
             await SeedFeatureFlagsAsync(context, logger);
+            await SeedSubscriptionPlansAsync(context, logger);
         }
         catch (Exception ex)
         {
@@ -329,5 +332,83 @@ public static class DataSeeder
         context.FeatureFlags.AddRange(flags);
         await context.SaveChangesAsync();
         logger.LogInformation("Seeded {Count} default feature flags", flags.Length);
+    }
+
+    private static async Task SeedSubscriptionPlansAsync(ApplicationDbContext context, ILogger logger)
+    {
+        if (await context.SubscriptionPlans.AnyAsync())
+        {
+            logger.LogInformation("Subscription plans already seeded");
+            return;
+        }
+
+        var plans = new[]
+        {
+            SubscriptionPlan.Create(
+                "Free",
+                "free",
+                "Get started with basic features",
+                "{\"en\":{\"name\":\"Free\",\"description\":\"Get started with basic features\"},\"ar\":{\"name\":\"مجاني\",\"description\":\"ابدأ بالميزات الأساسية\"},\"ku\":{\"name\":\"بەخۆڕایی\",\"description\":\"دەست پێبکە بە تایبەتمەندییە بنەڕەتییەکان\"}}",
+                0m,
+                0m,
+                "USD",
+                "{\"users.max_count\":5,\"files.max_storage_mb\":1024,\"files.max_upload_size_mb\":10,\"reports.enabled\":false,\"reports.pdf_export\":false,\"api_keys.enabled\":true,\"api_keys.max_count\":2,\"users.invitations_enabled\":true}",
+                isFree: true,
+                isPublic: true,
+                displayOrder: 0,
+                trialDays: 0),
+
+            SubscriptionPlan.Create(
+                "Starter",
+                "starter",
+                "For small teams getting started",
+                "{\"en\":{\"name\":\"Starter\",\"description\":\"For small teams getting started\"},\"ar\":{\"name\":\"المبتدئ\",\"description\":\"للفرق الصغيرة التي تبدأ للتو\"},\"ku\":{\"name\":\"دەستپێکەر\",\"description\":\"بۆ تیمە بچووکەکان کە دەیانەوێت دەست پێبکەن\"}}",
+                29m,
+                290m,
+                "USD",
+                "{\"users.max_count\":25,\"files.max_storage_mb\":10240,\"files.max_upload_size_mb\":25,\"reports.enabled\":true,\"reports.max_concurrent\":3,\"reports.pdf_export\":false,\"api_keys.enabled\":true,\"api_keys.max_count\":5,\"users.invitations_enabled\":true}",
+                isFree: false,
+                isPublic: true,
+                displayOrder: 1,
+                trialDays: 0),
+
+            SubscriptionPlan.Create(
+                "Pro",
+                "pro",
+                "For growing teams with advanced needs",
+                "{\"en\":{\"name\":\"Pro\",\"description\":\"For growing teams with advanced needs\"},\"ar\":{\"name\":\"احترافي\",\"description\":\"للفرق المتنامية ذات الاحتياجات المتقدمة\"},\"ku\":{\"name\":\"پرۆفیشنال\",\"description\":\"بۆ تیمە گەشەکانی کە پێویستییانی پێشکەوتوویان هەیە\"}}",
+                99m,
+                990m,
+                "USD",
+                "{\"users.max_count\":100,\"files.max_storage_mb\":51200,\"files.max_upload_size_mb\":50,\"reports.enabled\":true,\"reports.max_concurrent\":5,\"reports.pdf_export\":true,\"api_keys.enabled\":true,\"api_keys.max_count\":20,\"users.invitations_enabled\":true}",
+                isFree: false,
+                isPublic: true,
+                displayOrder: 2,
+                trialDays: 0),
+
+            SubscriptionPlan.Create(
+                "Enterprise",
+                "enterprise",
+                "For large organizations with custom requirements",
+                "{\"en\":{\"name\":\"Enterprise\",\"description\":\"For large organizations with custom requirements\"},\"ar\":{\"name\":\"المؤسسي\",\"description\":\"للمؤسسات الكبيرة ذات المتطلبات المخصصة\"},\"ku\":{\"name\":\"کۆمپانیا\",\"description\":\"بۆ ڕێکخراوە گەورەکان کە پێویستییە تایبەتەکانیان هەیە\"}}",
+                299m,
+                2990m,
+                "USD",
+                "{\"users.max_count\":500,\"files.max_storage_mb\":204800,\"files.max_upload_size_mb\":100,\"reports.enabled\":true,\"reports.max_concurrent\":10,\"reports.pdf_export\":true,\"api_keys.enabled\":true,\"api_keys.max_count\":50,\"users.invitations_enabled\":true}",
+                isFree: false,
+                isPublic: true,
+                displayOrder: 3,
+                trialDays: 0),
+        };
+
+        context.SubscriptionPlans.AddRange(plans);
+        await context.SaveChangesAsync();
+        logger.LogInformation("Seeded {Count} subscription plans", plans.Length);
+
+        var systemUserId = (await context.Users.IgnoreQueryFilters().FirstAsync(u => u.Username == "superadmin")).Id;
+        foreach (var plan in plans)
+            context.PlanPriceHistories.Add(PlanPriceHistory.Create(plan.Id, plan.MonthlyPrice, plan.AnnualPrice, plan.Currency, systemUserId, "Initial plan creation"));
+        await context.SaveChangesAsync();
+        logger.LogInformation("Seeded price history baselines for {Count} subscription plans", plans.Length);
     }
 }

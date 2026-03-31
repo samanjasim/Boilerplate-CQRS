@@ -1,5 +1,7 @@
 using Starter.Application.Common.Constants;
 using Starter.Application.Common.Interfaces;
+using Starter.Domain.Billing.Entities;
+using Starter.Domain.Billing.Enums;
 using Starter.Domain.Identity.Entities;
 using Starter.Domain.Identity.Errors;
 using Starter.Domain.Identity.ValueObjects;
@@ -18,7 +20,8 @@ internal sealed class RegisterTenantCommandHandler(
     IPasswordService passwordService,
     IOtpService otpService,
     IEmailService emailService,
-    IEmailTemplateService emailTemplateService) : IRequestHandler<RegisterTenantCommand, Result<Guid>>
+    IEmailTemplateService emailTemplateService,
+    IUsageTracker usageTracker) : IRequestHandler<RegisterTenantCommand, Result<Guid>>
 {
     public async Task<Result<Guid>> Handle(RegisterTenantCommand request, CancellationToken cancellationToken)
     {
@@ -65,6 +68,22 @@ internal sealed class RegisterTenantCommandHandler(
 
         context.Users.Add(user);
         await context.SaveChangesAsync(cancellationToken);
+
+        // Auto-assign Free plan
+        var freePlan = await context.SubscriptionPlans
+            .FirstOrDefaultAsync(p => p.IsFree && p.IsActive, cancellationToken);
+
+        if (freePlan is not null)
+        {
+            var now = DateTime.UtcNow;
+            var subscription = TenantSubscription.Create(
+                tenant.Id, freePlan.Id, 0, 0, freePlan.Currency,
+                BillingInterval.Monthly, now, now.AddYears(100),
+                trialEndAt: null, autoRenew: false);
+            context.TenantSubscriptions.Add(subscription);
+            await context.SaveChangesAsync(cancellationToken);
+            await usageTracker.SetAsync(tenant.Id, "users", 1, cancellationToken);
+        }
 
         // Send email verification OTP
         var otpCode = await otpService.GenerateAsync(OtpPurpose.EmailVerification, user.Email.Value, cancellationToken);
