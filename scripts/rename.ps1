@@ -90,6 +90,13 @@ if (Test-Path $SourceFE) {
     Copy-Item -Path $SourceFE -Destination $TargetFE -Recurse -Force
 }
 
+# Copy GitHub Actions workflows if they exist
+$SourceGitHub = Join-Path $RepoRoot ".github"
+if (Test-Path $SourceGitHub) {
+    Write-Host "  Copying GitHub Actions workflows..." -ForegroundColor Gray
+    Copy-Item -Path $SourceGitHub -Destination (Join-Path $TargetRoot ".github") -Recurse -Force
+}
+
 # ── Clean build artifacts from the copy ─────────────────────────────────────
 
 Write-Host "  Cleaning build artifacts..." -ForegroundColor Gray

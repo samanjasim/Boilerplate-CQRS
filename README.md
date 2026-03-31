@@ -108,6 +108,26 @@ A production-ready full-stack boilerplate with **.NET 10 Backend** (Clean Archit
 - Multi-tenancy with subdomain routing (`acme.starter.com`)
 - Shared cookie auth for cross-subdomain SSO
 - Dark/Light/System theme with RTL support
+- **GitHub Actions CI/CD** — automated build, test, lint, and Docker image publishing
+
+### CI/CD Pipelines
+
+Two GitHub Actions workflows are included:
+
+**CI** (`.github/workflows/ci.yml`) — Runs on every PR and push to main:
+- Backend: restore, build, test (.NET 10)
+- Frontend: install, lint, build (Node 20)
+
+**Docker Build** (`.github/workflows/docker.yml`) — Runs on push to main:
+- Builds both backend and frontend Docker images
+- Pushes to GitHub Container Registry (`ghcr.io`)
+- Tags: `latest` + commit SHA
+- Frontend build args configurable via GitHub repository variables
+
+To configure for deployment, set these in your repo's **Settings > Secrets and variables > Actions > Variables**:
+- `VITE_API_BASE_URL` — your production API URL
+- `VITE_APP_NAME` — your app display name
+- `VITE_BASE_DOMAIN` — your domain for multi-tenant subdomains
 
 ## Quick Start
 

@@ -76,6 +76,12 @@ if [ -d "$SOURCE_FE" ]; then
     cp -r "$SOURCE_FE" "$TARGET_FE"
 fi
 
+# Copy GitHub Actions workflows if they exist
+if [ -d "$REPO_ROOT/.github" ]; then
+    echo "  Copying GitHub Actions workflows..."
+    cp -r "$REPO_ROOT/.github" "$TARGET_ROOT/.github"
+fi
+
 # ── Clean build artifacts ──────────────────────────────────────────────────
 
 echo "  Cleaning build artifacts..."
