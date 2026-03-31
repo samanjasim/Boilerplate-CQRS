@@ -98,4 +98,18 @@ export const API_ENDPOINTS = {
     TENANT_OVERRIDE: (id: string, tenantId: string) => `/FeatureFlags/${id}/tenants/${tenantId}`,
     OPT_OUT: (id: string) => `/FeatureFlags/${id}/opt-out`,
   },
+  BILLING: {
+    PLANS: '/Billing/plans',
+    PLANS_MANAGE: '/Billing/plans/manage',
+    PLANS_CREATE: '/Billing/plans/create',
+    PLAN_DETAIL: (id: string) => `/Billing/plans/${id}`,
+    PLAN_RESYNC: (id: string) => `/Billing/plans/${id}/resync`,
+    SUBSCRIPTION: '/Billing/subscription',
+    CHANGE_PLAN: '/Billing/change-plan',
+    CANCEL: '/Billing/cancel',
+    PAYMENTS: '/Billing/payments',
+    USAGE: '/Billing/usage',
+    TENANT_SUBSCRIPTION: (tenantId: string) => `/Billing/tenants/${tenantId}/subscription`,
+    TENANT_CHANGE_PLAN: (tenantId: string) => `/Billing/tenants/${tenantId}/change-plan`,
+  },
 } as const;
