@@ -36,6 +36,7 @@ namespace Starter.Shared.Constants;
 /// | Tenants    |  ✓   |  ✓   |   ✓    |   ✓    |   ✓    |                          |
 /// | Files      |  ✓   |      |        |        |   ✓    | Upload, Manage           |
 /// | ApiKeys    |  ✓   |      |   ✓    |   ✓    |   ✓    | ViewPlatform, CreatePlatform, UpdatePlatform, DeletePlatform, EmergencyRevoke |
+/// | Billing    |      |      |        |        |        | View, Manage, ViewPlans, ManagePlans, ManageTenantSubscriptions              |
 /// </summary>
 public static class Permissions
 {
@@ -103,6 +104,16 @@ public static class Permissions
         public const string Delete = "FeatureFlags.Delete";
         public const string ManageTenantOverrides = "FeatureFlags.ManageTenantOverrides";
         public const string OptOut = "FeatureFlags.OptOut";
+    }
+
+    // ─── Billing ─────────────────────────────────────
+    public static class Billing
+    {
+        public const string View = "Billing.View";
+        public const string Manage = "Billing.Manage";
+        public const string ViewPlans = "Billing.ViewPlans";
+        public const string ManagePlans = "Billing.ManagePlans";
+        public const string ManageTenantSubscriptions = "Billing.ManageTenantSubscriptions";
     }
 
     // ─── Tenants ─────────────────────────────────────
@@ -189,6 +200,13 @@ public static class Permissions
         yield return (FeatureFlags.Delete, "Delete feature flags", "FeatureFlags");
         yield return (FeatureFlags.ManageTenantOverrides, "Manage tenant feature flag overrides", "FeatureFlags");
         yield return (FeatureFlags.OptOut, "Opt out of non-system boolean feature flags", "FeatureFlags");
+
+        // ─── Billing ───
+        yield return (Billing.View, "View subscription and usage", "Billing");
+        yield return (Billing.Manage, "Change plan and cancel subscription", "Billing");
+        yield return (Billing.ViewPlans, "View all subscription plans", "Billing");
+        yield return (Billing.ManagePlans, "Create and manage subscription plans", "Billing");
+        yield return (Billing.ManageTenantSubscriptions, "Manage tenant subscriptions", "Billing");
 
         // ─── Tenants ───
         yield return (Tenants.View, "View tenants list", "Tenants");
