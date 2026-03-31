@@ -33,42 +33,50 @@ function ChangesDetail({ changes }: { changes: string | null }) {
 
   if (!changes) return null;
 
+  let parsed: Record<string, unknown> | null = null;
   try {
-    const parsed = JSON.parse(changes);
-    return (
-      <div className="grid gap-4 p-4 sm:grid-cols-2">
-        {parsed.OldValues && (
-          <div>
-            <p className="mb-2 text-xs font-semibold text-muted-foreground">
-              {t('auditLogs.oldValues')}
-            </p>
-            <pre className="overflow-auto rounded bg-muted p-2 text-xs">
-              {JSON.stringify(parsed.OldValues, null, 2)}
-            </pre>
-          </div>
-        )}
-        {parsed.NewValues && (
-          <div>
-            <p className="mb-2 text-xs font-semibold text-muted-foreground">
-              {t('auditLogs.newValues')}
-            </p>
-            <pre className="overflow-auto rounded bg-muted p-2 text-xs">
-              {JSON.stringify(parsed.NewValues, null, 2)}
-            </pre>
-          </div>
-        )}
-        {!parsed.OldValues && !parsed.NewValues && (
-          <pre className="overflow-auto rounded bg-muted p-2 text-xs sm:col-span-2">
-            {JSON.stringify(parsed, null, 2)}
-          </pre>
-        )}
-      </div>
-    );
+    parsed = JSON.parse(changes);
   } catch {
+    // invalid JSON — will render raw text below
+  }
+
+  if (!parsed) {
     return (
-      <pre className="overflow-auto rounded bg-muted p-4 text-xs">{changes}</pre>
+      <pre className="overflow-auto rounded bg-muted p-4 text-xs">
+        {changes}
+      </pre>
     );
   }
+
+  return (
+    <div className="grid gap-4 p-4 sm:grid-cols-2">
+      {'OldValues' in parsed && parsed.OldValues != null && (
+        <div>
+          <p className="mb-2 text-xs font-semibold text-muted-foreground">
+            {t('auditLogs.oldValues')}
+          </p>
+          <pre className="overflow-auto rounded bg-muted p-2 text-xs">
+            {JSON.stringify(parsed.OldValues, null, 2)}
+          </pre>
+        </div>
+      )}
+      {'NewValues' in parsed && parsed.NewValues != null && (
+        <div>
+          <p className="mb-2 text-xs font-semibold text-muted-foreground">
+            {t('auditLogs.newValues')}
+          </p>
+          <pre className="overflow-auto rounded bg-muted p-2 text-xs">
+            {JSON.stringify(parsed.NewValues, null, 2)}
+          </pre>
+        </div>
+      )}
+      {!parsed.OldValues && !parsed.NewValues && (
+        <pre className="overflow-auto rounded bg-muted p-2 text-xs sm:col-span-2">
+          {JSON.stringify(parsed, null, 2)}
+        </pre>
+      )}
+    </div>
+  );
 }
 
 export default function AuditLogsPage() {

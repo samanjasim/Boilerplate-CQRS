@@ -192,6 +192,7 @@ export default function SettingsPage() {
           values[setting.key] = setting.value;
         }
       }
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalValues(values);
       if (groups.length > 0 && !activeTab) {
         setActiveTab(groups[0].category);

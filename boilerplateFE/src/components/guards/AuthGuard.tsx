@@ -15,6 +15,7 @@ export function AuthGuard() {
 
   if (!isAuthenticated) {
     if (isSubdomainAccess()) {
+      // eslint-disable-next-line react-hooks/immutability
       window.location.href = getMainDomainUrl() + '/login';
       return <LoadingScreen />;
     }

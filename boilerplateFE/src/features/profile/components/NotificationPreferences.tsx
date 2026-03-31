@@ -27,6 +27,7 @@ export function NotificationPreferences() {
 
   useEffect(() => {
     if (preferences) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalPrefs(preferences);
     }
   }, [preferences]);

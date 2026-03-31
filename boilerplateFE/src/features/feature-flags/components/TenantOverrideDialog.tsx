@@ -47,6 +47,7 @@ export function TenantOverrideDialog({ open, onOpenChange, flag }: TenantOverrid
 
   useEffect(() => {
     if (flag) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOverrideValue(flag.tenantOverrideValue ?? flag.defaultValue);
       if (!isPlatformAdmin && user?.tenantId) {
         setTenantId(user.tenantId);

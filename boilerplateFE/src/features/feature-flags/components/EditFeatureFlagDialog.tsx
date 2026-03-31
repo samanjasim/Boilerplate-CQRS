@@ -51,6 +51,7 @@ export function EditFeatureFlagDialog({ open, onOpenChange, flag }: EditFeatureF
 
   useEffect(() => {
     if (flag) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setName(flag.name);
       setDescription(flag.description ?? '');
       setDefaultValue(flag.defaultValue);

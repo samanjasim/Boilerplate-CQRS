@@ -114,9 +114,10 @@ export default function TenantDetailPage() {
   const [emailFooterText, setEmailFooterText] = useState<Record<LangKey, string>>({ en: '', ar: '', ku: '' });
   const [activeLang, setActiveLang] = useState<LangKey>('en');
 
-  // Initialize form state from tenant data (Fix 7)
+  // Initialize form state from tenant data
   useEffect(() => {
     if (!tenant) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPrimaryColor(tenant.primaryColor ?? '');
     setSecondaryColor(tenant.secondaryColor ?? '');
     setDescription(tenant.description ?? '');
@@ -127,7 +128,7 @@ export default function TenantDetailPage() {
     setLoginPageTitle(parseLocalizedJson(tenant.loginPageTitle));
     setLoginPageSubtitle(parseLocalizedJson(tenant.loginPageSubtitle));
     setEmailFooterText(parseLocalizedJson(tenant.emailFooterText));
-  }, [tenant?.id]);
+  }, [tenant]);
 
   // Clean up preview URLs on unmount
   useEffect(() => () => {
@@ -140,6 +141,7 @@ export default function TenantDetailPage() {
   const { mutate: updateBusinessInfo, isPending: isSavingBusiness } = useUpdateTenantBusinessInfo();
   const { mutate: updateCustomText, isPending: isSavingCustomText } = useUpdateTenantCustomText();
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const handleSaveBranding = useCallback(() => {
     const hexRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
     if (primaryColor && !hexRegex.test(primaryColor)) {

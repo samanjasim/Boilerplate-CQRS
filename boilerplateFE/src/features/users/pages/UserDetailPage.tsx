@@ -40,7 +40,7 @@ export default function UserDetailPage() {
   const canUpdate = hasPermission(PERMISSIONS.Users.Update);
   useBackNavigation(ROUTES.USERS.LIST, t('users.backToUsers'));
 
-  const allRoles = rolesData?.data ?? [];
+  const allRoles = useMemo(() => rolesData?.data ?? [], [rolesData?.data]);
 
   const roleIdMap = useMemo(
     () => new Map(allRoles.map((r) => [r.name, r.id])),

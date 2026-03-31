@@ -47,6 +47,7 @@ export default function RoleEditPage() {
   useEffect(() => {
     if (role) {
       reset({ name: role.name, description: role.description || '' });
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedPermissionIds(new Set(role.permissions?.map((p) => p.id) ?? []));
     }
   }, [role, reset]);

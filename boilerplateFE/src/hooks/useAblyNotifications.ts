@@ -13,6 +13,7 @@ export function useAblyNotifications(): { connected: boolean } {
   useEffect(() => {
     const ABLY_API_KEY = import.meta.env.VITE_ABLY_API_KEY;
     if (!ABLY_API_KEY || !user?.id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setConnected(false);
       return;
     }

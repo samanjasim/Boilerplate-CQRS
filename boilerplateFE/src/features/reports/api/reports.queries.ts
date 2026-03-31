@@ -12,9 +12,9 @@ export function useReports(params?: Record<string, unknown>, options?: { enabled
     enabled: options?.enabled,
     refetchInterval: (query) => {
       const data = query.state.data;
-      const reports = (data as any)?.data ?? [];
+      const reports = (data as { data?: ReportRequest[] })?.data ?? [];
       const hasActive = reports.some(
-        (r: any) => r.status === 'Pending' || r.status === 'Processing'
+        (r: ReportRequest) => r.status === 'Pending' || r.status === 'Processing'
       );
       return hasActive ? 5000 : false;
     },

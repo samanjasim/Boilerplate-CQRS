@@ -11,3 +11,4 @@ export * from './NotificationBell';
 export * from './FileUpload';
 export * from './UserAvatar';
 export * from './Pagination';
+export * from './pagination-utils';

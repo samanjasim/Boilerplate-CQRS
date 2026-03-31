@@ -56,6 +56,7 @@ export function InviteUserModal({ open, onOpenChange }: InviteUserModalProps) {
     defaultValues: { email: '', roleId: '', tenantId: '' },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const selectedTenantId = watch('tenantId');
 
   // Platform admin: load tenants for the dropdown
