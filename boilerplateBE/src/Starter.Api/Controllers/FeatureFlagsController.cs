@@ -44,12 +44,12 @@ public sealed class FeatureFlagsController(ISender mediator) : BaseApiController
 
     [HttpPost]
     [Authorize(Policy = Permissions.FeatureFlags.Create)]
-    [ProducesResponseType(typeof(ApiResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create(CreateFeatureFlagCommand command, CancellationToken ct = default)
     {
         var result = await Mediator.Send(command, ct);
-        return HandleCreatedResult(result, nameof(GetByKey), null);
+        return HandleResult(result);
     }
 
     [HttpPut("{id:guid}")]

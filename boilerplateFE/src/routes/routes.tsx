@@ -36,6 +36,8 @@ const FeatureFlagsPage = lazy(() => import('@/features/feature-flags/pages/Featu
 const BillingPage = lazy(() => import('@/features/billing/pages/BillingPage'));
 const BillingPlansPage = lazy(() => import('@/features/billing/pages/BillingPlansPage'));
 const PricingPage = lazy(() => import('@/features/billing/pages/PricingPage'));
+const SubscriptionsPage = lazy(() => import('@/features/billing/pages/SubscriptionsPage'));
+const SubscriptionDetailPage = lazy(() => import('@/features/billing/pages/SubscriptionDetailPage'));
 const NotFoundPage = lazy(() => import('@/routes/NotFoundPage'));
 
 export const routes: RouteObject[] = [
@@ -181,6 +183,15 @@ export const routes: RouteObject[] = [
             element: <PermissionGuard permission={PERMISSIONS.Billing.ViewPlans} />,
             children: [
               { path: ROUTES.BILLING_PLANS, element: <BillingPlansPage /> },
+            ],
+          },
+
+          // Subscriptions (platform admin)
+          {
+            element: <PermissionGuard permission={PERMISSIONS.Billing.ManageTenantSubscriptions} />,
+            children: [
+              { path: ROUTES.SUBSCRIPTIONS.LIST, element: <SubscriptionsPage /> },
+              { path: ROUTES.SUBSCRIPTIONS.DETAIL, element: <SubscriptionDetailPage /> },
             ],
           },
         ],

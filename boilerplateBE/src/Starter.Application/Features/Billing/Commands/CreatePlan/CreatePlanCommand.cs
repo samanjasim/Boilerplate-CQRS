@@ -1,4 +1,5 @@
 using MediatR;
+using Starter.Application.Features.Billing.DTOs;
 using Starter.Shared.Results;
 
 namespace Starter.Application.Features.Billing.Commands.CreatePlan;
@@ -11,7 +12,7 @@ public sealed record CreatePlanCommand(
     decimal MonthlyPrice,
     decimal AnnualPrice,
     string Currency,
-    string? Features,
+    List<PlanFeatureEntry>? Features,
     bool IsFree,
     bool IsPublic,
     int DisplayOrder,

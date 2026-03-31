@@ -15,7 +15,7 @@ public static class SubscriptionPlanMapper
             MonthlyPrice: entity.MonthlyPrice,
             AnnualPrice: entity.AnnualPrice,
             Currency: entity.Currency,
-            Features: entity.Features ?? string.Empty,
+            Features: PlanFeatureEntry.ParseFeatures(entity.Features),
             IsFree: entity.IsFree,
             IsActive: entity.IsActive,
             IsPublic: entity.IsPublic,

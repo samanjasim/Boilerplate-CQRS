@@ -35,4 +35,8 @@ public static class BillingErrors
     public static readonly Error CannotCancelFreePlan = Error.Validation(
         "Billing.CannotCancelFreePlan",
         "A free plan subscription cannot be canceled.");
+
+    public static Error InvalidFeatureKeys(List<string> keys) =>
+        Error.Validation("Billing.InvalidFeatureKeys",
+            $"Feature flag keys do not exist: {string.Join(", ", keys)}");
 }

@@ -125,6 +125,8 @@
     "apiKeys": "کلیلەکانی API",
     "featureFlags": "ئاڵای تایبەتمەندییەکان",
     "billing": "پارەدان",
+    "billingPlans": "پلانەکانی بەشداریکردن",
+    "subscriptions": "بەشداریکردنەکان",
     "collapse": "کچکردن"
   },
   "header": {
@@ -738,6 +740,23 @@
     "usersUsage": "بەکارهێنەرەکان",
     "storageUsage": "ئەنبار",
     "apiKeysUsage": "کلیلەکانی API",
-    "noPayments": "هیچ تۆماری پارەدانێک نەدۆزرایەوە"
+    "noPayments": "هیچ تۆماری پارەدانێک نەدۆزرایەوە",
+    "subscriptions": "بەشداریکردنەکان",
+    "subscriptionsSubtitle": "بەڕێوەبردنی هەموو بەشداریکردنەکانی کرێچییەکان",
+    "tenantColumn": "کرێچی",
+    "planColumn": "پلان",
+    "usersColumn": "بەکارهێنەران",
+    "storageColumn": "کۆگا",
+    "intervalColumn": "ماوە",
+    "renewalColumn": "نوێکردنەوە",
+    "paymentColumn": "پارەدان",
+    "noPaymentStatus": "هیچ",
+    "changePlanConfirm": "پلانی {{tenantName}} بگۆڕە بۆ {{planName}}؟",
+    "changePlanConfirmDesc": "ئەمە بەشداریکردنی کرێچییەکە دەنوێنێتەوە فەوران.",
+    "viewDetails": "بینین",
+    "tenantSubscription": "بەشداریکردنی {{tenantName}}",
+    "noSubscriptions": "هیچ بەشداریکردنێک نەدۆزرایەوە",
+    "subscriptionDetail": "وردەکاری بەشداریکردن",
+    "selectPlan": "پلانێک هەڵبژێرە"
   }
 }

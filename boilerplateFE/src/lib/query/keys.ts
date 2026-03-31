@@ -105,13 +105,19 @@ export const queryKeys = {
       current: () => ['billing', 'subscription', 'current'] as const,
       tenant: (tenantId: string) => ['billing', 'subscription', 'tenant', tenantId] as const,
     },
+    subscriptions: {
+      all: ['billing', 'subscriptions'] as const,
+      list: (params?: Record<string, unknown>) => ['billing', 'subscriptions', 'list', params] as const,
+    },
     usage: {
       all: ['billing', 'usage'] as const,
       current: () => ['billing', 'usage', 'current'] as const,
+      tenant: (tenantId: string) => ['billing', 'usage', 'tenant', tenantId] as const,
     },
     payments: {
       all: ['billing', 'payments'] as const,
       list: (params?: Record<string, unknown>) => ['billing', 'payments', 'list', params] as const,
+      tenant: (tenantId: string, params?: Record<string, unknown>) => ['billing', 'payments', 'tenant', tenantId, params] as const,
     },
   },
 } as const;

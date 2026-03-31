@@ -57,7 +57,7 @@ public sealed class FilesController(ISender mediator, IFileService fileService, 
             entityId,
             isPublic);
         var result = await Mediator.Send(command, cancellationToken);
-        return HandleCreatedResult(result, nameof(GetFileById), null);
+        return HandleResult(result);
     }
 
     /// <summary>

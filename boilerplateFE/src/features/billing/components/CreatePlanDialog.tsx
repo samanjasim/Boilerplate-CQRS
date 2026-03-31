@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useCreatePlan } from '../api';
+import { PlanFeaturesEditor } from './PlanFeaturesEditor';
 import type { CreatePlanData } from '@/types';
 
 interface CreatePlanDialogProps {
@@ -27,7 +28,7 @@ const DEFAULT_FORM: CreatePlanData = {
   monthlyPrice: 0,
   annualPrice: 0,
   currency: 'USD',
-  features: '[]',
+  features: [],
   isFree: false,
   isPublic: true,
   displayOrder: 0,
@@ -154,16 +155,10 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="cp-features">{t('billing.featuresJson')}</Label>
-            <Textarea
-              id="cp-features"
-              rows={4}
-              placeholder='["Feature 1", "Feature 2"]'
-              value={form.features}
-              onChange={(e) => handleChange('features', e.target.value)}
-            />
-          </div>
+          <PlanFeaturesEditor
+            value={form.features}
+            onChange={(f) => handleChange('features', f)}
+          />
 
           <div className="space-y-2">
             <Label htmlFor="cp-translations">{t('billing.translations')}</Label>

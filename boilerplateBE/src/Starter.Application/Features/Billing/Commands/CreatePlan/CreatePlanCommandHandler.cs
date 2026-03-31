@@ -1,3 +1,4 @@
+using System.Text.Json;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
@@ -18,6 +19,23 @@ internal sealed class CreatePlanCommandHandler(
         if (slugExists)
             return Result.Failure<Guid>(BillingErrors.SlugAlreadyExists);
 
+        string? featuresJson = null;
+        if (request.Features is { Count: > 0 })
+        {
+            var keys = request.Features.Select(f => f.Key).ToList();
+            var existingKeys = await context.FeatureFlags
+                .AsNoTracking()
+                .Where(f => keys.Contains(f.Key))
+                .Select(f => f.Key)
+                .ToListAsync(cancellationToken);
+
+            var invalidKeys = keys.Except(existingKeys).ToList();
+            if (invalidKeys.Count > 0)
+                return Result.Failure<Guid>(BillingErrors.InvalidFeatureKeys(invalidKeys));
+
+            featuresJson = JsonSerializer.Serialize(request.Features);
+        }
+
         var plan = SubscriptionPlan.Create(
             request.Name,
             request.Slug,
@@ -26,7 +44,7 @@ internal sealed class CreatePlanCommandHandler(
             request.MonthlyPrice,
             request.AnnualPrice,
             request.Currency,
-            request.Features,
+            featuresJson,
             request.IsFree,
             request.IsPublic,
             request.DisplayOrder,

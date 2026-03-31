@@ -50,6 +50,13 @@ export function usePayments(params?: Record<string, unknown>) {
   });
 }
 
+export function usePlanOptions() {
+  return useQuery({
+    queryKey: ['billing', 'plan-options'],
+    queryFn: () => billingApi.getPlanOptions(),
+  });
+}
+
 // ── Mutations ──────────────────────────────────────────────────────────────
 
 export function useCreatePlan() {
@@ -114,6 +121,51 @@ export function useResyncPlan() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.billing.plans.all });
       toast.success(i18n.t('billing.planResynced'));
+    },
+  });
+}
+
+// ── Platform Admin: Subscriptions ─────────────────────────────────────────
+
+export function useAllSubscriptions(params?: Record<string, unknown>) {
+  return useQuery({
+    queryKey: queryKeys.billing.subscriptions.list(params),
+    queryFn: () => billingApi.getAllSubscriptions(params),
+  });
+}
+
+export function useTenantUsage(tenantId: string) {
+  return useQuery({
+    queryKey: queryKeys.billing.usage.tenant(tenantId),
+    queryFn: () => billingApi.getTenantUsage(tenantId),
+    enabled: !!tenantId,
+  });
+}
+
+export function useTenantPayments(tenantId: string, params?: Record<string, unknown>) {
+  return useQuery({
+    queryKey: queryKeys.billing.payments.tenant(tenantId, params),
+    queryFn: () => billingApi.getTenantPayments(tenantId, params),
+    enabled: !!tenantId,
+  });
+}
+
+export function useTenantSubscription(tenantId: string) {
+  return useQuery({
+    queryKey: ['billing', 'subscription', 'tenant', tenantId],
+    queryFn: () => billingApi.getTenantSubscription(tenantId),
+    enabled: !!tenantId,
+  });
+}
+
+export function useChangeTenantPlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tenantId, data }: { tenantId: string; data: ChangePlanData }) =>
+      billingApi.changeTenantPlan(tenantId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.billing.subscriptions.all });
+      toast.success(i18n.t('billing.planChanged'));
     },
   });
 }

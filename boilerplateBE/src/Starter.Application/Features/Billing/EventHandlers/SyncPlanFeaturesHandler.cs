@@ -2,10 +2,10 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Starter.Application.Common.Interfaces;
+using Starter.Application.Features.Billing.DTOs;
 using Starter.Domain.Billing.Events;
 using Starter.Domain.FeatureFlags.Entities;
 using Starter.Domain.FeatureFlags.Enums;
-using System.Text.Json;
 
 namespace Starter.Application.Features.Billing.EventHandlers;
 
@@ -30,12 +30,8 @@ internal sealed class SyncPlanFeaturesHandler(
             }
 
             // 1. Load plan features JSON
-            var planFeatures = new Dictionary<string, string>();
-            if (!string.IsNullOrWhiteSpace(plan.Features))
-            {
-                planFeatures = JsonSerializer.Deserialize<Dictionary<string, string>>(plan.Features)
-                    ?? new Dictionary<string, string>();
-            }
+            var entries = PlanFeatureEntry.ParseFeatures(plan.Features) ?? [];
+            var planFeatures = entries.ToDictionary(e => e.Key, e => e.Value);
 
             // 2. Load all feature flags to build key → id dictionary
             var allFlags = await context.FeatureFlags

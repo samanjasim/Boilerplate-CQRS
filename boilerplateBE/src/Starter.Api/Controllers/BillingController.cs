@@ -8,8 +8,10 @@ using Starter.Application.Features.Billing.Commands.DeactivatePlan;
 using Starter.Application.Features.Billing.Commands.ResyncPlanTenants;
 using Starter.Application.Features.Billing.Commands.UpdatePlan;
 using Starter.Application.Features.Billing.DTOs;
+using Starter.Application.Features.Billing.Queries.GetAllSubscriptions;
 using Starter.Application.Features.Billing.Queries.GetPayments;
 using Starter.Application.Features.Billing.Queries.GetPlanById;
+using Starter.Application.Features.Billing.Queries.GetPlanOptions;
 using Starter.Application.Features.Billing.Queries.GetPlans;
 using Starter.Application.Features.Billing.Queries.GetSubscription;
 using Starter.Application.Features.Billing.Queries.GetUsage;
@@ -87,6 +89,15 @@ public sealed class BillingController(ISender mediator) : BaseApiController(medi
 
     // ─── SuperAdmin: Plan Management ─────────────────────────────────────────
 
+    [HttpGet("plan-options")]
+    [Authorize(Policy = Permissions.Billing.ManagePlans)]
+    [ProducesResponseType(typeof(ApiResponse<List<PlanOptionDto>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetPlanOptions(CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(new GetPlanOptionsQuery(), ct);
+        return HandleResult(result);
+    }
+
     [HttpGet("plans/manage")]
     [Authorize(Policy = Permissions.Billing.ViewPlans)]
     [ProducesResponseType(typeof(ApiResponse<List<SubscriptionPlanDto>>), StatusCodes.Status200OK)]
@@ -115,7 +126,7 @@ public sealed class BillingController(ISender mediator) : BaseApiController(medi
     public async Task<IActionResult> CreatePlan([FromBody] CreatePlanCommand command, CancellationToken ct = default)
     {
         var result = await Mediator.Send(command, ct);
-        return HandleCreatedResult(result, nameof(GetPlanById), null);
+        return HandleCreatedResult(result, nameof(GetPlanById), new { id = result.IsSuccess ? result.Value : (Guid?)null });
     }
 
     [HttpPut("plans/{id:guid}")]
@@ -151,6 +162,46 @@ public sealed class BillingController(ISender mediator) : BaseApiController(medi
     }
 
     // ─── SuperAdmin: Tenant Subscription Management ──────────────────────────
+
+    /// <summary>
+    /// Get all tenant subscriptions with usage and payment summary (SuperAdmin).
+    /// </summary>
+    [HttpGet("subscriptions")]
+    [Authorize(Policy = Permissions.Billing.ManageTenantSubscriptions)]
+    [ProducesResponseType(typeof(PagedApiResponse<SubscriptionSummaryDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAllSubscriptions(
+        [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20,
+        [FromQuery] string? searchTerm = null, CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(new GetAllSubscriptionsQuery(pageNumber, pageSize, searchTerm), ct);
+        return HandlePagedResult(result);
+    }
+
+    /// <summary>
+    /// Get usage for a specific tenant (SuperAdmin).
+    /// </summary>
+    [HttpGet("tenants/{tenantId:guid}/usage")]
+    [Authorize(Policy = Permissions.Billing.ManageTenantSubscriptions)]
+    [ProducesResponseType(typeof(ApiResponse<UsageDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetTenantUsage(Guid tenantId, CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(new GetUsageQuery(tenantId), ct);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Get payment history for a specific tenant (SuperAdmin).
+    /// </summary>
+    [HttpGet("tenants/{tenantId:guid}/payments")]
+    [Authorize(Policy = Permissions.Billing.ManageTenantSubscriptions)]
+    [ProducesResponseType(typeof(PagedApiResponse<PaymentRecordDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetTenantPayments(
+        Guid tenantId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(new GetPaymentsQuery(pageNumber, pageSize, tenantId), ct);
+        return HandlePagedResult(result);
+    }
 
     [HttpGet("tenants/{tenantId:guid}/subscription")]
     [Authorize(Policy = Permissions.Billing.ManageTenantSubscriptions)]

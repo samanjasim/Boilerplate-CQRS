@@ -7,6 +7,7 @@ import type {
   CreatePlanData,
   UpdatePlanData,
   ChangePlanData,
+  PlanOption,
 } from '@/types';
 
 export const billingApi = {
@@ -58,4 +59,20 @@ export const billingApi = {
 
   changeTenantPlan: (tenantId: string, data: ChangePlanData) =>
     apiClient.post(API_ENDPOINTS.BILLING.TENANT_CHANGE_PLAN(tenantId), data).then(r => r.data),
+
+  // Platform admin: all subscriptions
+  getAllSubscriptions: (params?: Record<string, unknown>) =>
+    apiClient.get(API_ENDPOINTS.BILLING.SUBSCRIPTIONS, { params }).then(r => r.data),
+
+  // Platform admin: per-tenant usage
+  getTenantUsage: (tenantId: string) =>
+    apiClient.get<{ data: Usage }>(API_ENDPOINTS.BILLING.TENANT_USAGE(tenantId)).then(r => r.data.data),
+
+  // Plan options (feature flags available for plans)
+  getPlanOptions: () =>
+    apiClient.get<{ data: PlanOption[] }>(API_ENDPOINTS.BILLING.PLAN_OPTIONS).then(r => r.data.data),
+
+  // Platform admin: per-tenant payments
+  getTenantPayments: (tenantId: string, params?: Record<string, unknown>) =>
+    apiClient.get(API_ENDPOINTS.BILLING.TENANT_PAYMENTS(tenantId), { params }).then(r => r.data),
 };

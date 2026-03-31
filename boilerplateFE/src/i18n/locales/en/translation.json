@@ -125,6 +125,8 @@
     "apiKeys": "API Keys",
     "featureFlags": "Feature Flags",
     "billing": "Billing",
+    "billingPlans": "Billing Plans",
+    "subscriptions": "Subscriptions",
     "collapse": "Collapse"
   },
   "header": {
@@ -761,6 +763,24 @@
     "planSlug": "Slug",
     "planDescription": "Description",
     "createPlanDesc": "Fill in the details to create a new subscription plan.",
-    "editPlanDesc": "Update the plan details below."
+    "editPlanDesc": "Update the plan details below.",
+    "subscriptions": "Subscriptions",
+    "subscriptionsSubtitle": "Manage all tenant subscriptions",
+    "tenantColumn": "Tenant",
+    "planColumn": "Plan",
+    "usersColumn": "Users",
+    "storageColumn": "Storage",
+    "intervalColumn": "Interval",
+    "renewalColumn": "Renewal",
+    "paymentColumn": "Payment",
+    "noPaymentStatus": "None",
+    "changePlanConfirm": "Change {{tenantName}}'s plan to {{planName}}?",
+    "changePlanConfirmDesc": "This will update the tenant's subscription immediately.",
+    "viewDetails": "View",
+    "tenantSubscription": "Subscription for {{tenantName}}",
+    "noSubscriptions": "No subscriptions found",
+    "planChanged": "Plan changed successfully",
+    "subscriptionDetail": "Subscription Details",
+    "selectPlan": "Select a plan"
   }
 }

@@ -1,3 +1,22 @@
+export interface PlanFeatureTranslation {
+  label: string;
+}
+
+export interface PlanFeatureEntry {
+  key: string;
+  value: string;
+  translations?: Record<string, PlanFeatureTranslation>;
+}
+
+export interface PlanOption {
+  key: string;
+  name: string;
+  description: string | null;
+  valueType: 'Boolean' | 'Integer' | 'String' | 'Json';
+  defaultValue: string;
+  category: string;
+}
+
 export interface SubscriptionPlan {
   id: string;
   name: string;
@@ -7,7 +26,7 @@ export interface SubscriptionPlan {
   monthlyPrice: number;
   annualPrice: number;
   currency: string;
-  features: string;
+  features: PlanFeatureEntry[];
   isFree: boolean;
   isActive: boolean;
   isPublic: boolean;
@@ -66,7 +85,7 @@ export interface CreatePlanData {
   monthlyPrice: number;
   annualPrice: number;
   currency: string;
-  features: string;
+  features: PlanFeatureEntry[];
   isFree: boolean;
   isPublic: boolean;
   displayOrder: number;
@@ -81,4 +100,23 @@ export interface UpdatePlanData extends CreatePlanData {
 export interface ChangePlanData {
   planId: string;
   interval?: 'Monthly' | 'Annual';
+}
+
+export interface SubscriptionSummary {
+  tenantId: string;
+  tenantName: string;
+  tenantSlug: string | null;
+  subscriptionPlanId: string;
+  planName: string;
+  planSlug: string;
+  status: 'Trialing' | 'Active' | 'PastDue' | 'Canceled' | 'Expired';
+  billingInterval: 'Monthly' | 'Annual';
+  currentPeriodStart: string;
+  currentPeriodEnd: string;
+  usersCount: number;
+  maxUsers: number;
+  storageUsedMb: number;
+  maxStorageMb: number;
+  latestPaymentStatus: 'Pending' | 'Completed' | 'Failed' | 'Refunded' | null;
+  createdAt: string;
 }

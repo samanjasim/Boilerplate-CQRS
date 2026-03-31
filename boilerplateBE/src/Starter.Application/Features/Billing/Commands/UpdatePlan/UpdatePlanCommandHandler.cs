@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using MediatR;
 using Starter.Application.Common.Interfaces;
@@ -17,6 +18,23 @@ internal sealed class UpdatePlanCommandHandler(
             .FirstOrDefaultAsync(p => p.Id == request.Id, cancellationToken);
         if (plan is null)
             return Result.Failure(BillingErrors.PlanNotFound);
+
+        string? featuresJson = null;
+        if (request.Features is { Count: > 0 })
+        {
+            var keys = request.Features.Select(f => f.Key).ToList();
+            var existingKeys = await context.FeatureFlags
+                .AsNoTracking()
+                .Where(f => keys.Contains(f.Key))
+                .Select(f => f.Key)
+                .ToListAsync(cancellationToken);
+
+            var invalidKeys = keys.Except(existingKeys).ToList();
+            if (invalidKeys.Count > 0)
+                return Result.Failure(BillingErrors.InvalidFeatureKeys(invalidKeys));
+
+            featuresJson = JsonSerializer.Serialize(request.Features);
+        }
 
         var priceChanged = plan.MonthlyPrice != request.MonthlyPrice
             || plan.AnnualPrice != request.AnnualPrice;
@@ -40,7 +58,7 @@ internal sealed class UpdatePlanCommandHandler(
             request.Translations,
             request.MonthlyPrice,
             request.AnnualPrice,
-            request.Features,
+            featuresJson,
             request.IsPublic,
             request.DisplayOrder,
             request.TrialDays);

@@ -125,6 +125,8 @@
     "apiKeys": "مفاتيح API",
     "featureFlags": "أعلام الميزات",
     "billing": "الفوترة",
+    "billingPlans": "خطط الاشتراك",
+    "subscriptions": "الاشتراكات",
     "collapse": "طي"
   },
   "header": {
@@ -738,6 +740,23 @@
     "usersUsage": "المستخدمون",
     "storageUsage": "التخزين",
     "apiKeysUsage": "مفاتيح API",
-    "noPayments": "لا توجد سجلات مدفوعات"
+    "noPayments": "لا توجد سجلات مدفوعات",
+    "subscriptions": "الاشتراكات",
+    "subscriptionsSubtitle": "إدارة جميع اشتراكات المستأجرين",
+    "tenantColumn": "المستأجر",
+    "planColumn": "الخطة",
+    "usersColumn": "المستخدمون",
+    "storageColumn": "التخزين",
+    "intervalColumn": "الفترة",
+    "renewalColumn": "التجديد",
+    "paymentColumn": "الدفع",
+    "noPaymentStatus": "لا يوجد",
+    "changePlanConfirm": "تغيير خطة {{tenantName}} إلى {{planName}}؟",
+    "changePlanConfirmDesc": "سيتم تحديث اشتراك المستأجر فوراً.",
+    "viewDetails": "عرض",
+    "tenantSubscription": "اشتراك {{tenantName}}",
+    "noSubscriptions": "لم يتم العثور على اشتراكات",
+    "subscriptionDetail": "تفاصيل الاشتراك",
+    "selectPlan": "اختر خطة"
   }
 }

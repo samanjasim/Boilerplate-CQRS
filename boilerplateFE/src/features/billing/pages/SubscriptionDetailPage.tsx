@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { CreditCard, Receipt, BarChart3 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,13 +10,19 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { PageHeader, EmptyState } from '@/components/common';
-import { useSubscription, useUsage, usePayments } from '../api';
+import { useTenantSubscription, useTenantUsage, useTenantPayments, useChangeTenantPlan, usePlans } from '../api';
 import { UsageBar } from '../components/UsageBar';
-import { PlanSelectorModal } from '../components/PlanSelectorModal';
-import { usePermissions } from '@/hooks';
-import { PERMISSIONS } from '@/constants';
+import { useBackNavigation } from '@/hooks';
+import { ROUTES } from '@/config';
 import { STATUS_BADGE_VARIANT } from '@/constants';
 import { formatDate, formatFileSize } from '@/utils/format';
+import type { SubscriptionPlan, PaymentRecord } from '@/types';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from '@/components/ui/dialog';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 
 const PAYMENT_STATUS_VARIANT: Record<string | number, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   0: 'secondary', 1: 'default', 2: 'destructive', 3: 'outline',
@@ -36,23 +43,49 @@ const BILLING_INTERVAL: Record<string | number, string> = {
   0: 'Monthly', 1: 'Annual', Monthly: 'Monthly', Annual: 'Annual',
 };
 
-export default function BillingPage() {
+export default function SubscriptionDetailPage() {
   const { t } = useTranslation();
-  const { hasPermission } = usePermissions();
+  const { tenantId } = useParams<{ tenantId: string }>();
+  useBackNavigation(ROUTES.SUBSCRIPTIONS.LIST, t('billing.subscriptions'));
+
   const [planModalOpen, setPlanModalOpen] = useState(false);
+  const [selectedPlanId, setSelectedPlanId] = useState<string>('');
 
-  const { data: subscription, isLoading: subLoading } = useSubscription();
-  const { data: usage, isLoading: usageLoading } = useUsage();
-  const { data: paymentsData, isLoading: paymentsLoading } = usePayments({ pageSize: 20 });
+  const { data: subscription, isLoading: subLoading } = useTenantSubscription(tenantId ?? '');
 
-  const payments = (paymentsData as { data?: unknown[] })?.data ?? (Array.isArray(paymentsData) ? paymentsData : []);
+  const { data: usage, isLoading: usageLoading } = useTenantUsage(tenantId ?? '');
+  const { data: paymentsData, isLoading: paymentsLoading } = useTenantPayments(tenantId ?? '', { pageSize: 20 });
+
+  const payments: PaymentRecord[] = (paymentsData as { data?: PaymentRecord[] })?.data ??
+    (Array.isArray(paymentsData) ? (paymentsData as PaymentRecord[]) : []);
+
+  const { data: plansData } = usePlans({ pageSize: 50 });
+  const { mutate: changePlan, isPending: isChanging } = useChangeTenantPlan();
+
+  const plans: SubscriptionPlan[] = (plansData as { data?: SubscriptionPlan[] })?.data ??
+    (Array.isArray(plansData) ? (plansData as SubscriptionPlan[]) : []);
+
+  const handleChangePlan = () => {
+    if (tenantId && selectedPlanId) {
+      changePlan(
+        { tenantId, data: { planId: selectedPlanId } },
+        {
+          onSuccess: () => {
+            setPlanModalOpen(false);
+            setSelectedPlanId('');
+          },
+        },
+      );
+    }
+  };
+
+  const headerTitle = subscription
+    ? t('billing.tenantSubscription', { tenantName: subscription.planName ?? '' })
+    : t('billing.subscriptionDetail');
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={t('billing.title')}
-        subtitle={t('billing.subtitle')}
-      />
+      <PageHeader title={headerTitle} />
 
       {/* Current Plan */}
       <section className="space-y-3">
@@ -85,7 +118,7 @@ export default function BillingPage() {
                     {(BILLING_INTERVAL[subscription.billingInterval] === 'Monthly'
                       ? subscription.lockedMonthlyPrice
                       : subscription.lockedAnnualPrice
-                    ).toFixed(2)}
+                    )?.toFixed(2)}
                     {BILLING_INTERVAL[subscription.billingInterval] === 'Monthly' ? t('billing.perMonth') : t('billing.perYear')}
                   </p>
                   <p className="text-xs text-muted-foreground">
@@ -93,11 +126,9 @@ export default function BillingPage() {
                   </p>
                 </div>
 
-                {hasPermission(PERMISSIONS.Billing.Manage) && (
-                  <Button onClick={() => setPlanModalOpen(true)}>
-                    {t('billing.changePlan')}
-                  </Button>
-                )}
+                <Button onClick={() => { setSelectedPlanId(subscription.subscriptionPlanId); setPlanModalOpen(true); }}>
+                  {t('billing.changePlan')}
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -166,7 +197,7 @@ export default function BillingPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(payments as import('@/types').PaymentRecord[]).map((p) => (
+              {payments.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell className="text-foreground">{p.description ?? '—'}</TableCell>
                   <TableCell className="font-medium text-foreground">
@@ -190,12 +221,47 @@ export default function BillingPage() {
         )}
       </section>
 
-      {/* Plan Selector Modal */}
-      <PlanSelectorModal
-        open={planModalOpen}
-        onOpenChange={setPlanModalOpen}
-        subscription={subscription}
-      />
+      {/* Change Plan Dialog */}
+      <Dialog open={planModalOpen} onOpenChange={setPlanModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('billing.changePlan')}</DialogTitle>
+            <DialogDescription>
+              {subscription ? t('billing.changePlanConfirmDesc') : ''}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
+              <SelectTrigger>
+                <SelectValue placeholder={t('billing.selectPlan')} />
+              </SelectTrigger>
+              <SelectContent>
+                {plans
+                  .filter((p) => p.isActive)
+                  .map((plan) => (
+                    <SelectItem key={plan.id} value={plan.id}>
+                      {plan.name} — {plan.isFree ? t('billing.freeLabel') : `${plan.currency} ${plan.monthlyPrice.toFixed(2)}${t('billing.perMonth')}`}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setPlanModalOpen(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                onClick={handleChangePlan}
+                disabled={!selectedPlanId || selectedPlanId === subscription?.subscriptionPlanId || isChanging}
+              >
+                {isChanging ? <Spinner size="sm" className="mr-2" /> : null}
+                {t('billing.changePlan')}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

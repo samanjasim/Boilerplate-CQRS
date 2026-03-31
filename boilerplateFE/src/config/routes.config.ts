@@ -76,4 +76,11 @@ export const ROUTES = {
   BILLING: '/billing',
   BILLING_PLANS: '/billing/plans',
   PRICING: '/pricing',
+
+  // Subscriptions (platform admin)
+  SUBSCRIPTIONS: {
+    LIST: '/billing/subscriptions',
+    DETAIL: '/billing/subscriptions/:tenantId',
+    getDetail: (tenantId: string) => `/billing/subscriptions/${tenantId}`,
+  },
 } as const;

@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import { usePlans, useChangePlan } from '../api';
-import type { TenantSubscription } from '@/types';
+import type { TenantSubscription, PlanFeatureEntry } from '@/types';
 
 interface PlanSelectorModalProps {
   open: boolean;
@@ -21,14 +21,15 @@ interface PlanSelectorModalProps {
   subscription: TenantSubscription | undefined;
 }
 
-function parseFeatures(features: string): string[] {
-  try {
-    const parsed = JSON.parse(features) as unknown;
-    if (Array.isArray(parsed)) return parsed as string[];
-  } catch {
-    // not JSON
-  }
-  return features ? [features] : [];
+function getFeatureLabels(features: PlanFeatureEntry[]): string[] {
+  if (!Array.isArray(features) || features.length === 0) return [];
+  return features
+    .filter((f) => !(f.value === 'false'))
+    .map((f) => {
+      const label = f.translations?.en?.label;
+      if (label) return label;
+      return f.key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()).trim();
+    });
 }
 
 export function PlanSelectorModal({ open, onOpenChange, subscription }: PlanSelectorModalProps) {
@@ -99,7 +100,7 @@ export function PlanSelectorModal({ open, onOpenChange, subscription }: PlanSele
             {(planList as import('@/types').SubscriptionPlan[]).map((plan) => {
               const isCurrent = subscription?.subscriptionPlanId === plan.id;
               const price = interval === 'Monthly' ? plan.monthlyPrice : plan.annualPrice;
-              const features = parseFeatures(plan.features);
+              const features = getFeatureLabels(plan.features);
 
               return (
                 <div

@@ -9,16 +9,17 @@ import { cn } from '@/lib/utils';
 import { usePlans } from '../api';
 import { useAuthStore, selectUser } from '@/stores';
 import { ROUTES } from '@/config';
-import type { SubscriptionPlan } from '@/types';
+import type { SubscriptionPlan, PlanFeatureEntry } from '@/types';
 
-function parseFeatures(features: string): string[] {
-  try {
-    const parsed = JSON.parse(features) as unknown;
-    if (Array.isArray(parsed)) return parsed as string[];
-  } catch {
-    // not JSON
-  }
-  return features ? [features] : [];
+function getFeatureLabels(features: PlanFeatureEntry[]): string[] {
+  if (!Array.isArray(features) || features.length === 0) return [];
+  return features
+    .filter((f) => !(f.value === 'false'))
+    .map((f) => {
+      const label = f.translations?.en?.label;
+      if (label) return label;
+      return f.key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()).trim();
+    });
 }
 
 export default function PricingPage() {
@@ -112,7 +113,7 @@ export default function PricingPage() {
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {plans.map((plan) => {
               const price = interval === 'Monthly' ? plan.monthlyPrice : plan.annualPrice;
-              const features = parseFeatures(plan.features);
+              const features = getFeatureLabels(plan.features);
 
               return (
                 <PricingCard

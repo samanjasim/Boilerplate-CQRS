@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useUpdatePlan } from '../api';
+import { PlanFeaturesEditor } from './PlanFeaturesEditor';
 import type { SubscriptionPlan, UpdatePlanData } from '@/types';
 
 interface EditPlanDialogProps {
@@ -169,15 +170,10 @@ export function EditPlanDialog({ open, onOpenChange, plan }: EditPlanDialogProps
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="ep-features">{t('billing.featuresJson')}</Label>
-            <Textarea
-              id="ep-features"
-              rows={4}
-              value={form.features}
-              onChange={(e) => handleChange('features', e.target.value)}
-            />
-          </div>
+          <PlanFeaturesEditor
+            value={form.features}
+            onChange={(f) => handleChange('features', f)}
+          />
 
           <div className="space-y-2">
             <Label htmlFor="ep-translations">{t('billing.translations')}</Label>

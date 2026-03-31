@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Starter.Domain.Billing.Entities;
 using Starter.Domain.Billing.Enums;
 using Starter.Domain.Common;
@@ -342,6 +343,57 @@ public static class DataSeeder
             return;
         }
 
+        var freeFeatures = JsonSerializer.Serialize(new[]
+        {
+            new { key = "users.max_count", value = "5", translations = new { en = new { label = "Up to 5 users" }, ar = new { label = "حتى 5 مستخدمين" } } },
+            new { key = "files.max_storage_mb", value = "1024", translations = new { en = new { label = "1 GB storage" }, ar = new { label = "1 جيجابايت تخزين" } } },
+            new { key = "files.max_upload_size_mb", value = "10", translations = new { en = new { label = "10 MB max upload" }, ar = new { label = "10 ميجابايت حد أقصى للرفع" } } },
+            new { key = "reports.enabled", value = "false", translations = new { en = new { label = "Reports disabled" }, ar = new { label = "التقارير معطلة" } } },
+            new { key = "reports.pdf_export", value = "false", translations = new { en = new { label = "PDF export disabled" }, ar = new { label = "تصدير PDF معطل" } } },
+            new { key = "api_keys.enabled", value = "true", translations = new { en = new { label = "API keys enabled" }, ar = new { label = "مفاتيح API مفعلة" } } },
+            new { key = "api_keys.max_count", value = "2", translations = new { en = new { label = "Up to 2 API keys" }, ar = new { label = "حتى 2 مفاتيح API" } } },
+            new { key = "users.invitations_enabled", value = "true", translations = new { en = new { label = "User invitations enabled" }, ar = new { label = "دعوات المستخدمين مفعلة" } } },
+        });
+
+        var starterFeatures = JsonSerializer.Serialize(new[]
+        {
+            new { key = "users.max_count", value = "25", translations = new { en = new { label = "Up to 25 users" }, ar = new { label = "حتى 25 مستخدم" } } },
+            new { key = "files.max_storage_mb", value = "10240", translations = new { en = new { label = "10 GB storage" }, ar = new { label = "10 جيجابايت تخزين" } } },
+            new { key = "files.max_upload_size_mb", value = "25", translations = new { en = new { label = "25 MB max upload" }, ar = new { label = "25 ميجابايت حد أقصى للرفع" } } },
+            new { key = "reports.enabled", value = "true", translations = new { en = new { label = "Reports enabled" }, ar = new { label = "التقارير مفعلة" } } },
+            new { key = "reports.max_concurrent", value = "3", translations = new { en = new { label = "Up to 3 concurrent reports" }, ar = new { label = "حتى 3 تقارير متزامنة" } } },
+            new { key = "reports.pdf_export", value = "false", translations = new { en = new { label = "PDF export disabled" }, ar = new { label = "تصدير PDF معطل" } } },
+            new { key = "api_keys.enabled", value = "true", translations = new { en = new { label = "API keys enabled" }, ar = new { label = "مفاتيح API مفعلة" } } },
+            new { key = "api_keys.max_count", value = "5", translations = new { en = new { label = "Up to 5 API keys" }, ar = new { label = "حتى 5 مفاتيح API" } } },
+            new { key = "users.invitations_enabled", value = "true", translations = new { en = new { label = "User invitations enabled" }, ar = new { label = "دعوات المستخدمين مفعلة" } } },
+        });
+
+        var proFeatures = JsonSerializer.Serialize(new[]
+        {
+            new { key = "users.max_count", value = "100", translations = new { en = new { label = "Up to 100 users" }, ar = new { label = "حتى 100 مستخدم" } } },
+            new { key = "files.max_storage_mb", value = "51200", translations = new { en = new { label = "50 GB storage" }, ar = new { label = "50 جيجابايت تخزين" } } },
+            new { key = "files.max_upload_size_mb", value = "50", translations = new { en = new { label = "50 MB max upload" }, ar = new { label = "50 ميجابايت حد أقصى للرفع" } } },
+            new { key = "reports.enabled", value = "true", translations = new { en = new { label = "Reports enabled" }, ar = new { label = "التقارير مفعلة" } } },
+            new { key = "reports.max_concurrent", value = "5", translations = new { en = new { label = "Up to 5 concurrent reports" }, ar = new { label = "حتى 5 تقارير متزامنة" } } },
+            new { key = "reports.pdf_export", value = "true", translations = new { en = new { label = "PDF export enabled" }, ar = new { label = "تصدير PDF مفعل" } } },
+            new { key = "api_keys.enabled", value = "true", translations = new { en = new { label = "API keys enabled" }, ar = new { label = "مفاتيح API مفعلة" } } },
+            new { key = "api_keys.max_count", value = "20", translations = new { en = new { label = "Up to 20 API keys" }, ar = new { label = "حتى 20 مفتاح API" } } },
+            new { key = "users.invitations_enabled", value = "true", translations = new { en = new { label = "User invitations enabled" }, ar = new { label = "دعوات المستخدمين مفعلة" } } },
+        });
+
+        var enterpriseFeatures = JsonSerializer.Serialize(new[]
+        {
+            new { key = "users.max_count", value = "500", translations = new { en = new { label = "Up to 500 users" }, ar = new { label = "حتى 500 مستخدم" } } },
+            new { key = "files.max_storage_mb", value = "204800", translations = new { en = new { label = "200 GB storage" }, ar = new { label = "200 جيجابايت تخزين" } } },
+            new { key = "files.max_upload_size_mb", value = "100", translations = new { en = new { label = "100 MB max upload" }, ar = new { label = "100 ميجابايت حد أقصى للرفع" } } },
+            new { key = "reports.enabled", value = "true", translations = new { en = new { label = "Reports enabled" }, ar = new { label = "التقارير مفعلة" } } },
+            new { key = "reports.max_concurrent", value = "10", translations = new { en = new { label = "Up to 10 concurrent reports" }, ar = new { label = "حتى 10 تقارير متزامنة" } } },
+            new { key = "reports.pdf_export", value = "true", translations = new { en = new { label = "PDF export enabled" }, ar = new { label = "تصدير PDF مفعل" } } },
+            new { key = "api_keys.enabled", value = "true", translations = new { en = new { label = "API keys enabled" }, ar = new { label = "مفاتيح API مفعلة" } } },
+            new { key = "api_keys.max_count", value = "50", translations = new { en = new { label = "Up to 50 API keys" }, ar = new { label = "حتى 50 مفتاح API" } } },
+            new { key = "users.invitations_enabled", value = "true", translations = new { en = new { label = "User invitations enabled" }, ar = new { label = "دعوات المستخدمين مفعلة" } } },
+        });
+
         var plans = new[]
         {
             SubscriptionPlan.Create(
@@ -352,7 +404,7 @@ public static class DataSeeder
                 0m,
                 0m,
                 "USD",
-                "{\"users.max_count\":5,\"files.max_storage_mb\":1024,\"files.max_upload_size_mb\":10,\"reports.enabled\":false,\"reports.pdf_export\":false,\"api_keys.enabled\":true,\"api_keys.max_count\":2,\"users.invitations_enabled\":true}",
+                freeFeatures,
                 isFree: true,
                 isPublic: true,
                 displayOrder: 0,
@@ -366,7 +418,7 @@ public static class DataSeeder
                 29m,
                 290m,
                 "USD",
-                "{\"users.max_count\":25,\"files.max_storage_mb\":10240,\"files.max_upload_size_mb\":25,\"reports.enabled\":true,\"reports.max_concurrent\":3,\"reports.pdf_export\":false,\"api_keys.enabled\":true,\"api_keys.max_count\":5,\"users.invitations_enabled\":true}",
+                starterFeatures,
                 isFree: false,
                 isPublic: true,
                 displayOrder: 1,
@@ -380,7 +432,7 @@ public static class DataSeeder
                 99m,
                 990m,
                 "USD",
-                "{\"users.max_count\":100,\"files.max_storage_mb\":51200,\"files.max_upload_size_mb\":50,\"reports.enabled\":true,\"reports.max_concurrent\":5,\"reports.pdf_export\":true,\"api_keys.enabled\":true,\"api_keys.max_count\":20,\"users.invitations_enabled\":true}",
+                proFeatures,
                 isFree: false,
                 isPublic: true,
                 displayOrder: 2,
@@ -394,7 +446,7 @@ public static class DataSeeder
                 299m,
                 2990m,
                 "USD",
-                "{\"users.max_count\":500,\"files.max_storage_mb\":204800,\"files.max_upload_size_mb\":100,\"reports.enabled\":true,\"reports.max_concurrent\":10,\"reports.pdf_export\":true,\"api_keys.enabled\":true,\"api_keys.max_count\":50,\"users.invitations_enabled\":true}",
+                enterpriseFeatures,
                 isFree: false,
                 isPublic: true,
                 displayOrder: 3,
