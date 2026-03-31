@@ -71,4 +71,16 @@ export const ROUTES = {
   FEATURE_FLAGS: {
     LIST: '/feature-flags',
   },
+
+  // Billing
+  BILLING: '/billing',
+  BILLING_PLANS: '/billing/plans',
+  PRICING: '/pricing',
+
+  // Subscriptions (platform admin)
+  SUBSCRIPTIONS: {
+    LIST: '/billing/subscriptions',
+    DETAIL: '/billing/subscriptions/:tenantId',
+    getDetail: (tenantId: string) => `/billing/subscriptions/${tenantId}`,
+  },
 } as const;

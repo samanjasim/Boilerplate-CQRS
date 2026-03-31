@@ -1,3 +1,4 @@
+using System.Data;
 using Starter.Application.Common.Interfaces;
 using Starter.Domain.Identity.Errors;
 using RoleConstants = Starter.Shared.Constants.Roles;
@@ -29,20 +30,24 @@ internal sealed class RemoveUserRoleCommandHandler(
         if (!user.UserRoles.Any(ur => ur.RoleId == role.Id))
             return Result.Failure(UserErrors.RoleNotAssigned(role.Name));
 
-        // Protect last SuperAdmin
+        // Protect last SuperAdmin — use serializable transaction for atomicity
         if (role.Name == RoleConstants.SuperAdmin)
         {
-            var superAdminCount = await context.UserRoles
-                .CountAsync(ur => ur.RoleId == role.Id, cancellationToken);
+            return await context.ExecuteInTransactionAsync(async ct =>
+            {
+                var superAdminCount = await context.UserRoles
+                    .CountAsync(ur => ur.RoleId == role.Id, ct);
 
-            if (superAdminCount <= 1)
-                return Result.Failure(Error.Failure(
-                    "Role.LastSuperAdmin",
-                    "Cannot remove the last SuperAdmin role. At least one SuperAdmin must exist."));
+                if (superAdminCount <= 1)
+                    return Result.Failure(RoleErrors.LastSuperAdmin());
+
+                user.RemoveRole(role.Id);
+                await context.SaveChangesAsync(ct);
+                return Result.Success();
+            }, IsolationLevel.Serializable, cancellationToken);
         }
 
         user.RemoveRole(role.Id);
-
         await context.SaveChangesAsync(cancellationToken);
 
         return Result.Success();

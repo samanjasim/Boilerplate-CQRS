@@ -2,14 +2,14 @@ using Starter.Application.Common.Interfaces;
 using Starter.Domain.FeatureFlags.Errors;
 using Starter.Shared.Results;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 
 namespace Starter.Application.Features.Files.Commands.UploadFile;
 
 internal sealed class UploadFileCommandHandler(
     IFileService fileService,
-    IApplicationDbContext context,
-    IFeatureFlagService flags) : IRequestHandler<UploadFileCommand, Result<FileDto>>
+    IFeatureFlagService flags,
+    ICurrentUserService currentUser,
+    IUsageTracker usageTracker) : IRequestHandler<UploadFileCommand, Result<FileDto>>
 {
     public async Task<Result<FileDto>> Handle(UploadFileCommand request, CancellationToken cancellationToken)
     {
@@ -20,11 +20,16 @@ internal sealed class UploadFileCommandHandler(
             return Result.Failure<FileDto>(FeatureFlagErrors.QuotaExceeded($"MB per file (max {maxSizeMb}MB)", maxSizeMb));
 
         // Check total storage limit
-        var maxStorageMb = await flags.GetValueAsync<int>("files.max_storage_mb", cancellationToken);
-        var usedBytes = await context.FileMetadata.SumAsync(f => f.Size, cancellationToken);
-        var usedMb = (int)(usedBytes / (1024 * 1024));
-        if (usedMb + fileSizeMb > maxStorageMb)
-            return Result.Failure<FileDto>(FeatureFlagErrors.QuotaExceeded($"MB storage (max {maxStorageMb}MB)", maxStorageMb));
+        var tenantId = currentUser.TenantId;
+        if (tenantId.HasValue)
+        {
+            var maxStorageMb = await flags.GetValueAsync<int>("files.max_storage_mb", cancellationToken);
+            var usedBytes = await usageTracker.GetAsync(tenantId.Value, "storage_bytes", cancellationToken);
+            var usedMb = (int)(usedBytes / (1024 * 1024));
+            var requestedFileSizeMb = (int)(request.Size / (1024 * 1024));
+            if (usedMb + requestedFileSizeMb > maxStorageMb)
+                return Result.Failure<FileDto>(FeatureFlagErrors.QuotaExceeded("storage", maxStorageMb));
+        }
 
         var metadata = await fileService.UploadAsync(
             request.Stream,
@@ -40,6 +45,9 @@ internal sealed class UploadFileCommandHandler(
             cancellationToken);
 
         var url = await fileService.GetUrlAsync(metadata.Id, cancellationToken);
+
+        if (tenantId.HasValue)
+            await usageTracker.IncrementAsync(tenantId.Value, "storage_bytes", request.Size, cancellationToken);
 
         return Result.Success(metadata.ToDto(url));
     }

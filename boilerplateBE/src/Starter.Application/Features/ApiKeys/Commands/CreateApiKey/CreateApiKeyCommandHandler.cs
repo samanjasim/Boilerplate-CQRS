@@ -14,7 +14,8 @@ public sealed class CreateApiKeyCommandHandler(
     IApplicationDbContext dbContext,
     ICurrentUserService currentUserService,
     IPasswordService passwordService,
-    IFeatureFlagService flags)
+    IFeatureFlagService flags,
+    IUsageTracker usageTracker)
     : IRequestHandler<CreateApiKeyCommand, Result<CreateApiKeyResponse>>
 {
     public async Task<Result<CreateApiKeyResponse>> Handle(
@@ -25,7 +26,12 @@ public sealed class CreateApiKeyCommandHandler(
             return Result.Failure<CreateApiKeyResponse>(FeatureFlagErrors.FeatureDisabled("API Keys"));
 
         var maxKeys = await flags.GetValueAsync<int>("api_keys.max_count", cancellationToken);
-        var currentCount = await dbContext.ApiKeys.CountAsync(k => !k.IsRevoked, cancellationToken);
+        var apiKeyTenantId = currentUserService.TenantId;
+        long currentCount;
+        if (apiKeyTenantId.HasValue)
+            currentCount = await usageTracker.GetAsync(apiKeyTenantId.Value, "api_keys", cancellationToken);
+        else
+            currentCount = await dbContext.ApiKeys.CountAsync(k => !k.IsRevoked, cancellationToken);
         if (currentCount >= maxKeys)
             return Result.Failure<CreateApiKeyResponse>(FeatureFlagErrors.QuotaExceeded("API keys", maxKeys));
 
@@ -78,6 +84,9 @@ public sealed class CreateApiKeyCommandHandler(
 
         dbContext.ApiKeys.Add(apiKey);
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        if (apiKeyTenantId.HasValue)
+            await usageTracker.IncrementAsync(apiKeyTenantId.Value, "api_keys", ct: cancellationToken);
 
         return Result.Success(new CreateApiKeyResponse(
             apiKey.Id, apiKey.Name, apiKey.KeyPrefix, fullKey,

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Starter.Domain.FeatureFlags.Entities;
+using Starter.Domain.FeatureFlags.Enums;
 
 namespace Starter.Infrastructure.Persistence.Configurations;
 
@@ -14,6 +15,7 @@ internal sealed class TenantFeatureFlagConfiguration : IEntityTypeConfiguration<
         builder.Property(t => t.TenantId).HasColumnName("tenant_id").IsRequired();
         builder.Property(t => t.FeatureFlagId).HasColumnName("feature_flag_id").IsRequired();
         builder.Property(t => t.Value).HasColumnName("value").HasMaxLength(4000).IsRequired();
+        builder.Property(t => t.Source).HasColumnName("override_source").HasDefaultValue(OverrideSource.Manual).IsRequired();
 
         builder.HasIndex(t => new { t.TenantId, t.FeatureFlagId }).IsUnique();
         builder.HasIndex(t => t.TenantId);

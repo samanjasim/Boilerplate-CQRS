@@ -28,6 +28,7 @@ internal sealed class UpdateUserCommandHandler(
         if (newEmail != user.Email)
         {
             var emailExists = await context.Users
+                .IgnoreQueryFilters()
                 .AnyAsync(u => u.Email.Value == newEmail.Value && u.Id != request.Id, cancellationToken);
 
             if (emailExists)

@@ -1,6 +1,8 @@
+using System.Data;
 using System.Reflection;
 using Starter.Application.Common.Interfaces;
 using Starter.Domain.ApiKeys.Entities;
+using Starter.Domain.Billing.Entities;
 using Starter.Domain.Common;
 using Starter.Domain.FeatureFlags.Entities;
 using Starter.Domain.Identity.Entities;
@@ -31,6 +33,10 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
     public DbSet<FeatureFlag> FeatureFlags => Set<FeatureFlag>();
     public DbSet<TenantFeatureFlag> TenantFeatureFlags => Set<TenantFeatureFlag>();
+    public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
+    public DbSet<TenantSubscription> TenantSubscriptions => Set<TenantSubscription>();
+    public DbSet<PaymentRecord> PaymentRecords => Set<PaymentRecord>();
+    public DbSet<PlanPriceHistory> PlanPriceHistories => Set<PlanPriceHistory>();
 
     // EF Core evaluates this per-query via the expression tree.
     // Must be a property (not a method) for EF to parameterize it.
@@ -89,5 +95,26 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
         // Tenant entity: tenant users see only their own tenant; platform admins see all
         modelBuilder.Entity<Tenant>().HasQueryFilter(t =>
             TenantId == null || t.Id == TenantId);
+
+        modelBuilder.Entity<TenantSubscription>().HasQueryFilter(s =>
+            TenantId == null || s.TenantId == TenantId);
+
+        modelBuilder.Entity<PaymentRecord>().HasQueryFilter(p =>
+            TenantId == null || p.TenantId == TenantId);
+    }
+
+    public async Task<T> ExecuteInTransactionAsync<T>(
+        Func<CancellationToken, Task<T>> operation,
+        IsolationLevel isolationLevel,
+        CancellationToken cancellationToken = default)
+    {
+        var strategy = Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async ct =>
+        {
+            await using var transaction = await Database.BeginTransactionAsync(isolationLevel, ct);
+            var result = await operation(ct);
+            await transaction.CommitAsync(ct);
+            return result;
+        }, cancellationToken);
     }
 }

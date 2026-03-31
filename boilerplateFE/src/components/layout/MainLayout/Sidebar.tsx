@@ -13,6 +13,9 @@ import {
   Settings2,
   KeyRound,
   ToggleRight,
+  CreditCard,
+  ReceiptText,
+  ListChecks,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore, useAuthStore, selectSidebarCollapsed, selectUser } from '@/stores';
@@ -53,6 +56,15 @@ export function Sidebar() {
       : []),
     ...(hasPermission(PERMISSIONS.ApiKeys.View)
       ? [{ label: t('nav.apiKeys'), icon: KeyRound, path: ROUTES.API_KEYS.LIST }]
+      : []),
+    ...(hasPermission(PERMISSIONS.Billing.View) && user?.tenantId
+      ? [{ label: t('nav.billing'), icon: CreditCard, path: ROUTES.BILLING }]
+      : []),
+    ...(hasPermission(PERMISSIONS.Billing.ViewPlans)
+      ? [{ label: t('nav.billingPlans'), icon: ReceiptText, path: ROUTES.BILLING_PLANS }]
+      : []),
+    ...(hasPermission(PERMISSIONS.Billing.ManageTenantSubscriptions)
+      ? [{ label: t('nav.subscriptions'), icon: ListChecks, path: ROUTES.SUBSCRIPTIONS.LIST }]
       : []),
     ...(hasPermission(PERMISSIONS.FeatureFlags.View)
       ? [{ label: t('nav.featureFlags'), icon: ToggleRight, path: ROUTES.FEATURE_FLAGS.LIST }]
@@ -104,7 +116,7 @@ export function Sidebar() {
             <li key={item.path}>
               <NavLink
                 to={item.path}
-                end={item.path === ROUTES.DASHBOARD}
+                end={item.path === ROUTES.DASHBOARD || item.path === ROUTES.BILLING || item.path === ROUTES.SUBSCRIPTIONS?.LIST}
                 className={({ isActive }) =>
                   cn(
                     'flex items-center gap-2.5 rounded-lg h-10 px-3 text-sm transition-colors duration-150 cursor-pointer',

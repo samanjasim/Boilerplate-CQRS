@@ -5,4 +5,15 @@ export const STATUS_BADGE_VARIANT: Record<string, 'default' | 'secondary' | 'des
   Suspended: 'destructive',
   Deactivated: 'destructive',
   Locked: 'destructive',
+
+  // Subscription statuses
+  Trialing: 'secondary',
+  PastDue: 'destructive',
+  Canceled: 'destructive',
+  Expired: 'outline',
+
+  // Payment statuses
+  Completed: 'default',
+  Failed: 'destructive',
+  Refunded: 'outline',
 };

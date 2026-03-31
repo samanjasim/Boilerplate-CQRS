@@ -17,22 +17,30 @@ internal sealed class RegisterUserCommandHandler(
     IOtpService otpService,
     IEmailService emailService,
     IEmailTemplateService emailTemplateService,
-    IFeatureFlagService flags) : IRequestHandler<RegisterUserCommand, Result<Guid>>
+    IFeatureFlagService flags,
+    IUsageTracker usageTracker,
+    ICurrentUserService currentUser) : IRequestHandler<RegisterUserCommand, Result<Guid>>
 {
     public async Task<Result<Guid>> Handle(RegisterUserCommand request, CancellationToken cancellationToken)
     {
-        var maxUsers = await flags.GetValueAsync<int>("users.max_count", cancellationToken);
-        var currentCount = await context.Users.CountAsync(cancellationToken);
-        if (currentCount >= maxUsers)
-            return Result.Failure<Guid>(FeatureFlagErrors.QuotaExceeded("users", maxUsers));
+        var tenantId = currentUser.TenantId;
+        if (tenantId.HasValue)
+        {
+            var maxUsers = await flags.GetValueAsync<int>("users.max_count", cancellationToken);
+            var currentCount = await usageTracker.GetAsync(tenantId.Value, "users", cancellationToken);
+            if (currentCount >= maxUsers)
+                return Result.Failure<Guid>(FeatureFlagErrors.QuotaExceeded("users", maxUsers));
+        }
 
         var emailExists = await context.Users
+            .IgnoreQueryFilters()
             .AnyAsync(u => u.Email.Value == Email.Normalize(request.Email), cancellationToken);
 
         if (emailExists)
             return Result.Failure<Guid>(UserErrors.EmailAlreadyExists(request.Email));
 
         var usernameExists = await context.Users
+            .IgnoreQueryFilters()
             .AnyAsync(u => u.Username == request.Username.Trim(), cancellationToken);
 
         if (usernameExists)
@@ -50,6 +58,9 @@ internal sealed class RegisterUserCommandHandler(
 
         context.Users.Add(user);
         await context.SaveChangesAsync(cancellationToken);
+
+        if (tenantId.HasValue)
+            await usageTracker.IncrementAsync(tenantId.Value, "users", ct: cancellationToken);
 
         var otpCode = await otpService.GenerateAsync(OtpPurpose.EmailVerification, user.Email.Value, cancellationToken);
         var emailMessage = emailTemplateService.RenderEmailVerification(user.Email.Value, user.FullName.GetFullName(), otpCode);

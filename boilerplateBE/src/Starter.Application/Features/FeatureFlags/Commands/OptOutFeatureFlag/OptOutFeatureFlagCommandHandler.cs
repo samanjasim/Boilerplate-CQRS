@@ -33,7 +33,7 @@ internal sealed class OptOutFeatureFlagCommandHandler(
             if (existing.Value == "false")
                 return Result.Success();
 
-            existing.UpdateValue("false");
+            existing.UpdateValue("false", OverrideSource.Manual);
         }
         else
         {

@@ -48,7 +48,18 @@ Modify the test app to use different ports (avoid conflict with dev instance):
 - Add `http://localhost:3100` to `Cors.AllowedOrigins` array
 - Update `AppSettings.FrontendUrl` to `http://localhost:3100`
 
-### 4. Install dependencies and build
+### 4. Create EF Core migration in the test app
+
+The source boilerplate has no migrations — they must be created in the test app. This generates the initial migration from the current model:
+
+```bash
+cd _testFeatureName/_testFeatureName-BE
+dotnet ef migrations add InitialCreate --project src/_testFeatureName.Infrastructure --startup-project src/_testFeatureName.Api
+```
+
+The migration is applied automatically on startup when `DatabaseSettings.ApplyMigrationsOnStartup = true`.
+
+### 5. Install dependencies and build
 
 ```bash
 # Backend
@@ -58,7 +69,7 @@ cd _testFeatureName/_testFeatureName-BE && dotnet build
 cd _testFeatureName/_testFeatureName-FE && npm install
 ```
 
-### 5. Run the test instance
+### 6. Run the test instance
 
 Backend and frontend run on different ports, sharing the same Docker services (mailpit, redis, minio):
 
@@ -72,7 +83,7 @@ cd _testFeatureName/_testFeatureName-FE
 npm run dev
 ```
 
-### 6. Run Playwright tests
+### 7. Run Playwright tests
 
 Use the Playwright MCP to:
 1. Navigate to `http://localhost:3100`
@@ -80,11 +91,11 @@ Use the Playwright MCP to:
 3. **Feature test** — exercise all CRUD flows for the new feature
 4. **Regression test** — verify existing features still work (navigation, user list, roles, files, settings)
 
-### 7. Fix any findings
+### 8. Fix any findings
 
 If tests reveal issues, fix them in the **worktree source** (not the test copy), rebuild, re-run the rename script to regenerate the test app, and re-test.
 
-### 8. Leave running for manual QA
+### 9. Leave running for manual QA
 
 Leave both backend and frontend running. Report the URLs to the user:
 - Frontend: `http://localhost:3100`

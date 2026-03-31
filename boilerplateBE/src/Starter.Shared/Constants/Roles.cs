@@ -51,6 +51,9 @@ public static class Roles
             // Feature Flags
             Permissions.FeatureFlags.View,
             Permissions.FeatureFlags.OptOut,
+            // Billing
+            Permissions.Billing.View,
+            Permissions.Billing.Manage,
             // System
             Permissions.System.ViewDashboard,
             Permissions.System.ExportData,
@@ -61,6 +64,8 @@ public static class Roles
             // Files
             Permissions.Files.View,
             Permissions.Files.Upload,
+            // Billing
+            Permissions.Billing.View,
             // System
             Permissions.System.ViewDashboard
         ]);

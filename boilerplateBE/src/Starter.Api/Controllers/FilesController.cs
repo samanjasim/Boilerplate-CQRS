@@ -28,7 +28,7 @@ public sealed class FilesController(ISender mediator, IFileService fileService, 
     [HttpPost]
     [Authorize(Policy = Permissions.Files.Upload)]
     [RequestSizeLimit(50 * 1024 * 1024)]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Upload(

@@ -339,7 +339,9 @@ export default function TenantDetailPage() {
 
                 <div className="flex items-center gap-2 border-t pt-4 mt-6">
                   {(tenant.status === 'Suspended' || tenant.status === 'Deactivated') && (
-                    <Button variant="outline" size="sm" onClick={() => activateTenant(id!)}>
+                    <Button variant="outline" size="sm" onClick={() => activateTenant(id!, {
+                      onError: () => toast.error(t('tenants.activateError')),
+                    })}>
                       <UserCheck className="h-4 w-4" />
                       {t('tenants.activate')}
                     </Button>
@@ -711,9 +713,21 @@ export default function TenantDetailPage() {
         onClose={() => setStatusAction(null)}
         onConfirm={() => {
           if (statusAction === 'suspend') {
-            suspendTenant(id!, { onSuccess: () => setStatusAction(null) });
+            suspendTenant(id!, {
+              onSuccess: () => setStatusAction(null),
+              onError: () => {
+                toast.error(t('tenants.suspendError'));
+                setStatusAction(null);
+              },
+            });
           } else if (statusAction === 'deactivate') {
-            deactivateTenant(id!, { onSuccess: () => setStatusAction(null) });
+            deactivateTenant(id!, {
+              onSuccess: () => setStatusAction(null),
+              onError: () => {
+                toast.error(t('tenants.deactivateError'));
+                setStatusAction(null);
+              },
+            });
           }
         }}
         title={statusAction === 'suspend' ? t('tenants.suspend') : t('tenants.deactivate')}

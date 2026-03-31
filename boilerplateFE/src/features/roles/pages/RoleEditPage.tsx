@@ -16,6 +16,7 @@ import { PermissionMatrix } from '../components';
 import { usePermissions, useBackNavigation } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
 import { ROUTES } from '@/config';
+import { toast } from 'sonner';
 
 export default function RoleEditPage() {
   const { t } = useTranslation();
@@ -107,7 +108,7 @@ export default function RoleEditPage() {
         await Promise.all(promises);
         navigate(ROUTES.ROLES.getDetail(role.id));
       } catch {
-        // Error already shown by interceptor
+        toast.error(t('roles.saveError'));
       }
       return;
     }

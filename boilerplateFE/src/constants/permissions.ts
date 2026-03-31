@@ -61,6 +61,13 @@ export const PERMISSIONS = {
     ManageTenantOverrides: 'FeatureFlags.ManageTenantOverrides',
     OptOut: 'FeatureFlags.OptOut',
   },
+  Billing: {
+    View: 'Billing.View',
+    Manage: 'Billing.Manage',
+    ViewPlans: 'Billing.ViewPlans',
+    ManagePlans: 'Billing.ManagePlans',
+    ManageTenantSubscriptions: 'Billing.ManageTenantSubscriptions',
+  },
   System: {
     ViewAuditLogs: 'System.ViewAuditLogs',
     ManageSettings: 'System.ManageSettings',
