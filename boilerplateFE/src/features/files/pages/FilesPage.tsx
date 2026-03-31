@@ -160,7 +160,7 @@ export default function FilesPage() {
           setIsEditing(false);
           setDetailFile(null);
         },
-        onError: () => setIsEditing(false),
+        onError: () => { /* keep edit form open; error toast handled by global interceptor */ },
       }
     );
   }, [detailFile, editDescription, editCategory, editTags, doUpdate]);

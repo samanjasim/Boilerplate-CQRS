@@ -17,8 +17,8 @@ public static class DependencyInjection
             config.RegisterServicesFromAssembly(assembly);
 
             config.AddBehavior(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
-            config.AddBehavior(typeof(IPipelineBehavior<,>), typeof(TracingBehavior<,>));
             config.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+            config.AddBehavior(typeof(IPipelineBehavior<,>), typeof(TracingBehavior<,>));
             config.AddBehavior(typeof(IPipelineBehavior<,>), typeof(PerformanceBehavior<,>));
         });
 

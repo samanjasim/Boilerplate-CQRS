@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { UserPlus, Lock, User } from 'lucide-react';
+import { UserPlus, Lock, User, Eye, EyeOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,8 @@ export default function AcceptInvitePage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') ?? '';
 
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { mutate: acceptInvite, isPending } = useAcceptInvite();
 
   const {
@@ -113,11 +116,19 @@ export default function AcceptInvitePage() {
                 <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   placeholder={t('auth.createPassword')}
-                  className="pl-10"
+                  className="pl-10 pr-10"
                   {...register('password')}
                 />
+                <button
+                  type="button"
+                  aria-label={showPassword ? t('common.hidePassword') : t('common.showPassword')}
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
               {errors.password && (
                 <p className="text-sm text-destructive">{errors.password.message}</p>
@@ -130,11 +141,19 @@ export default function AcceptInvitePage() {
                 <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="confirmPassword"
-                  type="password"
+                  type={showConfirmPassword ? 'text' : 'password'}
                   placeholder={t('auth.confirmYourPassword')}
-                  className="pl-10"
+                  className="pl-10 pr-10"
                   {...register('confirmPassword')}
                 />
+                <button
+                  type="button"
+                  aria-label={showConfirmPassword ? t('common.hidePassword') : t('common.showPassword')}
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
               {errors.confirmPassword && (
                 <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>

@@ -1,3 +1,4 @@
+using System.Data;
 using System.Reflection;
 using Starter.Application.Common.Interfaces;
 using Starter.Domain.ApiKeys.Entities;
@@ -100,5 +101,20 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
 
         modelBuilder.Entity<PaymentRecord>().HasQueryFilter(p =>
             TenantId == null || p.TenantId == TenantId);
+    }
+
+    public async Task<T> ExecuteInTransactionAsync<T>(
+        Func<CancellationToken, Task<T>> operation,
+        IsolationLevel isolationLevel,
+        CancellationToken cancellationToken = default)
+    {
+        var strategy = Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async ct =>
+        {
+            await using var transaction = await Database.BeginTransactionAsync(isolationLevel, ct);
+            var result = await operation(ct);
+            await transaction.CommitAsync(ct);
+            return result;
+        }, cancellationToken);
     }
 }

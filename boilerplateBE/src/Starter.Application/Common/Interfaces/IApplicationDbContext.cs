@@ -1,3 +1,4 @@
+using System.Data;
 using Starter.Domain.ApiKeys.Entities;
 using Starter.Domain.Billing.Entities;
 using Starter.Domain.Common;
@@ -34,4 +35,9 @@ public interface IApplicationDbContext
     DbSet<PlanPriceHistory> PlanPriceHistories { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    Task<T> ExecuteInTransactionAsync<T>(
+        Func<CancellationToken, Task<T>> operation,
+        IsolationLevel isolationLevel,
+        CancellationToken cancellationToken = default);
 }

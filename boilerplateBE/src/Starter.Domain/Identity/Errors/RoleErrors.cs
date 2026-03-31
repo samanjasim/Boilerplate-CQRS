@@ -27,4 +27,7 @@ public static class RoleErrors
 
     public static Error CustomRolesDisabled() =>
         Error.Failure("Role.CustomRolesDisabled", "Custom tenant roles are not enabled. Contact your platform administrator.");
+
+    public static Error LastSuperAdmin() =>
+        Error.Failure("Role.LastSuperAdmin", "Cannot remove the last SuperAdmin role. At least one SuperAdmin must exist.");
 }

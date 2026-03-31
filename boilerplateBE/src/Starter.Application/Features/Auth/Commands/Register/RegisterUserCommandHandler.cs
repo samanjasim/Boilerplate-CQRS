@@ -33,12 +33,14 @@ internal sealed class RegisterUserCommandHandler(
         }
 
         var emailExists = await context.Users
+            .IgnoreQueryFilters()
             .AnyAsync(u => u.Email.Value == Email.Normalize(request.Email), cancellationToken);
 
         if (emailExists)
             return Result.Failure<Guid>(UserErrors.EmailAlreadyExists(request.Email));
 
         var usernameExists = await context.Users
+            .IgnoreQueryFilters()
             .AnyAsync(u => u.Username == request.Username.Trim(), cancellationToken);
 
         if (usernameExists)

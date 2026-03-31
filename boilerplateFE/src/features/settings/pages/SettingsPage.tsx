@@ -247,6 +247,14 @@ export default function SettingsPage() {
     return count;
   }, [groups, localValues]);
 
+  // Warn before navigating away with unsaved changes
+  useEffect(() => {
+    if (changedCount === 0) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [changedCount]);
+
   const handleSave = useCallback(() => {
     if (!groups) return;
 

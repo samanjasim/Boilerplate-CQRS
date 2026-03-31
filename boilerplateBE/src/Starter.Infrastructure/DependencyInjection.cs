@@ -58,7 +58,7 @@ public static class DependencyInjection
                     npgsqlOptions.EnableRetryOnFailure(
                         maxRetryCount: 3,
                         maxRetryDelay: TimeSpan.FromSeconds(10),
-                        errorCodesToAdd: null);
+                        errorCodesToAdd: ["40001"]);
                 });
         });
 

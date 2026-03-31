@@ -21,12 +21,12 @@ public sealed class ApiKeysController(ISender mediator) : BaseApiController(medi
     /// </summary>
     [HttpPost]
     [Authorize(Policy = $"{Permissions.ApiKeys.Create}|{Permissions.ApiKeys.CreatePlatform}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create([FromBody] CreateApiKeyCommand command, CancellationToken ct)
     {
         var result = await Mediator.Send(command, ct);
-        return HandleResult(result);
+        return HandleCreatedResult(result, nameof(GetById), null);
     }
 
     /// <summary>

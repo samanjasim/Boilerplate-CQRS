@@ -7,6 +7,7 @@ using Starter.Application.Features.Billing.Commands.CreatePlan;
 using Starter.Application.Features.Billing.Commands.DeactivatePlan;
 using Starter.Application.Features.Billing.Commands.ResyncPlanTenants;
 using Starter.Application.Features.Billing.Commands.UpdatePlan;
+using Starter.Application.Features.Billing.DTOs;
 using Starter.Application.Features.Billing.Queries.GetPayments;
 using Starter.Application.Features.Billing.Queries.GetPlanById;
 using Starter.Application.Features.Billing.Queries.GetPlans;
@@ -14,6 +15,7 @@ using Starter.Application.Features.Billing.Queries.GetSubscription;
 using Starter.Application.Features.Billing.Queries.GetUsage;
 using Starter.Domain.Billing.Enums;
 using Starter.Shared.Constants;
+using Starter.Shared.Models;
 
 namespace Starter.Api.Controllers;
 
@@ -23,6 +25,7 @@ public sealed class BillingController(ISender mediator) : BaseApiController(medi
 
     [HttpGet("plans")]
     [AllowAnonymous]
+    [ProducesResponseType(typeof(ApiResponse<List<SubscriptionPlanDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPublicPlans(CancellationToken ct = default)
     {
         var result = await Mediator.Send(new GetPlansQuery(PublicOnly: true), ct);
@@ -33,6 +36,8 @@ public sealed class BillingController(ISender mediator) : BaseApiController(medi
 
     [HttpGet("subscription")]
     [Authorize(Policy = Permissions.Billing.View)]
+    [ProducesResponseType(typeof(ApiResponse<TenantSubscriptionDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetSubscription(CancellationToken ct = default)
     {
         var result = await Mediator.Send(new GetSubscriptionQuery(), ct);
@@ -41,6 +46,9 @@ public sealed class BillingController(ISender mediator) : BaseApiController(medi
 
     [HttpPost("change-plan")]
     [Authorize(Policy = Permissions.Billing.Manage)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ChangePlan([FromBody] ChangePlanRequest request, CancellationToken ct = default)
     {
         var result = await Mediator.Send(new ChangePlanCommand(request.PlanId, request.Interval, null), ct);
@@ -49,6 +57,8 @@ public sealed class BillingController(ISender mediator) : BaseApiController(medi
 
     [HttpPost("cancel")]
     [Authorize(Policy = Permissions.Billing.Manage)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> CancelSubscription(CancellationToken ct = default)
     {
         var result = await Mediator.Send(new CancelSubscriptionCommand(null), ct);
@@ -57,6 +67,7 @@ public sealed class BillingController(ISender mediator) : BaseApiController(medi
 
     [HttpGet("payments")]
     [Authorize(Policy = Permissions.Billing.View)]
+    [ProducesResponseType(typeof(PagedApiResponse<PaymentRecordDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPayments(
         [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
@@ -67,6 +78,7 @@ public sealed class BillingController(ISender mediator) : BaseApiController(medi
 
     [HttpGet("usage")]
     [Authorize(Policy = Permissions.Billing.View)]
+    [ProducesResponseType(typeof(ApiResponse<UsageDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUsage(CancellationToken ct = default)
     {
         var result = await Mediator.Send(new GetUsageQuery(), ct);
@@ -77,6 +89,7 @@ public sealed class BillingController(ISender mediator) : BaseApiController(medi
 
     [HttpGet("plans/manage")]
     [Authorize(Policy = Permissions.Billing.ViewPlans)]
+    [ProducesResponseType(typeof(ApiResponse<List<SubscriptionPlanDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAllPlans(
         [FromQuery] bool includeInactive = false,
         CancellationToken ct = default)
@@ -87,6 +100,8 @@ public sealed class BillingController(ISender mediator) : BaseApiController(medi
 
     [HttpGet("plans/{id:guid}")]
     [Authorize(Policy = Permissions.Billing.ViewPlans)]
+    [ProducesResponseType(typeof(ApiResponse<SubscriptionPlanDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetPlanById(Guid id, CancellationToken ct = default)
     {
         var result = await Mediator.Send(new GetPlanByIdQuery(id), ct);
@@ -95,14 +110,19 @@ public sealed class BillingController(ISender mediator) : BaseApiController(medi
 
     [HttpPost("plans/create")]
     [Authorize(Policy = Permissions.Billing.ManagePlans)]
+    [ProducesResponseType(typeof(ApiResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreatePlan([FromBody] CreatePlanCommand command, CancellationToken ct = default)
     {
         var result = await Mediator.Send(command, ct);
-        return HandleResult(result);
+        return HandleCreatedResult(result, nameof(GetPlanById), null);
     }
 
     [HttpPut("plans/{id:guid}")]
     [Authorize(Policy = Permissions.Billing.ManagePlans)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> UpdatePlan(Guid id, [FromBody] UpdatePlanCommand command, CancellationToken ct = default)
     {
         if (id != command.Id) return BadRequest();
@@ -112,6 +132,8 @@ public sealed class BillingController(ISender mediator) : BaseApiController(medi
 
     [HttpDelete("plans/{id:guid}")]
     [Authorize(Policy = Permissions.Billing.ManagePlans)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeactivatePlan(Guid id, CancellationToken ct = default)
     {
         var result = await Mediator.Send(new DeactivatePlanCommand(id), ct);
@@ -120,6 +142,8 @@ public sealed class BillingController(ISender mediator) : BaseApiController(medi
 
     [HttpPost("plans/{id:guid}/resync")]
     [Authorize(Policy = Permissions.Billing.ManagePlans)]
+    [ProducesResponseType(typeof(ApiResponse<int>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ResyncPlanTenants(Guid id, CancellationToken ct = default)
     {
         var result = await Mediator.Send(new ResyncPlanTenantsCommand(id), ct);
@@ -130,6 +154,8 @@ public sealed class BillingController(ISender mediator) : BaseApiController(medi
 
     [HttpGet("tenants/{tenantId:guid}/subscription")]
     [Authorize(Policy = Permissions.Billing.ManageTenantSubscriptions)]
+    [ProducesResponseType(typeof(ApiResponse<TenantSubscriptionDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetTenantSubscription(Guid tenantId, CancellationToken ct = default)
     {
         var result = await Mediator.Send(new GetSubscriptionQuery(tenantId), ct);
@@ -138,6 +164,9 @@ public sealed class BillingController(ISender mediator) : BaseApiController(medi
 
     [HttpPost("tenants/{tenantId:guid}/change-plan")]
     [Authorize(Policy = Permissions.Billing.ManageTenantSubscriptions)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ChangeTenantPlan(
         Guid tenantId, [FromBody] ChangePlanRequest request, CancellationToken ct = default)
     {
