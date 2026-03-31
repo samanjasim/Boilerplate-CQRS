@@ -26,14 +26,8 @@ internal sealed class ResyncPlanTenantsCommandHandler(
 
         foreach (var subscription in subscriptions)
         {
-            subscription.ChangePlan(
-                plan.Id,
-                plan.MonthlyPrice,
-                plan.AnnualPrice,
-                plan.Currency,
-                subscription.BillingInterval,
-                subscription.CurrentPeriodStart,
-                subscription.CurrentPeriodEnd);
+            // Only raise domain event to resync feature flags — don't touch prices/dates
+            subscription.ResyncFeatures();
         }
 
         await context.SaveChangesAsync(cancellationToken);

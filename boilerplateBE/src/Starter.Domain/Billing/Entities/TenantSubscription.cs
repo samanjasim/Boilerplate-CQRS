@@ -129,4 +129,13 @@ public sealed class TenantSubscription : AggregateRoot
         ExternalSubscriptionId = externalSubscriptionId?.Trim();
         ModifiedAt = DateTime.UtcNow;
     }
+
+    /// <summary>
+    /// Raises SubscriptionChangedEvent to resync feature flag overrides
+    /// without modifying any subscription data (preserves locked prices).
+    /// </summary>
+    public void ResyncFeatures()
+    {
+        RaiseDomainEvent(new SubscriptionChangedEvent(TenantId, SubscriptionPlanId, SubscriptionPlanId));
+    }
 }
