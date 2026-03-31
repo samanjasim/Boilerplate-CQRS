@@ -1,4 +1,5 @@
 using Starter.Domain.ApiKeys.Entities;
+using Starter.Domain.Billing.Entities;
 using Starter.Domain.Common;
 using Starter.Domain.FeatureFlags.Entities;
 using Starter.Domain.Identity.Entities;
@@ -27,6 +28,10 @@ public interface IApplicationDbContext
     DbSet<ApiKey> ApiKeys { get; }
     DbSet<FeatureFlag> FeatureFlags { get; }
     DbSet<TenantFeatureFlag> TenantFeatureFlags { get; }
+    DbSet<SubscriptionPlan> SubscriptionPlans { get; }
+    DbSet<TenantSubscription> TenantSubscriptions { get; }
+    DbSet<PaymentRecord> PaymentRecords { get; }
+    DbSet<PlanPriceHistory> PlanPriceHistories { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
