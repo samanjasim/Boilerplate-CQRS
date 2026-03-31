@@ -67,21 +67,27 @@ public interface IUsageTracker
 | Field | Type | Notes |
 |-------|------|-------|
 | Id | Guid | PK |
-| Name | string | "Free", "Starter", "Pro", "Enterprise" |
+| Name | string | Default/fallback name: "Free", "Starter", "Pro", "Enterprise" |
 | Slug | string | Unique, URL-safe: "free", "starter", "pro", "enterprise" |
-| Description | string? | Plan description for pricing page |
-| MonthlyPrice | decimal | Display price (no real billing in mock) |
-| AnnualPrice | decimal | Display price for annual billing |
+| Description | string? | Default/fallback description |
+| Translations | string (jsonb) | `{"en": {"name": "Pro", "description": "For growing teams"}, "ar": {...}, "ku": {...}}` |
+| MonthlyPrice | decimal | Current price per month |
+| AnnualPrice | decimal | Current price per year (discount = `1 - annual / (monthly * 12)`) |
 | Currency | string | Default "USD" |
 | Features | string (jsonb) | `{"users.max_count": "5", "files.max_storage_mb": "1024", ...}` |
 | IsFree | bool | Distinguishes free tier (no payment required) |
 | IsActive | bool | Soft-delete / deactivate |
+| IsPublic | bool | Whether shown on public pricing page (default true) |
 | DisplayOrder | int | Sorting on pricing page |
 | TrialDays | int | Default 0 for Free, configurable for paid plans |
 | CreatedAt | DateTime | |
 | ModifiedAt | DateTime? | |
 
 **No global query filter** — plans are platform-level, visible to all.
+
+**Localization:** `Name` and `Description` are fallback values used when the requested locale isn't in `Translations`. The API resolves the correct locale from `Accept-Language` header and returns a flat `name`/`description` in the DTO. SuperAdmin plan editor shows a tab per supported locale for editing translations.
+
+**Public listing:** `GET /api/v1/billing/plans` returns only plans where `IsActive && IsPublic`, ordered by `DisplayOrder`. The public pricing page renders these.
 
 ### TenantSubscription (AggregateRoot, has TenantId)
 
@@ -91,6 +97,9 @@ public interface IUsageTracker
 | TenantId | Guid | FK → Tenant, unique (one active subscription per tenant) |
 | SubscriptionPlanId | Guid | FK → SubscriptionPlan |
 | Status | SubscriptionStatus | Trialing, Active, PastDue, Canceled, Expired |
+| LockedMonthlyPrice | decimal | Price at time of subscription (grandfathered) |
+| LockedAnnualPrice | decimal | Price at time of subscription (grandfathered) |
+| Currency | string | Locked from plan at subscription time |
 | ExternalCustomerId | string? | Stripe customer ID (null for mock) |
 | ExternalSubscriptionId | string? | Stripe subscription ID (null for mock) |
 | BillingInterval | BillingInterval | Monthly, Annual |
@@ -104,6 +113,7 @@ public interface IUsageTracker
 
 **Global query filter:** `TenantId == null || s.TenantId == TenantId`
 **Unique constraint:** One active subscription per tenant (TenantId unique where Status != Canceled/Expired)
+**Price grandfathering:** When subscribing or changing plans, `LockedMonthlyPrice` and `LockedAnnualPrice` are copied from the plan's current prices. These never change unless the tenant explicitly switches plans. The tenant's billing tab shows their locked price, not the plan's current price.
 
 ### PaymentRecord (BaseEntity, has TenantId)
 
@@ -123,6 +133,23 @@ public interface IUsageTracker
 | CreatedAt | DateTime | |
 
 **Global query filter:** Standard tenant filter.
+
+### PlanPriceHistory (BaseEntity, no TenantId)
+
+| Field | Type | Notes |
+|-------|------|-------|
+| Id | Guid | PK |
+| SubscriptionPlanId | Guid | FK → SubscriptionPlan |
+| MonthlyPrice | decimal | Price at this point in time |
+| AnnualPrice | decimal | Price at this point in time |
+| Currency | string | |
+| ChangedBy | Guid | User who made the change |
+| Reason | string? | Optional note ("Annual pricing launch", "Q2 increase") |
+| EffectiveFrom | DateTime | When this price took effect |
+| CreatedAt | DateTime | |
+
+**No global query filter** — platform-level audit trail.
+**Automatic creation:** When SuperAdmin updates a plan's price, a PlanPriceHistory record is created with the OLD prices before the update is saved. This gives a full audit trail of all price changes with timestamps.
 
 ### TenantFeatureFlag (existing — migration adds column)
 
@@ -201,16 +228,34 @@ On entity delete:
 ```
 1. SuperAdmin → Billing → Plans page
 2. CRUD operations on SubscriptionPlan:
-   - Create: name, slug, prices, trial days, feature mapping
-   - Edit: update any field including features JSON
+   - Create: name, slug, prices, trial days, translations per locale, feature mapping
+   - Edit: update any field including features JSON and translations
    - Deactivate: soft-disable (existing tenants keep plan, no new signups)
-3. Feature mapping UI:
+3. Translations editor:
+   - Tab per supported locale (en/ar/ku)
+   - Name + Description fields per locale
+   - Fallback Name/Description used when locale not found
+4. Feature mapping UI:
    - Dropdown of all feature flags (from GetAll)
    - For each selected flag: input for value (type-aware: toggle for boolean, number input for integer)
    - Saves as Features JSON on the plan
-4. Editing a plan does NOT retroactively update existing tenants
-   - To push changes: SuperAdmin clicks "Resync All Tenants" button
+5. Editing a plan does NOT retroactively update existing tenants
+   - To push feature changes: SuperAdmin clicks "Resync All Tenants" button
    - This raises SubscriptionChangedEvent for each tenant on that plan
+```
+
+### Flow 4b: SuperAdmin Changes Plan Price
+
+```
+1. SuperAdmin edits a plan's MonthlyPrice or AnnualPrice
+2. UpdatePlanCommandHandler:
+   a. Detect price change (compare old vs new)
+   b. If price changed: create PlanPriceHistory record with OLD prices + EffectiveFrom = now
+   c. Update plan with new prices
+   d. Existing tenants keep their LockedMonthlyPrice/LockedAnnualPrice (grandfathered)
+   e. New subscribers get the new prices
+3. SuperAdmin can view price history: Billing → Plans → plan detail → "Price History" section
+   - Shows timeline of all price changes with dates and who made them
 ```
 
 ### Flow 5: Reconciliation Background Job
@@ -325,11 +370,26 @@ public record ChangeSubscriptionResult(DateTime NewPeriodStart, DateTime NewPeri
 }
 ```
 
+### Translations JSON Example (Pro Plan)
+```json
+{
+  "en": { "name": "Pro", "description": "For growing teams that need advanced features" },
+  "ar": { "name": "احترافي", "description": "للفرق المتنامية التي تحتاج ميزات متقدمة" },
+  "ku": { "name": "پڕۆ", "description": "بۆ تیمە گەشەسەندەکان کە پێویستیان بە تایبەتمەندی پێشکەوتووە" }
+}
+```
+
+### Seed Notes
+- All 4 plans seeded with translations for en/ar/ku
+- Free plan: `IsFree=true`, `DisplayOrder=0`
+- All plans: `IsActive=true`, `IsPublic=true`
+- Initial PlanPriceHistory records created for each plan (baseline)
+
 ## Frontend Pages
 
 ### 1. Public Pricing Page (`/pricing`)
-- Plan comparison cards (4 columns)
-- Feature checklist per plan
+- Plan comparison cards (4 columns), locale-aware names/descriptions
+- Monthly/Annual toggle with "Save X%" badge (computed from prices)
 - "Get Started" → register-tenant, "Upgrade" → login required
 - Accessible from landing page + footer
 
@@ -355,10 +415,11 @@ public record ChangeSubscriptionResult(DateTime NewPeriodStart, DateTime NewPeri
 ## Migration Plan
 
 1. Add `OverrideSource` column to `tenant_feature_flags` table (default: `Manual`)
-2. Create `subscription_plans` table
-3. Create `tenant_subscriptions` table (unique on TenantId where status is active)
-4. Create `payment_records` table
-5. Seed 4 default plans
+2. Create `subscription_plans` table (with `translations` jsonb and `is_public` bool columns)
+3. Create `plan_price_history` table
+4. Create `tenant_subscriptions` table (with `locked_monthly_price`, `locked_annual_price`, unique on TenantId where status is active)
+5. Create `payment_records` table
+6. Seed 4 default plans with translations (en/ar/ku) + initial price history records
 
 ## Handler Refactoring
 
