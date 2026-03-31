@@ -145,6 +145,8 @@ public static class DependencyInjection
         services.AddScoped<ISettingsProvider, SettingsProvider>();
         services.AddScoped<IFeatureFlagService, FeatureFlagService>();
         services.AddScoped<IPermissionHierarchyService, PermissionHierarchyService>();
+        services.AddScoped<IUsageTracker, UsageTrackerService>();
+        services.AddScoped<IBillingProvider, MockBillingProvider>();
 
         return services;
     }
