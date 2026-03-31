@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
 using Starter.Domain.FeatureFlags.Entities;
+using Starter.Domain.FeatureFlags.Enums;
 using Starter.Domain.FeatureFlags.Errors;
 using Starter.Shared.Results;
 
@@ -27,7 +28,7 @@ internal sealed class SetTenantOverrideCommandHandler(
 
         if (existing is not null)
         {
-            existing.UpdateValue(request.Value);
+            existing.UpdateValue(request.Value, OverrideSource.Manual);
         }
         else
         {
