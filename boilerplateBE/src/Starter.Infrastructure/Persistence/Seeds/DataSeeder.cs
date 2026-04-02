@@ -366,6 +366,7 @@ public static class DataSeeder
             new { key = "api_keys.enabled", value = "true", translations = new { en = new { label = "API keys enabled" }, ar = new { label = "مفاتيح API مفعلة" } } },
             new { key = "api_keys.max_count", value = "5", translations = new { en = new { label = "Up to 5 API keys" }, ar = new { label = "حتى 5 مفاتيح API" } } },
             new { key = "users.invitations_enabled", value = "true", translations = new { en = new { label = "User invitations enabled" }, ar = new { label = "دعوات المستخدمين مفعلة" } } },
+            new { key = "roles.tenant_custom_enabled", value = "true", translations = new { en = new { label = "Custom roles enabled" }, ar = new { label = "الأدوار المخصصة مفعلة" } } },
         });
 
         var proFeatures = JsonSerializer.Serialize(new[]
@@ -379,6 +380,7 @@ public static class DataSeeder
             new { key = "api_keys.enabled", value = "true", translations = new { en = new { label = "API keys enabled" }, ar = new { label = "مفاتيح API مفعلة" } } },
             new { key = "api_keys.max_count", value = "20", translations = new { en = new { label = "Up to 20 API keys" }, ar = new { label = "حتى 20 مفتاح API" } } },
             new { key = "users.invitations_enabled", value = "true", translations = new { en = new { label = "User invitations enabled" }, ar = new { label = "دعوات المستخدمين مفعلة" } } },
+            new { key = "roles.tenant_custom_enabled", value = "true", translations = new { en = new { label = "Custom roles enabled" }, ar = new { label = "الأدوار المخصصة مفعلة" } } },
         });
 
         var enterpriseFeatures = JsonSerializer.Serialize(new[]
@@ -392,6 +394,7 @@ public static class DataSeeder
             new { key = "api_keys.enabled", value = "true", translations = new { en = new { label = "API keys enabled" }, ar = new { label = "مفاتيح API مفعلة" } } },
             new { key = "api_keys.max_count", value = "50", translations = new { en = new { label = "Up to 50 API keys" }, ar = new { label = "حتى 50 مفتاح API" } } },
             new { key = "users.invitations_enabled", value = "true", translations = new { en = new { label = "User invitations enabled" }, ar = new { label = "دعوات المستخدمين مفعلة" } } },
+            new { key = "roles.tenant_custom_enabled", value = "true", translations = new { en = new { label = "Custom roles enabled" }, ar = new { label = "الأدوار المخصصة مفعلة" } } },
         });
 
         var plans = new[]

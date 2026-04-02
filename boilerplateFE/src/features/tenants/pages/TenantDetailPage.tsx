@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   UserCheck,
@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { PageHeader, InfoField, ConfirmDialog, FileUpload } from '@/components/common';
 import { cn } from '@/lib/utils';
+import { useAuthStore, selectUser } from '@/stores';
 import {
   Select,
   SelectContent,
@@ -43,11 +44,13 @@ import { toast } from 'sonner';
 import { STATUS_BADGE_VARIANT, PERMISSIONS } from '@/constants';
 import { usePermissions } from '@/hooks';
 import { TenantFeatureFlagsTab } from '../components/TenantFeatureFlagsTab';
+import { ActivityTab } from '../components/ActivityTab';
+import { SubscriptionTab } from '../components/SubscriptionTab';
 
-type TabKey = 'overview' | 'branding' | 'businessInfo' | 'customText' | 'featureFlags';
+type TabKey = 'overview' | 'branding' | 'businessInfo' | 'customText' | 'activity' | 'featureFlags' | 'subscription';
 type LangKey = 'en' | 'ar' | 'ku';
 
-const BASE_TABS: TabKey[] = ['overview', 'branding', 'businessInfo', 'customText'];
+// Tabs are now computed dynamically based on permissions in the component
 const LANGUAGES: LangKey[] = ['en', 'ar', 'ku'];
 
 /** Safely parse a JSON string into a per-language object. */
@@ -70,13 +73,36 @@ function parseLocalizedJson(value: string | null): Record<LangKey, string> {
 export default function TenantDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
-  const { data: tenant, isLoading } = useTenant(id!);
+  const location = useLocation();
+  const user = useAuthStore(selectUser);
   const { hasPermission } = usePermissions();
-  useBackNavigation(ROUTES.TENANTS.LIST, t('tenants.backToTenants'));
 
-  const TABS: TabKey[] = hasPermission(PERMISSIONS.FeatureFlags.View)
-    ? [...BASE_TABS, 'featureFlags']
-    : BASE_TABS;
+  // Self-service mode: tenant user accessing /organization
+  const selfService = location.pathname === ROUTES.ORGANIZATION;
+  const tenantId = selfService ? user?.tenantId : id;
+
+  // Guard: platform admin (no tenantId) shouldn't access /organization
+  if (selfService && !tenantId) {
+    return <Navigate to={ROUTES.DASHBOARD} replace />;
+  }
+
+  const { data: tenant, isLoading } = useTenant(tenantId!);
+
+  useBackNavigation(
+    selfService ? ROUTES.DASHBOARD : ROUTES.TENANTS.LIST,
+    selfService ? t('nav.dashboard') : t('tenants.backToTenants')
+  );
+
+  const isPlatformAdmin = !user?.tenantId;
+
+  // Permission-driven tabs
+  const TABS: TabKey[] = [
+    'overview',
+    ...(hasPermission(PERMISSIONS.Tenants.Update) ? ['branding' as TabKey, 'businessInfo' as TabKey, 'customText' as TabKey] : []),
+    ...(hasPermission(PERMISSIONS.System.ViewAuditLogs) ? ['activity' as TabKey] : []),
+    ...(hasPermission(PERMISSIONS.FeatureFlags.View) ? ['featureFlags' as TabKey] : []),
+    ...(isPlatformAdmin && hasPermission(PERMISSIONS.Billing?.ManageTenantSubscriptions) ? ['subscription' as TabKey] : []),
+  ];
 
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [statusAction, setStatusAction] = useState<'suspend' | 'deactivate' | null>(null);
@@ -88,7 +114,7 @@ export default function TenantDetailPage() {
 
   // Default registration role
   const { mutate: setDefaultRole, isPending: isSavingDefaultRole } = useSetTenantDefaultRole();
-  const { data: assignableRoles } = useAssignableRoles(id, { enabled: !!id && activeTab === 'overview' });
+  const { data: assignableRoles } = useAssignableRoles(tenantId, { enabled: !!tenantId && activeTab === 'overview' });
   const availableRoles = assignableRoles ?? [];
 
   // Branding state
@@ -154,7 +180,7 @@ export default function TenantDetailPage() {
     }
     updateBranding(
       {
-        id: id!,
+        id: tenantId!,
         data: {
           logoFileId: uploadedLogoId ?? undefined,
           faviconFileId: uploadedFaviconId ?? undefined,
@@ -180,21 +206,21 @@ export default function TenantDetailPage() {
 
   const handleSaveBusinessInfo = useCallback(() => {
     updateBusinessInfo({
-      id: id!,
+      id: tenantId!,
       data: { address, phone, website, taxId },
     });
-  }, [id, address, phone, website, taxId, updateBusinessInfo]);
+  }, [tenantId, address, phone, website, taxId, updateBusinessInfo]);
 
   const handleSaveCustomText = useCallback(() => {
     updateCustomText({
-      id: id!,
+      id: tenantId!,
       data: {
         loginPageTitle: JSON.stringify(loginPageTitle),
         loginPageSubtitle: JSON.stringify(loginPageSubtitle),
         emailFooterText: JSON.stringify(emailFooterText),
       },
     });
-  }, [id, loginPageTitle, loginPageSubtitle, emailFooterText, updateCustomText]);
+  }, [tenantId, loginPageTitle, loginPageSubtitle, emailFooterText, updateCustomText]);
 
   const logoPreviewUrl = useMemo(() => {
     if (logoPreview) return logoPreview;
@@ -317,7 +343,7 @@ export default function TenantDetailPage() {
                         value={tenant.defaultRegistrationRoleId ?? '__none__'}
                         onValueChange={(value) => {
                           const roleId = value === '__none__' ? null : value;
-                          setDefaultRole({ id: id!, roleId });
+                          setDefaultRole({ id: tenantId!, roleId });
                         }}
                       >
                         <SelectTrigger className="max-w-xs">
@@ -339,7 +365,7 @@ export default function TenantDetailPage() {
 
                 <div className="flex items-center gap-2 border-t pt-4 mt-6">
                   {(tenant.status === 'Suspended' || tenant.status === 'Deactivated') && (
-                    <Button variant="outline" size="sm" onClick={() => activateTenant(id!, {
+                    <Button variant="outline" size="sm" onClick={() => activateTenant(tenantId!, {
                       onError: () => toast.error(t('tenants.activateError')),
                     })}>
                       <UserCheck className="h-4 w-4" />
@@ -591,9 +617,17 @@ export default function TenantDetailPage() {
             </Card>
           )}
 
+          {/* -- Activity Tab -- */}
+          {activeTab === 'activity' && <ActivityTab />}
+
           {/* -- Feature Flags Tab -- */}
-          {activeTab === 'featureFlags' && id && (
-            <TenantFeatureFlagsTab tenantId={id} />
+          {activeTab === 'featureFlags' && tenantId && (
+            <TenantFeatureFlagsTab tenantId={tenantId} />
+          )}
+
+          {/* -- Subscription Tab (SuperAdmin only) -- */}
+          {activeTab === 'subscription' && tenantId && (
+            <SubscriptionTab tenantId={tenantId} />
           )}
 
           {/* -- Custom Text Tab -- */}
@@ -713,7 +747,7 @@ export default function TenantDetailPage() {
         onClose={() => setStatusAction(null)}
         onConfirm={() => {
           if (statusAction === 'suspend') {
-            suspendTenant(id!, {
+            suspendTenant(tenantId!, {
               onSuccess: () => setStatusAction(null),
               onError: () => {
                 toast.error(t('tenants.suspendError'));
@@ -721,7 +755,7 @@ export default function TenantDetailPage() {
               },
             });
           } else if (statusAction === 'deactivate') {
-            deactivateTenant(id!, {
+            deactivateTenant(tenantId!, {
               onSuccess: () => setStatusAction(null),
               onError: () => {
                 toast.error(t('tenants.deactivateError'));

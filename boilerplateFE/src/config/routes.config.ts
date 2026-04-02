@@ -44,6 +44,9 @@ export const ROUTES = {
     getDetail: (id: string) => `/tenants/${id}`,
   },
 
+  // Organization (tenant self-service)
+  ORGANIZATION: '/organization',
+
   // Audit Logs
   AUDIT_LOGS: {
     LIST: '/audit-logs',

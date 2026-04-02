@@ -33,6 +33,7 @@ public static class Roles
             Permissions.Roles.Show,
             Permissions.Roles.Create,
             Permissions.Roles.Update,
+            Permissions.Roles.ManagePermissions,
             // Tenants
             Permissions.Tenants.View,
             Permissions.Tenants.Show,
@@ -56,6 +57,7 @@ public static class Roles
             Permissions.Billing.Manage,
             // System
             Permissions.System.ViewDashboard,
+            Permissions.System.ViewAuditLogs,
             Permissions.System.ExportData,
             Permissions.System.ManageSettings
         ]);
