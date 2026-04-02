@@ -9,3 +9,4 @@ export * from './file.types';
 export * from './report.types';
 export * from './settings.types';
 export * from './billing.types';
+export * from './webhook.types';

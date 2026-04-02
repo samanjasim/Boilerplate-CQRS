@@ -98,6 +98,13 @@ export const API_ENDPOINTS = {
     TENANT_OVERRIDE: (id: string, tenantId: string) => `/FeatureFlags/${id}/tenants/${tenantId}`,
     OPT_OUT: (id: string) => `/FeatureFlags/${id}/opt-out`,
   },
+  WEBHOOKS: {
+    LIST: '/Webhooks',
+    DETAIL: (id: string) => `/Webhooks/${id}`,
+    DELIVERIES: (id: string) => `/Webhooks/${id}/deliveries`,
+    TEST: (id: string) => `/Webhooks/${id}/test`,
+    EVENTS: '/Webhooks/events',
+  },
   BILLING: {
     PLANS: '/Billing/plans',
     PLANS_MANAGE: '/Billing/plans/manage',

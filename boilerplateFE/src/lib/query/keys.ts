@@ -93,6 +93,19 @@ export const queryKeys = {
     detail: (key: string) => [...queryKeys.featureFlags.details(), key] as const,
   },
 
+  webhooks: {
+    all: ['webhooks'] as const,
+    endpoints: {
+      all: ['webhooks', 'endpoints'] as const,
+      list: () => ['webhooks', 'endpoints', 'list'] as const,
+      detail: (id: string) => ['webhooks', 'endpoints', 'detail', id] as const,
+    },
+    deliveries: {
+      list: (id: string, params?: Record<string, unknown>) => ['webhooks', 'deliveries', id, params] as const,
+    },
+    eventTypes: () => ['webhooks', 'event-types'] as const,
+  },
+
   billing: {
     all: ['billing'] as const,
     plans: {
