@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -8,6 +9,7 @@ namespace Starter.Infrastructure.Services;
 
 public sealed class WebhookDeliveryCleanupJob(
     IServiceScopeFactory scopeFactory,
+    IConfiguration configuration,
     ILogger<WebhookDeliveryCleanupJob> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -19,7 +21,7 @@ public sealed class WebhookDeliveryCleanupJob(
                 using var scope = scopeFactory.CreateScope();
                 var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-                var retentionDays = 7;
+                var retentionDays = configuration.GetValue("Webhooks:RetentionDays", 7);
                 var cutoff = DateTime.UtcNow.AddDays(-retentionDays);
 
                 var deleted = await context.WebhookDeliveries

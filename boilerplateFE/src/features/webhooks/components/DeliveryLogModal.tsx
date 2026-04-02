@@ -27,9 +27,9 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { getPersistedPageSize } from '@/components/common';
+import { Pagination, getPersistedPageSize } from '@/components/common';
 import { useWebhookDeliveries } from '../api';
-import type { WebhookEndpoint, WebhookDelivery } from '@/types';
+import type { WebhookEndpoint, WebhookDelivery, PaginationMeta } from '@/types';
 
 interface DeliveryLogModalProps {
   endpoint: WebhookEndpoint | null;
@@ -157,7 +157,8 @@ export function DeliveryLogModal({ endpoint, onOpenChange }: DeliveryLogModalPro
 
   const { data, isLoading } = useWebhookDeliveries(endpoint?.id ?? '', params);
 
-  const deliveries = (data?.data ?? []) as WebhookDelivery[];
+  const deliveries: WebhookDelivery[] = data?.data ?? [];
+  const pagination: PaginationMeta | undefined = data?.pagination;
 
   const handleClose = () => {
     setStatusFilter('All');
@@ -227,6 +228,14 @@ export function DeliveryLogModal({ endpoint, onOpenChange }: DeliveryLogModalPro
             </Table>
           )}
         </div>
+
+        {pagination && (
+          <Pagination
+            pagination={pagination}
+            onPageChange={setPageNumber}
+            className="shrink-0"
+          />
+        )}
 
         <div className="flex justify-end shrink-0 pt-2">
           <Button variant="outline" onClick={handleClose}>

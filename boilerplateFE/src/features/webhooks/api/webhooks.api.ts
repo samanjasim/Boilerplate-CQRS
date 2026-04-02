@@ -7,6 +7,7 @@ import type {
   CreateWebhookData,
   UpdateWebhookData,
   CreateWebhookResponse,
+  PaginatedResponse,
 } from '@/types';
 
 export const webhooksApi = {
@@ -27,7 +28,7 @@ export const webhooksApi = {
 
   getDeliveries: (id: string, params?: Record<string, unknown>) =>
     apiClient
-      .get<{ data: WebhookDelivery[] }>(API_ENDPOINTS.WEBHOOKS.DELIVERIES(id), { params })
+      .get<PaginatedResponse<WebhookDelivery>>(API_ENDPOINTS.WEBHOOKS.DELIVERIES(id), { params })
       .then(r => r.data),
 
   testEndpoint: (id: string) =>

@@ -160,6 +160,7 @@ public static class DependencyInjection
         services.AddScoped<IPermissionHierarchyService, PermissionHierarchyService>();
         services.AddScoped<IUsageTracker, UsageTrackerService>();
         services.AddScoped<IBillingProvider, MockBillingProvider>();
+        services.AddScoped<IWebhookPublisher, WebhookPublisher>();
 
         return services;
     }

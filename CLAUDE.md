@@ -33,7 +33,7 @@ API (Controllers) → Application (MediatR CQRS) → Domain (Entities) ← Infra
 
 ## Feature Inventory
 
-### Backend (12 features, 13 controllers)
+### Backend (14 features, 15 controllers)
 
 | Feature | Key Operations | Controller | Domain Entity |
 |---------|---------------|------------|---------------|
@@ -49,8 +49,10 @@ API (Controllers) → Application (MediatR CQRS) → Domain (Entities) ← Infra
 | Permissions | List (read-only) | PermissionsController | Permission |
 | API Keys | Create, Update, Revoke, Emergency Revoke | ApiKeysController | ApiKey |
 | Feature Flags | CRUD, Tenant Overrides, Opt-Out, Enforcement | FeatureFlagsController | FeatureFlag, TenantFeatureFlag |
+| Billing | Plans CRUD, Subscriptions, Usage, Payments, Change Plan | BillingController | SubscriptionPlan, TenantSubscription, PaymentRecord |
+| Webhooks | CRUD, Test, Delivery Log, Secret Regeneration, Event Handlers | WebhooksController | WebhookEndpoint, WebhookDelivery |
 
-### Frontend (14 feature modules)
+### Frontend (16 feature modules)
 
 | Feature | Pages | Key Hooks |
 |---------|-------|-----------|
@@ -68,6 +70,8 @@ API (Controllers) → Application (MediatR CQRS) → Domain (Entities) ← Infra
 | api-keys | ApiKeysPage | useApiKeys |
 | feature-flags | FeatureFlagsPage | useFeatureFlags, useFeatureFlag |
 | landing | LandingPage | — |
+| billing | BillingPage, BillingPlansPage, PricingPage, SubscriptionsPage, SubscriptionDetailPage | useSubscription, usePlans, useAllSubscriptions |
+| webhooks | WebhooksPage | useWebhookEndpoints, useWebhookDeliveries |
 
 ## Backend Development Patterns
 

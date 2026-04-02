@@ -14,13 +14,11 @@ internal sealed class GetWebhookEventTypesQueryHandler
         {
             new("user.created", "Users", "Triggered when a new user is created"),
             new("user.updated", "Users", "Triggered when a user profile is updated"),
-            new("user.deleted", "Users", "Triggered when a user is deleted"),
             new("file.uploaded", "Files", "Triggered when a file is uploaded"),
             new("file.deleted", "Files", "Triggered when a file is deleted"),
             new("role.created", "Roles", "Triggered when a role is created"),
             new("role.updated", "Roles", "Triggered when a role is updated"),
             new("invitation.accepted", "Users", "Triggered when an invitation is accepted"),
-            new("tenant.updated", "Tenants", "Triggered when tenant settings are updated"),
             new("subscription.changed", "Billing", "Triggered when a subscription plan changes"),
         };
 

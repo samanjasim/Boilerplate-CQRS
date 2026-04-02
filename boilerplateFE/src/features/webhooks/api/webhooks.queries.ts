@@ -47,6 +47,7 @@ export function useCreateWebhook() {
       queryClient.invalidateQueries({ queryKey: queryKeys.webhooks.endpoints.all });
       toast.success(i18n.t('webhooks.endpointCreated'));
     },
+    // onError is handled by the global axios error interceptor (error.interceptor.ts)
   });
 }
 
@@ -58,6 +59,7 @@ export function useUpdateWebhook() {
       queryClient.invalidateQueries({ queryKey: queryKeys.webhooks.endpoints.all });
       toast.success(i18n.t('webhooks.endpointUpdated'));
     },
+    // onError is handled by the global axios error interceptor (error.interceptor.ts)
   });
 }
 
@@ -69,6 +71,7 @@ export function useDeleteWebhook() {
       queryClient.invalidateQueries({ queryKey: queryKeys.webhooks.endpoints.all });
       toast.success(i18n.t('webhooks.endpointDeleted'));
     },
+    // onError is handled by the global axios error interceptor (error.interceptor.ts)
   });
 }
 
@@ -78,5 +81,6 @@ export function useTestWebhook() {
     onSuccess: () => {
       toast.success(i18n.t('webhooks.testSent'));
     },
+    // onError is handled by the global axios error interceptor (error.interceptor.ts)
   });
 }

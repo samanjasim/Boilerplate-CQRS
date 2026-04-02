@@ -11,20 +11,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useUpdateWebhook, useWebhookEventTypes } from '../api';
-import type { UpdateWebhookData, WebhookEndpoint, WebhookEventType } from '@/types';
+import { useUpdateWebhook } from '../api';
+import { EventSelector } from './EventSelector';
+import type { UpdateWebhookData, WebhookEndpoint } from '@/types';
 
 interface EditWebhookDialogProps {
   endpoint: WebhookEndpoint | null;
   onOpenChange: (open: boolean) => void;
-}
-
-function groupEventTypes(eventTypes: WebhookEventType[]): Record<string, WebhookEventType[]> {
-  return eventTypes.reduce<Record<string, WebhookEventType[]>>((acc, et) => {
-    if (!acc[et.resource]) acc[et.resource] = [];
-    acc[et.resource].push(et);
-    return acc;
-  }, {});
 }
 
 export function EditWebhookDialog({ endpoint, onOpenChange }: EditWebhookDialogProps) {
@@ -38,8 +31,6 @@ export function EditWebhookDialog({ endpoint, onOpenChange }: EditWebhookDialogP
   });
 
   const { mutate: updateWebhook, isPending } = useUpdateWebhook();
-  const { data: eventTypes = [] } = useWebhookEventTypes();
-  const grouped = groupEventTypes(eventTypes);
 
   // Sync form when endpoint changes
   useEffect(() => {
@@ -53,26 +44,6 @@ export function EditWebhookDialog({ endpoint, onOpenChange }: EditWebhookDialogP
       });
     }
   }, [endpoint]);
-
-  const toggleEvent = (eventType: string) => {
-    setForm((prev) => ({
-      ...prev,
-      events: prev.events.includes(eventType)
-        ? prev.events.filter((e) => e !== eventType)
-        : [...prev.events, eventType],
-    }));
-  };
-
-  const toggleGroup = (resource: string) => {
-    const groupEvents = (grouped[resource] ?? []).map((e) => e.type);
-    const allSelected = groupEvents.every((e) => form.events.includes(e));
-    setForm((prev) => ({
-      ...prev,
-      events: allSelected
-        ? prev.events.filter((e) => !groupEvents.includes(e))
-        : [...new Set([...prev.events, ...groupEvents])],
-    }));
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,58 +88,10 @@ export function EditWebhookDialog({ endpoint, onOpenChange }: EditWebhookDialogP
           </div>
 
           {/* Events */}
-          <div className="space-y-2">
-            <Label>{t('webhooks.selectEvents')}</Label>
-            {eventTypes.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
-            ) : (
-              <div className="space-y-3 rounded-xl border border-border p-4 max-h-56 overflow-y-auto">
-                {Object.entries(grouped).map(([resource, types]) => {
-                  const groupEvents = types.map((t) => t.type);
-                  const allSelected = groupEvents.every((e) => form.events.includes(e));
-                  const someSelected = groupEvents.some((e) => form.events.includes(e));
-
-                  return (
-                    <div key={resource} className="space-y-1.5">
-                      <label className="flex items-center gap-2 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={allSelected}
-                          ref={(el) => {
-                            if (el) el.indeterminate = someSelected && !allSelected;
-                          }}
-                          onChange={() => toggleGroup(resource)}
-                          className="accent-primary h-3.5 w-3.5"
-                        />
-                        <span className="text-xs font-semibold text-foreground uppercase tracking-wide">
-                          {resource}
-                        </span>
-                      </label>
-                      <div className="ml-5 space-y-1">
-                        {types.map((et) => (
-                          <label
-                            key={et.type}
-                            className="flex items-center gap-2 cursor-pointer select-none"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={form.events.includes(et.type)}
-                              onChange={() => toggleEvent(et.type)}
-                              className="accent-primary h-3.5 w-3.5"
-                            />
-                            <span className="text-sm text-foreground">{et.type}</span>
-                            {et.description && (
-                              <span className="text-xs text-muted-foreground">— {et.description}</span>
-                            )}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <EventSelector
+            selectedEvents={form.events}
+            onChange={(events) => setForm((p) => ({ ...p, events }))}
+          />
 
           {/* Active toggle */}
           <label className="flex items-center gap-2 cursor-pointer select-none">

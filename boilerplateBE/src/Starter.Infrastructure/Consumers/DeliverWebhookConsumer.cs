@@ -85,7 +85,7 @@ public sealed class DeliverWebhookConsumer(
             var client = httpClientFactory.CreateClient();
             client.Timeout = TimeSpan.FromSeconds(30);
 
-            var request = new HttpRequestMessage(HttpMethod.Post, endpoint.Url);
+            using var request = new HttpRequestMessage(HttpMethod.Post, endpoint.Url);
             request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
             request.Headers.Add("X-Webhook-Signature-256", signature);
             request.Headers.Add("X-Webhook-Event", eventType);
