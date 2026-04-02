@@ -33,6 +33,7 @@ const ReportsPage = lazy(() => import('@/features/reports/pages/ReportsPage'));
 const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage'));
 const ApiKeysPage = lazy(() => import('@/features/api-keys/pages/ApiKeysPage'));
 const FeatureFlagsPage = lazy(() => import('@/features/feature-flags/pages/FeatureFlagsPage'));
+const WebhooksPage = lazy(() => import('@/features/webhooks/pages/WebhooksPage'));
 const BillingPage = lazy(() => import('@/features/billing/pages/BillingPage'));
 const BillingPlansPage = lazy(() => import('@/features/billing/pages/BillingPlansPage'));
 const PricingPage = lazy(() => import('@/features/billing/pages/PricingPage'));
@@ -177,6 +178,14 @@ export const routes: RouteObject[] = [
             element: <PermissionGuard permission={PERMISSIONS.FeatureFlags.View} />,
             children: [
               { path: ROUTES.FEATURE_FLAGS.LIST, element: <FeatureFlagsPage /> },
+            ],
+          },
+
+          // Webhooks
+          {
+            element: <PermissionGuard permission={PERMISSIONS.Webhooks.View} />,
+            children: [
+              { path: ROUTES.WEBHOOKS, element: <WebhooksPage /> },
             ],
           },
 

@@ -16,6 +16,7 @@ import {
   CreditCard,
   ReceiptText,
   ListChecks,
+  Webhook,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore, useAuthStore, selectSidebarCollapsed, selectUser } from '@/stores';
@@ -59,6 +60,9 @@ export function Sidebar() {
       : []),
     ...(hasPermission(PERMISSIONS.ApiKeys.View)
       ? [{ label: t('nav.apiKeys'), icon: KeyRound, path: ROUTES.API_KEYS.LIST }]
+      : []),
+    ...(hasPermission(PERMISSIONS.Webhooks.View) && user?.tenantId
+      ? [{ label: t('nav.webhooks'), icon: Webhook, path: ROUTES.WEBHOOKS }]
       : []),
     ...(hasPermission(PERMISSIONS.Billing.View) && user?.tenantId
       ? [{ label: t('nav.billing'), icon: CreditCard, path: ROUTES.BILLING }]

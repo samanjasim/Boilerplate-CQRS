@@ -70,6 +70,9 @@ export const ROUTES = {
     LIST: '/api-keys',
   },
 
+  // Webhooks
+  WEBHOOKS: '/webhooks',
+
   // Feature Flags
   FEATURE_FLAGS: {
     LIST: '/feature-flags',
