@@ -37,6 +37,7 @@ namespace Starter.Shared.Constants;
 /// | Files      |  ✓   |      |        |        |   ✓    | Upload, Manage           |
 /// | ApiKeys    |  ✓   |      |   ✓    |   ✓    |   ✓    | ViewPlatform, CreatePlatform, UpdatePlatform, DeletePlatform, EmergencyRevoke |
 /// | Billing    |      |      |        |        |        | View, Manage, ViewPlans, ManagePlans, ManageTenantSubscriptions              |
+/// | Webhooks   |  ✓   |      |   ✓    |   ✓    |   ✓    |                          |
 /// </summary>
 public static class Permissions
 {
@@ -114,6 +115,15 @@ public static class Permissions
         public const string ViewPlans = "Billing.ViewPlans";
         public const string ManagePlans = "Billing.ManagePlans";
         public const string ManageTenantSubscriptions = "Billing.ManageTenantSubscriptions";
+    }
+
+    // ─── Webhooks ────────────────────────────────────
+    public static class Webhooks
+    {
+        public const string View = "Webhooks.View";
+        public const string Create = "Webhooks.Create";
+        public const string Update = "Webhooks.Update";
+        public const string Delete = "Webhooks.Delete";
     }
 
     // ─── Tenants ─────────────────────────────────────
@@ -214,5 +224,11 @@ public static class Permissions
         yield return (Tenants.Create, "Create new tenants", "Tenants");
         yield return (Tenants.Update, "Update existing tenants", "Tenants");
         yield return (Tenants.Delete, "Delete tenants", "Tenants");
+
+        // ─── Webhooks ───
+        yield return (Webhooks.View, "View webhook endpoints and deliveries", "Webhooks");
+        yield return (Webhooks.Create, "Create webhook endpoints", "Webhooks");
+        yield return (Webhooks.Update, "Update webhook endpoints", "Webhooks");
+        yield return (Webhooks.Delete, "Delete webhook endpoints", "Webhooks");
     }
 }

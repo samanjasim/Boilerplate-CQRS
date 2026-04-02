@@ -75,6 +75,12 @@ export const PERMISSIONS = {
     ExportData: 'System.ExportData',
     ForceExport: 'System.ForceExport',
   },
+  Webhooks: {
+    View: 'Webhooks.View',
+    Create: 'Webhooks.Create',
+    Update: 'Webhooks.Update',
+    Delete: 'Webhooks.Delete',
+  },
 } as const;
 
 type PermissionMap = typeof PERMISSIONS;

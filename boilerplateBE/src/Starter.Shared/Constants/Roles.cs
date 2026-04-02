@@ -55,6 +55,11 @@ public static class Roles
             // Billing
             Permissions.Billing.View,
             Permissions.Billing.Manage,
+            // Webhooks
+            Permissions.Webhooks.View,
+            Permissions.Webhooks.Create,
+            Permissions.Webhooks.Update,
+            Permissions.Webhooks.Delete,
             // System
             Permissions.System.ViewDashboard,
             Permissions.System.ViewAuditLogs,
@@ -68,6 +73,8 @@ public static class Roles
             Permissions.Files.Upload,
             // Billing
             Permissions.Billing.View,
+            // Webhooks
+            Permissions.Webhooks.View,
             // System
             Permissions.System.ViewDashboard
         ]);

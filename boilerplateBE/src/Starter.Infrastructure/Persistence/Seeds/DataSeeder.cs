@@ -328,6 +328,8 @@ public static class DataSeeder
             FeatureFlag.Create("ui.maintenance_mode", "Maintenance Mode", "Show maintenance page to non-admin users", "false", FlagValueType.Boolean, FlagCategory.System, true),
             FeatureFlag.Create("billing.enabled", "Billing Enabled", "Enable billing and subscription features", "false", FlagValueType.Boolean, FlagCategory.Billing, true),
             FeatureFlag.Create("roles.tenant_custom_enabled", "Tenant Custom Roles", "Allow tenants to create custom roles", "false", FlagValueType.Boolean, FlagCategory.System, false),
+            FeatureFlag.Create("webhooks.enabled", "Webhooks Enabled", "Enable webhook integrations", "false", FlagValueType.Boolean, FlagCategory.System, false),
+            FeatureFlag.Create("webhooks.max_count", "Max Webhooks", "Maximum webhook endpoints per tenant", "0", FlagValueType.Integer, FlagCategory.System, false),
         };
 
         context.FeatureFlags.AddRange(flags);
@@ -353,6 +355,8 @@ public static class DataSeeder
             new { key = "api_keys.enabled", value = "true", translations = new { en = new { label = "API keys enabled" }, ar = new { label = "مفاتيح API مفعلة" } } },
             new { key = "api_keys.max_count", value = "2", translations = new { en = new { label = "Up to 2 API keys" }, ar = new { label = "حتى 2 مفاتيح API" } } },
             new { key = "users.invitations_enabled", value = "true", translations = new { en = new { label = "User invitations enabled" }, ar = new { label = "دعوات المستخدمين مفعلة" } } },
+            new { key = "webhooks.enabled", value = "false", translations = new { en = new { label = "Webhooks disabled" }, ar = new { label = "الويب هوك معطل" } } },
+            new { key = "webhooks.max_count", value = "0", translations = new { en = new { label = "No webhooks" }, ar = new { label = "لا ويب هوك" } } },
         });
 
         var starterFeatures = JsonSerializer.Serialize(new[]
@@ -367,6 +371,8 @@ public static class DataSeeder
             new { key = "api_keys.max_count", value = "5", translations = new { en = new { label = "Up to 5 API keys" }, ar = new { label = "حتى 5 مفاتيح API" } } },
             new { key = "users.invitations_enabled", value = "true", translations = new { en = new { label = "User invitations enabled" }, ar = new { label = "دعوات المستخدمين مفعلة" } } },
             new { key = "roles.tenant_custom_enabled", value = "true", translations = new { en = new { label = "Custom roles enabled" }, ar = new { label = "الأدوار المخصصة مفعلة" } } },
+            new { key = "webhooks.enabled", value = "true", translations = new { en = new { label = "Webhooks enabled" }, ar = new { label = "الويب هوك مفعل" } } },
+            new { key = "webhooks.max_count", value = "3", translations = new { en = new { label = "Up to 3 webhooks" }, ar = new { label = "حتى 3 ويب هوك" } } },
         });
 
         var proFeatures = JsonSerializer.Serialize(new[]
@@ -381,6 +387,8 @@ public static class DataSeeder
             new { key = "api_keys.max_count", value = "20", translations = new { en = new { label = "Up to 20 API keys" }, ar = new { label = "حتى 20 مفتاح API" } } },
             new { key = "users.invitations_enabled", value = "true", translations = new { en = new { label = "User invitations enabled" }, ar = new { label = "دعوات المستخدمين مفعلة" } } },
             new { key = "roles.tenant_custom_enabled", value = "true", translations = new { en = new { label = "Custom roles enabled" }, ar = new { label = "الأدوار المخصصة مفعلة" } } },
+            new { key = "webhooks.enabled", value = "true", translations = new { en = new { label = "Webhooks enabled" }, ar = new { label = "الويب هوك مفعل" } } },
+            new { key = "webhooks.max_count", value = "10", translations = new { en = new { label = "Up to 10 webhooks" }, ar = new { label = "حتى 10 ويب هوك" } } },
         });
 
         var enterpriseFeatures = JsonSerializer.Serialize(new[]
@@ -395,6 +403,8 @@ public static class DataSeeder
             new { key = "api_keys.max_count", value = "50", translations = new { en = new { label = "Up to 50 API keys" }, ar = new { label = "حتى 50 مفتاح API" } } },
             new { key = "users.invitations_enabled", value = "true", translations = new { en = new { label = "User invitations enabled" }, ar = new { label = "دعوات المستخدمين مفعلة" } } },
             new { key = "roles.tenant_custom_enabled", value = "true", translations = new { en = new { label = "Custom roles enabled" }, ar = new { label = "الأدوار المخصصة مفعلة" } } },
+            new { key = "webhooks.enabled", value = "true", translations = new { en = new { label = "Webhooks enabled" }, ar = new { label = "الويب هوك مفعل" } } },
+            new { key = "webhooks.max_count", value = "25", translations = new { en = new { label = "Up to 25 webhooks" }, ar = new { label = "حتى 25 ويب هوك" } } },
         });
 
         var plans = new[]
