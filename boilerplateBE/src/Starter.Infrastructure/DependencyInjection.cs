@@ -106,6 +106,7 @@ public static class DependencyInjection
             busConfigurator.SetKebabCaseEndpointNameFormatter();
 
             busConfigurator.AddConsumer<GenerateReportConsumer>();
+            busConfigurator.AddConsumer<DeliverWebhookConsumer>();
 
             if (!rabbitMqEnabled)
             {
@@ -130,6 +131,17 @@ public static class DependencyInjection
                     h.Password(password);
                 });
 
+                cfg.ReceiveEndpoint("deliver-webhook", e =>
+                {
+                    e.UseMessageRetry(r => r.Intervals(
+                        TimeSpan.FromMinutes(1),
+                        TimeSpan.FromMinutes(5),
+                        TimeSpan.FromMinutes(30),
+                        TimeSpan.FromHours(2),
+                        TimeSpan.FromHours(24)));
+                    e.ConfigureConsumer<DeliverWebhookConsumer>(context);
+                });
+
                 cfg.ConfigureEndpoints(context);
             });
         });
@@ -139,6 +151,7 @@ public static class DependencyInjection
 
     private static IServiceCollection AddServices(this IServiceCollection services)
     {
+        services.AddHttpClient(); // Required for DeliverWebhookConsumer
         services.AddSingleton<IDateTimeService, DateTimeService>();
         services.AddScoped<IMessagePublisher, MassTransitMessagePublisher>();
         services.AddScoped<ISettingsService, SettingsService>();
