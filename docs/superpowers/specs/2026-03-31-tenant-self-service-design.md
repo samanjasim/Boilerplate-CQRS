@@ -135,7 +135,7 @@ Example:
     ❌ FeatureFlags.ManageTenantOverrides → Admin doesn't have it → blocked
 ```
 
-**Backend location**: `ManageRolePermissionsCommandHandler` — add ceiling check before saving.
+**Backend**: The ceiling enforcement is **already fully implemented** in `PermissionHierarchyService.ArePermissionsWithinCeilingAsync()` and enforced in `UpdateRolePermissionsCommandHandler`, `InviteUserCommandHandler`, and `SetTenantDefaultRoleCommandHandler`. The frontend `PermissionMatrix` component is also built and conditionally renders based on `Roles.ManagePermissions`. **The only change needed is adding `Roles.ManagePermissions` to the Admin role in `Roles.cs`.**
 
 ### New Permission (Optional)
 
@@ -289,11 +289,10 @@ Full-screen modal overlay (similar to auth layout). Not a sidebar page — it ta
 - Update Sidebar: "Organization" for tenant users, "Tenants" for platform admins
 - `useBackNavigation` adapts label based on mode
 
-### Phase 2: Permission Grants + Ceiling (1.5 days)
-- Grant `Roles.ManagePermissions` to Admin in `Roles.cs`
-- Grant `System.ViewAuditLogs` to Admin in `Roles.cs`
-- Add permission ceiling check in `ManageRolePermissionsCommandHandler`
-- Frontend: Update role edit page to show permission matrix for tenant admins
+### Phase 2: Permission Grants (0.5 hour)
+- Grant `Roles.ManagePermissions` to Admin in `Roles.cs` (one line)
+- Grant `System.ViewAuditLogs` to Admin in `Roles.cs` (one line)
+- **NOTE**: Permission ceiling enforcement and frontend PermissionMatrix are already fully implemented. No new code needed — just the two permission grants activate the existing functionality.
 
 ### Phase 3: Activity Tab (1 day)
 - Create Activity tab component wrapping audit log query
@@ -316,7 +315,7 @@ Full-screen modal overlay (similar to auth layout). Not a sidebar page — it ta
 - Reuse branding form, invite form components
 - LocalStorage dismissal
 
-**Total: ~8 days**
+**Total: ~6.5 days** (reduced from 8 — permission ceiling already built)
 
 ---
 
@@ -329,8 +328,7 @@ Full-screen modal overlay (similar to auth layout). Not a sidebar page — it ta
 | `routes.tsx` | Add `/organization` route |
 | `routes.config.ts` | Add `ROUTES.ORGANIZATION` |
 | `DashboardPage.tsx` | Split into Tenant/Platform dashboard |
-| `Roles.cs` | Grant ManagePermissions + ViewAuditLogs to Admin |
-| `ManageRolePermissionsCommandHandler.cs` | Add permission ceiling check |
+| `Roles.cs` | Grant ManagePermissions + ViewAuditLogs to Admin (2 lines — ceiling check already exists) |
 
 ## Files to Create
 
