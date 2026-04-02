@@ -99,7 +99,7 @@ export interface UpdatePlanData extends CreatePlanData {
 
 export interface ChangePlanData {
   planId: string;
-  interval?: 'Monthly' | 'Annual';
+  interval?: number; // 0=Monthly, 1=Annual
 }
 
 export interface SubscriptionSummary {

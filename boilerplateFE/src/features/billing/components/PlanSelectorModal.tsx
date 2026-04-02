@@ -47,7 +47,7 @@ export function PlanSelectorModal({ open, onOpenChange, subscription }: PlanSele
 
   const handleSelect = (planId: string) => {
     changePlan(
-      { planId, interval },
+      { planId, interval: interval === 'Annual' ? 1 : 0 },
       { onSuccess: () => onOpenChange(false) }
     );
   };
