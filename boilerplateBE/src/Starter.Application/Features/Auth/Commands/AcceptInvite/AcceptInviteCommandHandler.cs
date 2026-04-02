@@ -1,16 +1,18 @@
+using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
 using Starter.Domain.Identity.Entities;
 using Starter.Domain.Identity.Errors;
+using Starter.Domain.Identity.Events;
 using Starter.Domain.Identity.ValueObjects;
 using Starter.Shared.Results;
-using MediatR;
-using Microsoft.EntityFrameworkCore;
 
 namespace Starter.Application.Features.Auth.Commands.AcceptInvite;
 
 internal sealed class AcceptInviteCommandHandler(
     IApplicationDbContext context,
-    IPasswordService passwordService) : IRequestHandler<AcceptInviteCommand, Result>
+    IPasswordService passwordService,
+    IPublisher publisher) : IRequestHandler<AcceptInviteCommand, Result>
 {
     public async Task<Result> Handle(AcceptInviteCommand request, CancellationToken cancellationToken)
     {
@@ -67,6 +69,10 @@ internal sealed class AcceptInviteCommandHandler(
 
         context.Users.Add(user);
         await context.SaveChangesAsync(cancellationToken);
+
+        await publisher.Publish(
+            new InvitationAcceptedEvent(user.Id, invitation.TenantId, invitation.Email, invitation.RoleId),
+            cancellationToken);
 
         return Result.Success();
     }

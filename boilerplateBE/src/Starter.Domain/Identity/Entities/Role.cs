@@ -1,4 +1,5 @@
 using Starter.Domain.Common;
+using Starter.Domain.Identity.Events;
 
 namespace Starter.Domain.Identity.Entities;
 
@@ -33,7 +34,9 @@ public sealed class Role : AggregateRoot
 
     public static Role Create(string name, string? description = null, bool isSystemRole = false, Guid? tenantId = null)
     {
-        return new Role(Guid.NewGuid(), name, description, isSystemRole, tenantId);
+        var role = new Role(Guid.NewGuid(), name, description, isSystemRole, tenantId);
+        role.RaiseDomainEvent(new RoleCreatedEvent(role.Id, role.TenantId, role.Name));
+        return role;
     }
 
     public void Update(string name, string? description)
@@ -44,6 +47,8 @@ public sealed class Role : AggregateRoot
 
         Name = name;
         Description = description;
+
+        RaiseDomainEvent(new RoleUpdatedEvent(Id, TenantId, Name));
     }
 
     public void AddPermission(Permission permission)

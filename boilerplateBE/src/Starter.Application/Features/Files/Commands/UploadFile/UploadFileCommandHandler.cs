@@ -1,7 +1,8 @@
+using MediatR;
 using Starter.Application.Common.Interfaces;
+using Starter.Domain.Common.Events;
 using Starter.Domain.FeatureFlags.Errors;
 using Starter.Shared.Results;
-using MediatR;
 
 namespace Starter.Application.Features.Files.Commands.UploadFile;
 
@@ -9,7 +10,8 @@ internal sealed class UploadFileCommandHandler(
     IFileService fileService,
     IFeatureFlagService flags,
     ICurrentUserService currentUser,
-    IUsageTracker usageTracker) : IRequestHandler<UploadFileCommand, Result<FileDto>>
+    IUsageTracker usageTracker,
+    IPublisher publisher) : IRequestHandler<UploadFileCommand, Result<FileDto>>
 {
     public async Task<Result<FileDto>> Handle(UploadFileCommand request, CancellationToken cancellationToken)
     {
@@ -48,6 +50,10 @@ internal sealed class UploadFileCommandHandler(
 
         if (tenantId.HasValue)
             await usageTracker.IncrementAsync(tenantId.Value, "storage_bytes", request.Size, cancellationToken);
+
+        await publisher.Publish(
+            new FileUploadedEvent(metadata.Id, metadata.TenantId, metadata.FileName, metadata.Size, metadata.ContentType),
+            cancellationToken);
 
         return Result.Success(metadata.ToDto(url));
     }
