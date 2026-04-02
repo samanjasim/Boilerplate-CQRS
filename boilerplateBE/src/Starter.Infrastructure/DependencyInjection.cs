@@ -257,6 +257,7 @@ public static class DependencyInjection
 
         services.AddHostedService<StorageBucketInitializer>();
         services.AddHostedService<OrphanFileCleanupService>();
+        services.AddHostedService<WebhookDeliveryCleanupJob>();
 
         return services;
     }
