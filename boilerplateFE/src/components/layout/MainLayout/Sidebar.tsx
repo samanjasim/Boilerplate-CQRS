@@ -43,7 +43,10 @@ export function Sidebar() {
       ? [{ label: t('nav.roles'), icon: Shield, path: ROUTES.ROLES.LIST }]
       : []),
     ...(hasPermission(PERMISSIONS.Tenants.View)
-      ? [{ label: t('nav.tenants'), icon: Building, path: ROUTES.TENANTS.LIST }]
+      ? [user?.tenantId
+        ? { label: t('nav.organization'), icon: Building, path: ROUTES.ORGANIZATION }
+        : { label: t('nav.tenants'), icon: Building, path: ROUTES.TENANTS.LIST }
+      ]
       : []),
     ...(hasPermission(PERMISSIONS.Files.View)
       ? [{ label: t('nav.files'), icon: FolderOpen, path: ROUTES.FILES.LIST }]

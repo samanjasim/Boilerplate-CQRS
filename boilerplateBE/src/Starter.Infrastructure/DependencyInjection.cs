@@ -219,13 +219,22 @@ public static class DependencyInjection
 
         var s3Config = new AmazonS3Config
         {
-            RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(settings.Region),
             ForcePathStyle = settings.ForcePathStyle,
         };
 
         if (!string.IsNullOrWhiteSpace(settings.Endpoint))
         {
+            // When using a custom endpoint (MinIO), configure for compatibility:
+            // - ServiceURL + AuthenticationRegion instead of RegionEndpoint
+            // - Disable request checksums (AWS SDK v4 sends CRC32 by default, MinIO rejects it)
             s3Config.ServiceURL = settings.Endpoint;
+            s3Config.AuthenticationRegion = settings.Region;
+            s3Config.RequestChecksumCalculation = Amazon.Runtime.RequestChecksumCalculation.WHEN_REQUIRED;
+            s3Config.ResponseChecksumValidation = Amazon.Runtime.ResponseChecksumValidation.WHEN_REQUIRED;
+        }
+        else
+        {
+            s3Config.RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(settings.Region);
         }
 
         var s3Client = new AmazonS3Client(settings.AccessKey, settings.SecretKey, s3Config);

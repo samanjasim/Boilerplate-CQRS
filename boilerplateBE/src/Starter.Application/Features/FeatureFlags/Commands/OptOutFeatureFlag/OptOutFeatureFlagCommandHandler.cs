@@ -25,11 +25,20 @@ internal sealed class OptOutFeatureFlagCommandHandler(
         if (flag.IsSystem || flag.ValueType != FlagValueType.Boolean)
             return Result.Failure(FeatureFlagErrors.CannotOptOut);
 
+        // Resolve the current value — only allow opt-out if the flag is currently ENABLED
+        var resolvedValue = await featureFlagService.GetValueAsync<string>(flag.Key, cancellationToken);
+        if (resolvedValue != "true" && resolvedValue != "True")
+            return Result.Failure(Error.Validation("FeatureFlags.OptOut", "Cannot opt out of a feature that is not enabled for your tenant."));
+
         var existing = await context.TenantFeatureFlags.IgnoreQueryFilters()
             .FirstOrDefaultAsync(t => t.FeatureFlagId == request.FeatureFlagId && t.TenantId == tenantId.Value, cancellationToken);
 
         if (existing is not null)
         {
+            // Don't allow overwriting plan-based overrides with manual opt-out
+            if (existing.Source == OverrideSource.PlanSubscription)
+                return Result.Failure(Error.Validation("FeatureFlags.OptOut", "Cannot opt out of a feature controlled by your subscription plan."));
+
             if (existing.Value == "false")
                 return Result.Success();
 

@@ -115,12 +115,20 @@ export const routes: RouteObject[] = [
             ],
           },
 
-          // Tenants
+          // Tenants (platform admin)
           {
             element: <PermissionGuard permission={PERMISSIONS.Tenants.View} />,
             children: [
               { path: ROUTES.TENANTS.LIST, element: <TenantsListPage /> },
               { path: ROUTES.TENANTS.DETAIL, element: <TenantDetailPage /> },
+            ],
+          },
+
+          // Organization (tenant self-service — same component, self-service mode)
+          {
+            element: <PermissionGuard permission={PERMISSIONS.Tenants.View} />,
+            children: [
+              { path: ROUTES.ORGANIZATION, element: <TenantDetailPage /> },
             ],
           },
 

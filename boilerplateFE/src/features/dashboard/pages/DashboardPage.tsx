@@ -64,6 +64,8 @@ export default function DashboardPage() {
   const user = useAuthStore(selectUser);
   const { hasPermission } = usePermissions();
 
+  const isTenantUser = !!user?.tenantId;
+
   const canViewUsers = hasPermission(PERMISSIONS.Users.View);
   const canViewRoles = hasPermission(PERMISSIONS.Roles.View);
   const canViewAuditLogs = hasPermission(PERMISSIONS.System.ViewAuditLogs);
@@ -102,10 +104,10 @@ export default function DashboardPage() {
 
       {/* Stats grid */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={Users} label={t('dashboard.totalUsers')} value={users.length} color="primary" />
+        <StatCard icon={Users} label={isTenantUser ? t('dashboard.myUsers') : t('dashboard.totalUsers')} value={users.length} color="primary" />
         <StatCard icon={Shield} label={t('dashboard.activeRoles')} value={activeRoles.length} color="accent" />
         <StatCard icon={TrendingUp} label={t('dashboard.totalRoles')} value={roles.length} color="success" />
-        <StatCard icon={Blocks} label={t('dashboard.platformStatus')} value={t('common.active')} color="info" />
+        <StatCard icon={Blocks} label={isTenantUser ? t('dashboard.myOrganization') : t('dashboard.platformStatus')} value={t('common.active')} color="info" />
       </div>
 
       {/* Recent Activity + Recent Users */}

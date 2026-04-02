@@ -127,6 +127,7 @@
     "billing": "Billing",
     "billingPlans": "Billing Plans",
     "subscriptions": "Subscriptions",
+    "organization": "Organization",
     "collapse": "Collapse"
   },
   "header": {
@@ -138,9 +139,11 @@
     "welcomeBack": "Welcome back, {{name}}!",
     "subtitle": "Here's what's happening on your platform",
     "totalUsers": "Total Users",
+    "myUsers": "My Users",
     "activeRoles": "Active Roles",
     "totalRoles": "Total Roles",
     "platformStatus": "Platform Status",
+    "myOrganization": "My Organization",
     "quickOverview": "Quick Overview",
     "usersManagement": "Users Management",
     "usersManagementDesc": "View and manage all users on your platform",
@@ -257,6 +260,8 @@
     "branding": "Branding",
     "businessInfo": "Business Info",
     "customText": "Custom Text",
+    "activity": "Activity",
+    "subscription": "Subscription",
     "featureFlags": "Feature Flags",
     "logo": "Logo",
     "favicon": "Favicon",
@@ -782,5 +787,24 @@
     "planChanged": "Plan changed successfully",
     "subscriptionDetail": "Subscription Details",
     "selectPlan": "Select a plan"
+  },
+  "onboarding": {
+    "profileTitle": "Set Up Your Organization",
+    "profileDesc": "Add your company logo and a brief description",
+    "companyName": "Company Name",
+    "logo": "Logo",
+    "description": "Description",
+    "descriptionPlaceholder": "Tell us about your organization...",
+    "teamTitle": "Invite Your Team",
+    "teamDesc": "Add team members to get started together",
+    "emailPlaceholder": "team@company.com",
+    "role": "Role",
+    "addAnother": "Add another",
+    "sendInvites": "Send Invites",
+    "skip": "Skip for now",
+    "skipAll": "Skip setup",
+    "doneTitle": "You're All Set!",
+    "doneDesc": "Your organization is ready. You can always update these settings later.",
+    "goToDashboard": "Go to Dashboard"
   }
 }
