@@ -5,6 +5,7 @@ using Starter.Domain.Common;
 using Starter.Domain.FeatureFlags.Entities;
 using Starter.Domain.Identity.Entities;
 using Starter.Domain.Tenants.Entities;
+using Starter.Domain.Webhooks.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace Starter.Application.Common.Interfaces;
@@ -33,6 +34,8 @@ public interface IApplicationDbContext
     DbSet<TenantSubscription> TenantSubscriptions { get; }
     DbSet<PaymentRecord> PaymentRecords { get; }
     DbSet<PlanPriceHistory> PlanPriceHistories { get; }
+    DbSet<WebhookEndpoint> WebhookEndpoints { get; }
+    DbSet<WebhookDelivery> WebhookDeliveries { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 

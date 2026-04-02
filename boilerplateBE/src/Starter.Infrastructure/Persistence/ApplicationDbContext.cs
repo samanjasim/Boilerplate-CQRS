@@ -7,6 +7,7 @@ using Starter.Domain.Common;
 using Starter.Domain.FeatureFlags.Entities;
 using Starter.Domain.Identity.Entities;
 using Starter.Domain.Tenants.Entities;
+using Starter.Domain.Webhooks.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace Starter.Infrastructure.Persistence;
@@ -37,6 +38,8 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<TenantSubscription> TenantSubscriptions => Set<TenantSubscription>();
     public DbSet<PaymentRecord> PaymentRecords => Set<PaymentRecord>();
     public DbSet<PlanPriceHistory> PlanPriceHistories => Set<PlanPriceHistory>();
+    public DbSet<WebhookEndpoint> WebhookEndpoints => Set<WebhookEndpoint>();
+    public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
 
     // EF Core evaluates this per-query via the expression tree.
     // Must be a property (not a method) for EF to parameterize it.
@@ -101,6 +104,12 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
 
         modelBuilder.Entity<PaymentRecord>().HasQueryFilter(p =>
             TenantId == null || p.TenantId == TenantId);
+
+        modelBuilder.Entity<WebhookEndpoint>().HasQueryFilter(e =>
+            TenantId == null || e.TenantId == TenantId);
+
+        modelBuilder.Entity<WebhookDelivery>().HasQueryFilter(d =>
+            TenantId == null || d.TenantId == TenantId);
     }
 
     public async Task<T> ExecuteInTransactionAsync<T>(
