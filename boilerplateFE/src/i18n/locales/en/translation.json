@@ -738,7 +738,14 @@
     "secret": "Signing Secret",
     "secretDesc": "Use this secret to verify webhook payloads. Store it securely — it will not be shown again.",
     "selectEvents": "Select events to subscribe to",
-    "allEvents": "All Events"
+    "allEvents": "All Events",
+    "secretOnceWarning": "Copy this secret now. It won't be shown again.",
+    "requestPayload": "Request Payload",
+    "responseBody": "Response Body",
+    "errorMessage": "Error Message",
+    "statusSuccess": "Success",
+    "statusFailed": "Failed",
+    "statusPending": "Pending"
   },
   "billing": {
     "title": "Billing",

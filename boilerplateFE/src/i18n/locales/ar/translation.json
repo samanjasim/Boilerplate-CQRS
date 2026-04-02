@@ -734,7 +734,14 @@
     "secret": "المفتاح السري",
     "secretDesc": "استخدم هذا المفتاح للتحقق من حمولات الويب هوك. احتفظ به بأمان — لن يظهر مرة أخرى.",
     "selectEvents": "اختر الأحداث للاشتراك بها",
-    "allEvents": "جميع الأحداث"
+    "allEvents": "جميع الأحداث",
+    "secretOnceWarning": "انسخ هذا السر الآن. لن يُعرض مرة أخرى.",
+    "requestPayload": "محتوى الطلب",
+    "responseBody": "محتوى الاستجابة",
+    "errorMessage": "رسالة الخطأ",
+    "statusSuccess": "نجاح",
+    "statusFailed": "فشل",
+    "statusPending": "قيد الانتظار"
   },
   "billing": {
     "title": "الفوترة",
