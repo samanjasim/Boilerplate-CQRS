@@ -25,21 +25,25 @@ internal sealed class GetUsageQueryHandler(
         var maxStorageMb = await featureFlagService.GetValueAsync<int>("files.max_storage_mb", cancellationToken);
         var maxApiKeys = await featureFlagService.GetValueAsync<int>("api_keys.max_count", cancellationToken);
         var maxReports = await featureFlagService.GetValueAsync<int>("reports.max_concurrent", cancellationToken);
+        var maxWebhooks = await featureFlagService.GetValueAsync<int>("webhooks.max_count", cancellationToken);
 
         counters.TryGetValue("users", out var users);
         counters.TryGetValue("storage_bytes", out var storageBytes);
         counters.TryGetValue("api_keys", out var apiKeys);
         counters.TryGetValue("reports_active", out var reportsActive);
+        counters.TryGetValue("webhooks", out var webhooks);
 
         var dto = new UsageDto(
             Users: users,
             StorageBytes: storageBytes,
             ApiKeys: apiKeys,
             ReportsActive: reportsActive,
+            Webhooks: (int)webhooks,
             MaxUsers: maxUsers,
             MaxStorageBytes: (long)maxStorageMb * 1024 * 1024,
             MaxApiKeys: maxApiKeys,
-            MaxReports: maxReports);
+            MaxReports: maxReports,
+            MaxWebhooks: maxWebhooks);
 
         return Result.Success(dto);
     }

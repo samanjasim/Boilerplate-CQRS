@@ -790,6 +790,8 @@
     "storageColumn": "التخزين",
     "intervalColumn": "الفترة",
     "renewalColumn": "التجديد",
+    "webhooksUsage": "الويب هوك",
+    "webhooksColumn": "الويب هوك",
     "paymentColumn": "الدفع",
     "noPaymentStatus": "لا يوجد",
     "changePlanConfirm": "تغيير خطة {{tenantName}} إلى {{planName}}؟",

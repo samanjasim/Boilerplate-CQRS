@@ -137,6 +137,11 @@ export default function BillingPage() {
                 current={usage.reportsActive}
                 max={usage.maxReports}
               />
+              <UsageBar
+                label={t('billing.webhooksUsage')}
+                current={usage.webhooks}
+                max={usage.maxWebhooks}
+              />
             </CardContent>
           </Card>
         )}

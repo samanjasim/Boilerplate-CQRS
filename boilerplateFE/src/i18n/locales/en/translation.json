@@ -818,6 +818,8 @@
     "storageColumn": "Storage",
     "intervalColumn": "Interval",
     "renewalColumn": "Renewal",
+    "webhooksUsage": "Webhooks",
+    "webhooksColumn": "Webhooks",
     "paymentColumn": "Payment",
     "noPaymentStatus": "None",
     "changePlanConfirm": "Change {{tenantName}}'s plan to {{planName}}?",

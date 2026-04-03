@@ -790,6 +790,8 @@
     "storageColumn": "کۆگا",
     "intervalColumn": "ماوە",
     "renewalColumn": "نوێکردنەوە",
+    "webhooksUsage": "وێبهووک",
+    "webhooksColumn": "وێبهووک",
     "paymentColumn": "پارەدان",
     "noPaymentStatus": "هیچ",
     "changePlanConfirm": "پلانی {{tenantName}} بگۆڕە بۆ {{planName}}؟",

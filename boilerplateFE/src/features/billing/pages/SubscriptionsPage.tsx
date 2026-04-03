@@ -94,6 +94,7 @@ export default function SubscriptionsPage() {
                 <TableHead>{t('common.status')}</TableHead>
                 <TableHead>{t('billing.usersColumn')}</TableHead>
                 <TableHead>{t('billing.storageColumn')}</TableHead>
+                <TableHead>{t('billing.webhooksColumn')}</TableHead>
                 <TableHead>{t('billing.intervalColumn')}</TableHead>
                 <TableHead>{t('billing.renewalColumn')}</TableHead>
                 <TableHead>{t('billing.paymentColumn')}</TableHead>
@@ -133,6 +134,9 @@ export default function SubscriptionsPage() {
                     {row.maxStorageMb > 0
                       ? `${formatStorage(row.storageUsedMb)} / ${formatStorage(row.maxStorageMb)}`
                       : '—'}
+                  </TableCell>
+                  <TableCell className="text-foreground">
+                    {row.webhooksCount}/{row.maxWebhooks}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {BILLING_INTERVAL[row.billingInterval] ?? row.billingInterval}

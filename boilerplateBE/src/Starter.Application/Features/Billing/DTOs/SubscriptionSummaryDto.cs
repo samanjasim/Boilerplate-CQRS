@@ -18,4 +18,6 @@ public sealed record SubscriptionSummaryDto(
     long StorageUsedMb,
     long MaxStorageMb,
     PaymentStatus? LatestPaymentStatus,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    long WebhooksCount,
+    int MaxWebhooks);

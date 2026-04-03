@@ -21,7 +21,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useUIStore, useAuthStore, selectSidebarCollapsed, selectUser } from '@/stores';
 import { ROUTES } from '@/config';
-import { usePermissions } from '@/hooks';
+import { usePermissions, useFeatureFlag } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
 
 export function Sidebar() {
@@ -30,6 +30,8 @@ export function Sidebar() {
   const toggleCollapse = useUIStore((state) => state.toggleSidebarCollapse);
   const { hasPermission } = usePermissions();
   const user = useAuthStore(selectUser);
+
+  const webhooksFlag = useFeatureFlag('webhooks.enabled');
 
   const tenantLogoUrl = user?.tenantLogoUrl;
   const tenantName = user?.tenantName;
@@ -61,7 +63,7 @@ export function Sidebar() {
     ...(hasPermission(PERMISSIONS.ApiKeys.View)
       ? [{ label: t('nav.apiKeys'), icon: KeyRound, path: ROUTES.API_KEYS.LIST }]
       : []),
-    ...(hasPermission(PERMISSIONS.Webhooks.View) && user?.tenantId
+    ...(hasPermission(PERMISSIONS.Webhooks.View) && user?.tenantId && webhooksFlag.isEnabled
       ? [{ label: t('nav.webhooks'), icon: Webhook, path: ROUTES.WEBHOOKS }]
       : []),
     ...(hasPermission(PERMISSIONS.Billing.View) && user?.tenantId

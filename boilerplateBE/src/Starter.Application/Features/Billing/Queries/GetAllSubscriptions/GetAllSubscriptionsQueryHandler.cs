@@ -51,10 +51,12 @@ internal sealed class GetAllSubscriptionsQueryHandler(
             var sub = item.Subscription;
             var usersCount = await usageTracker.GetAsync(sub.TenantId, "users", cancellationToken);
             var storageBytes = await usageTracker.GetAsync(sub.TenantId, "storage_bytes", cancellationToken);
+            var webhooksCount = await usageTracker.GetAsync(sub.TenantId, "webhooks", cancellationToken);
             var storageUsedMb = storageBytes / (1024 * 1024);
 
             var maxUsers = 0;
             long maxStorageMb = 0;
+            var maxWebhooks = 0;
 
             var featureEntries = PlanFeatureEntry.ParseFeatures(sub.Plan.Features);
             if (featureEntries is not null)
@@ -64,6 +66,8 @@ internal sealed class GetAllSubscriptionsQueryHandler(
                     maxUsers = usersMaxVal;
                 if (featureMap.TryGetValue("files.max_storage_mb", out var storageMaxStr) && long.TryParse(storageMaxStr, out var storageMaxVal))
                     maxStorageMb = storageMaxVal;
+                if (featureMap.TryGetValue("webhooks.max_count", out var webhooksMaxStr) && int.TryParse(webhooksMaxStr, out var webhooksMaxVal))
+                    maxWebhooks = webhooksMaxVal;
             }
 
             latestPayments.TryGetValue(sub.TenantId, out var paymentStatus);
@@ -84,7 +88,9 @@ internal sealed class GetAllSubscriptionsQueryHandler(
                 StorageUsedMb: storageUsedMb,
                 MaxStorageMb: maxStorageMb,
                 LatestPaymentStatus: latestPayments.ContainsKey(sub.TenantId) ? paymentStatus : null,
-                CreatedAt: sub.CreatedAt));
+                CreatedAt: sub.CreatedAt,
+                WebhooksCount: webhooksCount,
+                MaxWebhooks: maxWebhooks));
         }
 
         return Result.Success(PaginatedList<SubscriptionSummaryDto>.Create(dtos.AsReadOnly(), totalCount, request.PageNumber, request.PageSize));

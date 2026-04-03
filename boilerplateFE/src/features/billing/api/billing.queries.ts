@@ -98,6 +98,9 @@ export function useChangePlan() {
     mutationFn: (data: ChangePlanData) => billingApi.changePlan(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.billing.subscription.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.billing.usage.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.billing.payments.all });
+      queryClient.invalidateQueries({ queryKey: ['featureFlags'] });
       toast.success(i18n.t('billing.planChanged'));
     },
   });
@@ -165,6 +168,10 @@ export function useChangeTenantPlan() {
       billingApi.changeTenantPlan(tenantId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.billing.subscriptions.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.billing.subscription.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.billing.usage.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.billing.payments.all });
+      queryClient.invalidateQueries({ queryKey: ['featureFlags'] });
       toast.success(i18n.t('billing.planChanged'));
     },
   });

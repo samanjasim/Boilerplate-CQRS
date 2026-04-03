@@ -71,6 +71,8 @@ export interface Usage {
   storageBytes: number;
   apiKeys: number;
   reportsActive: number;
+  webhooks: number;
+  maxWebhooks: number;
   maxUsers: number;
   maxStorageBytes: number;
   maxApiKeys: number;
@@ -117,6 +119,8 @@ export interface SubscriptionSummary {
   maxUsers: number;
   storageUsedMb: number;
   maxStorageMb: number;
+  webhooksCount: number;
+  maxWebhooks: number;
   latestPaymentStatus: 'Pending' | 'Completed' | 'Failed' | 'Refunded' | null;
   createdAt: string;
 }
