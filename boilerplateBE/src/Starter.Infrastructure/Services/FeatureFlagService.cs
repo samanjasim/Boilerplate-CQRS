@@ -38,6 +38,13 @@ internal sealed class FeatureFlagService(
 
     public async Task InvalidateCacheAsync(Guid? tenantId = null, CancellationToken cancellationToken = default)
     {
+        // Remove specific known cache keys via IDistributedCache (works without Redis)
+        if (tenantId.HasValue)
+            await cache.RemoveAsync($"{CachePrefix}:{tenantId}", cancellationToken);
+
+        await cache.RemoveAsync($"{CachePrefix}:platform", cancellationToken);
+
+        // Also attempt Redis prefix scan for any other keys
         await cache.RemoveByPrefixAsync(CachePrefix, cancellationToken);
     }
 

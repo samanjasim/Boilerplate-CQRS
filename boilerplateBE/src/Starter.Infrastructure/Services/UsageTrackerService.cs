@@ -17,7 +17,8 @@ internal sealed class UsageTrackerService(
         "users",
         "storage_bytes",
         "api_keys",
-        "reports_active"
+        "reports_active",
+        "webhooks"
     ];
 
     private static string BuildKey(Guid tenantId, string metric) =>
@@ -146,6 +147,10 @@ internal sealed class UsageTrackerService(
             "reports_active" => await context.ReportRequests
                 .IgnoreQueryFilters()
                 .CountAsync(r => r.TenantId == tenantId, ct),
+
+            "webhooks" => await context.WebhookEndpoints
+                .IgnoreQueryFilters()
+                .CountAsync(w => w.TenantId == tenantId, ct),
 
             _ => throw new ArgumentOutOfRangeException(nameof(metric), $"Unknown usage metric: '{metric}'")
         };

@@ -316,20 +316,20 @@ public static class DataSeeder
 
         var flags = new[]
         {
-            FeatureFlag.Create("users.max_count", "Max Users", "Maximum number of users per tenant", "100", FlagValueType.Integer, FlagCategory.Users, false),
-            FeatureFlag.Create("users.invitations_enabled", "Invitations Enabled", "Allow sending user invitations", "true", FlagValueType.Boolean, FlagCategory.Users, false),
-            FeatureFlag.Create("files.max_upload_size_mb", "Max Upload Size (MB)", "Maximum single file upload size in megabytes", "50", FlagValueType.Integer, FlagCategory.Files, false),
-            FeatureFlag.Create("files.max_storage_mb", "Max Storage (MB)", "Maximum total storage per tenant in megabytes", "5120", FlagValueType.Integer, FlagCategory.Files, false),
-            FeatureFlag.Create("reports.enabled", "Reports Enabled", "Enable report generation", "true", FlagValueType.Boolean, FlagCategory.Reports, false),
-            FeatureFlag.Create("reports.max_concurrent", "Max Concurrent Reports", "Maximum concurrent report generation jobs", "3", FlagValueType.Integer, FlagCategory.Reports, false),
-            FeatureFlag.Create("reports.pdf_export", "PDF Export", "Enable PDF export for reports", "true", FlagValueType.Boolean, FlagCategory.Reports, false),
-            FeatureFlag.Create("api_keys.enabled", "API Keys Enabled", "Enable API key management", "true", FlagValueType.Boolean, FlagCategory.ApiKeys, false),
-            FeatureFlag.Create("api_keys.max_count", "Max API Keys", "Maximum number of API keys per tenant", "10", FlagValueType.Integer, FlagCategory.ApiKeys, false),
+            FeatureFlag.Create("users.max_count", "Max Users", "Maximum number of users per tenant", "100", FlagValueType.Integer, FlagCategory.Users, true),
+            FeatureFlag.Create("users.invitations_enabled", "Invitations Enabled", "Allow sending user invitations", "true", FlagValueType.Boolean, FlagCategory.Users, true),
+            FeatureFlag.Create("files.max_upload_size_mb", "Max Upload Size (MB)", "Maximum single file upload size in megabytes", "50", FlagValueType.Integer, FlagCategory.Files, true),
+            FeatureFlag.Create("files.max_storage_mb", "Max Storage (MB)", "Maximum total storage per tenant in megabytes", "5120", FlagValueType.Integer, FlagCategory.Files, true),
+            FeatureFlag.Create("reports.enabled", "Reports Enabled", "Enable report generation", "true", FlagValueType.Boolean, FlagCategory.Reports, true),
+            FeatureFlag.Create("reports.max_concurrent", "Max Concurrent Reports", "Maximum concurrent report generation jobs", "3", FlagValueType.Integer, FlagCategory.Reports, true),
+            FeatureFlag.Create("reports.pdf_export", "PDF Export", "Enable PDF export for reports", "true", FlagValueType.Boolean, FlagCategory.Reports, true),
+            FeatureFlag.Create("api_keys.enabled", "API Keys Enabled", "Enable API key management", "true", FlagValueType.Boolean, FlagCategory.ApiKeys, true),
+            FeatureFlag.Create("api_keys.max_count", "Max API Keys", "Maximum number of API keys per tenant", "10", FlagValueType.Integer, FlagCategory.ApiKeys, true),
             FeatureFlag.Create("ui.maintenance_mode", "Maintenance Mode", "Show maintenance page to non-admin users", "false", FlagValueType.Boolean, FlagCategory.System, true),
             FeatureFlag.Create("billing.enabled", "Billing Enabled", "Enable billing and subscription features", "false", FlagValueType.Boolean, FlagCategory.Billing, true),
-            FeatureFlag.Create("roles.tenant_custom_enabled", "Tenant Custom Roles", "Allow tenants to create custom roles", "false", FlagValueType.Boolean, FlagCategory.System, false),
-            FeatureFlag.Create("webhooks.enabled", "Webhooks Enabled", "Enable webhook integrations", "false", FlagValueType.Boolean, FlagCategory.System, false),
-            FeatureFlag.Create("webhooks.max_count", "Max Webhooks", "Maximum webhook endpoints per tenant", "0", FlagValueType.Integer, FlagCategory.System, false),
+            FeatureFlag.Create("roles.tenant_custom_enabled", "Tenant Custom Roles", "Allow tenants to create custom roles", "false", FlagValueType.Boolean, FlagCategory.System, true),
+            FeatureFlag.Create("webhooks.enabled", "Webhooks Enabled", "Enable webhook integrations", "false", FlagValueType.Boolean, FlagCategory.System, true),
+            FeatureFlag.Create("webhooks.max_count", "Max Webhooks", "Maximum webhook endpoints per tenant", "0", FlagValueType.Integer, FlagCategory.System, true),
         };
 
         context.FeatureFlags.AddRange(flags);
