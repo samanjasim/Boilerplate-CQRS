@@ -128,6 +128,7 @@
     "billing": "Billing",
     "billingPlans": "Billing Plans",
     "subscriptions": "Subscriptions",
+    "webhooksAdmin": "Webhooks",
     "organization": "Organization",
     "collapse": "Collapse"
   },
@@ -745,7 +746,23 @@
     "errorMessage": "Error Message",
     "statusSuccess": "Success",
     "statusFailed": "Failed",
-    "statusPending": "Pending"
+    "statusPending": "Pending",
+    "adminTitle": "Webhook Overview",
+    "adminSubtitle": "Monitor all tenant webhook endpoints and deliveries",
+    "totalEndpoints": "Total Endpoints",
+    "activeEndpoints": "active",
+    "deliveries24h": "Deliveries (24h)",
+    "successRate": "Success Rate",
+    "failed24h": "Failed (24h)",
+    "tenantColumn": "Tenant",
+    "urlColumn": "URL",
+    "eventsColumn": "Events",
+    "deliveriesColumn": "24h Deliveries",
+    "successRateColumn": "Success Rate",
+    "lastDeliveryColumn": "Last Delivery",
+    "lastStatusColumn": "Last Status",
+    "never": "Never",
+    "endpointDetail": "Endpoint Details"
   },
   "billing": {
     "title": "Billing",

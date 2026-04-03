@@ -80,6 +80,7 @@ export const PERMISSIONS = {
     Create: 'Webhooks.Create',
     Update: 'Webhooks.Update',
     Delete: 'Webhooks.Delete',
+    ViewPlatform: 'Webhooks.ViewPlatform',
   },
 } as const;
 

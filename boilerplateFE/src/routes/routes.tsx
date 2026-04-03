@@ -34,6 +34,8 @@ const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage')
 const ApiKeysPage = lazy(() => import('@/features/api-keys/pages/ApiKeysPage'));
 const FeatureFlagsPage = lazy(() => import('@/features/feature-flags/pages/FeatureFlagsPage'));
 const WebhooksPage = lazy(() => import('@/features/webhooks/pages/WebhooksPage'));
+const WebhookAdminPage = lazy(() => import('@/features/webhooks/pages/WebhookAdminPage'));
+const WebhookAdminDetailPage = lazy(() => import('@/features/webhooks/pages/WebhookAdminDetailPage'));
 const BillingPage = lazy(() => import('@/features/billing/pages/BillingPage'));
 const BillingPlansPage = lazy(() => import('@/features/billing/pages/BillingPlansPage'));
 const PricingPage = lazy(() => import('@/features/billing/pages/PricingPage'));
@@ -186,6 +188,15 @@ export const routes: RouteObject[] = [
             element: <PermissionGuard permission={PERMISSIONS.Webhooks.View} />,
             children: [
               { path: ROUTES.WEBHOOKS, element: <WebhooksPage /> },
+            ],
+          },
+
+          // Webhooks Admin (platform admin)
+          {
+            element: <PermissionGuard permission={PERMISSIONS.Webhooks.ViewPlatform} />,
+            children: [
+              { path: ROUTES.WEBHOOKS_ADMIN.LIST, element: <WebhookAdminPage /> },
+              { path: ROUTES.WEBHOOKS_ADMIN.DETAIL, element: <WebhookAdminDetailPage /> },
             ],
           },
 

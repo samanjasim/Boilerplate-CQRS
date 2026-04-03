@@ -128,6 +128,7 @@
     "billing": "پارەدان",
     "billingPlans": "پلانەکانی بەشداریکردن",
     "subscriptions": "بەشداریکردنەکان",
+    "webhooksAdmin": "وێبهووکەکان",
     "collapse": "کچکردن"
   },
   "header": {
@@ -741,7 +742,23 @@
     "errorMessage": "پەیامی هەڵە",
     "statusSuccess": "سەرکەوتوو",
     "statusFailed": "شکستهێنان",
-    "statusPending": "چاوەڕوانکردن"
+    "statusPending": "چاوەڕوانکردن",
+    "adminTitle": "تێڕوانینی وێبهووکەکان",
+    "adminSubtitle": "چاودێریکردنی هەموو خاڵەکانی وێبهووک و گەیاندنەکانی خاوەنکارەکان",
+    "totalEndpoints": "کۆی خاڵەکان",
+    "activeEndpoints": "چالاک",
+    "deliveries24h": "گەیاندنەکان (٢٤ کاتژمێر)",
+    "successRate": "ڕێژەی سەرکەوتن",
+    "failed24h": "شکستهێنان (٢٤ کاتژمێر)",
+    "tenantColumn": "خاوەنکار",
+    "urlColumn": "بەستەر",
+    "eventsColumn": "ڕووداوەکان",
+    "deliveriesColumn": "گەیاندنی ٢٤ کاتژمێر",
+    "successRateColumn": "ڕێژەی سەرکەوتن",
+    "lastDeliveryColumn": "دوایین گەیاندن",
+    "lastStatusColumn": "دوایین دۆخ",
+    "never": "هەرگیز",
+    "endpointDetail": "وردەکاری خاڵ"
   },
   "billing": {
     "title": "پارەدان",

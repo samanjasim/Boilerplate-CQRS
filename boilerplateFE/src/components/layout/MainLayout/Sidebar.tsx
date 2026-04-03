@@ -75,6 +75,9 @@ export function Sidebar() {
     ...(hasPermission(PERMISSIONS.Billing.ManageTenantSubscriptions)
       ? [{ label: t('nav.subscriptions'), icon: ListChecks, path: ROUTES.SUBSCRIPTIONS.LIST }]
       : []),
+    ...(hasPermission(PERMISSIONS.Webhooks.ViewPlatform)
+      ? [{ label: t('nav.webhooksAdmin'), icon: Webhook, path: ROUTES.WEBHOOKS_ADMIN.LIST }]
+      : []),
     ...(hasPermission(PERMISSIONS.FeatureFlags.View)
       ? [{ label: t('nav.featureFlags'), icon: ToggleRight, path: ROUTES.FEATURE_FLAGS.LIST }]
       : []),
@@ -125,7 +128,7 @@ export function Sidebar() {
             <li key={item.path}>
               <NavLink
                 to={item.path}
-                end={item.path === ROUTES.DASHBOARD || item.path === ROUTES.BILLING || item.path === ROUTES.SUBSCRIPTIONS?.LIST}
+                end={item.path === ROUTES.DASHBOARD || item.path === ROUTES.BILLING || item.path === ROUTES.SUBSCRIPTIONS?.LIST || item.path === ROUTES.WEBHOOKS_ADMIN?.LIST}
                 className={({ isActive }) =>
                   cn(
                     'flex items-center gap-2.5 rounded-lg h-10 px-3 text-sm transition-colors duration-150 cursor-pointer',

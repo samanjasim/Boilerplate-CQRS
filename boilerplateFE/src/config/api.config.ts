@@ -104,6 +104,9 @@ export const API_ENDPOINTS = {
     DELIVERIES: (id: string) => `/Webhooks/${id}/deliveries`,
     TEST: (id: string) => `/Webhooks/${id}/test`,
     EVENTS: '/Webhooks/events',
+    ADMIN: '/Webhooks/admin',
+    ADMIN_STATS: '/Webhooks/admin/stats',
+    ADMIN_DELIVERIES: (endpointId: string) => `/Webhooks/admin/${endpointId}/deliveries`,
   },
   BILLING: {
     PLANS: '/Billing/plans',

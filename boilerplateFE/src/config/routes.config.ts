@@ -72,6 +72,11 @@ export const ROUTES = {
 
   // Webhooks
   WEBHOOKS: '/webhooks',
+  WEBHOOKS_ADMIN: {
+    LIST: '/webhooks/admin',
+    DETAIL: '/webhooks/admin/:endpointId',
+    getDetail: (endpointId: string) => `/webhooks/admin/${endpointId}`,
+  },
 
   // Feature Flags
   FEATURE_FLAGS: {

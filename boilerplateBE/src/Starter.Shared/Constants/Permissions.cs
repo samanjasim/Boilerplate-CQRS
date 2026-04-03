@@ -37,7 +37,7 @@ namespace Starter.Shared.Constants;
 /// | Files      |  ✓   |      |        |        |   ✓    | Upload, Manage           |
 /// | ApiKeys    |  ✓   |      |   ✓    |   ✓    |   ✓    | ViewPlatform, CreatePlatform, UpdatePlatform, DeletePlatform, EmergencyRevoke |
 /// | Billing    |      |      |        |        |        | View, Manage, ViewPlans, ManagePlans, ManageTenantSubscriptions              |
-/// | Webhooks   |  ✓   |      |   ✓    |   ✓    |   ✓    |                          |
+/// | Webhooks   |  ✓   |      |   ✓    |   ✓    |   ✓    | ViewPlatform             |
 /// </summary>
 public static class Permissions
 {
@@ -124,6 +124,7 @@ public static class Permissions
         public const string Create = "Webhooks.Create";
         public const string Update = "Webhooks.Update";
         public const string Delete = "Webhooks.Delete";
+        public const string ViewPlatform = "Webhooks.ViewPlatform";
     }
 
     // ─── Tenants ─────────────────────────────────────
@@ -230,5 +231,6 @@ public static class Permissions
         yield return (Webhooks.Create, "Create webhook endpoints", "Webhooks");
         yield return (Webhooks.Update, "Update webhook endpoints", "Webhooks");
         yield return (Webhooks.Delete, "Delete webhook endpoints", "Webhooks");
+        yield return (Webhooks.ViewPlatform, "View all webhook endpoints across tenants", "Webhooks");
     }
 }

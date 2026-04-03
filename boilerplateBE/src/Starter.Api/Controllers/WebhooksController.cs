@@ -6,7 +6,10 @@ using Starter.Application.Features.Webhooks.Commands.DeleteWebhookEndpoint;
 using Starter.Application.Features.Webhooks.Commands.RegenerateWebhookSecret;
 using Starter.Application.Features.Webhooks.Commands.TestWebhookEndpoint;
 using Starter.Application.Features.Webhooks.Commands.UpdateWebhookEndpoint;
+using Starter.Application.Features.Webhooks.Queries.GetAllWebhookEndpoints;
+using Starter.Application.Features.Webhooks.Queries.GetWebhookAdminStats;
 using Starter.Application.Features.Webhooks.Queries.GetWebhookDeliveries;
+using Starter.Application.Features.Webhooks.Queries.GetWebhookDeliveriesAdmin;
 using Starter.Application.Features.Webhooks.Queries.GetWebhookEndpointById;
 using Starter.Application.Features.Webhooks.Queries.GetWebhookEndpoints;
 using Starter.Application.Features.Webhooks.Queries.GetWebhookEventTypes;
@@ -20,6 +23,49 @@ namespace Starter.Api.Controllers;
 /// </summary>
 public sealed class WebhooksController(ISender mediator) : BaseApiController(mediator)
 {
+    /// <summary>
+    /// Get all webhook endpoints across all tenants with delivery stats (Platform Admin).
+    /// </summary>
+    [HttpGet("admin")]
+    [Authorize(Policy = Permissions.Webhooks.ViewPlatform)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAllEndpointsAdmin(
+        [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20,
+        [FromQuery] string? searchTerm = null, CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(new GetAllWebhookEndpointsQuery(pageNumber, pageSize, searchTerm), ct);
+        return HandlePagedResult(result);
+    }
+
+    /// <summary>
+    /// Get aggregate webhook statistics across all tenants (Platform Admin).
+    /// </summary>
+    [HttpGet("admin/stats")]
+    [Authorize(Policy = Permissions.Webhooks.ViewPlatform)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAdminStats(CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(new GetWebhookAdminStatsQuery(), ct);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Get delivery history for any endpoint across tenants (Platform Admin).
+    /// </summary>
+    [HttpGet("admin/{endpointId:guid}/deliveries")]
+    [Authorize(Policy = Permissions.Webhooks.ViewPlatform)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetDeliveriesAdmin(
+        Guid endpointId,
+        [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20,
+        [FromQuery] WebhookDeliveryStatus? status = null,
+        CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(new GetWebhookDeliveriesAdminQuery(endpointId, pageNumber, pageSize, status), ct);
+        return HandlePagedResult(result);
+    }
+
     /// <summary>
     /// Get all webhook endpoints for the current tenant.
     /// </summary>

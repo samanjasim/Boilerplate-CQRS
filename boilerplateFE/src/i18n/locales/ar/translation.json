@@ -128,6 +128,7 @@
     "billing": "الفوترة",
     "billingPlans": "خطط الاشتراك",
     "subscriptions": "الاشتراكات",
+    "webhooksAdmin": "الويب هوكس",
     "collapse": "طي"
   },
   "header": {
@@ -741,7 +742,23 @@
     "errorMessage": "رسالة الخطأ",
     "statusSuccess": "نجاح",
     "statusFailed": "فشل",
-    "statusPending": "قيد الانتظار"
+    "statusPending": "قيد الانتظار",
+    "adminTitle": "نظرة عامة على الويب هوكس",
+    "adminSubtitle": "مراقبة جميع نقاط نهاية الويب هوك وتسليمات المستأجرين",
+    "totalEndpoints": "إجمالي نقاط النهاية",
+    "activeEndpoints": "نشط",
+    "deliveries24h": "التسليمات (24 ساعة)",
+    "successRate": "معدل النجاح",
+    "failed24h": "الفاشلة (24 ساعة)",
+    "tenantColumn": "المستأجر",
+    "urlColumn": "الرابط",
+    "eventsColumn": "الأحداث",
+    "deliveriesColumn": "تسليمات 24 ساعة",
+    "successRateColumn": "معدل النجاح",
+    "lastDeliveryColumn": "آخر تسليم",
+    "lastStatusColumn": "آخر حالة",
+    "never": "أبداً",
+    "endpointDetail": "تفاصيل نقطة النهاية"
   },
   "billing": {
     "title": "الفوترة",

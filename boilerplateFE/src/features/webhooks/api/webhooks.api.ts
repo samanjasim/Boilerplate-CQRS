@@ -4,6 +4,7 @@ import type {
   WebhookEndpoint,
   WebhookDelivery,
   WebhookEventType,
+  WebhookAdminStats,
   CreateWebhookData,
   UpdateWebhookData,
   CreateWebhookResponse,
@@ -36,4 +37,14 @@ export const webhooksApi = {
 
   getEventTypes: () =>
     apiClient.get<{ data: WebhookEventType[] }>(API_ENDPOINTS.WEBHOOKS.EVENTS).then(r => r.data.data),
+
+  // Platform admin
+  getAdminEndpoints: (params?: Record<string, unknown>) =>
+    apiClient.get(API_ENDPOINTS.WEBHOOKS.ADMIN, { params }).then(r => r.data),
+
+  getAdminStats: () =>
+    apiClient.get<{ data: WebhookAdminStats }>(API_ENDPOINTS.WEBHOOKS.ADMIN_STATS).then(r => r.data.data),
+
+  getAdminDeliveries: (endpointId: string, params?: Record<string, unknown>) =>
+    apiClient.get(API_ENDPOINTS.WEBHOOKS.ADMIN_DELIVERIES(endpointId), { params }).then(r => r.data),
 };

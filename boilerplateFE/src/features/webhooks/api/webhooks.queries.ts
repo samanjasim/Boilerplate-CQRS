@@ -84,3 +84,27 @@ export function useTestWebhook() {
     // onError is handled by the global axios error interceptor (error.interceptor.ts)
   });
 }
+
+// ── Admin Queries ─────────────────────────────────────────────────────────
+
+export function useWebhookAdminEndpoints(params?: Record<string, unknown>) {
+  return useQuery({
+    queryKey: ['webhooks', 'admin', 'endpoints', params],
+    queryFn: () => webhooksApi.getAdminEndpoints(params),
+  });
+}
+
+export function useWebhookAdminStats() {
+  return useQuery({
+    queryKey: ['webhooks', 'admin', 'stats'],
+    queryFn: () => webhooksApi.getAdminStats(),
+  });
+}
+
+export function useWebhookAdminDeliveries(endpointId: string, params?: Record<string, unknown>) {
+  return useQuery({
+    queryKey: ['webhooks', 'admin', 'deliveries', endpointId, params],
+    queryFn: () => webhooksApi.getAdminDeliveries(endpointId, params),
+    enabled: !!endpointId,
+  });
+}
