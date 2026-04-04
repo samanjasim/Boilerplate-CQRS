@@ -1,6 +1,7 @@
 using Amazon.S3;
 using QuestPDF.Infrastructure;
 using Starter.Application.Common.Interfaces;
+using Starter.Application.Features.ImportExport.Definitions;
 using Starter.Infrastructure.Email.Templates;
 using Starter.Infrastructure.Consumers;
 using Starter.Infrastructure.Persistence;
@@ -34,6 +35,7 @@ public static class DependencyInjection
             .AddRealtimeServices(configuration)
             .AddStorageServices(configuration)
             .AddExportServices()
+            .AddImportExportServices()
             .AddHealthChecks(configuration);
 
         return services;
@@ -266,6 +268,24 @@ public static class DependencyInjection
     private static IServiceCollection AddExportServices(this IServiceCollection services)
     {
         services.AddScoped<IExportService, ExportService>();
+
+        return services;
+    }
+
+    private static IServiceCollection AddImportExportServices(this IServiceCollection services)
+    {
+        services.AddSingleton<IImportExportRegistry>(sp =>
+        {
+            var registry = new ImportExportRegistry();
+            registry.Register(UserImportExportDefinition.Create());
+            registry.Register(RoleImportExportDefinition.Create());
+            return registry;
+        });
+
+        services.AddScoped<UserExportDataProvider>();
+        services.AddScoped<UserImportRowProcessor>();
+        services.AddScoped<RoleExportDataProvider>();
+        services.AddScoped<RoleImportRowProcessor>();
 
         return services;
     }
