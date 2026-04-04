@@ -1,58 +1,12 @@
 import { useTranslation } from 'react-i18next';
 import { Download } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Spinner } from '@/components/ui/spinner';
-import { importExportApi } from '../api';
-import { toast } from 'sonner';
+import { StatusBadge } from '../utils/badges';
+import { downloadImportErrors } from '../utils/download';
 import type { ImportJob } from '@/types';
 
 interface ImportProgressCardProps {
   job: ImportJob;
-}
-
-function StatusBadge({ status }: { status: ImportJob['status'] }) {
-  const { t } = useTranslation();
-
-  switch (status) {
-    case 'Pending':
-      return (
-        <Badge variant="secondary" className="gap-1">
-          <Spinner size="sm" className="h-3 w-3" />
-          {t('importExport.pending', 'Pending')}
-        </Badge>
-      );
-    case 'Validating':
-      return (
-        <Badge variant="default" className="gap-1">
-          <Spinner size="sm" className="h-3 w-3" />
-          {t('importExport.validating', 'Validating')}
-        </Badge>
-      );
-    case 'Processing':
-      return (
-        <Badge variant="default" className="gap-1">
-          <Spinner size="sm" className="h-3 w-3" />
-          {t('importExport.processing', 'Processing')}
-        </Badge>
-      );
-    case 'Completed':
-      return (
-        <Badge variant="outline" className="border-green-500 text-green-600">
-          {t('importExport.completed', 'Completed')}
-        </Badge>
-      );
-    case 'PartialSuccess':
-      return (
-        <Badge variant="outline" className="border-amber-500 text-amber-600">
-          {t('importExport.partialSuccess', 'Partial Success')}
-        </Badge>
-      );
-    case 'Failed':
-      return <Badge variant="destructive">{t('importExport.failed')}</Badge>;
-    default:
-      return <Badge variant="secondary">{status}</Badge>;
-  }
 }
 
 export function ImportProgressCard({ job }: ImportProgressCardProps) {
@@ -62,19 +16,8 @@ export function ImportProgressCard({ job }: ImportProgressCardProps) {
   const progressPct =
     job.totalRows > 0 ? Math.round((job.processedRows / job.totalRows) * 100) : 0;
 
-  const handleDownloadErrors = async () => {
-    try {
-      const url = await importExportApi.getImportErrorUrl(job.id);
-      const link = document.createElement('a');
-      link.href = url;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch {
-      toast.error(t('common.somethingWentWrong'));
-    }
+  const handleDownloadErrors = () => {
+    downloadImportErrors(job.id, t('common.somethingWentWrong'));
   };
 
   return (
@@ -85,7 +28,7 @@ export function ImportProgressCard({ job }: ImportProgressCardProps) {
           <p className="text-sm font-medium text-foreground">{job.entityType}</p>
           <p className="text-xs text-muted-foreground truncate max-w-xs">{job.fileName}</p>
         </div>
-        <StatusBadge status={job.status} />
+        <StatusBadge job={job} />
       </div>
 
       {/* Progress bar */}

@@ -45,18 +45,26 @@ public sealed class UserExportDataProvider(IApplicationDbContext context) : IExp
 
         var rows = users.Select(u => new[]
         {
-            u.Email.Value,
-            u.FullName.FirstName,
-            u.FullName.LastName,
-            u.Username,
-            u.Status.Name,
-            string.Join(", ", u.UserRoles
+            SanitizeCsvValue(u.Email.Value),
+            SanitizeCsvValue(u.FullName.FirstName),
+            SanitizeCsvValue(u.FullName.LastName),
+            SanitizeCsvValue(u.Username),
+            SanitizeCsvValue(u.Status.Name),
+            SanitizeCsvValue(string.Join(", ", u.UserRoles
                 .Where(ur => ur.Role is not null)
-                .Select(ur => ur.Role!.Name)),
+                .Select(ur => ur.Role!.Name))),
             u.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")
         }).ToList();
 
         return new ExportDataResult(headers, rows, rows.Count);
+    }
+
+    private static string SanitizeCsvValue(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return value ?? string.Empty;
+        if (value.Length > 0 && "=@+-\t\r".Contains(value[0]))
+            return "'" + value;
+        return value;
     }
 
     private static Dictionary<string, string> ParseFilters(string? filtersJson)

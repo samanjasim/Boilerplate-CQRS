@@ -34,12 +34,20 @@ public sealed class RoleExportDataProvider(IApplicationDbContext context) : IExp
 
         var rows = roles.Select(r => new[]
         {
-            r.Name,
-            r.Description ?? string.Empty,
+            SanitizeCsvValue(r.Name),
+            SanitizeCsvValue(r.Description),
             r.IsActive ? "true" : "false"
         }).ToList();
 
         return new ExportDataResult(headers, rows, rows.Count);
+    }
+
+    private static string SanitizeCsvValue(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return value ?? string.Empty;
+        if (value.Length > 0 && "=@+-\t\r".Contains(value[0]))
+            return "'" + value;
+        return value;
     }
 
     private static Dictionary<string, string> ParseFilters(string? filtersJson)

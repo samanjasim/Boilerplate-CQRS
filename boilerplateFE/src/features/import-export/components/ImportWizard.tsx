@@ -288,6 +288,13 @@ export function ImportWizard({ open, onOpenChange }: ImportWizardProps) {
                 <Spinner size="lg" />
                 <p className="text-sm text-muted-foreground">{t('importExport.preview')}...</p>
               </div>
+            ) : previewMutation.isError ? (
+              <div className="text-center py-8 space-y-3">
+                <p className="text-destructive">{t('common.errorOccurred')}</p>
+                <Button variant="outline" onClick={() => setStep('upload')}>
+                  {t('common.goBack', 'Go Back')}
+                </Button>
+              </div>
             ) : preview ? (
               <>
                 {/* Row count */}

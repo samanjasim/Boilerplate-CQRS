@@ -11,8 +11,6 @@ public sealed class UserImportRowProcessor(
     IApplicationDbContext context,
     IPasswordService passwordService) : IImportRowProcessor
 {
-    private const string DefaultPassword = "Import@123456";
-
     public async Task<ImportRowResult> ProcessRowAsync(
         Dictionary<string, string> row,
         ConflictMode conflictMode,
@@ -59,8 +57,9 @@ public sealed class UserImportRowProcessor(
             }
         }
 
-        // Create new user with default password
-        var passwordHash = await passwordService.HashPasswordAsync(DefaultPassword);
+        // Create new user with a random password (forces reset on first login)
+        var randomPassword = $"Imp@{Guid.NewGuid():N}"[..16];
+        var passwordHash = await passwordService.HashPasswordAsync(randomPassword);
         var newUser = User.Create(username.Trim(), emailValue, fullName, passwordHash, tenantId);
 
         context.Users.Add(newUser);

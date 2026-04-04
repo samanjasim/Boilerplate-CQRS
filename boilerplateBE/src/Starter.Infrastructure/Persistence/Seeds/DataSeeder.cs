@@ -332,6 +332,7 @@ public static class DataSeeder
             FeatureFlag.Create("webhooks.max_count", "Max Webhooks", "Maximum webhook endpoints per tenant", "0", FlagValueType.Integer, FlagCategory.System, true),
             FeatureFlag.Create("imports.enabled", "Imports Enabled", "Enable data imports", "false", FlagValueType.Boolean, FlagCategory.System, false),
             FeatureFlag.Create("imports.max_rows", "Max Import Rows", "Maximum rows per import", "0", FlagValueType.Integer, FlagCategory.System, false),
+            FeatureFlag.Create("exports.enabled", "Exports Enabled", "Enable data exports", "true", FlagValueType.Boolean, FlagCategory.System, true),
         };
 
         context.FeatureFlags.AddRange(flags);
@@ -361,6 +362,7 @@ public static class DataSeeder
             new { key = "webhooks.max_count", value = "0", translations = new { en = new { label = "No webhooks" }, ar = new { label = "لا ويب هوك" } } },
             new { key = "imports.enabled", value = "false", translations = new { en = new { label = "Imports disabled" }, ar = new { label = "الاستيراد معطل" } } },
             new { key = "imports.max_rows", value = "0", translations = new { en = new { label = "No imports" }, ar = new { label = "لا استيراد" } } },
+            new { key = "exports.enabled", value = "false", translations = new { en = new { label = "Exports disabled" }, ar = new { label = "التصدير معطل" } } },
         });
 
         var starterFeatures = JsonSerializer.Serialize(new[]
@@ -379,6 +381,7 @@ public static class DataSeeder
             new { key = "webhooks.max_count", value = "3", translations = new { en = new { label = "Up to 3 webhooks" }, ar = new { label = "حتى 3 ويب هوك" } } },
             new { key = "imports.enabled", value = "true", translations = new { en = new { label = "Imports enabled" }, ar = new { label = "الاستيراد مفعل" } } },
             new { key = "imports.max_rows", value = "500", translations = new { en = new { label = "Up to 500 rows per import" }, ar = new { label = "حتى 500 صف لكل استيراد" } } },
+            new { key = "exports.enabled", value = "true", translations = new { en = new { label = "Data exports" }, ar = new { label = "تصدير البيانات" } } },
         });
 
         var proFeatures = JsonSerializer.Serialize(new[]
@@ -397,6 +400,7 @@ public static class DataSeeder
             new { key = "webhooks.max_count", value = "10", translations = new { en = new { label = "Up to 10 webhooks" }, ar = new { label = "حتى 10 ويب هوك" } } },
             new { key = "imports.enabled", value = "true", translations = new { en = new { label = "Imports enabled" }, ar = new { label = "الاستيراد مفعل" } } },
             new { key = "imports.max_rows", value = "5000", translations = new { en = new { label = "Up to 5,000 rows per import" }, ar = new { label = "حتى 5,000 صف لكل استيراد" } } },
+            new { key = "exports.enabled", value = "true", translations = new { en = new { label = "Data exports" }, ar = new { label = "تصدير البيانات" } } },
         });
 
         var enterpriseFeatures = JsonSerializer.Serialize(new[]
@@ -415,6 +419,7 @@ public static class DataSeeder
             new { key = "webhooks.max_count", value = "25", translations = new { en = new { label = "Up to 25 webhooks" }, ar = new { label = "حتى 25 ويب هوك" } } },
             new { key = "imports.enabled", value = "true", translations = new { en = new { label = "Imports enabled" }, ar = new { label = "الاستيراد مفعل" } } },
             new { key = "imports.max_rows", value = "50000", translations = new { en = new { label = "Up to 50,000 rows per import" }, ar = new { label = "حتى 50,000 صف لكل استيراد" } } },
+            new { key = "exports.enabled", value = "true", translations = new { en = new { label = "Data exports" }, ar = new { label = "تصدير البيانات" } } },
         });
 
         var plans = new[]

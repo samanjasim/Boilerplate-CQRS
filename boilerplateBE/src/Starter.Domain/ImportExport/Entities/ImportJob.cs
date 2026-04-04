@@ -67,6 +67,12 @@ public sealed class ImportJob : AggregateRoot
             requestedBy);
     }
 
+    public void SetTotalRows(int count)
+    {
+        TotalRows = count;
+        ModifiedAt = DateTime.UtcNow;
+    }
+
     public void MarkValidating()
     {
         Status = ImportJobStatus.Validating;

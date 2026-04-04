@@ -12,60 +12,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { EmptyState, ConfirmDialog } from '@/components/common';
+import { EmptyState, ConfirmDialog, Pagination, getPersistedPageSize } from '@/components/common';
 import { ImportWizard } from './ImportWizard';
 import { useImportJobs, useDeleteImportJob } from '../api';
-import { importExportApi } from '../api';
-import { toast } from 'sonner';
+import { StatusBadge } from '../utils/badges';
+import { downloadImportErrors } from '../utils/download';
 import { formatDistanceToNow } from 'date-fns';
 import type { ImportJob } from '@/types';
-
-function StatusBadge({ job }: { job: ImportJob }) {
-  const { t } = useTranslation();
-  const { status, processedRows, totalRows } = job;
-
-  switch (status) {
-    case 'Pending':
-      return (
-        <Badge variant="secondary" className="gap-1">
-          <Spinner size="sm" className="h-3 w-3" />
-          {t('importExport.pending', 'Pending')}
-        </Badge>
-      );
-    case 'Validating':
-      return (
-        <Badge variant="default" className="gap-1">
-          <Spinner size="sm" className="h-3 w-3" />
-          {t('importExport.validating', 'Validating')}
-        </Badge>
-      );
-    case 'Processing': {
-      const pct = totalRows > 0 ? Math.round((processedRows / totalRows) * 100) : 0;
-      return (
-        <Badge variant="default" className="gap-1">
-          <Spinner size="sm" className="h-3 w-3" />
-          {t('importExport.processing', 'Processing')} {pct}%
-        </Badge>
-      );
-    }
-    case 'Completed':
-      return (
-        <Badge variant="outline" className="border-green-500 text-green-600">
-          {t('importExport.completed', 'Completed')}
-        </Badge>
-      );
-    case 'PartialSuccess':
-      return (
-        <Badge variant="outline" className="border-amber-500 text-amber-600">
-          {t('importExport.partialSuccess', 'Partial Success')}
-        </Badge>
-      );
-    case 'Failed':
-      return <Badge variant="destructive">{t('importExport.failed')}</Badge>;
-    default:
-      return <Badge variant="secondary">{status}</Badge>;
-  }
-}
 
 function ProgressCell({ job }: { job: ImportJob }) {
   const isActive = ['Pending', 'Validating', 'Processing'].includes(job.status);
@@ -131,11 +84,14 @@ export function ImportsTab() {
   const { t } = useTranslation();
   const [wizardOpen, setWizardOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ImportJob | null>(null);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [pageSize, setPageSize] = useState(getPersistedPageSize);
 
-  const { data, isLoading, isError } = useImportJobs();
+  const { data, isLoading, isError } = useImportJobs({ pageNumber, pageSize });
   const deleteMutation = useDeleteImportJob();
 
   const jobs: ImportJob[] = data?.data ?? [];
+  const pagination = data?.pagination;
 
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
@@ -143,19 +99,8 @@ export function ImportsTab() {
     setDeleteTarget(null);
   };
 
-  const handleDownloadErrors = async (job: ImportJob) => {
-    try {
-      const url = await importExportApi.getImportErrorUrl(job.id);
-      const link = document.createElement('a');
-      link.href = url;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch {
-      toast.error(t('common.somethingWentWrong'));
-    }
+  const handleDownloadErrors = (job: ImportJob) => {
+    downloadImportErrors(job.id, t('common.somethingWentWrong'));
   };
 
   if (isError) {
@@ -270,6 +215,15 @@ export function ImportsTab() {
             ))}
           </TableBody>
         </Table>
+      )}
+
+      {/* Pagination */}
+      {pagination && (
+        <Pagination
+          pagination={pagination}
+          onPageChange={setPageNumber}
+          onPageSizeChange={(size) => { setPageSize(size); setPageNumber(1); }}
+        />
       )}
 
       {/* Wizard */}

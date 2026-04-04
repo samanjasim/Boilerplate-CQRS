@@ -33,7 +33,7 @@ API (Controllers) → Application (MediatR CQRS) → Domain (Entities) ← Infra
 
 ## Feature Inventory
 
-### Backend (14 features, 15 controllers)
+### Backend (15 features, 16 controllers)
 
 | Feature | Key Operations | Controller | Domain Entity |
 |---------|---------------|------------|---------------|
@@ -51,8 +51,9 @@ API (Controllers) → Application (MediatR CQRS) → Domain (Entities) ← Infra
 | Feature Flags | CRUD, Tenant Overrides, Opt-Out, Enforcement | FeatureFlagsController | FeatureFlag, TenantFeatureFlag |
 | Billing | Plans CRUD, Subscriptions, Usage, Payments, Change Plan | BillingController | SubscriptionPlan, TenantSubscription, PaymentRecord |
 | Webhooks | CRUD, Test, Delivery Log, Secret Regeneration, Event Handlers | WebhooksController | WebhookEndpoint, WebhookDelivery |
+| Import/Export | Import CSV, Export CSV/PDF, Templates, Preview, Async Processing | ImportExportController | ImportJob |
 
-### Frontend (16 feature modules)
+### Frontend (17 feature modules)
 
 | Feature | Pages | Key Hooks |
 |---------|-------|-----------|
@@ -72,6 +73,7 @@ API (Controllers) → Application (MediatR CQRS) → Domain (Entities) ← Infra
 | landing | LandingPage | — |
 | billing | BillingPage, BillingPlansPage, PricingPage, SubscriptionsPage, SubscriptionDetailPage | useSubscription, usePlans, useAllSubscriptions |
 | webhooks | WebhooksPage | useWebhookEndpoints, useWebhookDeliveries |
+| import-export | ImportExportPage | useImportJobs, useEntityTypes |
 
 ## Backend Development Patterns
 

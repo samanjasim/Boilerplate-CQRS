@@ -47,7 +47,7 @@ public sealed class ProcessImportConsumer(IServiceScopeFactory scopeFactory) : I
             {
                 job.MarkFailed($"Unknown entity type: {job.EntityType}");
                 await dbContext.SaveChangesAsync(ct);
-                await SendNotificationAsync(notificationService, job, "import_failed",
+                await SendNotificationAsync(notificationService, logger, job, "import_failed",
                     "Import Failed", $"Import failed: unknown entity type '{job.EntityType}'.", ct);
                 return;
             }
@@ -61,7 +61,7 @@ public sealed class ProcessImportConsumer(IServiceScopeFactory scopeFactory) : I
             {
                 job.MarkFailed("Source file not found.");
                 await dbContext.SaveChangesAsync(ct);
-                await SendNotificationAsync(notificationService, job, "import_failed",
+                await SendNotificationAsync(notificationService, logger, job, "import_failed",
                     "Import Failed", "Import failed: source file could not be found.", ct);
                 return;
             }
@@ -76,7 +76,7 @@ public sealed class ProcessImportConsumer(IServiceScopeFactory scopeFactory) : I
                 logger.LogError(ex, "Failed to download import file {StorageKey}", fileMetadata.StorageKey);
                 job.MarkFailed("Failed to download source file.");
                 await dbContext.SaveChangesAsync(ct);
-                await SendNotificationAsync(notificationService, job, "import_failed",
+                await SendNotificationAsync(notificationService, logger, job, "import_failed",
                     "Import Failed", "Import failed: could not download the source file.", ct);
                 return;
             }
@@ -92,7 +92,7 @@ public sealed class ProcessImportConsumer(IServiceScopeFactory scopeFactory) : I
                 {
                     job.MarkFailed("CSV file is empty or has no header row.");
                     await dbContext.SaveChangesAsync(ct);
-                    await SendNotificationAsync(notificationService, job, "import_failed",
+                    await SendNotificationAsync(notificationService, logger, job, "import_failed",
                         "Import Failed", "Import failed: CSV file is empty or has no header row.", ct);
                     return;
                 }
@@ -114,7 +114,7 @@ public sealed class ProcessImportConsumer(IServiceScopeFactory scopeFactory) : I
                     var errorMsg = $"Header mismatch: missing required columns: {string.Join(", ", missingColumns)}";
                     job.MarkFailed(errorMsg);
                     await dbContext.SaveChangesAsync(ct);
-                    await SendNotificationAsync(notificationService, job, "import_failed",
+                    await SendNotificationAsync(notificationService, logger, job, "import_failed",
                         "Import Failed", $"Import failed: {errorMsg}", ct);
                     return;
                 }
@@ -128,6 +128,7 @@ public sealed class ProcessImportConsumer(IServiceScopeFactory scopeFactory) : I
                 }
             }
 
+            job.SetTotalRows(totalRows);
             await dbContext.SaveChangesAsync(ct);
 
             // ── Processing phase ──────────────────────────────────────────
@@ -144,7 +145,7 @@ public sealed class ProcessImportConsumer(IServiceScopeFactory scopeFactory) : I
                 logger.LogError(ex, "Failed to re-download import file {StorageKey}", fileMetadata.StorageKey);
                 job.MarkFailed("Failed to download source file for processing.");
                 await dbContext.SaveChangesAsync(ct);
-                await SendNotificationAsync(notificationService, job, "import_failed",
+                await SendNotificationAsync(notificationService, logger, job, "import_failed",
                     "Import Failed", "Import failed: could not download the source file for processing.", ct);
                 return;
             }
@@ -153,7 +154,7 @@ public sealed class ProcessImportConsumer(IServiceScopeFactory scopeFactory) : I
             {
                 job.MarkFailed($"No import processor registered for entity type: {job.EntityType}");
                 await dbContext.SaveChangesAsync(ct);
-                await SendNotificationAsync(notificationService, job, "import_failed",
+                await SendNotificationAsync(notificationService, logger, job, "import_failed",
                     "Import Failed", $"Import failed: no processor found for '{job.EntityType}'.", ct);
                 return;
             }
@@ -250,14 +251,14 @@ public sealed class ProcessImportConsumer(IServiceScopeFactory scopeFactory) : I
             {
                 job.MarkFailed("No rows imported successfully.");
                 await dbContext.SaveChangesAsync(ct);
-                await SendNotificationAsync(notificationService, job, "import_failed",
+                await SendNotificationAsync(notificationService, logger, job, "import_failed",
                     "Import Failed", $"Import completed but no rows were imported successfully. {failed} failed, {skipped} skipped.", ct);
             }
             else if (failed == 0 && skipped == 0)
             {
                 job.MarkCompleted(resultsFileId);
                 await dbContext.SaveChangesAsync(ct);
-                await SendNotificationAsync(notificationService, job, "import_completed",
+                await SendNotificationAsync(notificationService, logger, job, "import_completed",
                     "Import Completed",
                     $"Your {job.EntityType} import completed successfully. {created} created, {updated} updated.", ct);
             }
@@ -265,7 +266,7 @@ public sealed class ProcessImportConsumer(IServiceScopeFactory scopeFactory) : I
             {
                 job.MarkPartialSuccess(resultsFileId ?? Guid.Empty);
                 await dbContext.SaveChangesAsync(ct);
-                await SendNotificationAsync(notificationService, job, "import_partial",
+                await SendNotificationAsync(notificationService, logger, job, "import_partial",
                     "Import Partially Completed",
                     $"Your {job.EntityType} import completed with some issues. {created} created, {updated} updated, {skipped} skipped, {failed} failed.", ct);
             }
@@ -283,7 +284,7 @@ public sealed class ProcessImportConsumer(IServiceScopeFactory scopeFactory) : I
                 var msg = ex.Message.Length > 2000 ? ex.Message[..2000] : ex.Message;
                 job.MarkFailed(msg);
                 await dbContext.SaveChangesAsync(ct);
-                await SendNotificationAsync(notificationService, job, "import_failed",
+                await SendNotificationAsync(notificationService, logger, job, "import_failed",
                     "Import Failed", "An unexpected error occurred during import. Please try again.", ct);
             }
             catch (Exception innerEx)
@@ -295,6 +296,7 @@ public sealed class ProcessImportConsumer(IServiceScopeFactory scopeFactory) : I
 
     private static async Task SendNotificationAsync(
         INotificationService notificationService,
+        ILogger logger,
         Starter.Domain.ImportExport.Entities.ImportJob job,
         string type, string title, string message,
         CancellationToken ct)
@@ -310,9 +312,9 @@ public sealed class ProcessImportConsumer(IServiceScopeFactory scopeFactory) : I
                 JsonSerializer.Serialize(new { importJobId = job.Id }),
                 ct);
         }
-        catch
+        catch (Exception ex)
         {
-            // Best-effort notification — swallow errors
+            logger.LogWarning(ex, "Failed to send import notification for job {ImportJobId}", job.Id);
         }
     }
 
