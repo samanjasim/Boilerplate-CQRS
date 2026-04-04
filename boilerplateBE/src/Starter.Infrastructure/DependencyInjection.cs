@@ -109,6 +109,7 @@ public static class DependencyInjection
 
             busConfigurator.AddConsumer<GenerateReportConsumer>();
             busConfigurator.AddConsumer<DeliverWebhookConsumer>();
+            busConfigurator.AddConsumer<ProcessImportConsumer>();
 
             if (!rabbitMqEnabled)
             {
@@ -142,6 +143,12 @@ public static class DependencyInjection
                         TimeSpan.FromHours(2),
                         TimeSpan.FromHours(24)));
                     e.ConfigureConsumer<DeliverWebhookConsumer>(context);
+                });
+
+                cfg.ReceiveEndpoint("process-import", e =>
+                {
+                    e.UseMessageRetry(r => r.Interval(1, TimeSpan.FromSeconds(30)));
+                    e.ConfigureConsumer<ProcessImportConsumer>(context);
                 });
 
                 cfg.ConfigureEndpoints(context);
