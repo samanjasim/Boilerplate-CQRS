@@ -133,4 +133,13 @@ export const queryKeys = {
       tenant: (tenantId: string, params?: Record<string, unknown>) => ['billing', 'payments', 'tenant', tenantId, params] as const,
     },
   },
+  importExport: {
+    all: ['importExport'] as const,
+    types: () => ['importExport', 'types'] as const,
+    imports: {
+      all: ['importExport', 'imports'] as const,
+      list: (params?: Record<string, unknown>) => ['importExport', 'imports', 'list', params] as const,
+      detail: (id: string) => ['importExport', 'imports', 'detail', id] as const,
+    },
+  },
 } as const;
