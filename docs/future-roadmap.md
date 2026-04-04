@@ -10,7 +10,7 @@ Features planned for future implementation. The architecture supports all of the
 | 2 | ~~Invitation System Overhaul~~ | ✅ Done | Feature Flags | — |
 | 3 | ~~Billing & Subscriptions~~ | ✅ Done | Feature Flags | `docs/superpowers/specs/2026-03-31-billing-subscriptions-design.md` |
 | 4 | **Tenant Self-Service Portal** | 📋 Spec Ready | Billing, Feature Flags | `docs/superpowers/specs/2026-03-31-tenant-self-service-design.md` |
-| 5 | Webhooks | ⬜ Planned | — | — |
+| 5 | ~~Webhooks~~ | ✅ Done | — | `docs/superpowers/specs/2026-04-02-webhooks-design.md` |
 | 6 | Analytics Dashboard | ⬜ Planned | — | — |
 | 7 | Import/Export | ⬜ Planned | — | — |
 
@@ -39,7 +39,7 @@ Dedicated tenant admin experience — onboarding wizard, organization page, usag
 - Tenant self-service portal — **Spec ready** (onboarding wizard, organization page, usage + limits, tenant-scoped dashboard)
 
 ## Integration & Extensibility
-- Webhook system for external integrations (register URLs, HMAC signatures, retry)
+- ~~Webhook system for external integrations~~ — **Implemented** (register URLs, HMAC-SHA256 signing, MassTransit delivery with retry, delivery log, event handlers, admin overview, feature-flag gated)
 - ~~API key management for service-to-service auth~~ — **Implemented** (tenant + platform keys, scoped permissions, emergency revoke)
 - ~~Push notifications~~ — **Dropped** (not needed for SaaS boilerplate)
 
@@ -79,3 +79,4 @@ These were on the roadmap and are now part of the boilerplate:
 - ~~Billing & Subscriptions~~ — Implemented with 4-tier plans, feature flag presets, Redis usage tracking, price grandfathering, mock billing provider
 - ~~Invitation system overhaul~~ — Implemented with multi-tenant targeting, permission hierarchy, default registration roles, feature-flag-gated custom roles
 - ~~Registration security~~ — Public /register disabled, /register-tenant auto-assigns Free plan, tenant owner role configurable
+- ~~Webhooks~~ — Implemented with CRUD, HMAC-SHA256 payload signing, MassTransit delivery with retry (1m/5m/30m/2h/24h), delivery log with status tracking, 8 event types, admin overview with 24h stats, feature-flag gated per plan, secret regeneration, cleanup job

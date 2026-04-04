@@ -161,8 +161,12 @@ The `data` field varies by event type. Each event handler builds its own data ob
 | PUT | `/api/v1/webhooks/{id}` | Webhooks.Update | Update endpoint (URL, events, active) |
 | DELETE | `/api/v1/webhooks/{id}` | Webhooks.Delete | Delete endpoint + delivery log |
 | GET | `/api/v1/webhooks/{id}/deliveries` | Webhooks.View | Delivery log (paginated) |
-| POST | `/api/v1/webhooks/{id}/test` | Webhooks.Create | Send test ping event |
+| POST | `/api/v1/webhooks/{id}/test` | Webhooks.View | Send test ping event |
+| POST | `/api/v1/webhooks/{id}/regenerate-secret` | Webhooks.Update | Generate new HMAC signing secret |
 | GET | `/api/v1/webhooks/events` | Webhooks.View | List available event types |
+| GET | `/api/v1/webhooks/admin` | Webhooks.ViewPlatform | List all endpoints across tenants (SuperAdmin) |
+| GET | `/api/v1/webhooks/admin/stats` | Webhooks.ViewPlatform | Aggregate delivery stats (SuperAdmin) |
+| GET | `/api/v1/webhooks/admin/{id}/deliveries` | Webhooks.ViewPlatform | Cross-tenant delivery log (SuperAdmin) |
 
 ### Create Endpoint Request
 
