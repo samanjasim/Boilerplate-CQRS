@@ -9,7 +9,6 @@ import {
   ClipboardList,
   Building,
   FolderOpen,
-  FileText,
   Settings2,
   KeyRound,
   ToggleRight,
@@ -17,6 +16,7 @@ import {
   ReceiptText,
   ListChecks,
   Webhook,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore, useAuthStore, selectSidebarCollapsed, selectUser } from '@/stores';
@@ -54,8 +54,8 @@ export function Sidebar() {
     ...(hasPermission(PERMISSIONS.Files.View)
       ? [{ label: t('nav.files'), icon: FolderOpen, path: ROUTES.FILES.LIST }]
       : []),
-    ...(hasPermission(PERMISSIONS.System.ExportData)
-      ? [{ label: t('nav.reports'), icon: FileText, path: ROUTES.REPORTS.LIST }]
+    ...(hasPermission(PERMISSIONS.System.ExportData) || hasPermission(PERMISSIONS.System.ImportData)
+      ? [{ label: t('nav.importExport'), icon: ArrowLeftRight, path: ROUTES.IMPORT_EXPORT }]
       : []),
     ...(hasPermission(PERMISSIONS.System.ViewAuditLogs)
       ? [{ label: t('nav.auditLogs'), icon: ClipboardList, path: ROUTES.AUDIT_LOGS.LIST }]

@@ -83,6 +83,9 @@ export const ROUTES = {
     LIST: '/feature-flags',
   },
 
+  // Import / Export
+  IMPORT_EXPORT: '/import-export',
+
   // Billing
   BILLING: '/billing',
   BILLING_PLANS: '/billing/plans',

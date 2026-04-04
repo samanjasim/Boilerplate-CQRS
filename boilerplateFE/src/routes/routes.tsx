@@ -41,6 +41,7 @@ const BillingPlansPage = lazy(() => import('@/features/billing/pages/BillingPlan
 const PricingPage = lazy(() => import('@/features/billing/pages/PricingPage'));
 const SubscriptionsPage = lazy(() => import('@/features/billing/pages/SubscriptionsPage'));
 const SubscriptionDetailPage = lazy(() => import('@/features/billing/pages/SubscriptionDetailPage'));
+const ImportExportPage = lazy(() => import('@/features/import-export/pages/ImportExportPage'));
 const NotFoundPage = lazy(() => import('@/routes/NotFoundPage'));
 
 export const routes: RouteObject[] = [
@@ -156,6 +157,19 @@ export const routes: RouteObject[] = [
             element: <PermissionGuard permission={PERMISSIONS.System.ExportData} />,
             children: [
               { path: ROUTES.REPORTS.LIST, element: <ReportsPage /> },
+            ],
+          },
+
+          // Import / Export
+          {
+            element: (
+              <PermissionGuard
+                permissions={[PERMISSIONS.System.ExportData, PERMISSIONS.System.ImportData]}
+                mode="any"
+              />
+            ),
+            children: [
+              { path: ROUTES.IMPORT_EXPORT, element: <ImportExportPage /> },
             ],
           },
 
