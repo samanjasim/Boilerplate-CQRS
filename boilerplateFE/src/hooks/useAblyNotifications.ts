@@ -43,6 +43,11 @@ export function useAblyNotifications(): { connected: boolean } {
             queryClient.invalidateQueries({ queryKey: queryKeys.reports.all });
           }
 
+          // If this is an import-related notification, also invalidate import jobs
+          if (['import_completed', 'import_partial', 'import_failed'].includes(data?.type)) {
+            queryClient.invalidateQueries({ queryKey: queryKeys.importExport.imports.all });
+          }
+
           // Show a toast for the new notification
           if (data?.title) {
             toast.info(data.title, {
