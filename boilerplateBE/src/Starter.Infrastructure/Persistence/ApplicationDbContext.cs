@@ -7,6 +7,7 @@ using Starter.Domain.Common;
 using Starter.Domain.FeatureFlags.Entities;
 using Starter.Domain.Identity.Entities;
 using Starter.Domain.Tenants.Entities;
+using Starter.Domain.ImportExport.Entities;
 using Starter.Domain.Webhooks.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -40,6 +41,7 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<PlanPriceHistory> PlanPriceHistories => Set<PlanPriceHistory>();
     public DbSet<WebhookEndpoint> WebhookEndpoints => Set<WebhookEndpoint>();
     public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
+    public DbSet<ImportJob> ImportJobs => Set<ImportJob>();
 
     // EF Core evaluates this per-query via the expression tree.
     // Must be a property (not a method) for EF to parameterize it.
@@ -110,6 +112,9 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
 
         modelBuilder.Entity<WebhookDelivery>().HasQueryFilter(d =>
             TenantId == null || d.TenantId == TenantId);
+
+        modelBuilder.Entity<ImportJob>().HasQueryFilter(j =>
+            TenantId == null || j.TenantId == TenantId);
     }
 
     public async Task<T> ExecuteInTransactionAsync<T>(

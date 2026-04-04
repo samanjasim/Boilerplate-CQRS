@@ -330,6 +330,8 @@ public static class DataSeeder
             FeatureFlag.Create("roles.tenant_custom_enabled", "Tenant Custom Roles", "Allow tenants to create custom roles", "false", FlagValueType.Boolean, FlagCategory.System, true),
             FeatureFlag.Create("webhooks.enabled", "Webhooks Enabled", "Enable webhook integrations", "false", FlagValueType.Boolean, FlagCategory.System, true),
             FeatureFlag.Create("webhooks.max_count", "Max Webhooks", "Maximum webhook endpoints per tenant", "0", FlagValueType.Integer, FlagCategory.System, true),
+            FeatureFlag.Create("imports.enabled", "Imports Enabled", "Enable data imports", "false", FlagValueType.Boolean, FlagCategory.System, false),
+            FeatureFlag.Create("imports.max_rows", "Max Import Rows", "Maximum rows per import", "0", FlagValueType.Integer, FlagCategory.System, false),
         };
 
         context.FeatureFlags.AddRange(flags);
@@ -357,6 +359,8 @@ public static class DataSeeder
             new { key = "users.invitations_enabled", value = "true", translations = new { en = new { label = "User invitations enabled" }, ar = new { label = "دعوات المستخدمين مفعلة" } } },
             new { key = "webhooks.enabled", value = "false", translations = new { en = new { label = "Webhooks disabled" }, ar = new { label = "الويب هوك معطل" } } },
             new { key = "webhooks.max_count", value = "0", translations = new { en = new { label = "No webhooks" }, ar = new { label = "لا ويب هوك" } } },
+            new { key = "imports.enabled", value = "false", translations = new { en = new { label = "Imports disabled" }, ar = new { label = "الاستيراد معطل" } } },
+            new { key = "imports.max_rows", value = "0", translations = new { en = new { label = "No imports" }, ar = new { label = "لا استيراد" } } },
         });
 
         var starterFeatures = JsonSerializer.Serialize(new[]
@@ -373,6 +377,8 @@ public static class DataSeeder
             new { key = "roles.tenant_custom_enabled", value = "true", translations = new { en = new { label = "Custom roles enabled" }, ar = new { label = "الأدوار المخصصة مفعلة" } } },
             new { key = "webhooks.enabled", value = "true", translations = new { en = new { label = "Webhooks enabled" }, ar = new { label = "الويب هوك مفعل" } } },
             new { key = "webhooks.max_count", value = "3", translations = new { en = new { label = "Up to 3 webhooks" }, ar = new { label = "حتى 3 ويب هوك" } } },
+            new { key = "imports.enabled", value = "true", translations = new { en = new { label = "Imports enabled" }, ar = new { label = "الاستيراد مفعل" } } },
+            new { key = "imports.max_rows", value = "500", translations = new { en = new { label = "Up to 500 rows per import" }, ar = new { label = "حتى 500 صف لكل استيراد" } } },
         });
 
         var proFeatures = JsonSerializer.Serialize(new[]
@@ -389,6 +395,8 @@ public static class DataSeeder
             new { key = "roles.tenant_custom_enabled", value = "true", translations = new { en = new { label = "Custom roles enabled" }, ar = new { label = "الأدوار المخصصة مفعلة" } } },
             new { key = "webhooks.enabled", value = "true", translations = new { en = new { label = "Webhooks enabled" }, ar = new { label = "الويب هوك مفعل" } } },
             new { key = "webhooks.max_count", value = "10", translations = new { en = new { label = "Up to 10 webhooks" }, ar = new { label = "حتى 10 ويب هوك" } } },
+            new { key = "imports.enabled", value = "true", translations = new { en = new { label = "Imports enabled" }, ar = new { label = "الاستيراد مفعل" } } },
+            new { key = "imports.max_rows", value = "5000", translations = new { en = new { label = "Up to 5,000 rows per import" }, ar = new { label = "حتى 5,000 صف لكل استيراد" } } },
         });
 
         var enterpriseFeatures = JsonSerializer.Serialize(new[]
@@ -405,6 +413,8 @@ public static class DataSeeder
             new { key = "roles.tenant_custom_enabled", value = "true", translations = new { en = new { label = "Custom roles enabled" }, ar = new { label = "الأدوار المخصصة مفعلة" } } },
             new { key = "webhooks.enabled", value = "true", translations = new { en = new { label = "Webhooks enabled" }, ar = new { label = "الويب هوك مفعل" } } },
             new { key = "webhooks.max_count", value = "25", translations = new { en = new { label = "Up to 25 webhooks" }, ar = new { label = "حتى 25 ويب هوك" } } },
+            new { key = "imports.enabled", value = "true", translations = new { en = new { label = "Imports enabled" }, ar = new { label = "الاستيراد مفعل" } } },
+            new { key = "imports.max_rows", value = "50000", translations = new { en = new { label = "Up to 50,000 rows per import" }, ar = new { label = "حتى 50,000 صف لكل استيراد" } } },
         });
 
         var plans = new[]

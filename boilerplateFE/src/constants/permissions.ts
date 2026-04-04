@@ -74,6 +74,7 @@ export const PERMISSIONS = {
     ViewDashboard: 'System.ViewDashboard',
     ExportData: 'System.ExportData',
     ForceExport: 'System.ForceExport',
+    ImportData: 'System.ImportData',
   },
   Webhooks: {
     View: 'Webhooks.View',

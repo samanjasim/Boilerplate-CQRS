@@ -71,6 +71,7 @@ public static class Permissions
         public const string ViewDashboard = "System.ViewDashboard";
         public const string ExportData = "System.ExportData";
         public const string ForceExport = "System.ForceExport";
+        public const string ImportData = "System.ImportData";
     }
 
     // ─── Files ──────────────────────────────────────
@@ -186,6 +187,7 @@ public static class Permissions
         yield return (System.ViewDashboard, "View the dashboard", "System");
         yield return (System.ExportData, "Export data to CSV or PDF", "System");
         yield return (System.ForceExport, "Force regeneration of cached reports", "System");
+        yield return (System.ImportData, "Import data from CSV files", "System");
 
         // ─── Files ───
         yield return (Files.View, "View and download files", "Files");

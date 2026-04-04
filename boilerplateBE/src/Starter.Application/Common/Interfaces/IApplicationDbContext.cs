@@ -5,6 +5,7 @@ using Starter.Domain.Common;
 using Starter.Domain.FeatureFlags.Entities;
 using Starter.Domain.Identity.Entities;
 using Starter.Domain.Tenants.Entities;
+using Starter.Domain.ImportExport.Entities;
 using Starter.Domain.Webhooks.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -36,6 +37,7 @@ public interface IApplicationDbContext
     DbSet<PlanPriceHistory> PlanPriceHistories { get; }
     DbSet<WebhookEndpoint> WebhookEndpoints { get; }
     DbSet<WebhookDelivery> WebhookDeliveries { get; }
+    DbSet<ImportJob> ImportJobs { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
