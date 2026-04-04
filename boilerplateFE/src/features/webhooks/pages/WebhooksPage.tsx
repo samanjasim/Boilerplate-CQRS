@@ -20,35 +20,9 @@ import { EditWebhookDialog } from '../components/EditWebhookDialog';
 import { DeliveryLogModal } from '../components/DeliveryLogModal';
 import { usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
+import { lastStatusBadge } from '../utils/badges';
+import { truncateUrl } from '../utils/format';
 import type { WebhookEndpoint } from '@/types';
-
-/** Truncate a URL to ~40 chars while keeping the host readable */
-function truncateUrl(url: string, maxLen = 40): string {
-  if (url.length <= maxLen) return url;
-  return `${url.slice(0, maxLen)}…`;
-}
-
-function lastDeliveryBadge(status: string | null) {
-  if (!status) return null;
-  switch (status) {
-    case 'Success':
-      return (
-        <Badge className="bg-success/10 text-success border-0 font-medium text-xs">
-          {status}
-        </Badge>
-      );
-    case 'Failed':
-      return <Badge variant="destructive" className="text-xs">{status}</Badge>;
-    case 'Pending':
-      return (
-        <Badge className="bg-warning/10 text-warning border-0 font-medium text-xs">
-          {status}
-        </Badge>
-      );
-    default:
-      return <Badge variant="secondary" className="text-xs">{status}</Badge>;
-  }
-}
 
 export default function WebhooksPage() {
   const { t } = useTranslation();
@@ -184,7 +158,7 @@ export default function WebhooksPage() {
                   {/* Last Delivery */}
                   <TableCell>
                     <div className="flex flex-col gap-0.5">
-                      {lastDeliveryBadge(endpoint.lastDeliveryStatus)}
+                      {lastStatusBadge(endpoint.lastDeliveryStatus)}
                       {endpoint.lastDeliveryAt && (
                         <span className="text-xs text-muted-foreground">
                           {formatDistanceToNow(new Date(endpoint.lastDeliveryAt), {

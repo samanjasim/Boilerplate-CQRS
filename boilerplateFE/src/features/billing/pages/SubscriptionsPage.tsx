@@ -14,22 +14,13 @@ import { InlinePlanSelector } from '../components/InlinePlanSelector';
 import { ROUTES } from '@/config';
 import { formatDate } from '@/utils/format';
 import { STATUS_BADGE_VARIANT } from '@/constants';
+import { SUBSCRIPTION_STATUS, BILLING_INTERVAL } from '../constants/status';
 import type { SubscriptionSummary } from '@/types';
 
 function formatStorage(mb: number): string {
   if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
   return `${mb} MB`;
 }
-
-const SUBSCRIPTION_STATUS: Record<number | string, string> = {
-  0: 'Trialing', 1: 'Active', 2: 'PastDue', 3: 'Canceled', 4: 'Expired',
-  Trialing: 'Trialing', Active: 'Active', PastDue: 'PastDue', Canceled: 'Canceled', Expired: 'Expired',
-};
-
-const BILLING_INTERVAL: Record<number | string, string> = {
-  0: 'Monthly', 1: 'Annual',
-  Monthly: 'Monthly', Annual: 'Annual',
-};
 
 export default function SubscriptionsPage() {
   const { t } = useTranslation();

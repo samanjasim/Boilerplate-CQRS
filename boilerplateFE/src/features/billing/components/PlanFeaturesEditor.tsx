@@ -49,7 +49,7 @@ export function PlanFeaturesEditor({ value, onChange }: PlanFeaturesEditorProps)
   if (!options || options.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-2">
-        {t('billing.noFeatureOptions', 'No feature options available.')}
+        {t('billing.noFeatureOptions')}
       </p>
     );
   }
@@ -90,7 +90,7 @@ export function PlanFeaturesEditor({ value, onChange }: PlanFeaturesEditorProps)
 
   return (
     <div className="space-y-4">
-      <Label>{t('billing.planFeatures', 'Plan Features')}</Label>
+      <Label>{t('billing.planFeatures')}</Label>
       {Array.from(grouped.entries()).map(([category, opts]) => (
         <div key={category} className="rounded-xl border bg-card p-3 space-y-3">
           <h4 className="text-sm font-semibold text-foreground">{category}</h4>
@@ -120,7 +120,7 @@ export function PlanFeaturesEditor({ value, onChange }: PlanFeaturesEditorProps)
                     {/* Value input based on type */}
                     <div className="flex items-center gap-2">
                       <Label className="text-xs text-muted-foreground w-14 shrink-0">
-                        {t('common.value', 'Value')}
+                        {t('common.value')}
                       </Label>
                       {opt.valueType === 'Boolean' ? (
                         <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
@@ -134,8 +134,8 @@ export function PlanFeaturesEditor({ value, onChange }: PlanFeaturesEditorProps)
                           />
                           <span className="text-muted-foreground text-xs">
                             {entry.value === 'true'
-                              ? t('common.enabled', 'Enabled')
-                              : t('common.disabled', 'Disabled')}
+                              ? t('common.enabled')
+                              : t('common.disabled')}
                           </span>
                         </label>
                       ) : opt.valueType === 'Integer' ? (
@@ -158,7 +158,7 @@ export function PlanFeaturesEditor({ value, onChange }: PlanFeaturesEditorProps)
                     {/* Translation inputs */}
                     <div className="space-y-1">
                       <span className="text-xs text-muted-foreground">
-                        {t('billing.displayLabels', 'Display labels')}
+                        {t('billing.displayLabels')}
                       </span>
                       <div className="grid gap-1.5 sm:grid-cols-3">
                         {SUPPORTED_LANGUAGES.map((lang) => (

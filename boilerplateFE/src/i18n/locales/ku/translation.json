@@ -15,6 +15,7 @@
     "inactive": "ناچالاک",
     "enabled": "چالاککراو",
     "disabled": "ناچالاککراو",
+    "value": "بەها",
     "comingSoon": "بەم زووانە",
     "comingSoonDesc": "ئەم تایبەتمەندیە لە ژێر گەشەپێدانە و بەم زووانە بەردەست دەبێت.",
     "goBack": "گەڕانەوە",
@@ -817,6 +818,9 @@
     "tenantSubscription": "بەشداریکردنی {{tenantName}}",
     "noSubscriptions": "هیچ بەشداریکردنێک نەدۆزرایەوە",
     "subscriptionDetail": "وردەکاری بەشداریکردن",
-    "selectPlan": "پلانێک هەڵبژێرە"
+    "selectPlan": "پلانێک هەڵبژێرە",
+    "planFeatures": "تایبەتمەندییەکانی پلان",
+    "displayLabels": "ناونیشانەکانی پیشاندان",
+    "noFeatureOptions": "هیچ هەڵبژاردەی تایبەتمەندی بەردەست نییە."
   }
 }

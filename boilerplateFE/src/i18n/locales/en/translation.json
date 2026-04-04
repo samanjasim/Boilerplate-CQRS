@@ -15,6 +15,7 @@
     "inactive": "Inactive",
     "enabled": "Enabled",
     "disabled": "Disabled",
+    "value": "Value",
     "comingSoon": "Coming Soon",
     "comingSoonDesc": "This feature is under development and will be available soon.",
     "goBack": "Go Back",
@@ -846,7 +847,10 @@
     "noSubscriptions": "No subscriptions found",
     "planChanged": "Plan changed successfully",
     "subscriptionDetail": "Subscription Details",
-    "selectPlan": "Select a plan"
+    "selectPlan": "Select a plan",
+    "planFeatures": "Plan Features",
+    "displayLabels": "Display labels",
+    "noFeatureOptions": "No feature options available."
   },
   "onboarding": {
     "profileTitle": "Set Up Your Organization",

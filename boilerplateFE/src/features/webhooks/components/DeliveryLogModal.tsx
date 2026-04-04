@@ -24,11 +24,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { Pagination, getPersistedPageSize } from '@/components/common';
 import { useWebhookDeliveries } from '../api';
+import { statusBadge } from '../utils/badges';
+import { tryPrettyJson } from '../utils/format';
 import type { WebhookEndpoint, WebhookDelivery, PaginationMeta } from '@/types';
 
 interface DeliveryLogModalProps {
@@ -37,27 +38,6 @@ interface DeliveryLogModalProps {
 }
 
 type DeliveryStatus = 'All' | 'Success' | 'Failed' | 'Pending';
-
-function statusBadge(status: WebhookDelivery['status']) {
-  switch (status) {
-    case 'Success':
-      return (
-        <Badge className="bg-success/10 text-success border-0 font-medium">
-          {status}
-        </Badge>
-      );
-    case 'Failed':
-      return <Badge variant="destructive">{status}</Badge>;
-    case 'Pending':
-      return (
-        <Badge className="bg-warning/10 text-warning border-0 font-medium">
-          {status}
-        </Badge>
-      );
-    default:
-      return <Badge variant="secondary">{status}</Badge>;
-  }
-}
 
 function DeliveryRow({ delivery }: { delivery: WebhookDelivery }) {
   const [expanded, setExpanded] = useState(false);
@@ -138,19 +118,11 @@ function DeliveryRow({ delivery }: { delivery: WebhookDelivery }) {
   );
 }
 
-function tryPrettyJson(value: string): string {
-  try {
-    return JSON.stringify(JSON.parse(value), null, 2);
-  } catch {
-    return value;
-  }
-}
-
 export function DeliveryLogModal({ endpoint, onOpenChange }: DeliveryLogModalProps) {
   const { t } = useTranslation();
   const [statusFilter, setStatusFilter] = useState<DeliveryStatus>('All');
   const [pageNumber, setPageNumber] = useState(1);
-  const [pageSize] = useState(getPersistedPageSize);
+  const [pageSize, setPageSize] = useState(getPersistedPageSize);
 
   const params: Record<string, unknown> = { pageNumber, pageSize };
   if (statusFilter !== 'All') params.status = statusFilter;
@@ -233,6 +205,7 @@ export function DeliveryLogModal({ endpoint, onOpenChange }: DeliveryLogModalPro
           <Pagination
             pagination={pagination}
             onPageChange={setPageNumber}
+            onPageSizeChange={(size) => { setPageSize(size); setPageNumber(1); }}
             className="shrink-0"
           />
         )}

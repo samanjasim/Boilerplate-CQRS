@@ -13,34 +13,9 @@ import {
 import { PageHeader, EmptyState, Pagination, getPersistedPageSize } from '@/components/common';
 import { useWebhookAdminEndpoints, useWebhookAdminStats } from '../api';
 import { ROUTES } from '@/config';
+import { lastStatusBadge } from '../utils/badges';
+import { truncateUrl } from '../utils/format';
 import type { WebhookAdminSummary } from '@/types';
-
-function truncateUrl(url: string, maxLen = 40): string {
-  if (url.length <= maxLen) return url;
-  return `${url.slice(0, maxLen)}...`;
-}
-
-function lastStatusBadge(status: string | null) {
-  if (!status) return <span className="text-muted-foreground">—</span>;
-  switch (status) {
-    case 'Success':
-      return (
-        <Badge className="bg-success/10 text-success border-0 font-medium text-xs">
-          {status}
-        </Badge>
-      );
-    case 'Failed':
-      return <Badge variant="destructive" className="text-xs">{status}</Badge>;
-    case 'Pending':
-      return (
-        <Badge className="bg-warning/10 text-warning border-0 font-medium text-xs">
-          {status}
-        </Badge>
-      );
-    default:
-      return <Badge variant="secondary" className="text-xs">{status}</Badge>;
-  }
-}
 
 function StatCard({
   icon: Icon,

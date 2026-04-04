@@ -16,38 +16,11 @@ import { PageHeader, EmptyState, Pagination, getPersistedPageSize } from '@/comp
 import { useWebhookAdminEndpoints, useWebhookAdminDeliveries } from '../api';
 import { useBackNavigation } from '@/hooks';
 import { ROUTES } from '@/config';
+import { statusBadge } from '../utils/badges';
+import { tryPrettyJson } from '../utils/format';
 import type { WebhookAdminSummary, WebhookDelivery, PaginationMeta } from '@/types';
 
 type DeliveryStatus = 'All' | 'Success' | 'Failed' | 'Pending';
-
-function statusBadge(status: WebhookDelivery['status']) {
-  switch (status) {
-    case 'Success':
-      return (
-        <Badge className="bg-success/10 text-success border-0 font-medium">
-          {status}
-        </Badge>
-      );
-    case 'Failed':
-      return <Badge variant="destructive">{status}</Badge>;
-    case 'Pending':
-      return (
-        <Badge className="bg-warning/10 text-warning border-0 font-medium">
-          {status}
-        </Badge>
-      );
-    default:
-      return <Badge variant="secondary">{status}</Badge>;
-  }
-}
-
-function tryPrettyJson(value: string): string {
-  try {
-    return JSON.stringify(JSON.parse(value), null, 2);
-  } catch {
-    return value;
-  }
-}
 
 function DeliveryRow({ delivery }: { delivery: WebhookDelivery }) {
   const [expanded, setExpanded] = useState(false);

@@ -15,6 +15,7 @@
     "inactive": "غير نشط",
     "enabled": "مُفعّل",
     "disabled": "مُعطّل",
+    "value": "القيمة",
     "comingSoon": "قريباً",
     "comingSoonDesc": "هذه الميزة قيد التطوير وستكون متاحة قريباً.",
     "goBack": "رجوع",
@@ -817,6 +818,9 @@
     "tenantSubscription": "اشتراك {{tenantName}}",
     "noSubscriptions": "لم يتم العثور على اشتراكات",
     "subscriptionDetail": "تفاصيل الاشتراك",
-    "selectPlan": "اختر خطة"
+    "selectPlan": "اختر خطة",
+    "planFeatures": "ميزات الخطة",
+    "displayLabels": "تسميات العرض",
+    "noFeatureOptions": "لا تتوفر خيارات ميزات."
   }
 }

@@ -11,7 +11,8 @@ import { CreatePlanDialog } from '../components/CreatePlanDialog';
 import { EditPlanDialog } from '../components/EditPlanDialog';
 import { usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
-import type { SubscriptionPlan, PlanFeatureEntry } from '@/types';
+import { getFeatureHighlights } from '../utils/features';
+import type { SubscriptionPlan } from '@/types';
 
 export default function BillingPlansPage() {
   const { t } = useTranslation();
@@ -139,19 +140,6 @@ interface PlanCardProps {
   onEdit: () => void;
   onDeactivate: () => void;
   onResync: () => void;
-}
-
-function getFeatureHighlights(features: PlanFeatureEntry[]): string[] {
-  if (!Array.isArray(features) || features.length === 0) return [];
-  return features
-    .filter((f) => !(f.value === 'false'))
-    .slice(0, 6)
-    .map((f) => {
-      const label = f.translations?.en?.label;
-      if (label) return label;
-      // Fallback: humanize the key
-      return f.key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()).trim();
-    });
 }
 
 function PlanCard({ plan, canManage, onEdit, onDeactivate, onResync }: PlanCardProps) {

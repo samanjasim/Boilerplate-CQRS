@@ -16,25 +16,7 @@ import { usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
 import { STATUS_BADGE_VARIANT } from '@/constants';
 import { formatDate, formatFileSize } from '@/utils/format';
-
-const PAYMENT_STATUS_VARIANT: Record<string | number, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  0: 'secondary', 1: 'default', 2: 'destructive', 3: 'outline',
-  Pending: 'secondary', Completed: 'default', Failed: 'destructive', Refunded: 'outline',
-};
-
-const PAYMENT_STATUS_LABEL: Record<string | number, string> = {
-  0: 'Pending', 1: 'Completed', 2: 'Failed', 3: 'Refunded',
-  Pending: 'Pending', Completed: 'Completed', Failed: 'Failed', Refunded: 'Refunded',
-};
-
-const SUBSCRIPTION_STATUS: Record<string | number, string> = {
-  0: 'Trialing', 1: 'Active', 2: 'PastDue', 3: 'Canceled', 4: 'Expired',
-  Trialing: 'Trialing', Active: 'Active', PastDue: 'PastDue', Canceled: 'Canceled', Expired: 'Expired',
-};
-
-const BILLING_INTERVAL: Record<string | number, string> = {
-  0: 'Monthly', 1: 'Annual', Monthly: 'Monthly', Annual: 'Annual',
-};
+import { PAYMENT_STATUS_VARIANT, PAYMENT_STATUS_LABEL, SUBSCRIPTION_STATUS, BILLING_INTERVAL } from '../constants/status';
 
 export default function BillingPage() {
   const { t } = useTranslation();
