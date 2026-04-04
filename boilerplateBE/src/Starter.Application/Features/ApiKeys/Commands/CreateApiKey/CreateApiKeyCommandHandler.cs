@@ -22,18 +22,18 @@ public sealed class CreateApiKeyCommandHandler(
         CreateApiKeyCommand request,
         CancellationToken cancellationToken)
     {
-        if (!await flags.IsEnabledAsync("api_keys.enabled", cancellationToken))
-            return Result.Failure<CreateApiKeyResponse>(FeatureFlagErrors.FeatureDisabled("API Keys"));
-
-        var maxKeys = await flags.GetValueAsync<int>("api_keys.max_count", cancellationToken);
         var apiKeyTenantId = currentUserService.TenantId;
-        long currentCount;
+
         if (apiKeyTenantId.HasValue)
-            currentCount = await usageTracker.GetAsync(apiKeyTenantId.Value, "api_keys", cancellationToken);
-        else
-            currentCount = await dbContext.ApiKeys.CountAsync(k => !k.IsRevoked, cancellationToken);
-        if (currentCount >= maxKeys)
-            return Result.Failure<CreateApiKeyResponse>(FeatureFlagErrors.QuotaExceeded("API keys", maxKeys));
+        {
+            if (!await flags.IsEnabledAsync("api_keys.enabled", cancellationToken))
+                return Result.Failure<CreateApiKeyResponse>(FeatureFlagErrors.FeatureDisabled("API Keys"));
+
+            var maxKeys = await flags.GetValueAsync<int>("api_keys.max_count", cancellationToken);
+            var currentCount = await usageTracker.GetAsync(apiKeyTenantId.Value, "api_keys", cancellationToken);
+            if (currentCount >= maxKeys)
+                return Result.Failure<CreateApiKeyResponse>(FeatureFlagErrors.QuotaExceeded("API keys", maxKeys));
+        }
 
         // Determine tenant scope
         Guid? tenantId;
