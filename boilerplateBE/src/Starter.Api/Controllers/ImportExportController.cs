@@ -71,7 +71,7 @@ public sealed class ImportExportController(ISender mediator) : BaseApiController
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> StartImport([FromBody] StartImportRequest request, CancellationToken ct = default)
     {
-        var result = await Mediator.Send(new StartImportCommand(request.FileId, request.EntityType, request.ConflictMode), ct);
+        var result = await Mediator.Send(new StartImportCommand(request.FileId, request.EntityType, request.ConflictMode, request.TargetTenantId), ct);
         return HandleResult(result);
     }
 
@@ -134,4 +134,4 @@ public sealed class ImportExportController(ISender mediator) : BaseApiController
 public sealed record PreviewImportRequest(Guid FileId, string EntityType);
 
 /// <summary>Request body for starting an import job.</summary>
-public sealed record StartImportRequest(Guid FileId, string EntityType, ConflictMode ConflictMode);
+public sealed record StartImportRequest(Guid FileId, string EntityType, ConflictMode ConflictMode, Guid? TargetTenantId = null);

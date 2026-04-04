@@ -17,7 +17,8 @@ internal sealed class GetEntityTypesQueryHandler(
                 DisplayName: d.DisplayNameKey,
                 SupportsExport: d.SupportsExport,
                 SupportsImport: d.SupportsImport,
-                Fields: d.Fields.Select(f => f.Name).ToArray()))
+                Fields: d.Fields.Select(f => f.Name).ToArray(),
+                RequiresTenant: d.RequiresTenant))
             .ToList();
 
         return Task.FromResult(Result.Success(dtos));

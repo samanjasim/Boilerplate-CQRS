@@ -30,6 +30,7 @@ export interface EntityType {
   displayName: string;
   supportsExport: boolean;
   supportsImport: boolean;
+  requiresTenant: boolean;
   fields: string[];
 }
 
@@ -37,6 +38,7 @@ export interface StartImportData {
   fileId: string;
   entityType: string;
   conflictMode: number;
+  targetTenantId?: string;
 }
 
 export interface PreviewImportData {

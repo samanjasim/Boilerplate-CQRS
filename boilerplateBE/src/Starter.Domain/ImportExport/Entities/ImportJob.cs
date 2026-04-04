@@ -5,7 +5,7 @@ namespace Starter.Domain.ImportExport.Entities;
 
 public sealed class ImportJob : AggregateRoot
 {
-    public Guid TenantId { get; private set; }
+    public Guid? TenantId { get; private set; }
     public string EntityType { get; private set; } = default!;
     public string FileName { get; private set; } = default!;
     public Guid FileId { get; private set; }
@@ -27,7 +27,7 @@ public sealed class ImportJob : AggregateRoot
 
     private ImportJob(
         Guid id,
-        Guid tenantId,
+        Guid? tenantId,
         string entityType,
         string fileName,
         Guid fileId,
@@ -50,7 +50,7 @@ public sealed class ImportJob : AggregateRoot
     }
 
     public static ImportJob Create(
-        Guid tenantId,
+        Guid? tenantId,
         string entityType,
         string fileName,
         Guid fileId,

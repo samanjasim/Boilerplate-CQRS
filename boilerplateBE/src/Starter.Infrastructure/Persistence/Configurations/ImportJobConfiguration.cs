@@ -16,8 +16,7 @@ internal sealed class ImportJobConfiguration : IEntityTypeConfiguration<ImportJo
             .ValueGeneratedNever();
 
         builder.Property(e => e.TenantId)
-            .HasColumnName("tenant_id")
-            .IsRequired();
+            .HasColumnName("tenant_id");
 
         builder.Property(e => e.EntityType)
             .HasColumnName("entity_type")

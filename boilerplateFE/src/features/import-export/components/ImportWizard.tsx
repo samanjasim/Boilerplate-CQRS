@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AlertCircle, AlertTriangle, Download } from 'lucide-react';
+import { useAuthStore, selectUser } from '@/stores';
+import { useTenants } from '@/features/tenants/api';
 import {
   Dialog,
   DialogContent,
@@ -36,7 +38,7 @@ import {
   useDownloadTemplate,
   useImportJob,
 } from '../api';
-import type { ImportJob } from '@/types';
+import type { ImportJob, Tenant } from '@/types';
 
 type Step = 'upload' | 'preview' | 'progress';
 
@@ -60,6 +62,11 @@ export function ImportWizard({ open, onOpenChange }: ImportWizardProps) {
   const [fileId, setFileId] = useState<string | null>(null);
   const [conflictMode, setConflictMode] = useState<number>(CONFLICT_SKIP);
 
+  // Tenant targeting (platform admin only)
+  const user = useAuthStore(selectUser);
+  const isPlatformAdmin = !user?.tenantId;
+  const [targetTenantId, setTargetTenantId] = useState<string>('');
+
   // Progress step state
   const [jobId, setJobId] = useState<string | null>(null);
   const [completedJob, setCompletedJob] = useState<ImportJob | null>(null);
@@ -69,11 +76,16 @@ export function ImportWizard({ open, onOpenChange }: ImportWizardProps) {
   const previewMutation = usePreviewImport();
   const startMutation = useStartImport();
   const downloadTemplate = useDownloadTemplate();
+  const { data: tenantsData } = useTenants(
+    isPlatformAdmin ? { pageSize: 100 } : undefined
+  );
+  const tenants: Tenant[] = isPlatformAdmin ? (tenantsData?.data ?? []) : [];
 
   // Poll the job if we're on the progress step
   const { data: polledJob } = useImportJob(jobId ?? '');
 
   const entityTypes = (entityTypesData ?? []).filter((e) => e.supportsImport);
+  const selectedEntity = entityTypes.find((e) => e.entityType === entityType);
   const currentJob = polledJob ?? completedJob;
   const isJobDone =
     currentJob &&
@@ -86,6 +98,7 @@ export function ImportWizard({ open, onOpenChange }: ImportWizardProps) {
       setEntityType('');
       setFileId(null);
       setConflictMode(CONFLICT_SKIP);
+      setTargetTenantId('');
       setJobId(null);
       setCompletedJob(null);
       previewMutation.reset();
@@ -107,7 +120,7 @@ export function ImportWizard({ open, onOpenChange }: ImportWizardProps) {
   const handleStartImport = () => {
     if (!fileId || !entityType) return;
     startMutation.mutate(
-      { fileId, entityType, conflictMode },
+      { fileId, entityType, conflictMode, targetTenantId: targetTenantId || undefined },
       {
         onSuccess: (job) => {
           setJobId(job.id);
@@ -182,7 +195,7 @@ export function ImportWizard({ open, onOpenChange }: ImportWizardProps) {
                   <span>{t('common.loading', 'Loading...')}</span>
                 </div>
               ) : (
-                <Select value={entityType} onValueChange={setEntityType}>
+                <Select value={entityType} onValueChange={(v) => { setEntityType(v); setTargetTenantId(''); }}>
                   <SelectTrigger>
                     <SelectValue placeholder={t('importExport.selectEntityType')} />
                   </SelectTrigger>
@@ -217,6 +230,37 @@ export function ImportWizard({ open, onOpenChange }: ImportWizardProps) {
                   )}
                   {t('importExport.downloadTemplate')}
                 </Button>
+              </div>
+            )}
+
+            {/* Target tenant selector (platform admin only) */}
+            {isPlatformAdmin && entityType && (
+              <div className="space-y-2">
+                <Label>
+                  {selectedEntity?.requiresTenant
+                    ? t('importExport.targetTenantRequired')
+                    : t('importExport.targetTenantOptional')}
+                </Label>
+                <Select value={targetTenantId} onValueChange={setTargetTenantId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('importExport.selectTenant')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">
+                      {t('importExport.platformWide')}
+                    </SelectItem>
+                    {tenants.map((tenant) => (
+                      <SelectItem key={tenant.id} value={tenant.id}>
+                        {tenant.name} ({tenant.slug})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {selectedEntity?.requiresTenant
+                    ? t('importExport.tenantRequiredHint')
+                    : t('importExport.tenantOptionalHint')}
+                </p>
               </div>
             )}
 
@@ -265,7 +309,7 @@ export function ImportWizard({ open, onOpenChange }: ImportWizardProps) {
               </Button>
               <Button
                 onClick={handleNext}
-                disabled={!fileId || !entityType || previewMutation.isPending}
+                disabled={!fileId || !entityType || previewMutation.isPending || (isPlatformAdmin && !!selectedEntity?.requiresTenant && !targetTenantId)}
               >
                 {previewMutation.isPending ? (
                   <>

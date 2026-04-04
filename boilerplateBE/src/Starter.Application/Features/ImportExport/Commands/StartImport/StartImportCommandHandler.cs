@@ -71,7 +71,33 @@ internal sealed class StartImportCommandHandler(
         if (userId is null)
             return Result.Failure<Guid>(UserErrors.Unauthorized());
 
-        var tenantId = currentUserService.TenantId ?? Guid.Empty;
+        Guid? tenantId;
+        if (request.TargetTenantId.HasValue)
+        {
+            // Only platform admins (no tenantId) can specify a target tenant
+            if (currentUserService.TenantId.HasValue)
+                return Result.Failure<Guid>(ImportExportErrors.UnauthorizedTenantSelection);
+
+            // Validate tenant exists
+            var tenantExists = await context.Tenants.IgnoreQueryFilters()
+                .AnyAsync(t => t.Id == request.TargetTenantId.Value, cancellationToken);
+            if (!tenantExists)
+                return Result.Failure<Guid>(ImportExportErrors.TenantNotFound);
+
+            tenantId = request.TargetTenantId.Value;
+        }
+        else if (currentUserService.TenantId.HasValue)
+        {
+            tenantId = currentUserService.TenantId.Value;
+        }
+        else
+        {
+            // Platform admin with no target tenant
+            if (definition.RequiresTenant)
+                return Result.Failure<Guid>(ImportExportErrors.TenantRequired);
+
+            tenantId = null;
+        }
 
         var job = ImportJob.Create(
             tenantId,

@@ -7,4 +7,5 @@ namespace Starter.Application.Features.ImportExport.Commands.StartImport;
 public sealed record StartImportCommand(
     Guid FileId,
     string EntityType,
-    ConflictMode ConflictMode) : IRequest<Result<Guid>>;
+    ConflictMode ConflictMode,
+    Guid? TargetTenantId = null) : IRequest<Result<Guid>>;

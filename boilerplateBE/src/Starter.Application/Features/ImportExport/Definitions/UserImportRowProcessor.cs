@@ -14,7 +14,7 @@ public sealed class UserImportRowProcessor(
     public async Task<ImportRowResult> ProcessRowAsync(
         Dictionary<string, string> row,
         ConflictMode conflictMode,
-        Guid tenantId,
+        Guid? tenantId,
         CancellationToken ct = default)
     {
         // Validate required fields

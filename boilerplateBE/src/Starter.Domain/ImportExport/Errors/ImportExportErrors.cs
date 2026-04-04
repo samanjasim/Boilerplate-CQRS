@@ -39,4 +39,15 @@ public static class ImportExportErrors
     public static Error RowLimitExceeded(int limit) =>
         Error.Validation("ImportExport.RowLimitExceeded",
             $"The import file exceeds the maximum allowed row limit ({limit}).");
+
+    public static readonly Error UnauthorizedTenantSelection = Error.Forbidden(
+        "Only platform administrators can import into a specific tenant.");
+
+    public static readonly Error TenantNotFound = Error.NotFound(
+        "ImportExport.TenantNotFound",
+        "The specified tenant was not found.");
+
+    public static readonly Error TenantRequired = Error.Validation(
+        "ImportExport.TenantRequired",
+        "A target tenant must be selected for this entity type.");
 }
