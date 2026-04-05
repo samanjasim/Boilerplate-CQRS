@@ -167,6 +167,7 @@
     "30d": "Last 30 days",
     "90d": "Last 90 days",
     "12m": "Last 12 months",
+    "users": "Users",
     "storage": "Storage",
     "apiKeys": "API Keys",
     "webhooks": "Webhooks",
