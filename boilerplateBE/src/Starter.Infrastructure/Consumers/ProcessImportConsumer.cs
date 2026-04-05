@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Starter.Application.Common.Interfaces;
 using Starter.Application.Common.Messages;
+using Starter.Application.Common.Models;
 using Starter.Domain.Common.Enums;
 using Starter.Domain.ImportExport.Enums;
 using Starter.Infrastructure.Persistence;
@@ -177,7 +178,7 @@ public sealed class ProcessImportConsumer(IServiceScopeFactory scopeFactory) : I
 
                     rowNum++;
                     var fields = ParseCsvLine(line);
-                    var row = MapToDict(fileHeaders, fields);
+                    var row = MapToDict(fileHeaders, fields, definition);
 
                     try
                     {
@@ -400,12 +401,20 @@ public sealed class ProcessImportConsumer(IServiceScopeFactory scopeFactory) : I
         return fields.ToArray();
     }
 
-    private static Dictionary<string, string> MapToDict(string[] headers, string[] fields)
+    private static Dictionary<string, string> MapToDict(string[] headers, string[] fields, EntityImportExportDefinition? definition = null)
     {
+        // Build DisplayName → Name lookup from definition
+        var displayToName = definition?.Fields
+            .ToDictionary(f => f.DisplayName, f => f.Name, StringComparer.OrdinalIgnoreCase);
+
         var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         for (int i = 0; i < headers.Length; i++)
         {
-            dict[headers[i]] = i < fields.Length ? fields[i] : string.Empty;
+            // Map CSV header (DisplayName) to internal field Name
+            var key = displayToName is not null && displayToName.TryGetValue(headers[i], out var internalName)
+                ? internalName
+                : headers[i];
+            dict[key] = i < fields.Length ? fields[i] : string.Empty;
         }
         return dict;
     }
