@@ -180,6 +180,7 @@
   "users": {
     "title": "Users",
     "allUsers": "All Users",
+    "import": "Import",
     "userName": "Name",
     "userEmail": "Email",
     "userRoles": "Roles",

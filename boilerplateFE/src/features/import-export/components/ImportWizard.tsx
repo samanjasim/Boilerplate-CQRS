@@ -45,20 +45,21 @@ type Step = 'upload' | 'preview' | 'progress';
 interface ImportWizardProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  entityType?: string;
 }
 
 // Conflict mode enum values matching the backend
 const CONFLICT_SKIP = 0;
 const CONFLICT_UPDATE = 1;
 
-export function ImportWizard({ open, onOpenChange }: ImportWizardProps) {
+export function ImportWizard({ open, onOpenChange, entityType: presetEntityType }: ImportWizardProps) {
   const { t } = useTranslation();
 
   // Step state
   const [step, setStep] = useState<Step>('upload');
 
   // Upload step state
-  const [entityType, setEntityType] = useState('');
+  const [entityType, setEntityType] = useState(presetEntityType ?? '');
   const [fileId, setFileId] = useState<string | null>(null);
   const [conflictMode, setConflictMode] = useState<number>(CONFLICT_SKIP);
 
@@ -95,7 +96,7 @@ export function ImportWizard({ open, onOpenChange }: ImportWizardProps) {
     if (!isOpen) {
       // Reset all state on close
       setStep('upload');
-      setEntityType('');
+      setEntityType(presetEntityType ?? '');
       setFileId(null);
       setConflictMode(CONFLICT_SKIP);
       setTargetTenantId('');
@@ -195,7 +196,7 @@ export function ImportWizard({ open, onOpenChange }: ImportWizardProps) {
                   <span>{t('common.loading', 'Loading...')}</span>
                 </div>
               ) : (
-                <Select value={entityType} onValueChange={(v) => { setEntityType(v); setTargetTenantId(''); }}>
+                <Select value={entityType} onValueChange={(v) => { setEntityType(v); setTargetTenantId(''); }} disabled={!!presetEntityType}>
                   <SelectTrigger>
                     <SelectValue placeholder={t('importExport.selectEntityType')} />
                   </SelectTrigger>

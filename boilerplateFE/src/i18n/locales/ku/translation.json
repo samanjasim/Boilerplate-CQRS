@@ -177,6 +177,7 @@
   "users": {
     "title": "بەکارهێنەران",
     "allUsers": "هەموو بەکارهێنەران",
+    "import": "هاوردەکردن",
     "userName": "ناو",
     "userEmail": "ئیمەیڵ",
     "userRoles": "ڕۆڵەکان",
