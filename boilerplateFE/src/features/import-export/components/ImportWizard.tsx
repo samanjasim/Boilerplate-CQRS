@@ -120,7 +120,7 @@ export function ImportWizard({ open, onOpenChange }: ImportWizardProps) {
   const handleStartImport = () => {
     if (!fileId || !entityType) return;
     startMutation.mutate(
-      { fileId, entityType, conflictMode, targetTenantId: targetTenantId || undefined },
+      { fileId, entityType, conflictMode, targetTenantId: targetTenantId && targetTenantId !== '__none__' ? targetTenantId : undefined },
       {
         onSuccess: (job) => {
           setJobId(job.id);
@@ -241,14 +241,19 @@ export function ImportWizard({ open, onOpenChange }: ImportWizardProps) {
                     ? t('importExport.targetTenantRequired')
                     : t('importExport.targetTenantOptional')}
                 </Label>
-                <Select value={targetTenantId} onValueChange={setTargetTenantId}>
+                <Select
+                  value={targetTenantId || '__none__'}
+                  onValueChange={(v) => setTargetTenantId(v === '__none__' ? '' : v)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder={t('importExport.selectTenant')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">
-                      {t('importExport.platformWide')}
-                    </SelectItem>
+                    {!selectedEntity?.requiresTenant && (
+                      <SelectItem value="__none__">
+                        {t('importExport.platformWide')}
+                      </SelectItem>
+                    )}
                     {tenants.map((tenant) => (
                       <SelectItem key={tenant.id} value={tenant.id}>
                         {tenant.name} ({tenant.slug})

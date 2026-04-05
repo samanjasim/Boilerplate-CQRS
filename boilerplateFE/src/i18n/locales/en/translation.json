@@ -913,6 +913,11 @@
     "selectTenant": "Select a tenant...",
     "platformWide": "Platform-wide (no tenant)",
     "tenantRequiredHint": "A target tenant is required for this entity type.",
-    "tenantOptionalHint": "Leave empty to create platform-wide records. Select a tenant to scope the import."
+    "tenantOptionalHint": "Leave empty to create platform-wide records. Select a tenant to scope the import.",
+    "pending": "Pending",
+    "validating": "Validating",
+    "processing": "Processing",
+    "completed": "Completed",
+    "partialSuccess": "Partial Success"
   }
 }
