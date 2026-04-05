@@ -137,6 +137,73 @@ export function useFeatures(params) {
 }
 ```
 
+## Adding Import/Export to an Entity
+
+The import/export system uses a **registry pattern** — define fields, create a data provider (export) and row processor (import), register in DI. The frontend ImportWizard is reusable via a single prop.
+
+### Backend — 3 files to create, 1 to modify
+
+**1. Definition** — `Application/Features/ImportExport/Definitions/{Entity}ImportExportDefinition.cs`
+```csharp
+public static EntityImportExportDefinition Create() =>
+    new(
+        EntityType: "Tenants",              // Must match frontend entityType prop
+        DisplayNameKey: "importExport.entityTypes.tenants",
+        SupportsExport: true,
+        SupportsImport: true,
+        ConflictKeys: ["Name"],             // Fields used for duplicate detection
+        Fields: [
+            new FieldDefinition("Name", "Name", FieldType.String, Required: true, MaxLength: 200),
+            new FieldDefinition("Email", "Email", FieldType.Email, Required: true),
+            new FieldDefinition("Status", "Status", FieldType.Enum, ExportOnly: true, EnumOptions: ["Active", "Suspended"]),
+        ],
+        ExportDataProviderType: typeof(TenantExportDataProvider),
+        ImportRowProcessorType: typeof(TenantImportRowProcessor));
+```
+
+**2. Export Provider** — `{Entity}ExportDataProvider.cs` implements `IExportDataProvider`
+- Query with `.IgnoreQueryFilters().AsNoTracking()`
+- Filter by tenantId + optional filters from JSON
+- Sanitize all string values: prefix `=@+-\t\r` chars with `'` (CSV injection prevention)
+- Return `ExportDataResult(headers, rows, totalCount)`
+
+**3. Import Processor** — `{Entity}ImportRowProcessor.cs` implements `IImportRowProcessor`
+- Validate required fields, formats, lengths
+- Check for existing entity by ConflictKey (tenant-scoped)
+- `ConflictMode.Skip` → return `Skipped`
+- `ConflictMode.Upsert` → update existing, return `Updated`
+- Create new entity, return `Created`
+
+**4. Register** — In `Infrastructure/DependencyInjection.cs` → `AddImportExportServices()`:
+```csharp
+registry.Register(TenantImportExportDefinition.Create());
+services.AddScoped<TenantExportDataProvider>();
+services.AddScoped<TenantImportRowProcessor>();
+```
+
+### Frontend — 1 file to modify
+
+Add import button to any list page:
+```tsx
+import { ImportWizard } from '@/features/import-export/components/ImportWizard';
+
+const canImport = hasPermission(PERMISSIONS.System.ImportData);
+const [importOpen, setImportOpen] = useState(false);
+
+// In PageHeader actions:
+{canImport && (
+  <Button variant="outline" onClick={() => setImportOpen(true)}>
+    <Upload className="mr-2 h-4 w-4" />
+    {t('feature.import')}
+  </Button>
+)}
+
+// At bottom of component:
+<ImportWizard open={importOpen} onOpenChange={setImportOpen} entityType="Tenants" />
+```
+
+The `entityType` prop must match the `EntityType` string in the backend definition. When passed, the wizard pre-selects and locks the entity type selector. SuperAdmin sees an optional tenant dropdown; tenant admin imports into their own tenant automatically.
+
 ## Environment Setup
 
 ### Docker Services (run `docker compose up -d` from `boilerplateBE/`)
