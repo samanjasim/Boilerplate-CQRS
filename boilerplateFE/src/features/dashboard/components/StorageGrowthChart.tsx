@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next';
-import { format, parseISO } from 'date-fns';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -11,33 +10,10 @@ import {
 } from 'recharts';
 import { Card, CardContent } from '@/components/ui/card';
 import type { TimeSeriesPoint } from '@/types/dashboard.types';
+import { formatShortDate, formatFullDate, formatBytes } from '../utils/format';
 
 interface StorageGrowthChartProps {
   data: TimeSeriesPoint[];
-}
-
-function formatShortDate(dateStr: string) {
-  try {
-    return format(parseISO(dateStr), 'MMM d');
-  } catch {
-    return dateStr;
-  }
-}
-
-function formatFullDate(dateStr: string) {
-  try {
-    return format(parseISO(dateStr), 'PPP');
-  } catch {
-    return dateStr;
-  }
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  if (bytes < 1024 * 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
-  return `${(bytes / (1024 * 1024 * 1024 * 1024)).toFixed(1)} TB`;
 }
 
 export function StorageGrowthChart({ data }: StorageGrowthChartProps) {

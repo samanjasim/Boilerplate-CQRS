@@ -176,6 +176,8 @@
     "revenue": "Revenue",
     "tenants": "Tenants",
     "trend": "vs previous period",
+    "vsPrevious": "vs {{period}}",
+    "analyticsUnavailable": "Analytics data is temporarily unavailable.",
     "noData": "No data available",
     "userGrowth": "User Growth",
     "loginActivity": "Login Activity",

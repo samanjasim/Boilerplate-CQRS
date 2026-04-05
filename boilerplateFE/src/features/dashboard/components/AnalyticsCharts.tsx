@@ -12,7 +12,6 @@ interface AnalyticsChartsProps {
 const chartConfigs = [
   { section: 'users', key: 'userGrowth', Component: UserGrowthChart },
   { section: 'loginActivity', key: 'loginActivity', Component: LoginActivityChart },
-  { section: 'activityBreakdown', key: 'activityBreakdown', Component: ActivityBreakdownChart },
   { section: 'storage', key: 'storageGrowth', Component: StorageGrowthChart },
   { section: 'tenants', key: 'tenantGrowth', Component: TenantGrowthChart },
 ] as const;
@@ -22,7 +21,9 @@ export function AnalyticsCharts({ analytics }: AnalyticsChartsProps) {
     analytics.enabledSections.includes(cfg.section),
   );
 
-  if (enabledCharts.length === 0) {
+  const showActivityBreakdown = analytics.enabledSections.includes('activityBreakdown');
+
+  if (enabledCharts.length === 0 && !showActivityBreakdown) {
     return null;
   }
 
@@ -32,6 +33,12 @@ export function AnalyticsCharts({ analytics }: AnalyticsChartsProps) {
         const data = analytics.charts[key] ?? [];
         return <Component key={key} data={data} />;
       })}
+      {showActivityBreakdown && (
+        <ActivityBreakdownChart
+          actionData={analytics.charts['activityBreakdown'] ?? []}
+          entityData={analytics.charts['topEntities'] ?? []}
+        />
+      )}
     </div>
   );
 }

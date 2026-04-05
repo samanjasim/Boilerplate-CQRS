@@ -2,20 +2,16 @@ import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent } from '@/components/ui/card';
+import { formatBytes } from '../utils/format';
 
 function formatValue(value: number, format: 'number' | 'bytes' | 'currency'): string {
   if (format === 'number') {
-    return new Intl.NumberFormat('en-US').format(value);
+    return new Intl.NumberFormat().format(value);
   }
   if (format === 'currency') {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(value);
   }
-  // bytes
-  if (value < 1024) return `${value} B`;
-  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
-  if (value < 1024 * 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(1)} MB`;
-  if (value < 1024 * 1024 * 1024 * 1024) return `${(value / (1024 * 1024 * 1024)).toFixed(1)} GB`;
-  return `${(value / (1024 * 1024 * 1024 * 1024)).toFixed(1)} TB`;
+  return formatBytes(value);
 }
 
 interface StatCardProps {
@@ -27,7 +23,7 @@ interface StatCardProps {
   period: string;
 }
 
-export function StatCard({ icon: Icon, label, value, format, trend }: StatCardProps) {
+export function StatCard({ icon: Icon, label, value, format, trend, period }: StatCardProps) {
   const { t } = useTranslation();
 
   const isPositive = trend !== null && trend > 0;
@@ -53,13 +49,13 @@ export function StatCard({ icon: Icon, label, value, format, trend }: StatCardPr
             <>
               <TrendingUp className="h-3.5 w-3.5 text-green-500" />
               <span className="text-xs text-green-600">+{trend?.toFixed(1)}%</span>
-              <span className="text-xs text-muted-foreground">{t('dashboard.trend')}</span>
+              <span className="text-xs text-muted-foreground">{t('dashboard.vsPrevious', { period: t(`dashboard.${period}`) })}</span>
             </>
           ) : isNegative ? (
             <>
               <TrendingDown className="h-3.5 w-3.5 text-red-500" />
               <span className="text-xs text-red-600">{trend?.toFixed(1)}%</span>
-              <span className="text-xs text-muted-foreground">{t('dashboard.trend')}</span>
+              <span className="text-xs text-muted-foreground">{t('dashboard.vsPrevious', { period: t(`dashboard.${period}`) })}</span>
             </>
           ) : null}
         </div>

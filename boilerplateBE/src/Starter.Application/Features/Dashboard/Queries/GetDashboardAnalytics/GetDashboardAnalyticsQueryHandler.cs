@@ -55,7 +55,7 @@ internal sealed class GetDashboardAnalyticsQueryHandler(
         var userResult = await ComputeUserMetrics(periodStart, prevStart, isMonthly, isPlatformAdmin, cancellationToken);
         summary["users"] = userResult.Summary;
         if (userResult.Chart is not null)
-            charts["users"] = userResult.Chart;
+            charts["userGrowth"] = userResult.Chart;
 
         // Login activity
         var loginResult = await ComputeLoginActivityMetrics(periodStart, prevStart, isMonthly, isPlatformAdmin, cancellationToken);
@@ -66,9 +66,9 @@ internal sealed class GetDashboardAnalyticsQueryHandler(
         // Activity breakdown (audit logs)
         var activityResult = await ComputeActivityBreakdown(periodStart, isPlatformAdmin, cancellationToken);
         if (activityResult.ActionChart is not null)
-            charts["activityByAction"] = activityResult.ActionChart;
+            charts["activityBreakdown"] = activityResult.ActionChart;
         if (activityResult.EntityChart is not null)
-            charts["activityByEntity"] = activityResult.EntityChart;
+            charts["topEntities"] = activityResult.EntityChart;
 
         // Storage
         if (sections.Contains("storage"))
@@ -76,7 +76,7 @@ internal sealed class GetDashboardAnalyticsQueryHandler(
             var storageResult = await ComputeStorageMetrics(periodStart, prevStart, isMonthly, isPlatformAdmin, cancellationToken);
             summary["storage"] = storageResult.Summary;
             if (storageResult.Chart is not null)
-                charts["storage"] = storageResult.Chart;
+                charts["storageGrowth"] = storageResult.Chart;
         }
 
         // API Keys
@@ -124,7 +124,7 @@ internal sealed class GetDashboardAnalyticsQueryHandler(
             var tenantsResult = await ComputeTenantMetrics(periodStart, prevStart, isMonthly, cancellationToken);
             summary["tenants"] = tenantsResult.Summary;
             if (tenantsResult.Chart is not null)
-                charts["tenants"] = tenantsResult.Chart;
+                charts["tenantGrowth"] = tenantsResult.Chart;
         }
 
         var dto = new DashboardAnalyticsDto(
@@ -333,31 +333,44 @@ internal sealed class GetDashboardAnalyticsQueryHandler(
 
         var trend = CalcTrend(current, previous);
 
-        // Cumulative chart
+        // Cumulative chart — compute running total so the chart shows monotonically increasing storage
+        // First, get the baseline: total storage before the period started
+        var baseline = await baseQuery
+            .Where(f => f.CreatedAt < periodStart)
+            .SumAsync(f => (decimal?)f.Size, ct) ?? 0m;
+
         List<TimeSeriesPoint>? chart;
         if (isMonthly)
         {
             var groups = await baseQuery
                 .Where(f => f.CreatedAt >= periodStart)
                 .GroupBy(f => new { f.CreatedAt.Year, f.CreatedAt.Month })
-                .Select(g => new { g.Key.Year, g.Key.Month, Total = g.Sum(f => (decimal)f.Size) })
+                .Select(g => new { g.Key.Year, g.Key.Month, Added = g.Sum(f => (decimal)f.Size) })
                 .OrderBy(g => g.Year).ThenBy(g => g.Month)
                 .ToListAsync(ct);
 
+            var runningTotal = baseline;
             chart = groups.Select(g =>
-                new TimeSeriesPoint($"{g.Year}-{g.Month:D2}", g.Total)).ToList();
+            {
+                runningTotal += g.Added;
+                return new TimeSeriesPoint($"{g.Year}-{g.Month:D2}", runningTotal);
+            }).ToList();
         }
         else
         {
             var groups = await baseQuery
                 .Where(f => f.CreatedAt >= periodStart)
                 .GroupBy(f => f.CreatedAt.Date)
-                .Select(g => new { Date = g.Key, Total = g.Sum(f => (decimal)f.Size) })
+                .Select(g => new { Date = g.Key, Added = g.Sum(f => (decimal)f.Size) })
                 .OrderBy(g => g.Date)
                 .ToListAsync(ct);
 
+            var runningTotal = baseline;
             chart = groups.Select(g =>
-                new TimeSeriesPoint(g.Date.ToString("yyyy-MM-dd"), g.Total)).ToList();
+            {
+                runningTotal += g.Added;
+                return new TimeSeriesPoint(g.Date.ToString("yyyy-MM-dd"), runningTotal);
+            }).ToList();
         }
 
         return (new SummaryMetric(current, previous, trend), chart);
@@ -455,7 +468,8 @@ internal sealed class GetDashboardAnalyticsQueryHandler(
                 new TimeSeriesPoint(g.Date.ToString("yyyy-MM-dd"), g.Count)).ToList();
         }
 
-        return (new SummaryMetric(activeEndpoints, 0, null), chart);
+        // Summary shows active endpoints count; trend is based on delivery volume change
+        return (new SummaryMetric(activeEndpoints, previous, trend), chart);
     }
 
     // ─── Imports ────────────────────────────────────────────────────────────

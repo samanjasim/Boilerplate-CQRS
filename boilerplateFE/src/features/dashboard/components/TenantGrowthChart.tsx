@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next';
-import { format, parseISO } from 'date-fns';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -11,25 +10,10 @@ import {
 } from 'recharts';
 import { Card, CardContent } from '@/components/ui/card';
 import type { TimeSeriesPoint } from '@/types/dashboard.types';
+import { formatShortDate, formatFullDate } from '../utils/format';
 
 interface TenantGrowthChartProps {
   data: TimeSeriesPoint[];
-}
-
-function formatShortDate(dateStr: string) {
-  try {
-    return format(parseISO(dateStr), 'MMM d');
-  } catch {
-    return dateStr;
-  }
-}
-
-function formatFullDate(dateStr: string) {
-  try {
-    return format(parseISO(dateStr), 'PPP');
-  } catch {
-    return dateStr;
-  }
 }
 
 export function TenantGrowthChart({ data }: TenantGrowthChartProps) {
