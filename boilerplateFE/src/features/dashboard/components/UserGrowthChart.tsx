@@ -1,0 +1,77 @@
+import { useTranslation } from 'react-i18next';
+import { format, parseISO } from 'date-fns';
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from 'recharts';
+import { Card, CardContent } from '@/components/ui/card';
+import type { TimeSeriesPoint } from '@/types/dashboard.types';
+
+interface UserGrowthChartProps {
+  data: TimeSeriesPoint[];
+}
+
+function formatShortDate(dateStr: string) {
+  try {
+    return format(parseISO(dateStr), 'MMM d');
+  } catch {
+    return dateStr;
+  }
+}
+
+function formatFullDate(dateStr: string) {
+  try {
+    return format(parseISO(dateStr), 'PPP');
+  } catch {
+    return dateStr;
+  }
+}
+
+export function UserGrowthChart({ data }: UserGrowthChartProps) {
+  const { t } = useTranslation();
+
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <h3 className="text-base font-semibold text-foreground tracking-tight mb-4">
+          {t('dashboard.userGrowth')}
+        </h3>
+        {data.length === 0 ? (
+          <div className="flex items-center justify-center h-[250px] text-sm text-muted-foreground">
+            {t('dashboard.noData')}
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={250}>
+            <AreaChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <XAxis
+                dataKey="date"
+                tickFormatter={formatShortDate}
+                tick={{ fontSize: 12 }}
+              />
+              <YAxis tick={{ fontSize: 12 }} />
+              <Tooltip labelFormatter={(label) => formatFullDate(String(label))} />
+              <defs>
+                <linearGradient id="userGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <Area
+                type="monotone"
+                dataKey="value"
+                stroke="hsl(var(--chart-1))"
+                fill="url(#userGradient)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
