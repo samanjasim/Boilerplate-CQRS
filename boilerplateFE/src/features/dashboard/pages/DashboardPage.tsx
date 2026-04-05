@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Users, Shield, TrendingUp, Blocks, UserPlus, Pencil, Trash2, Activity } from 'lucide-react';
 import { UserAvatar } from '@/components/common';
 import { useTranslation } from 'react-i18next';
@@ -13,41 +14,10 @@ import { useAuditLogs } from '@/features/audit-logs/api';
 import { usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
 import { ROUTES } from '@/config';
-
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  color,
-}: {
-  icon: React.ElementType;
-  label: string;
-  value: string | number;
-  color: 'primary' | 'accent' | 'success' | 'info';
-}) {
-  const colors = {
-    primary: '[background:var(--active-bg)] [color:var(--active-text)]',
-    accent: 'bg-accent-500/10 text-accent-600',
-    success: 'bg-green-500/10 text-green-600',
-    info: 'bg-blue-500/10 text-blue-600',
-  };
-
-  return (
-    <Card className="hover-lift">
-      <CardContent className="py-6">
-        <div className="flex items-center gap-4">
-          <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${colors[color]}`}>
-            <Icon className="h-6 w-6" />
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">{label}</p>
-            <p className="text-2xl font-bold text-foreground">{value}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+import { AnalyticsSummaryCards } from '../components/AnalyticsSummaryCards';
+import { AnalyticsCharts } from '../components/AnalyticsCharts';
+import { PeriodSelector } from '../components/PeriodSelector';
+import { useDashboardAnalytics } from '../api';
 
 const ACTION_ICONS: Record<string, React.ElementType> = {
   Created: UserPlus,
@@ -59,16 +29,41 @@ function getActionIcon(action: string) {
   return ACTION_ICONS[action] || Activity;
 }
 
+function StatCardSkeletons() {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="animate-pulse bg-muted rounded-2xl h-32" />
+      ))}
+    </div>
+  );
+}
+
+function ChartSkeletons() {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {Array.from({ length: 2 }).map((_, i) => (
+        <div key={i} className="animate-pulse bg-muted rounded-2xl h-64" />
+      ))}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const { t } = useTranslation();
   const user = useAuthStore(selectUser);
   const { hasPermission } = usePermissions();
+
+  const [period, setPeriod] = useState('30d');
 
   const isTenantUser = !!user?.tenantId;
 
   const canViewUsers = hasPermission(PERMISSIONS.Users.View);
   const canViewRoles = hasPermission(PERMISSIONS.Roles.View);
   const canViewAuditLogs = hasPermission(PERMISSIONS.System.ViewAuditLogs);
+
+  const { data: analyticsResponse, isLoading: analyticsLoading, isError: analyticsError } = useDashboardAnalytics(period);
+  const analytics = analyticsResponse?.data;
 
   const { data: usersData } = useUsers({ enabled: canViewUsers });
   const { data: rolesData } = useRoles({ enabled: canViewRoles });
@@ -87,9 +82,12 @@ export default function DashboardPage() {
   const auditLogs = auditLogsData?.data ?? [];
   const recentUsers = recentUsersData?.data ?? [];
 
+  // Fallback stat cards used when analytics is not available
+  const showFallbackStats = !analytics && !analyticsLoading;
+
   return (
     <div className="space-y-8">
-      {/* Welcome section */}
+      {/* Welcome section + Period selector */}
       <div className="flex items-center justify-between rounded-2xl gradient-hero px-8 py-7">
         <div>
           <h1 className="text-2xl font-semibold text-white tracking-tight">
@@ -99,16 +97,87 @@ export default function DashboardPage() {
             {t('dashboard.subtitle')}
           </p>
         </div>
-        <Blocks className="h-12 w-12 text-white/30" />
+        <div className="flex items-center gap-4">
+          <PeriodSelector value={period} onChange={setPeriod} />
+          <Blocks className="h-12 w-12 text-white/30" />
+        </div>
       </div>
 
-      {/* Stats grid */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={Users} label={isTenantUser ? t('dashboard.myUsers') : t('dashboard.totalUsers')} value={users.length} color="primary" />
-        <StatCard icon={Shield} label={t('dashboard.activeRoles')} value={activeRoles.length} color="accent" />
-        <StatCard icon={TrendingUp} label={t('dashboard.totalRoles')} value={roles.length} color="success" />
-        <StatCard icon={Blocks} label={isTenantUser ? t('dashboard.myOrganization') : t('dashboard.platformStatus')} value={t('common.active')} color="info" />
-      </div>
+      {/* Analytics error banner */}
+      {analyticsError && (
+        <p className="text-sm text-muted-foreground text-center">
+          {t('dashboard.analyticsUnavailable', 'Analytics data is temporarily unavailable.')}
+        </p>
+      )}
+
+      {/* Stat cards — analytics-powered or skeleton while loading */}
+      {analytics ? (
+        <AnalyticsSummaryCards analytics={analytics} period={period} />
+      ) : analyticsLoading ? (
+        <StatCardSkeletons />
+      ) : showFallbackStats ? (
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <Card className="hover-lift">
+            <CardContent className="py-6">
+              <div className="flex items-center gap-4">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl [background:var(--active-bg)] [color:var(--active-text)]">
+                  <Users className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">{isTenantUser ? t('dashboard.myUsers') : t('dashboard.totalUsers')}</p>
+                  <p className="text-2xl font-bold text-foreground">{users.length}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="hover-lift">
+            <CardContent className="py-6">
+              <div className="flex items-center gap-4">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-500/10 text-accent-600">
+                  <Shield className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">{t('dashboard.activeRoles')}</p>
+                  <p className="text-2xl font-bold text-foreground">{activeRoles.length}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="hover-lift">
+            <CardContent className="py-6">
+              <div className="flex items-center gap-4">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-500/10 text-green-600">
+                  <TrendingUp className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">{t('dashboard.totalRoles')}</p>
+                  <p className="text-2xl font-bold text-foreground">{roles.length}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="hover-lift">
+            <CardContent className="py-6">
+              <div className="flex items-center gap-4">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600">
+                  <Blocks className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">{isTenantUser ? t('dashboard.myOrganization') : t('dashboard.platformStatus')}</p>
+                  <p className="text-2xl font-bold text-foreground">{t('common.active')}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
+
+      {/* Analytics charts */}
+      {analytics ? (
+        <AnalyticsCharts analytics={analytics} />
+      ) : analyticsLoading ? (
+        <ChartSkeletons />
+      ) : null}
 
       {/* Recent Activity + Recent Users */}
       <div className="grid gap-6 lg:grid-cols-2">
