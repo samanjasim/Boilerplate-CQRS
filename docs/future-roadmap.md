@@ -12,7 +12,7 @@ Features planned for future implementation. The architecture supports all of the
 | 4 | **Tenant Self-Service Portal** | 📋 Spec Ready | Billing, Feature Flags | `docs/superpowers/specs/2026-03-31-tenant-self-service-design.md` |
 | 5 | ~~Webhooks~~ | ✅ Done | — | `docs/superpowers/specs/2026-04-02-webhooks-design.md` |
 | 6 | Analytics Dashboard | ⬜ Planned | — | — |
-| 7 | Import/Export | ⬜ Planned | — | — |
+| 7 | ~~Import/Export~~ | ✅ Done | — | `docs/superpowers/specs/2026-04-03-import-export-design.md` |
 
 ---
 
@@ -80,3 +80,4 @@ These were on the roadmap and are now part of the boilerplate:
 - ~~Invitation system overhaul~~ — Implemented with multi-tenant targeting, permission hierarchy, default registration roles, feature-flag-gated custom roles
 - ~~Registration security~~ — Public /register disabled, /register-tenant auto-assigns Free plan, tenant owner role configurable
 - ~~Webhooks~~ — Implemented with CRUD, HMAC-SHA256 payload signing, MassTransit delivery with retry (1m/5m/30m/2h/24h), delivery log with status tracking, 8 event types, admin overview with 24h stats, feature-flag gated per plan, secret regeneration, cleanup job
+- ~~Import/Export~~ — Implemented with registry-based architecture, CSV import with preview/validation/progress tracking, CSV/PDF export, async MassTransit processing with batch commits, tenant-targeted imports for SuperAdmin, feature-flag gated per plan, reusable ImportWizard component

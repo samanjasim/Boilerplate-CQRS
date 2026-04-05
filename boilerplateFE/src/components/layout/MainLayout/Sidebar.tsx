@@ -32,6 +32,8 @@ export function Sidebar() {
   const user = useAuthStore(selectUser);
 
   const webhooksFlag = useFeatureFlag('webhooks.enabled');
+  const importsFlag = useFeatureFlag('imports.enabled');
+  const exportsFlag = useFeatureFlag('exports.enabled');
 
   const tenantLogoUrl = user?.tenantLogoUrl;
   const tenantName = user?.tenantName;
@@ -54,7 +56,7 @@ export function Sidebar() {
     ...(hasPermission(PERMISSIONS.Files.View)
       ? [{ label: t('nav.files'), icon: FolderOpen, path: ROUTES.FILES.LIST }]
       : []),
-    ...(hasPermission(PERMISSIONS.System.ExportData) || hasPermission(PERMISSIONS.System.ImportData)
+    ...((hasPermission(PERMISSIONS.System.ExportData) && exportsFlag.isEnabled) || (hasPermission(PERMISSIONS.System.ImportData) && importsFlag.isEnabled)
       ? [{ label: t('nav.importExport'), icon: ArrowLeftRight, path: ROUTES.IMPORT_EXPORT }]
       : []),
     ...(hasPermission(PERMISSIONS.System.ViewAuditLogs)

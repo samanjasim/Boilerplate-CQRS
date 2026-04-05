@@ -16,6 +16,7 @@
     "enabled": "Enabled",
     "disabled": "Disabled",
     "value": "Value",
+    "results": "Results",
     "comingSoon": "Coming Soon",
     "comingSoonDesc": "This feature is under development and will be available soon.",
     "goBack": "Go Back",
