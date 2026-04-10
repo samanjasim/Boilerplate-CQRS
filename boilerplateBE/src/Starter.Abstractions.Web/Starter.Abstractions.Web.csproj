@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Asp.Versioning.Mvc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Starter.Abstractions\Starter.Abstractions.csproj" />
+    <ProjectReference Include="..\Starter.Application\Starter.Application.csproj" />
+  </ItemGroup>
+</Project>

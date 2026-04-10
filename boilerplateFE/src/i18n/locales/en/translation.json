@@ -771,6 +771,7 @@
   "billing": {
     "title": "Billing",
     "subtitle": "Manage your subscription and billing",
+    "subscriptionFor": "Subscription for {{name}}",
     "currentPlan": "Current Plan",
     "usage": "Usage",
     "payments": "Payments",

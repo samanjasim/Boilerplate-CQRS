@@ -1,11 +1,14 @@
 using Amazon.S3;
 using QuestPDF.Infrastructure;
+using Starter.Abstractions.Capabilities;
+using Starter.Abstractions.Readers;
 using Starter.Application.Common.Interfaces;
-using Starter.Application.Features.ImportExport.Definitions;
+using Starter.Infrastructure.Capabilities.MetricCalculators;
+using Starter.Infrastructure.Capabilities.NullObjects;
 using Starter.Infrastructure.Email.Templates;
-using Starter.Infrastructure.Consumers;
 using Starter.Infrastructure.Persistence;
 using Starter.Infrastructure.Persistence.Interceptors;
+using Starter.Infrastructure.Readers;
 using Starter.Infrastructure.Services;
 using Starter.Infrastructure.Settings;
 using MassTransit;
@@ -13,6 +16,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using StackExchange.Redis;
 
 namespace Starter.Infrastructure;
@@ -21,22 +25,65 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IReadOnlyList<System.Reflection.Assembly>? moduleAssemblies = null)
     {
         QuestPDF.Settings.License = LicenseType.Community;
 
         services
             .AddPersistence(configuration)
             .AddCaching(configuration)
-            .AddMessaging(configuration)
+            .AddMessaging(configuration, moduleAssemblies)
             .AddServices()
+            .AddCapabilities()
             .AddEmailServices(configuration)
             .AddSmsServices(configuration)
             .AddRealtimeServices(configuration)
             .AddStorageServices(configuration)
             .AddExportServices()
-            .AddImportExportServices()
             .AddHealthChecks(configuration);
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers cross-context reader services and Null Object fallbacks for
+    /// every capability contract. Modules override these defaults by calling
+    /// <c>AddScoped&lt;TService, TImpl&gt;()</c> (or <c>AddSingleton</c>) in
+    /// their own <c>ConfigureServices</c> — the last registration wins.
+    ///
+    /// Each null fallback is registered with the SAME lifetime as its real
+    /// counterpart in the owning module, so swapping implementations does not
+    /// shift lifetimes:
+    /// <list type="bullet">
+    ///   <item><c>NullBillingProvider</c> → Scoped (matches <c>MockBillingProvider</c>)</item>
+    ///   <item><c>NullWebhookPublisher</c> → Scoped (matches <c>WebhookPublisher</c>)</item>
+    ///   <item><c>NullImportExportRegistry</c> → Singleton (matches <c>ImportExportRegistry</c>)</item>
+    ///   <item><c>NullQuotaChecker</c> → Singleton (stateless; no module override yet)</item>
+    /// </list>
+    /// </summary>
+    private static IServiceCollection AddCapabilities(this IServiceCollection services)
+    {
+        // Cross-context readers — always real implementations
+        services.AddScoped<ITenantReader, TenantReader>();
+        services.AddScoped<IUserReader, UserReader>();
+        services.AddScoped<IRoleReader, RoleReader>();
+
+        // Null Object fallbacks — lifetimes match the real module implementations
+        services.TryAddSingleton<IQuotaChecker, NullQuotaChecker>();
+        services.TryAddScoped<IBillingProvider, NullBillingProvider>();
+        services.TryAddScoped<IWebhookPublisher, NullWebhookPublisher>();
+        services.TryAddSingleton<IImportExportRegistry, NullImportExportRegistry>();
+
+        // Core usage metric calculators — one per core-owned metric. Modules
+        // that own their own counted entities (e.g. Webhooks) register
+        // additional IUsageMetricCalculator implementations in their own
+        // ConfigureServices. UsageTrackerService dispatches to whichever is
+        // registered; unknown metrics silently return 0.
+        services.AddScoped<IUsageMetricCalculator, UsersMetricCalculator>();
+        services.AddScoped<IUsageMetricCalculator, ApiKeysMetricCalculator>();
+        services.AddScoped<IUsageMetricCalculator, StorageBytesMetricCalculator>();
+        services.AddScoped<IUsageMetricCalculator, ReportsActiveMetricCalculator>();
 
         return services;
     }
@@ -99,7 +146,8 @@ public static class DependencyInjection
 
     private static IServiceCollection AddMessaging(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IReadOnlyList<System.Reflection.Assembly>? moduleAssemblies = null)
     {
         var rabbitMqEnabled = configuration.GetValue("RabbitMQ:Enabled", true);
 
@@ -107,9 +155,27 @@ public static class DependencyInjection
         {
             busConfigurator.SetKebabCaseEndpointNameFormatter();
 
-            busConfigurator.AddConsumer<GenerateReportConsumer>();
-            busConfigurator.AddConsumer<DeliverWebhookConsumer>();
-            busConfigurator.AddConsumer<ProcessImportConsumer>();
+            // Transactional outbox: events published via IPublishEndpoint inside a
+            // command handler are saved atomically with the business data in
+            // ApplicationDbContext.SaveChangesAsync, then dispatched by a background
+            // delivery service. Guarantees at-least-once delivery + idempotent
+            // retries even if the broker is unreachable at commit time.
+            busConfigurator.AddEntityFrameworkOutbox<ApplicationDbContext>(o =>
+            {
+                o.QueryDelay = TimeSpan.FromSeconds(1);
+                o.UsePostgres();
+                o.UseBusOutbox();
+            });
+
+            // Auto-discover consumers from core Infrastructure assembly
+            busConfigurator.AddConsumers(typeof(DependencyInjection).Assembly);
+
+            // Auto-discover consumers from module assemblies
+            if (moduleAssemblies is not null)
+            {
+                foreach (var asm in moduleAssemblies)
+                    busConfigurator.AddConsumers(asm);
+            }
 
             if (!rabbitMqEnabled)
             {
@@ -134,23 +200,6 @@ public static class DependencyInjection
                     h.Password(password);
                 });
 
-                cfg.ReceiveEndpoint("deliver-webhook", e =>
-                {
-                    e.UseMessageRetry(r => r.Intervals(
-                        TimeSpan.FromMinutes(1),
-                        TimeSpan.FromMinutes(5),
-                        TimeSpan.FromMinutes(30),
-                        TimeSpan.FromHours(2),
-                        TimeSpan.FromHours(24)));
-                    e.ConfigureConsumer<DeliverWebhookConsumer>(context);
-                });
-
-                cfg.ReceiveEndpoint("process-import", e =>
-                {
-                    e.UseMessageRetry(r => r.Interval(1, TimeSpan.FromSeconds(30)));
-                    e.ConfigureConsumer<ProcessImportConsumer>(context);
-                });
-
                 cfg.ConfigureEndpoints(context);
             });
         });
@@ -160,7 +209,6 @@ public static class DependencyInjection
 
     private static IServiceCollection AddServices(this IServiceCollection services)
     {
-        services.AddHttpClient(); // Required for DeliverWebhookConsumer
         services.AddSingleton<IDateTimeService, DateTimeService>();
         services.AddScoped<IMessagePublisher, MassTransitMessagePublisher>();
         services.AddScoped<ISettingsService, SettingsService>();
@@ -168,8 +216,6 @@ public static class DependencyInjection
         services.AddScoped<IFeatureFlagService, FeatureFlagService>();
         services.AddScoped<IPermissionHierarchyService, PermissionHierarchyService>();
         services.AddScoped<IUsageTracker, UsageTrackerService>();
-        services.AddScoped<IBillingProvider, MockBillingProvider>();
-        services.AddScoped<IWebhookPublisher, WebhookPublisher>();
 
         return services;
     }
@@ -267,7 +313,6 @@ public static class DependencyInjection
 
         services.AddHostedService<StorageBucketInitializer>();
         services.AddHostedService<OrphanFileCleanupService>();
-        services.AddHostedService<WebhookDeliveryCleanupJob>();
 
         return services;
     }
@@ -275,24 +320,6 @@ public static class DependencyInjection
     private static IServiceCollection AddExportServices(this IServiceCollection services)
     {
         services.AddScoped<IExportService, ExportService>();
-
-        return services;
-    }
-
-    private static IServiceCollection AddImportExportServices(this IServiceCollection services)
-    {
-        services.AddSingleton<IImportExportRegistry>(sp =>
-        {
-            var registry = new ImportExportRegistry();
-            registry.Register(UserImportExportDefinition.Create());
-            registry.Register(RoleImportExportDefinition.Create());
-            return registry;
-        });
-
-        services.AddScoped<UserExportDataProvider>();
-        services.AddScoped<UserImportRowProcessor>();
-        services.AddScoped<RoleExportDataProvider>();
-        services.AddScoped<RoleImportRowProcessor>();
 
         return services;
     }

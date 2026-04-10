@@ -1,5 +1,7 @@
 using Starter.Application.Common.Interfaces;
 using Starter.Application.Common.Models;
+using Starter.Application.Features.AuditLogs.DTOs;
+using Starter.Domain.Common;
 using Starter.Shared.Results;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +13,7 @@ internal sealed class GetAuditLogsQueryHandler(
 {
     public async Task<Result<PaginatedList<AuditLogDto>>> Handle(GetAuditLogsQuery request, CancellationToken cancellationToken)
     {
-        var query = context.AuditLogs
+        var query = context.Set<AuditLog>()
             .AsNoTracking()
             .AsQueryable();
 

@@ -1,4 +1,5 @@
 using Starter.Application.Common.Models;
+using Starter.Application.Features.AuditLogs.DTOs;
 using Starter.Domain.Common.Enums;
 using Starter.Shared.Results;
 using MediatR;

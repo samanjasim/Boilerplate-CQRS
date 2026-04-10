@@ -32,12 +32,14 @@ namespace Starter.Shared.Constants;
 /// |------------|------|------|--------|--------|--------|--------------------------|
 /// | Users      |  ✓   |  ✓   |   ✓    |   ✓    |   ✓    | ManageRoles              |
 /// | Roles      |  ✓   |  ✓   |   ✓    |   ✓    |   ✓    | ManagePermissions        |
-/// | System     |      |      |        |        |        | ViewDashboard, ViewAuditLogs, ManageSettings, ExportData, ForceExport |
+/// | System     |      |      |        |        |        | ViewDashboard, ManageSettings          |
 /// | Tenants    |  ✓   |  ✓   |   ✓    |   ✓    |   ✓    |                          |
-/// | Files      |  ✓   |      |        |        |   ✓    | Upload, Manage           |
-/// | ApiKeys    |  ✓   |      |   ✓    |   ✓    |   ✓    | ViewPlatform, CreatePlatform, UpdatePlatform, DeletePlatform, EmergencyRevoke |
-/// | Billing    |      |      |        |        |        | View, Manage, ViewPlans, ManagePlans, ManageTenantSubscriptions              |
-/// | Webhooks   |  ✓   |      |   ✓    |   ✓    |   ✓    | ViewPlatform             |
+///
+/// Module-provided permissions (registered via IModule.GetPermissions()):
+/// | Billing      | View, Manage, ViewPlans, ManagePlans, ManageTenantSubscriptions |
+/// | FeatureFlags | View, Create, Update, Delete, ManageTenantOverrides, OptOut |
+/// | Webhooks     | View, Create, Update, Delete, ViewPlatform |
+/// | ImportExport | ImportData |
 /// </summary>
 public static class Permissions
 {
@@ -66,15 +68,25 @@ public static class Permissions
     // ─── System ──────────────────────────────────────
     public static class System
     {
-        public const string ViewAuditLogs = "System.ViewAuditLogs";
         public const string ManageSettings = "System.ManageSettings";
         public const string ViewDashboard = "System.ViewDashboard";
+        public const string ViewAuditLogs = "System.ViewAuditLogs";
+        // ExportData/ForceExport: used by Reports (core) and the ImportExport module.
         public const string ExportData = "System.ExportData";
         public const string ForceExport = "System.ForceExport";
-        public const string ImportData = "System.ImportData";
     }
 
-    // ─── Files ──────────────────────────────────────
+    // ─── Tenants ─────────────────────────────────────
+    public static class Tenants
+    {
+        public const string View = "Tenants.View";
+        public const string Show = "Tenants.Show";
+        public const string Create = "Tenants.Create";
+        public const string Update = "Tenants.Update";
+        public const string Delete = "Tenants.Delete";
+    }
+
+    // ─── Files ───────────────────────────────────────
     public static class Files
     {
         public const string View = "Files.View";
@@ -83,7 +95,18 @@ public static class Permissions
         public const string Manage = "Files.Manage";
     }
 
-    // ─── API Keys ────────────────────────────────────
+    // ─── FeatureFlags ────────────────────────────────
+    public static class FeatureFlags
+    {
+        public const string View = "FeatureFlags.View";
+        public const string Create = "FeatureFlags.Create";
+        public const string Update = "FeatureFlags.Update";
+        public const string Delete = "FeatureFlags.Delete";
+        public const string ManageTenantOverrides = "FeatureFlags.ManageTenantOverrides";
+        public const string OptOut = "FeatureFlags.OptOut";
+    }
+
+    // ─── ApiKeys ─────────────────────────────────────
     public static class ApiKeys
     {
         public const string View = "ApiKeys.View";
@@ -95,47 +118,6 @@ public static class Permissions
         public const string UpdatePlatform = "ApiKeys.UpdatePlatform";
         public const string DeletePlatform = "ApiKeys.DeletePlatform";
         public const string EmergencyRevoke = "ApiKeys.EmergencyRevoke";
-    }
-
-    // ─── Feature Flags ───────────────────────────────
-    public static class FeatureFlags
-    {
-        public const string View = "FeatureFlags.View";
-        public const string Create = "FeatureFlags.Create";
-        public const string Update = "FeatureFlags.Update";
-        public const string Delete = "FeatureFlags.Delete";
-        public const string ManageTenantOverrides = "FeatureFlags.ManageTenantOverrides";
-        public const string OptOut = "FeatureFlags.OptOut";
-    }
-
-    // ─── Billing ─────────────────────────────────────
-    public static class Billing
-    {
-        public const string View = "Billing.View";
-        public const string Manage = "Billing.Manage";
-        public const string ViewPlans = "Billing.ViewPlans";
-        public const string ManagePlans = "Billing.ManagePlans";
-        public const string ManageTenantSubscriptions = "Billing.ManageTenantSubscriptions";
-    }
-
-    // ─── Webhooks ────────────────────────────────────
-    public static class Webhooks
-    {
-        public const string View = "Webhooks.View";
-        public const string Create = "Webhooks.Create";
-        public const string Update = "Webhooks.Update";
-        public const string Delete = "Webhooks.Delete";
-        public const string ViewPlatform = "Webhooks.ViewPlatform";
-    }
-
-    // ─── Tenants ─────────────────────────────────────
-    public static class Tenants
-    {
-        public const string View = "Tenants.View";
-        public const string Show = "Tenants.Show";
-        public const string Create = "Tenants.Create";
-        public const string Update = "Tenants.Update";
-        public const string Delete = "Tenants.Delete";
     }
 
     /// <summary>
@@ -182,12 +164,17 @@ public static class Permissions
         yield return (Roles.ManagePermissions, "Assign and remove permissions from roles", "Roles");
 
         // ─── System ───
-        yield return (System.ViewAuditLogs, "View system audit logs", "System");
         yield return (System.ManageSettings, "Manage system settings", "System");
         yield return (System.ViewDashboard, "View the dashboard", "System");
+        yield return (System.ViewAuditLogs, "View system audit logs", "System");
         yield return (System.ExportData, "Export data to CSV or PDF", "System");
         yield return (System.ForceExport, "Force regeneration of cached reports", "System");
-        yield return (System.ImportData, "Import data from CSV files", "System");
+        // ─── Tenants ───
+        yield return (Tenants.View, "View tenants list", "Tenants");
+        yield return (Tenants.Show, "View tenant details", "Tenants");
+        yield return (Tenants.Create, "Create new tenants", "Tenants");
+        yield return (Tenants.Update, "Update existing tenants", "Tenants");
+        yield return (Tenants.Delete, "Delete tenants", "Tenants");
 
         // ─── Files ───
         yield return (Files.View, "View and download files", "Files");
@@ -195,7 +182,15 @@ public static class Permissions
         yield return (Files.Delete, "Delete files", "Files");
         yield return (Files.Manage, "Manage file metadata", "Files");
 
-        // ─── API Keys ───
+        // ─── FeatureFlags ───
+        yield return (FeatureFlags.View, "View feature flags", "FeatureFlags");
+        yield return (FeatureFlags.Create, "Create feature flags", "FeatureFlags");
+        yield return (FeatureFlags.Update, "Update feature flags", "FeatureFlags");
+        yield return (FeatureFlags.Delete, "Delete feature flags", "FeatureFlags");
+        yield return (FeatureFlags.ManageTenantOverrides, "Manage tenant feature flag overrides", "FeatureFlags");
+        yield return (FeatureFlags.OptOut, "Opt out of non-system boolean feature flags", "FeatureFlags");
+
+        // ─── ApiKeys ───
         yield return (ApiKeys.View, "View API keys", "ApiKeys");
         yield return (ApiKeys.Create, "Create API keys", "ApiKeys");
         yield return (ApiKeys.Update, "Update API keys", "ApiKeys");
@@ -205,34 +200,5 @@ public static class Permissions
         yield return (ApiKeys.UpdatePlatform, "Update platform API keys", "ApiKeys");
         yield return (ApiKeys.DeletePlatform, "Revoke platform API keys", "ApiKeys");
         yield return (ApiKeys.EmergencyRevoke, "Emergency revoke any tenant API key", "ApiKeys");
-
-        // ─── Feature Flags ───
-        yield return (FeatureFlags.View, "View feature flags", "FeatureFlags");
-        yield return (FeatureFlags.Create, "Create feature flags", "FeatureFlags");
-        yield return (FeatureFlags.Update, "Update feature flags", "FeatureFlags");
-        yield return (FeatureFlags.Delete, "Delete feature flags", "FeatureFlags");
-        yield return (FeatureFlags.ManageTenantOverrides, "Manage tenant feature flag overrides", "FeatureFlags");
-        yield return (FeatureFlags.OptOut, "Opt out of non-system boolean feature flags", "FeatureFlags");
-
-        // ─── Billing ───
-        yield return (Billing.View, "View subscription and usage", "Billing");
-        yield return (Billing.Manage, "Change plan and cancel subscription", "Billing");
-        yield return (Billing.ViewPlans, "View all subscription plans", "Billing");
-        yield return (Billing.ManagePlans, "Create and manage subscription plans", "Billing");
-        yield return (Billing.ManageTenantSubscriptions, "Manage tenant subscriptions", "Billing");
-
-        // ─── Tenants ───
-        yield return (Tenants.View, "View tenants list", "Tenants");
-        yield return (Tenants.Show, "View tenant details", "Tenants");
-        yield return (Tenants.Create, "Create new tenants", "Tenants");
-        yield return (Tenants.Update, "Update existing tenants", "Tenants");
-        yield return (Tenants.Delete, "Delete tenants", "Tenants");
-
-        // ─── Webhooks ───
-        yield return (Webhooks.View, "View webhook endpoints and deliveries", "Webhooks");
-        yield return (Webhooks.Create, "Create webhook endpoints", "Webhooks");
-        yield return (Webhooks.Update, "Update webhook endpoints", "Webhooks");
-        yield return (Webhooks.Delete, "Delete webhook endpoints", "Webhooks");
-        yield return (Webhooks.ViewPlatform, "View all webhook endpoints across tenants", "Webhooks");
     }
 }

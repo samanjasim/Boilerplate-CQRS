@@ -34,13 +34,28 @@ builder.Host.UseSerilog();
 // Add services
 builder.Services.AddHttpContextAccessor();
 
+// Discover and resolve modules
+var modules = Starter.Abstractions.Modularity.ModuleLoader.DiscoverModules();
+var orderedModules = Starter.Abstractions.Modularity.ModuleLoader.ResolveOrder(modules);
+var moduleAssemblies = orderedModules.Select(m => m.GetType().Assembly).Distinct().ToList();
+
+// Register discovered modules list (used by DataSeeder for permission aggregation)
+builder.Services.AddSingleton<IReadOnlyList<Starter.Abstractions.Modularity.IModule>>(orderedModules);
+
 // Add layers
-builder.Services.AddApplication();
-builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddApplication(moduleAssemblies);
+builder.Services.AddInfrastructure(builder.Configuration, moduleAssemblies);
 builder.Services.AddIdentityInfrastructure(builder.Configuration);
 
+// Module-specific services
+foreach (var module in orderedModules)
+    module.ConfigureServices(builder.Services, builder.Configuration);
+
 // API Configuration
-builder.Services.AddControllers();
+var mvcBuilder = builder.Services.AddControllers();
+foreach (var asm in moduleAssemblies)
+    mvcBuilder.AddApplicationPart(asm);
+
 builder.Services.AddEndpointsApiExplorer();
 
 // Custom configurations
@@ -80,7 +95,10 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/health");
 
-// Database initialization
+// Database initialization — applies core + module migrations and runs seed
+// data (core + module SeedDataAsync) in one orchestrated sequence inside
+// DataSeeder. Gated by DatabaseSettings:SeedDataOnStartup so non-seeded
+// environments (e.g. prod with pre-migrated DBs) skip the whole block.
 var seedData = builder.Configuration.GetValue<bool>("DatabaseSettings:SeedDataOnStartup");
 if (seedData)
 {

@@ -5,7 +5,7 @@ using Starter.Domain.Identity.ValueObjects;
 
 namespace Starter.Domain.Identity.Entities;
 
-public sealed class User : AggregateRoot
+public sealed class User : AggregateRoot, ITenantEntity
 {
     public const int MaxUsernameLength = 100;
     public const int DefaultMaxFailedAttempts = 5;

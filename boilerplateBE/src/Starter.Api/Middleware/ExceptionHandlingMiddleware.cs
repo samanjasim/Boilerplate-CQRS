@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using FluentValidation;
+using Starter.Abstractions.Capabilities;
 using Starter.Domain.Exceptions;
 using Starter.Shared.Models;
 
@@ -49,6 +50,7 @@ public class ExceptionHandlingMiddleware
             ValidationException validationEx => HandleValidationException(validationEx),
             BusinessRuleException businessEx => HandleBusinessRuleException(businessEx),
             DomainException domainEx => HandleDomainException(domainEx),
+            CapabilityNotInstalledException capEx => HandleCapabilityNotInstalledException(capEx),
             UnauthorizedAccessException => (StatusCodes.Status401Unauthorized,
                 ApiResponse.Fail("Unauthorized access.")),
             _ => HandleUnknownException(exception)
@@ -90,6 +92,15 @@ public class ExceptionHandlingMiddleware
     private static (int StatusCode, ApiResponse Response) HandleBusinessRuleException(BusinessRuleException exception)
     {
         return (StatusCodes.Status422UnprocessableEntity, ApiResponse.Fail(exception.Message));
+    }
+
+    private static (int StatusCode, ApiResponse Response) HandleCapabilityNotInstalledException(
+        CapabilityNotInstalledException exception)
+    {
+        // 501 Not Implemented: the server understands the request but lacks the
+        // capability to fulfil it because the providing module is not installed
+        // in this build. Operators install the named module to enable it.
+        return (StatusCodes.Status501NotImplemented, ApiResponse.Fail(exception.Message));
     }
 
     private (int StatusCode, ApiResponse Response) HandleUnknownException(Exception exception)

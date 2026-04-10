@@ -1,6 +1,7 @@
 using Starter.Application.Common.Interfaces;
+using Starter.Domain.Common;
 using Starter.Domain.Common.Errors;
-using PermissionConstants = Starter.Shared.Constants.Permissions;
+using Starter.Shared.Constants;
 using Starter.Shared.Results;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -15,13 +16,13 @@ internal sealed class UpdateFileMetadataCommandHandler(
     public async Task<Result<FileDto>> Handle(UpdateFileMetadataCommand request, CancellationToken cancellationToken)
     {
         // Global query filter scopes by tenant; defense-in-depth check below
-        var metadata = await context.FileMetadata
+        var metadata = await context.Set<FileMetadata>()
             .FirstOrDefaultAsync(f => f.Id == request.Id, cancellationToken);
 
         if (metadata is null)
             return Result.Failure<FileDto>(FileErrors.NotFound(request.Id));
 
-        if (metadata.TenantId != currentUserService.TenantId && !currentUserService.HasPermission(PermissionConstants.Files.Manage))
+        if (metadata.TenantId != currentUserService.TenantId && !currentUserService.HasPermission(Starter.Shared.Constants.Permissions.Files.Manage))
             return Result.Failure<FileDto>(Error.Unauthorized());
 
         var tags = request.Tags is { Length: > 0 } ? string.Join(",", request.Tags) : request.Tags is not null ? null : metadata.Tags;

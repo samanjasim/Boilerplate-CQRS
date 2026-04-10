@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
+using Starter.Domain.FeatureFlags.Entities;
 using Starter.Domain.FeatureFlags.Errors;
 using Starter.Shared.Results;
 
@@ -18,11 +19,11 @@ internal sealed class RemoveTenantOverrideCommandHandler(
         if (callerTenantId.HasValue && callerTenantId.Value != request.TenantId)
             return Result.Failure(Error.Forbidden("You can only manage overrides for your own tenant."));
 
-        var existing = await context.TenantFeatureFlags.IgnoreQueryFilters()
+        var existing = await context.Set<TenantFeatureFlag>().IgnoreQueryFilters()
             .FirstOrDefaultAsync(t => t.FeatureFlagId == request.FeatureFlagId && t.TenantId == request.TenantId, cancellationToken);
         if (existing is null) return Result.Failure(FeatureFlagErrors.OverrideNotFound);
 
-        context.TenantFeatureFlags.Remove(existing);
+        context.Set<TenantFeatureFlag>().Remove(existing);
         await context.SaveChangesAsync(cancellationToken);
         await featureFlagService.InvalidateCacheAsync(request.TenantId, cancellationToken);
         return Result.Success();

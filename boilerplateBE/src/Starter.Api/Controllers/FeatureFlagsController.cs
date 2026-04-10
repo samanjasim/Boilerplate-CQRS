@@ -1,6 +1,8 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Starter.Application.Features.FeatureFlags;
 using Starter.Application.Features.FeatureFlags.Commands.CreateFeatureFlag;
 using Starter.Application.Features.FeatureFlags.Commands.DeleteFeatureFlag;
 using Starter.Application.Features.FeatureFlags.Commands.OptOutFeatureFlag;
@@ -8,7 +10,6 @@ using Starter.Application.Features.FeatureFlags.Commands.RemoveOptOut;
 using Starter.Application.Features.FeatureFlags.Commands.RemoveTenantOverride;
 using Starter.Application.Features.FeatureFlags.Commands.SetTenantOverride;
 using Starter.Application.Features.FeatureFlags.Commands.UpdateFeatureFlag;
-using Starter.Application.Features.FeatureFlags.DTOs;
 using Starter.Application.Features.FeatureFlags.Queries.GetFeatureFlagByKey;
 using Starter.Application.Features.FeatureFlags.Queries.GetFeatureFlags;
 using Starter.Domain.FeatureFlags.Enums;
@@ -95,6 +96,7 @@ public sealed class FeatureFlagsController(ISender mediator) : BaseApiController
         var result = await Mediator.Send(new RemoveTenantOverrideCommand(id, tenantId), ct);
         return HandleResult(result);
     }
+
     [HttpPost("{id:guid}/opt-out")]
     [Authorize(Policy = Permissions.FeatureFlags.OptOut)]
     [ProducesResponseType(StatusCodes.Status200OK)]

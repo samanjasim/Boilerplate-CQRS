@@ -1,6 +1,3 @@
-using System.Text.Json;
-using Starter.Domain.Billing.Entities;
-using Starter.Domain.Billing.Enums;
 using Starter.Domain.Common;
 using Starter.Domain.FeatureFlags.Entities;
 using Starter.Domain.FeatureFlags.Enums;
@@ -12,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Starter.Abstractions.Modularity;
 using RoleNames = Starter.Shared.Constants.Roles;
 
 namespace Starter.Infrastructure.Persistence.Seeds;
@@ -36,14 +34,32 @@ public static class DataSeeder
 
             await context.Database.MigrateAsync();
 
-            await SeedPermissionsAsync(context, logger);
+            // Resolve discovered modules from DI (registered in Program.cs)
+            var modules = scope.ServiceProvider
+                .GetService<IReadOnlyList<IModule>>() ?? [];
+
+            // Apply each module's own migrations (module-owned DbContexts with
+            // their own __EFMigrationsHistory_{Module} tables). Must run before
+            // module seed data so seeds write against a migrated schema.
+            foreach (var module in modules)
+                await module.MigrateAsync(serviceProvider);
+
+            await SeedPermissionsAsync(context, logger, modules);
             await SeedRolesAsync(context, logger);
-            await SeedRolePermissionsAsync(context, logger);
+            await SeedRolePermissionsAsync(context, logger, modules);
             await SeedDefaultTenantAsync(context, logger);
             await SeedSuperAdminUserAsync(context, configuration, logger);
             await SeedDefaultSettingsAsync(context, logger);
             await SeedFeatureFlagsAsync(context, logger);
-            await SeedSubscriptionPlansAsync(context, logger);
+
+            // Module-owned seed data (e.g. Billing plans). Runs last so every
+            // module can rely on core permissions, roles, and the default tenant
+            // being present. Gated by the same SeedDataOnStartup flag as core.
+            foreach (var module in modules)
+            {
+                logger.LogInformation("Seeding module {Module}", module.Name);
+                await module.SeedDataAsync(serviceProvider);
+            }
         }
         catch (Exception ex)
         {
@@ -52,30 +68,26 @@ public static class DataSeeder
         }
     }
 
-    private static async Task SeedPermissionsAsync(ApplicationDbContext context, ILogger logger)
+    private static async Task SeedPermissionsAsync(
+        ApplicationDbContext context, ILogger logger, IReadOnlyList<IModule> modules)
     {
-        var allPermissions = Permissions.GetAll().ToList();
+        var allPermissions = Permissions.GetAllWithMetadata()
+            .Concat(modules.SelectMany(m => m.GetPermissions()))
+            .ToList();
+
         var existingPermissions = await context.Permissions
             .Select(p => p.Name)
             .ToListAsync();
 
         var newPermissions = allPermissions
-            .Where(p => !existingPermissions.Contains(p))
+            .Where(p => !existingPermissions.Contains(p.Name))
             .ToList();
 
         if (newPermissions.Count == 0) return;
 
-        foreach (var permissionName in newPermissions)
+        foreach (var (name, description, module) in newPermissions)
         {
-            var module = permissionName.Contains('.')
-                ? permissionName[..permissionName.IndexOf('.')]
-                : null;
-
-            var permission = Permission.Create(
-                permissionName,
-                $"Permission to {permissionName.Replace(".", " ").ToLowerInvariant()}",
-                module);
-
+            var permission = Permission.Create(name, description, module);
             context.Permissions.Add(permission);
         }
 
@@ -110,9 +122,12 @@ public static class DataSeeder
         logger.LogInformation("Seeded {Count} roles", newRoles.Count);
     }
 
-    private static async Task SeedRolePermissionsAsync(ApplicationDbContext context, ILogger logger)
+    private static async Task SeedRolePermissionsAsync(
+        ApplicationDbContext context, ILogger logger, IReadOnlyList<IModule> modules)
     {
-        var rolePermissionMappings = RoleNames.GetRolePermissions().ToList();
+        var rolePermissionMappings = RoleNames.GetRolePermissions()
+            .Concat(modules.SelectMany(m => m.GetDefaultRolePermissions()))
+            .ToList();
         var roles = await context.Roles
             .Include(r => r.RolePermissions)
             .ToListAsync();
@@ -308,11 +323,8 @@ public static class DataSeeder
 
     private static async Task SeedFeatureFlagsAsync(ApplicationDbContext context, ILogger logger)
     {
-        if (await context.FeatureFlags.AnyAsync())
-        {
-            logger.LogInformation("Feature flags already seeded");
+        if (await context.Set<FeatureFlag>().AnyAsync())
             return;
-        }
 
         var flags = new[]
         {
@@ -335,160 +347,8 @@ public static class DataSeeder
             FeatureFlag.Create("exports.enabled", "Exports Enabled", "Enable data exports", "true", FlagValueType.Boolean, FlagCategory.System, true),
         };
 
-        context.FeatureFlags.AddRange(flags);
+        context.Set<FeatureFlag>().AddRange(flags);
         await context.SaveChangesAsync();
-        logger.LogInformation("Seeded {Count} default feature flags", flags.Length);
-    }
-
-    private static async Task SeedSubscriptionPlansAsync(ApplicationDbContext context, ILogger logger)
-    {
-        if (await context.SubscriptionPlans.AnyAsync())
-        {
-            logger.LogInformation("Subscription plans already seeded");
-            return;
-        }
-
-        var freeFeatures = JsonSerializer.Serialize(new[]
-        {
-            new { key = "users.max_count", value = "5", translations = new { en = new { label = "Up to 5 users" }, ar = new { label = "حتى 5 مستخدمين" } } },
-            new { key = "files.max_storage_mb", value = "1024", translations = new { en = new { label = "1 GB storage" }, ar = new { label = "1 جيجابايت تخزين" } } },
-            new { key = "files.max_upload_size_mb", value = "10", translations = new { en = new { label = "10 MB max upload" }, ar = new { label = "10 ميجابايت حد أقصى للرفع" } } },
-            new { key = "reports.enabled", value = "false", translations = new { en = new { label = "Reports disabled" }, ar = new { label = "التقارير معطلة" } } },
-            new { key = "reports.pdf_export", value = "false", translations = new { en = new { label = "PDF export disabled" }, ar = new { label = "تصدير PDF معطل" } } },
-            new { key = "api_keys.enabled", value = "true", translations = new { en = new { label = "API keys enabled" }, ar = new { label = "مفاتيح API مفعلة" } } },
-            new { key = "api_keys.max_count", value = "2", translations = new { en = new { label = "Up to 2 API keys" }, ar = new { label = "حتى 2 مفاتيح API" } } },
-            new { key = "users.invitations_enabled", value = "true", translations = new { en = new { label = "User invitations enabled" }, ar = new { label = "دعوات المستخدمين مفعلة" } } },
-            new { key = "webhooks.enabled", value = "false", translations = new { en = new { label = "Webhooks disabled" }, ar = new { label = "الويب هوك معطل" } } },
-            new { key = "webhooks.max_count", value = "0", translations = new { en = new { label = "No webhooks" }, ar = new { label = "لا ويب هوك" } } },
-            new { key = "imports.enabled", value = "false", translations = new { en = new { label = "Imports disabled" }, ar = new { label = "الاستيراد معطل" } } },
-            new { key = "imports.max_rows", value = "0", translations = new { en = new { label = "No imports" }, ar = new { label = "لا استيراد" } } },
-            new { key = "exports.enabled", value = "false", translations = new { en = new { label = "Exports disabled" }, ar = new { label = "التصدير معطل" } } },
-        });
-
-        var starterFeatures = JsonSerializer.Serialize(new[]
-        {
-            new { key = "users.max_count", value = "25", translations = new { en = new { label = "Up to 25 users" }, ar = new { label = "حتى 25 مستخدم" } } },
-            new { key = "files.max_storage_mb", value = "10240", translations = new { en = new { label = "10 GB storage" }, ar = new { label = "10 جيجابايت تخزين" } } },
-            new { key = "files.max_upload_size_mb", value = "25", translations = new { en = new { label = "25 MB max upload" }, ar = new { label = "25 ميجابايت حد أقصى للرفع" } } },
-            new { key = "reports.enabled", value = "true", translations = new { en = new { label = "Reports enabled" }, ar = new { label = "التقارير مفعلة" } } },
-            new { key = "reports.max_concurrent", value = "3", translations = new { en = new { label = "Up to 3 concurrent reports" }, ar = new { label = "حتى 3 تقارير متزامنة" } } },
-            new { key = "reports.pdf_export", value = "false", translations = new { en = new { label = "PDF export disabled" }, ar = new { label = "تصدير PDF معطل" } } },
-            new { key = "api_keys.enabled", value = "true", translations = new { en = new { label = "API keys enabled" }, ar = new { label = "مفاتيح API مفعلة" } } },
-            new { key = "api_keys.max_count", value = "5", translations = new { en = new { label = "Up to 5 API keys" }, ar = new { label = "حتى 5 مفاتيح API" } } },
-            new { key = "users.invitations_enabled", value = "true", translations = new { en = new { label = "User invitations enabled" }, ar = new { label = "دعوات المستخدمين مفعلة" } } },
-            new { key = "roles.tenant_custom_enabled", value = "true", translations = new { en = new { label = "Custom roles enabled" }, ar = new { label = "الأدوار المخصصة مفعلة" } } },
-            new { key = "webhooks.enabled", value = "true", translations = new { en = new { label = "Webhooks enabled" }, ar = new { label = "الويب هوك مفعل" } } },
-            new { key = "webhooks.max_count", value = "3", translations = new { en = new { label = "Up to 3 webhooks" }, ar = new { label = "حتى 3 ويب هوك" } } },
-            new { key = "imports.enabled", value = "true", translations = new { en = new { label = "Imports enabled" }, ar = new { label = "الاستيراد مفعل" } } },
-            new { key = "imports.max_rows", value = "500", translations = new { en = new { label = "Up to 500 rows per import" }, ar = new { label = "حتى 500 صف لكل استيراد" } } },
-            new { key = "exports.enabled", value = "true", translations = new { en = new { label = "Data exports" }, ar = new { label = "تصدير البيانات" } } },
-        });
-
-        var proFeatures = JsonSerializer.Serialize(new[]
-        {
-            new { key = "users.max_count", value = "100", translations = new { en = new { label = "Up to 100 users" }, ar = new { label = "حتى 100 مستخدم" } } },
-            new { key = "files.max_storage_mb", value = "51200", translations = new { en = new { label = "50 GB storage" }, ar = new { label = "50 جيجابايت تخزين" } } },
-            new { key = "files.max_upload_size_mb", value = "50", translations = new { en = new { label = "50 MB max upload" }, ar = new { label = "50 ميجابايت حد أقصى للرفع" } } },
-            new { key = "reports.enabled", value = "true", translations = new { en = new { label = "Reports enabled" }, ar = new { label = "التقارير مفعلة" } } },
-            new { key = "reports.max_concurrent", value = "5", translations = new { en = new { label = "Up to 5 concurrent reports" }, ar = new { label = "حتى 5 تقارير متزامنة" } } },
-            new { key = "reports.pdf_export", value = "true", translations = new { en = new { label = "PDF export enabled" }, ar = new { label = "تصدير PDF مفعل" } } },
-            new { key = "api_keys.enabled", value = "true", translations = new { en = new { label = "API keys enabled" }, ar = new { label = "مفاتيح API مفعلة" } } },
-            new { key = "api_keys.max_count", value = "20", translations = new { en = new { label = "Up to 20 API keys" }, ar = new { label = "حتى 20 مفتاح API" } } },
-            new { key = "users.invitations_enabled", value = "true", translations = new { en = new { label = "User invitations enabled" }, ar = new { label = "دعوات المستخدمين مفعلة" } } },
-            new { key = "roles.tenant_custom_enabled", value = "true", translations = new { en = new { label = "Custom roles enabled" }, ar = new { label = "الأدوار المخصصة مفعلة" } } },
-            new { key = "webhooks.enabled", value = "true", translations = new { en = new { label = "Webhooks enabled" }, ar = new { label = "الويب هوك مفعل" } } },
-            new { key = "webhooks.max_count", value = "10", translations = new { en = new { label = "Up to 10 webhooks" }, ar = new { label = "حتى 10 ويب هوك" } } },
-            new { key = "imports.enabled", value = "true", translations = new { en = new { label = "Imports enabled" }, ar = new { label = "الاستيراد مفعل" } } },
-            new { key = "imports.max_rows", value = "5000", translations = new { en = new { label = "Up to 5,000 rows per import" }, ar = new { label = "حتى 5,000 صف لكل استيراد" } } },
-            new { key = "exports.enabled", value = "true", translations = new { en = new { label = "Data exports" }, ar = new { label = "تصدير البيانات" } } },
-        });
-
-        var enterpriseFeatures = JsonSerializer.Serialize(new[]
-        {
-            new { key = "users.max_count", value = "500", translations = new { en = new { label = "Up to 500 users" }, ar = new { label = "حتى 500 مستخدم" } } },
-            new { key = "files.max_storage_mb", value = "204800", translations = new { en = new { label = "200 GB storage" }, ar = new { label = "200 جيجابايت تخزين" } } },
-            new { key = "files.max_upload_size_mb", value = "100", translations = new { en = new { label = "100 MB max upload" }, ar = new { label = "100 ميجابايت حد أقصى للرفع" } } },
-            new { key = "reports.enabled", value = "true", translations = new { en = new { label = "Reports enabled" }, ar = new { label = "التقارير مفعلة" } } },
-            new { key = "reports.max_concurrent", value = "10", translations = new { en = new { label = "Up to 10 concurrent reports" }, ar = new { label = "حتى 10 تقارير متزامنة" } } },
-            new { key = "reports.pdf_export", value = "true", translations = new { en = new { label = "PDF export enabled" }, ar = new { label = "تصدير PDF مفعل" } } },
-            new { key = "api_keys.enabled", value = "true", translations = new { en = new { label = "API keys enabled" }, ar = new { label = "مفاتيح API مفعلة" } } },
-            new { key = "api_keys.max_count", value = "50", translations = new { en = new { label = "Up to 50 API keys" }, ar = new { label = "حتى 50 مفتاح API" } } },
-            new { key = "users.invitations_enabled", value = "true", translations = new { en = new { label = "User invitations enabled" }, ar = new { label = "دعوات المستخدمين مفعلة" } } },
-            new { key = "roles.tenant_custom_enabled", value = "true", translations = new { en = new { label = "Custom roles enabled" }, ar = new { label = "الأدوار المخصصة مفعلة" } } },
-            new { key = "webhooks.enabled", value = "true", translations = new { en = new { label = "Webhooks enabled" }, ar = new { label = "الويب هوك مفعل" } } },
-            new { key = "webhooks.max_count", value = "25", translations = new { en = new { label = "Up to 25 webhooks" }, ar = new { label = "حتى 25 ويب هوك" } } },
-            new { key = "imports.enabled", value = "true", translations = new { en = new { label = "Imports enabled" }, ar = new { label = "الاستيراد مفعل" } } },
-            new { key = "imports.max_rows", value = "50000", translations = new { en = new { label = "Up to 50,000 rows per import" }, ar = new { label = "حتى 50,000 صف لكل استيراد" } } },
-            new { key = "exports.enabled", value = "true", translations = new { en = new { label = "Data exports" }, ar = new { label = "تصدير البيانات" } } },
-        });
-
-        var plans = new[]
-        {
-            SubscriptionPlan.Create(
-                "Free",
-                "free",
-                "Get started with basic features",
-                "{\"en\":{\"name\":\"Free\",\"description\":\"Get started with basic features\"},\"ar\":{\"name\":\"مجاني\",\"description\":\"ابدأ بالميزات الأساسية\"},\"ku\":{\"name\":\"بەخۆڕایی\",\"description\":\"دەست پێبکە بە تایبەتمەندییە بنەڕەتییەکان\"}}",
-                0m,
-                0m,
-                "USD",
-                freeFeatures,
-                isFree: true,
-                isPublic: true,
-                displayOrder: 0,
-                trialDays: 0),
-
-            SubscriptionPlan.Create(
-                "Starter",
-                "starter",
-                "For small teams getting started",
-                "{\"en\":{\"name\":\"Starter\",\"description\":\"For small teams getting started\"},\"ar\":{\"name\":\"المبتدئ\",\"description\":\"للفرق الصغيرة التي تبدأ للتو\"},\"ku\":{\"name\":\"دەستپێکەر\",\"description\":\"بۆ تیمە بچووکەکان کە دەیانەوێت دەست پێبکەن\"}}",
-                29m,
-                290m,
-                "USD",
-                starterFeatures,
-                isFree: false,
-                isPublic: true,
-                displayOrder: 1,
-                trialDays: 0),
-
-            SubscriptionPlan.Create(
-                "Pro",
-                "pro",
-                "For growing teams with advanced needs",
-                "{\"en\":{\"name\":\"Pro\",\"description\":\"For growing teams with advanced needs\"},\"ar\":{\"name\":\"احترافي\",\"description\":\"للفرق المتنامية ذات الاحتياجات المتقدمة\"},\"ku\":{\"name\":\"پرۆفیشنال\",\"description\":\"بۆ تیمە گەشەکانی کە پێویستییانی پێشکەوتوویان هەیە\"}}",
-                99m,
-                990m,
-                "USD",
-                proFeatures,
-                isFree: false,
-                isPublic: true,
-                displayOrder: 2,
-                trialDays: 0),
-
-            SubscriptionPlan.Create(
-                "Enterprise",
-                "enterprise",
-                "For large organizations with custom requirements",
-                "{\"en\":{\"name\":\"Enterprise\",\"description\":\"For large organizations with custom requirements\"},\"ar\":{\"name\":\"المؤسسي\",\"description\":\"للمؤسسات الكبيرة ذات المتطلبات المخصصة\"},\"ku\":{\"name\":\"کۆمپانیا\",\"description\":\"بۆ ڕێکخراوە گەورەکان کە پێویستییە تایبەتەکانیان هەیە\"}}",
-                299m,
-                2990m,
-                "USD",
-                enterpriseFeatures,
-                isFree: false,
-                isPublic: true,
-                displayOrder: 3,
-                trialDays: 0),
-        };
-
-        context.SubscriptionPlans.AddRange(plans);
-        await context.SaveChangesAsync();
-        logger.LogInformation("Seeded {Count} subscription plans", plans.Length);
-
-        var systemUserId = (await context.Users.IgnoreQueryFilters().FirstAsync(u => u.Username == "superadmin")).Id;
-        foreach (var plan in plans)
-            context.PlanPriceHistories.Add(PlanPriceHistory.Create(plan.Id, plan.MonthlyPrice, plan.AnnualPrice, plan.Currency, systemUserId, "Initial plan creation"));
-        await context.SaveChangesAsync();
-        logger.LogInformation("Seeded price history baselines for {Count} subscription plans", plans.Length);
+        logger.LogInformation("Seeded {Count} feature flags", flags.Length);
     }
 }

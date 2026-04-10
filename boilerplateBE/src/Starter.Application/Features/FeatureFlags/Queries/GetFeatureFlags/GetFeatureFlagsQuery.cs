@@ -1,6 +1,5 @@
 using MediatR;
 using Starter.Application.Common.Models;
-using Starter.Application.Features.FeatureFlags.DTOs;
 using Starter.Domain.FeatureFlags.Enums;
 using Starter.Shared.Results;
 

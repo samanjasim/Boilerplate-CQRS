@@ -9,6 +9,7 @@ using Starter.Application.Features.Reports.DTOs;
 using Starter.Domain.Common;
 using Starter.Domain.Common.Enums;
 using Starter.Domain.Identity.Errors;
+using Starter.Shared.Constants;
 using Starter.Shared.Results;
 
 namespace Starter.Application.Features.Reports.Commands.RequestReport;
@@ -40,7 +41,7 @@ internal sealed class RequestReportCommandHandler(
 
         if (!forceRefresh)
         {
-            var existing = await context.ReportRequests
+            var existing = await context.Set<ReportRequest>()
                 .AsNoTracking()
                 .Where(r => r.FilterHash == filterHash
                     && r.TenantId == currentUserService.TenantId
@@ -62,7 +63,7 @@ internal sealed class RequestReportCommandHandler(
             request.Filters,
             filterHash);
 
-        context.ReportRequests.Add(reportRequest);
+        context.Set<ReportRequest>().Add(reportRequest);
         await context.SaveChangesAsync(cancellationToken);
 
         await messagePublisher.PublishAsync(new GenerateReportMessage(reportRequest.Id), cancellationToken);

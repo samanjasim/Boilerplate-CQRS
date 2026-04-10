@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Starter.Application.Common.Interfaces;
+using Starter.Domain.ApiKeys.Entities;
 using Starter.Domain.Tenants.Enums;
 
 namespace Starter.Infrastructure.Identity.Authentication;
@@ -34,7 +35,7 @@ public sealed class ApiKeyAuthenticationHandler(
 
         var prefix = providedKey[..16];
 
-        var apiKey = await dbContext.ApiKeys
+        var apiKey = await dbContext.Set<ApiKey>()
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(k => k.KeyPrefix == prefix);
 

@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
+using Starter.Domain.FeatureFlags.Entities;
 using Starter.Domain.FeatureFlags.Errors;
 using Starter.Shared.Results;
 
@@ -12,7 +13,7 @@ internal sealed class UpdateFeatureFlagCommandHandler(
 {
     public async Task<Result> Handle(UpdateFeatureFlagCommand request, CancellationToken cancellationToken)
     {
-        var flag = await context.FeatureFlags.FirstOrDefaultAsync(f => f.Id == request.Id, cancellationToken);
+        var flag = await context.Set<FeatureFlag>().FirstOrDefaultAsync(f => f.Id == request.Id, cancellationToken);
         if (flag is null) return Result.Failure(FeatureFlagErrors.NotFound);
 
         flag.Update(request.Name, request.Description, request.DefaultValue, request.Category);

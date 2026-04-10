@@ -11,3 +11,4 @@ export * from './settings.types';
 export * from './billing.types';
 export * from './webhook.types';
 export * from './importExport.types';
+export * from './product.types';

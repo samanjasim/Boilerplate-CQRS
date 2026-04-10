@@ -68,6 +68,11 @@ export const PERMISSIONS = {
     ManagePlans: 'Billing.ManagePlans',
     ManageTenantSubscriptions: 'Billing.ManageTenantSubscriptions',
   },
+  Products: {
+    View: 'Products.View',
+    Create: 'Products.Create',
+    Update: 'Products.Update',
+  },
   System: {
     ViewAuditLogs: 'System.ViewAuditLogs',
     ManageSettings: 'System.ManageSettings',

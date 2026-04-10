@@ -12,7 +12,7 @@ internal sealed class CreateFeatureFlagCommandHandler(
 {
     public async Task<Result<Guid>> Handle(CreateFeatureFlagCommand request, CancellationToken cancellationToken)
     {
-        var keyExists = await context.FeatureFlags
+        var keyExists = await context.Set<FeatureFlag>()
             .AnyAsync(f => f.Key == request.Key.Trim().ToLowerInvariant(), cancellationToken);
         if (keyExists)
             return Result.Failure<Guid>(FeatureFlagErrors.KeyAlreadyExists);
@@ -20,7 +20,7 @@ internal sealed class CreateFeatureFlagCommandHandler(
         var flag = FeatureFlag.Create(request.Key, request.Name, request.Description,
             request.DefaultValue, request.ValueType, request.Category, request.IsSystem);
 
-        context.FeatureFlags.Add(flag);
+        context.Set<FeatureFlag>().Add(flag);
         await context.SaveChangesAsync(cancellationToken);
         return Result.Success(flag.Id);
     }

@@ -2,7 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
 using Starter.Application.Common.Models;
-using Starter.Application.Features.FeatureFlags.DTOs;
+using Starter.Domain.FeatureFlags.Entities;
 using Starter.Shared.Results;
 
 namespace Starter.Application.Features.FeatureFlags.Queries.GetFeatureFlags;
@@ -18,7 +18,7 @@ internal sealed class GetFeatureFlagsQueryHandler(
         var tenantId = request.TenantId.HasValue && !currentUser.TenantId.HasValue
             ? request.TenantId
             : currentUser.TenantId;
-        var query = context.FeatureFlags.AsNoTracking().AsQueryable();
+        var query = context.Set<FeatureFlag>().AsNoTracking().AsQueryable();
 
         if (request.Category.HasValue)
             query = query.Where(f => f.Category == request.Category.Value);
@@ -36,7 +36,7 @@ internal sealed class GetFeatureFlagsQueryHandler(
         if (tenantId.HasValue && flags.Count > 0)
         {
             var flagIds = flags.Select(f => f.Id).ToList();
-            overrideMap = await context.TenantFeatureFlags.AsNoTracking()
+            overrideMap = await context.Set<TenantFeatureFlag>().AsNoTracking()
                 .Where(t => t.TenantId == tenantId.Value && flagIds.Contains(t.FeatureFlagId))
                 .ToDictionaryAsync(t => t.FeatureFlagId, t => t.Value, cancellationToken);
         }

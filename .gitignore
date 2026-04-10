@@ -1,5 +1,6 @@
-# Test output
+# Test output (rename.ps1 scaffolded test apps)
 _test*/
+Test*/
 
 # IDE
 .vs/

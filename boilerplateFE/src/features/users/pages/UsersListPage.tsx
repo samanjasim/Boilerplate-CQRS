@@ -18,24 +18,22 @@ import { useSearchUsers } from '../api';
 import { useInvitations, useRevokeInvitation } from '@/features/auth/api';
 import { InviteUserModal } from '../components';
 import { ROUTES } from '@/config';
-import { Users, UserPlus, Upload, X, Mail, Clock } from 'lucide-react';
+import { Users, UserPlus, X, Mail, Clock } from 'lucide-react';
 import { formatDate } from '@/utils/format';
 import { usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
-import { ImportWizard } from '@/features/import-export/components/ImportWizard';
+import { Slot } from '@/lib/extensions';
 
 export default function UsersListPage() {
   const { t } = useTranslation();
   const { hasPermission } = usePermissions();
   const canExport = hasPermission(PERMISSIONS.System.ExportData);
-  const canImport = hasPermission(PERMISSIONS.System.ImportData);
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(getPersistedPageSize);
-  const { data, isLoading, isError } = useSearchUsers({ pageNumber, pageSize, sortBy: 'createdAt', sortDescending: true });
+  const { data, isLoading, isError, refetch } = useSearchUsers({ pageNumber, pageSize, sortBy: 'createdAt', sortDescending: true });
   const { data: invitationsData } = useInvitations();
   const { mutate: revokeInvitation } = useRevokeInvitation();
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
 
   const users = data?.data ?? [];
   const pagination = data?.pagination;
@@ -69,12 +67,7 @@ export default function UsersListPage() {
         actions={
           <div className="flex items-center gap-2">
             {canExport && <ExportButton reportType="Users" />}
-            {canImport && (
-              <Button variant="outline" onClick={() => setImportOpen(true)}>
-                <Upload className="mr-2 h-4 w-4" />
-                {t('users.import')}
-              </Button>
-            )}
+            <Slot id="users-list-toolbar" props={{ onRefresh: refetch }} />
             <Button onClick={() => setInviteModalOpen(true)}>
               <UserPlus className="mr-2 h-4 w-4" />
               {t('invitations.inviteUser')}
@@ -187,7 +180,6 @@ export default function UsersListPage() {
       )}
 
       <InviteUserModal open={inviteModalOpen} onOpenChange={setInviteModalOpen} />
-      <ImportWizard open={importOpen} onOpenChange={setImportOpen} entityType="Users" />
     </div>
   );
 }

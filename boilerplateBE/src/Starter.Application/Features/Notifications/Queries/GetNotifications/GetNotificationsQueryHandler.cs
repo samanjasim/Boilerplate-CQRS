@@ -1,5 +1,7 @@
 using Starter.Application.Common.Interfaces;
 using Starter.Application.Common.Models;
+using Starter.Application.Features.Notifications.DTOs;
+using Starter.Domain.Common;
 using Starter.Domain.Identity.Errors;
 using Starter.Shared.Results;
 using MediatR;
@@ -17,7 +19,7 @@ internal sealed class GetNotificationsQueryHandler(
         if (userId is null)
             return Result.Failure<PaginatedList<NotificationDto>>(UserErrors.Unauthorized());
 
-        var query = context.Notifications
+        var query = context.Set<Notification>()
             .AsNoTracking()
             .Where(n => n.UserId == userId.Value);
 

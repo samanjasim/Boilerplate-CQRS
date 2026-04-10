@@ -1,14 +1,12 @@
 using System.Data;
+using System.Linq.Expressions;
 using System.Reflection;
 using Starter.Application.Common.Interfaces;
-using Starter.Domain.ApiKeys.Entities;
-using Starter.Domain.Billing.Entities;
 using Starter.Domain.Common;
 using Starter.Domain.FeatureFlags.Entities;
 using Starter.Domain.Identity.Entities;
 using Starter.Domain.Tenants.Entities;
-using Starter.Domain.ImportExport.Entities;
-using Starter.Domain.Webhooks.Entities;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 
 namespace Starter.Infrastructure.Persistence;
@@ -28,20 +26,7 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<Session> Sessions => Set<Session>();
     public DbSet<LoginHistory> LoginHistory => Set<LoginHistory>();
     public DbSet<Notification> Notifications => Set<Notification>();
-    public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
-    public DbSet<FileMetadata> FileMetadata => Set<FileMetadata>();
-    public DbSet<ReportRequest> ReportRequests => Set<ReportRequest>();
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
-    public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
-    public DbSet<FeatureFlag> FeatureFlags => Set<FeatureFlag>();
-    public DbSet<TenantFeatureFlag> TenantFeatureFlags => Set<TenantFeatureFlag>();
-    public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
-    public DbSet<TenantSubscription> TenantSubscriptions => Set<TenantSubscription>();
-    public DbSet<PaymentRecord> PaymentRecords => Set<PaymentRecord>();
-    public DbSet<PlanPriceHistory> PlanPriceHistories => Set<PlanPriceHistory>();
-    public DbSet<WebhookEndpoint> WebhookEndpoints => Set<WebhookEndpoint>();
-    public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
-    public DbSet<ImportJob> ImportJobs => Set<ImportJob>();
 
     // EF Core evaluates this per-query via the expression tree.
     // Must be a property (not a method) for EF to parameterize it.
@@ -59,62 +44,78 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        // MassTransit transactional outbox tables: InboxState, OutboxMessage,
+        // OutboxState. Required for AddEntityFrameworkOutbox<ApplicationDbContext>().
+        //
+        // All domain events across the whole app — including those published
+        // from module DbContexts via IPublishEndpoint — flow through THIS
+        // single outbox. Module contexts intentionally do NOT register their
+        // own outbox tables (see BillingDbContext/WebhooksDbContext/
+        // ImportExportDbContext). Consolidating in one context keeps retry +
+        // dedup bookkeeping simple and avoids dead __MT_* tables per module.
+        modelBuilder.AddInboxStateEntity();
+        modelBuilder.AddOutboxMessageEntity();
+        modelBuilder.AddOutboxStateEntity();
+
+        // Core entity configurations only. Each module owns its own DbContext
+        // and applies its own configurations there — ApplicationDbContext no
+        // longer scans module assemblies.
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
 
-        // Global tenant query filters — EF parameterizes TenantId per query execution
-        // Platform admin (TenantId=null): sees everything
-        // Tenant user (TenantId=guid): sees ONLY their tenant's data (not platform users)
+        // Tenant query filters
+        ApplyTenantFilters(modelBuilder);
+    }
 
-        modelBuilder.Entity<User>().HasQueryFilter(u =>
-            TenantId == null || u.TenantId == TenantId);
+    private void ApplyTenantFilters(ModelBuilder modelBuilder)
+    {
+        // ── Explicit filters for entities with non-standard logic ──
 
-        // Roles: tenant users see global/system roles (TenantId=null) + their own custom roles
+        // Non-nullable TenantId entities (can't use ITenantEntity convention)
+        modelBuilder.Entity<TenantFeatureFlag>().HasQueryFilter(t =>
+            TenantId == null || t.TenantId == TenantId);
+
+        // Non-standard pattern: tenant users see global (TenantId=null) + their own
         modelBuilder.Entity<Role>().HasQueryFilter(r =>
             TenantId == null || r.TenantId == null || r.TenantId == TenantId);
 
-        modelBuilder.Entity<AuditLog>().HasQueryFilter(a =>
-            TenantId == null || a.TenantId == TenantId);
-
-        // Invitations: platform admin sees all; tenant user sees their tenant's + platform-level (null TenantId)
         modelBuilder.Entity<Invitation>().HasQueryFilter(i =>
             TenantId == null || i.TenantId == null || i.TenantId == TenantId);
-
-        modelBuilder.Entity<Notification>().HasQueryFilter(n =>
-            TenantId == null || n.TenantId == TenantId);
-
-        modelBuilder.Entity<FileMetadata>().HasQueryFilter(f =>
-            TenantId == null || f.TenantId == TenantId);
-
-        modelBuilder.Entity<ReportRequest>().HasQueryFilter(r =>
-            TenantId == null || r.TenantId == TenantId);
 
         modelBuilder.Entity<SystemSetting>().HasQueryFilter(s =>
             TenantId == null || s.TenantId == null || s.TenantId == TenantId);
 
-        modelBuilder.Entity<ApiKey>().HasQueryFilter(a =>
-            TenantId == null || a.TenantId == TenantId);
-
-        modelBuilder.Entity<TenantFeatureFlag>().HasQueryFilter(t =>
-            TenantId == null || t.TenantId == TenantId);
-
-        // Tenant entity: tenant users see only their own tenant; platform admins see all
+        // Special: uses Id not TenantId
         modelBuilder.Entity<Tenant>().HasQueryFilter(t =>
             TenantId == null || t.Id == TenantId);
 
-        modelBuilder.Entity<TenantSubscription>().HasQueryFilter(s =>
-            TenantId == null || s.TenantId == TenantId);
+        // ── Convention-based filters for module entities ──
+        // Module entities implementing ITenantEntity get the standard filter automatically.
+        // Skips entities that already have a filter defined above.
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (!typeof(ITenantEntity).IsAssignableFrom(entityType.ClrType))
+                continue;
 
-        modelBuilder.Entity<PaymentRecord>().HasQueryFilter(p =>
-            TenantId == null || p.TenantId == TenantId);
+            // Skip entities that already have an explicit filter
+            if (entityType.GetDeclaredQueryFilters().Any())
+                continue;
 
-        modelBuilder.Entity<WebhookEndpoint>().HasQueryFilter(e =>
-            TenantId == null || e.TenantId == TenantId);
+            var parameter = Expression.Parameter(entityType.ClrType, "e");
+            var tenantIdProp = Expression.Property(parameter, nameof(ITenantEntity.TenantId));
+            var currentTenantId = Expression.Property(
+                Expression.Constant(this),
+                typeof(ApplicationDbContext).GetProperty(nameof(TenantId),
+                    BindingFlags.NonPublic | BindingFlags.Instance)!);
 
-        modelBuilder.Entity<WebhookDelivery>().HasQueryFilter(d =>
-            TenantId == null || d.TenantId == TenantId);
+            var filter = Expression.Lambda(
+                Expression.OrElse(
+                    Expression.Equal(currentTenantId,
+                        Expression.Constant(null, typeof(Guid?))),
+                    Expression.Equal(tenantIdProp, currentTenantId)),
+                parameter);
 
-        modelBuilder.Entity<ImportJob>().HasQueryFilter(j =>
-            TenantId == null || j.TenantId == TenantId);
+            modelBuilder.Entity(entityType.ClrType).HasQueryFilter(filter);
+        }
     }
 
     public async Task<T> ExecuteInTransactionAsync<T>(

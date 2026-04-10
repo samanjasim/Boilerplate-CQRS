@@ -767,6 +767,7 @@
   "billing": {
     "title": "الفوترة",
     "subtitle": "إدارة اشتراكك والفوترة",
+    "subscriptionFor": "اشتراك {{name}}",
     "currentPlan": "الخطة الحالية",
     "usage": "الاستخدام",
     "payments": "المدفوعات",

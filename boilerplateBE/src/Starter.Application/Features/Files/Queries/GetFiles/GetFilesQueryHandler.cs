@@ -1,6 +1,8 @@
 using Starter.Application.Common.Interfaces;
 using Starter.Application.Common.Models;
+using Starter.Domain.Common;
 using Starter.Domain.Common.Enums;
+using Starter.Domain.Identity.Entities;
 using Starter.Shared.Results;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +15,7 @@ internal sealed class GetFilesQueryHandler(
     public async Task<Result<PaginatedList<FileDto>>> Handle(GetFilesQuery request, CancellationToken cancellationToken)
     {
         // Tenant scoping is handled by the global query filter on FileMetadata in ApplicationDbContext
-        var query = context.FileMetadata.AsNoTracking()
+        var query = context.Set<FileMetadata>().AsNoTracking()
             .Where(f => f.Status == FileStatus.Permanent);
 
         if (request.Category.HasValue)
@@ -40,7 +42,7 @@ internal sealed class GetFilesQueryHandler(
         query = query.OrderByDescending(f => f.CreatedAt);
 
         var projectedQuery = from f in query
-            join u in context.Users on f.UploadedBy equals u.Id into users
+            join u in context.Set<User>() on f.UploadedBy equals u.Id into users
             from u in users.DefaultIfEmpty()
             select new FileDto(
                 f.Id,

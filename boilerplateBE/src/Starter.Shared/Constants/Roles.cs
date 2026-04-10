@@ -39,45 +39,32 @@ public static class Roles
             Permissions.Tenants.Show,
             Permissions.Tenants.Create,
             Permissions.Tenants.Update,
+            // System
+            Permissions.System.ViewDashboard,
+            Permissions.System.ManageSettings,
+            Permissions.System.ViewAuditLogs,
+            Permissions.System.ExportData,
             // Files
             Permissions.Files.View,
             Permissions.Files.Upload,
             Permissions.Files.Delete,
             Permissions.Files.Manage,
-            // API Keys
+            // FeatureFlags
+            Permissions.FeatureFlags.View,
+            Permissions.FeatureFlags.OptOut,
+            // ApiKeys (tenant-scoped)
             Permissions.ApiKeys.View,
             Permissions.ApiKeys.Create,
             Permissions.ApiKeys.Update,
             Permissions.ApiKeys.Delete,
-            // Feature Flags
-            Permissions.FeatureFlags.View,
-            Permissions.FeatureFlags.OptOut,
-            // Billing
-            Permissions.Billing.View,
-            Permissions.Billing.Manage,
-            // Webhooks
-            Permissions.Webhooks.View,
-            Permissions.Webhooks.Create,
-            Permissions.Webhooks.Update,
-            Permissions.Webhooks.Delete,
-            // System
-            Permissions.System.ViewDashboard,
-            Permissions.System.ViewAuditLogs,
-            Permissions.System.ExportData,
-            Permissions.System.ManageSettings,
-            Permissions.System.ImportData
         ]);
 
         yield return (User, [
+            // System
+            Permissions.System.ViewDashboard,
             // Files
             Permissions.Files.View,
             Permissions.Files.Upload,
-            // Billing
-            Permissions.Billing.View,
-            // Webhooks
-            Permissions.Webhooks.View,
-            // System
-            Permissions.System.ViewDashboard
         ]);
     }
 }

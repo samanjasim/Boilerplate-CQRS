@@ -2,7 +2,9 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
 using Starter.Application.Features.ApiKeys.DTOs;
+using Starter.Domain.ApiKeys.Entities;
 using Starter.Domain.ApiKeys.Errors;
+using Starter.Shared.Constants;
 using Starter.Shared.Results;
 
 namespace Starter.Application.Features.ApiKeys.Commands.UpdateApiKey;
@@ -14,7 +16,7 @@ public sealed class UpdateApiKeyCommandHandler(
 {
     public async Task<Result<ApiKeyDto>> Handle(UpdateApiKeyCommand request, CancellationToken cancellationToken)
     {
-        var apiKey = await dbContext.ApiKeys
+        var apiKey = await dbContext.Set<ApiKey>()
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(k => k.Id == request.Id, cancellationToken);
 

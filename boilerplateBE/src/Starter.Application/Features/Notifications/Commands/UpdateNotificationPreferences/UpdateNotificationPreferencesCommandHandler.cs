@@ -17,7 +17,7 @@ internal sealed class UpdateNotificationPreferencesCommandHandler(
         if (userId is null)
             return Result.Failure(UserErrors.Unauthorized());
 
-        var existing = await context.NotificationPreferences
+        var existing = await context.Set<NotificationPreference>()
             .Where(np => np.UserId == userId.Value)
             .ToListAsync(cancellationToken);
 
@@ -31,7 +31,7 @@ internal sealed class UpdateNotificationPreferencesCommandHandler(
             }
             else
             {
-                context.NotificationPreferences.Add(
+                context.Set<NotificationPreference>().Add(
                     NotificationPreference.Create(userId.Value, item.NotificationType, item.EmailEnabled, item.InAppEnabled));
             }
         }

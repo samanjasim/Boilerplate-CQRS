@@ -1,7 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
-using Starter.Application.Features.FeatureFlags.DTOs;
+using Starter.Domain.FeatureFlags.Entities;
 using Starter.Domain.FeatureFlags.Errors;
 using Starter.Shared.Results;
 
@@ -14,7 +14,7 @@ internal sealed class GetFeatureFlagByKeyQueryHandler(
     public async Task<Result<FeatureFlagDto>> Handle(
         GetFeatureFlagByKeyQuery request, CancellationToken cancellationToken)
     {
-        var flag = await context.FeatureFlags.AsNoTracking()
+        var flag = await context.Set<FeatureFlag>().AsNoTracking()
             .FirstOrDefaultAsync(f => f.Key == request.Key.Trim().ToLowerInvariant(), cancellationToken);
         if (flag is null)
             return Result.Failure<FeatureFlagDto>(FeatureFlagErrors.NotFound);
@@ -23,7 +23,7 @@ internal sealed class GetFeatureFlagByKeyQueryHandler(
         var tenantId = currentUser.TenantId;
         if (tenantId.HasValue)
         {
-            overrideValue = await context.TenantFeatureFlags.AsNoTracking()
+            overrideValue = await context.Set<TenantFeatureFlag>().AsNoTracking()
                 .Where(t => t.TenantId == tenantId.Value && t.FeatureFlagId == flag.Id)
                 .Select(t => t.Value).FirstOrDefaultAsync(cancellationToken);
         }

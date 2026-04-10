@@ -2,7 +2,7 @@ using Starter.Domain.Common.Enums;
 
 namespace Starter.Domain.Common;
 
-public sealed class FileMetadata : BaseAuditableEntity
+public sealed class FileMetadata : BaseAuditableEntity, ITenantEntity
 {
     public string FileName { get; private set; } = null!;
     public string StorageKey { get; private set; } = null!;

@@ -30,8 +30,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Starter.Abstractions\Starter.Abstractions.csproj" />
+    <ProjectReference Include="..\Starter.Abstractions.Web\Starter.Abstractions.Web.csproj" />
     <ProjectReference Include="..\Starter.Application\Starter.Application.csproj" />
     <ProjectReference Include="..\Starter.Infrastructure\Starter.Infrastructure.csproj" />
+    <ProjectReference Include="..\modules\Starter.Module.Webhooks\Starter.Module.Webhooks.csproj" />
+    <ProjectReference Include="..\modules\Starter.Module.ImportExport\Starter.Module.ImportExport.csproj" />
+    <ProjectReference Include="..\modules\Starter.Module.Billing\Starter.Module.Billing.csproj" />
+    <ProjectReference Include="..\modules\Starter.Module.Products\Starter.Module.Products.csproj" />
     <ProjectReference Include="..\Starter.Infrastructure.Identity\Starter.Infrastructure.Identity.csproj" />
   </ItemGroup>
 

@@ -2,7 +2,7 @@ using Starter.Domain.Common.Enums;
 
 namespace Starter.Domain.Common;
 
-public sealed class ReportRequest : BaseAuditableEntity
+public sealed class ReportRequest : BaseAuditableEntity, ITenantEntity
 {
     public Guid? TenantId { get; private set; }
     public Guid RequestedBy { get; private set; }

@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Starter.Application.Features.Notifications.Commands.MarkAllNotificationsRead;
 using Starter.Application.Features.Notifications.Commands.MarkNotificationRead;

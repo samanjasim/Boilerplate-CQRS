@@ -1,4 +1,5 @@
 using Starter.Application.Common.Interfaces;
+using Starter.Domain.Common;
 using Starter.Domain.Identity.Errors;
 using Starter.Shared.Results;
 using MediatR;
@@ -16,7 +17,7 @@ internal sealed class GetUnreadCountQueryHandler(
         if (userId is null)
             return Result.Failure<int>(UserErrors.Unauthorized());
 
-        var count = await context.Notifications
+        var count = await context.Set<Notification>()
             .AsNoTracking()
             .CountAsync(n => n.UserId == userId.Value && !n.IsRead, cancellationToken);
 

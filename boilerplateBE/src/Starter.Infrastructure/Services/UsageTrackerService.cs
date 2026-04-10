@@ -1,25 +1,22 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Starter.Abstractions.Capabilities;
 using Starter.Application.Common.Interfaces;
 using StackExchange.Redis;
 
 namespace Starter.Infrastructure.Services;
 
 internal sealed class UsageTrackerService(
-    IApplicationDbContext context,
+    IEnumerable<IUsageMetricCalculator> calculators,
     ILogger<UsageTrackerService> logger,
     IConnectionMultiplexer? multiplexer = null) : IUsageTracker
 {
     private static readonly TimeSpan Ttl = TimeSpan.FromHours(24);
 
-    private static readonly string[] SupportedMetrics =
-    [
-        "users",
-        "storage_bytes",
-        "api_keys",
-        "reports_active",
-        "webhooks"
-    ];
+    // Snapshot the registered calculators once per scope. The source-of-truth
+    // list of metrics is whatever calculators were registered in DI — core
+    // contributes a handful; each installed module adds its own.
+    private readonly Dictionary<string, IUsageMetricCalculator> _calculatorsByMetric =
+        calculators.ToDictionary(c => c.Metric, StringComparer.Ordinal);
 
     private static string BuildKey(Guid tenantId, string metric) =>
         $"usage:{tenantId}:{metric}";
@@ -103,9 +100,13 @@ internal sealed class UsageTrackerService(
 
     public async Task<Dictionary<string, long>> GetAllAsync(Guid tenantId, CancellationToken ct = default)
     {
-        var result = new Dictionary<string, long>(SupportedMetrics.Length);
+        // Iterate every metric that has a calculator registered. When a module
+        // is absent, its calculator isn't registered, so its metric is omitted
+        // from the result (rather than returning an unhelpful 0 for a metric
+        // that doesn't exist in this build).
+        var result = new Dictionary<string, long>(_calculatorsByMetric.Count, StringComparer.Ordinal);
 
-        foreach (var metric in SupportedMetrics)
+        foreach (var metric in _calculatorsByMetric.Keys)
         {
             result[metric] = await GetAsync(tenantId, metric, ct);
         }
@@ -129,30 +130,16 @@ internal sealed class UsageTrackerService(
 
     private async Task<long> ComputeFromDbAsync(Guid tenantId, string metric, CancellationToken ct)
     {
-        return metric switch
-        {
-            "users" => await context.Users
-                .IgnoreQueryFilters()
-                .CountAsync(u => u.TenantId == tenantId, ct),
+        // Dispatch to the registered calculator for this metric. If none is
+        // registered, the metric's owning module is absent from the build —
+        // return 0 silently. This replaces the hardcoded switch + try/catch
+        // pattern the old implementation used.
+        if (_calculatorsByMetric.TryGetValue(metric, out var calculator))
+            return await calculator.CalculateAsync(tenantId, ct);
 
-            "storage_bytes" => await context.FileMetadata
-                .IgnoreQueryFilters()
-                .Where(f => f.TenantId == tenantId)
-                .SumAsync(f => f.Size, ct),
-
-            "api_keys" => await context.ApiKeys
-                .IgnoreQueryFilters()
-                .CountAsync(k => k.TenantId == tenantId && !k.IsRevoked, ct),
-
-            "reports_active" => await context.ReportRequests
-                .IgnoreQueryFilters()
-                .CountAsync(r => r.TenantId == tenantId, ct),
-
-            "webhooks" => await context.WebhookEndpoints
-                .IgnoreQueryFilters()
-                .CountAsync(w => w.TenantId == tenantId, ct),
-
-            _ => throw new ArgumentOutOfRangeException(nameof(metric), $"Unknown usage metric: '{metric}'")
-        };
+        logger.LogDebug(
+            "No IUsageMetricCalculator registered for metric '{Metric}' — returning 0 (module likely not installed)",
+            metric);
+        return 0;
     }
 }

@@ -2,7 +2,7 @@ using Starter.Domain.Common;
 
 namespace Starter.Domain.ApiKeys.Entities;
 
-public sealed class ApiKey : AggregateRoot
+public sealed class ApiKey : AggregateRoot, ITenantEntity
 {
     public Guid? TenantId { get; private set; }
     public string Name { get; private set; } = null!;

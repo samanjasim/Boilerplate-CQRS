@@ -1,6 +1,6 @@
 namespace Starter.Domain.Common;
 
-public sealed class Notification : BaseEntity
+public sealed class Notification : BaseEntity, ITenantEntity
 {
     public Guid UserId { get; private set; }
     public Guid? TenantId { get; private set; }

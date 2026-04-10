@@ -1,4 +1,5 @@
 using Starter.Application.Common.Interfaces;
+using Starter.Domain.Common;
 using Starter.Domain.Common.Errors;
 using Starter.Shared.Results;
 using MediatR;
@@ -12,7 +13,7 @@ internal sealed class GetFileByIdQueryHandler(
 {
     public async Task<Result<FileDto>> Handle(GetFileByIdQuery request, CancellationToken cancellationToken)
     {
-        var metadata = await context.FileMetadata
+        var metadata = await context.Set<FileMetadata>()
             .AsNoTracking()
             .FirstOrDefaultAsync(f => f.Id == request.Id, cancellationToken);
 

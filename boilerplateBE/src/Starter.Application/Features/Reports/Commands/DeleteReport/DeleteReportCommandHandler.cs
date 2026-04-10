@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
+using Starter.Domain.Common;
 using Starter.Domain.Identity.Errors;
 using Starter.Shared.Results;
 
@@ -17,7 +18,7 @@ internal sealed class DeleteReportCommandHandler(
         if (userId is null)
             return Result.Failure(UserErrors.Unauthorized());
 
-        var report = await context.ReportRequests
+        var report = await context.Set<ReportRequest>()
             .FirstOrDefaultAsync(r => r.Id == request.Id, cancellationToken);
 
         if (report is null)
@@ -40,7 +41,7 @@ internal sealed class DeleteReportCommandHandler(
             }
         }
 
-        context.ReportRequests.Remove(report);
+        context.Set<ReportRequest>().Remove(report);
         await context.SaveChangesAsync(cancellationToken);
 
         return Result.Success();

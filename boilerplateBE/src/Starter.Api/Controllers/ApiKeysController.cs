@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Starter.Application.Features.ApiKeys.Commands.CreateApiKey;
 using Starter.Application.Features.ApiKeys.Commands.EmergencyRevokeApiKey;

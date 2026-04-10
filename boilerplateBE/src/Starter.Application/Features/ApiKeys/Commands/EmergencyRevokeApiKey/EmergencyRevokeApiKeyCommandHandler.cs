@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
+using Starter.Domain.ApiKeys.Entities;
 using Starter.Domain.ApiKeys.Errors;
 using Starter.Domain.Common;
 using Starter.Domain.Common.Enums;
@@ -15,7 +16,7 @@ public sealed class EmergencyRevokeApiKeyCommandHandler(
 {
     public async Task<Result> Handle(EmergencyRevokeApiKeyCommand request, CancellationToken cancellationToken)
     {
-        var apiKey = await dbContext.ApiKeys
+        var apiKey = await dbContext.Set<ApiKey>()
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(k => k.Id == request.Id, cancellationToken);
 

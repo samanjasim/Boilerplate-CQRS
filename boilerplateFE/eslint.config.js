@@ -19,5 +19,49 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // Forbid core code from importing optional module folders directly.
+      // Cross-module composition must go through the slot registry
+      // (`src/lib/extensions`) so modules stay tree-shakeable AND
+      // architecturally isolated.
+      //
+      // This rule blocks `import type` as well as runtime `import`. That
+      // is intentional: even type-only imports couple core code to a
+      // module's shape, so renaming a field in the module would break
+      // core compilation. The spirit of the boundary is "core knows
+      // nothing about module internals" — type imports violate that.
+      // If a core file genuinely needs a shared shape, move the shape to
+      // `src/types/` or add it to the slot's prop contract in `slot-map.ts`.
+      'no-restricted-imports': ['error', {
+        patterns: [
+          {
+            group: [
+              '@/features/billing',
+              '@/features/billing/*',
+              '@/features/webhooks',
+              '@/features/webhooks/*',
+              '@/features/import-export',
+              '@/features/import-export/*',
+            ],
+            message: 'Do not import module features from core. Use the slot registry (src/lib/extensions) instead.',
+          },
+        ],
+      }],
+    },
+  },
+  {
+    // Allowlist: the modules themselves (their own internal imports), the
+    // bootstrap config that wires them up, and the app entry point.
+    files: [
+      'src/features/billing/**',
+      'src/features/webhooks/**',
+      'src/features/import-export/**',
+      'src/config/modules.config.ts',
+      'src/app/main.tsx',
+      'src/routes/routes.tsx',
+    ],
+    rules: {
+      'no-restricted-imports': 'off',
+    },
   },
 ])

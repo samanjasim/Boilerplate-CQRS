@@ -1,13 +1,14 @@
 import { lazy } from 'react';
 import type { RouteObject } from 'react-router-dom';
 import { ROUTES } from '@/config';
+import { activeModules } from '@/config/modules.config';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { AuthLayout } from '@/components/layout/AuthLayout';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { AuthGuard, GuestGuard, PermissionGuard } from '@/components/guards';
 import { PERMISSIONS } from '@/constants';
 
-// Lazy-loaded pages
+// Core pages (always loaded)
 const LandingPage = lazy(() => import('@/features/landing/pages/LandingPage'));
 const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'));
 // NOTE: Public self-registration disabled — users register via /register-tenant or invitation
@@ -23,26 +24,34 @@ const RoleEditPage = lazy(() => import('@/features/roles/pages/RoleEditPage'));
 const ForgotPasswordPage = lazy(() => import('@/features/auth/pages/ForgotPasswordPage'));
 const VerifyEmailPage = lazy(() => import('@/features/auth/pages/VerifyEmailPage'));
 const AcceptInvitePage = lazy(() => import('@/features/auth/pages/AcceptInvitePage'));
-const AuditLogsPage = lazy(() => import('@/features/audit-logs/pages/AuditLogsPage'));
 const TenantsListPage = lazy(() => import('@/features/tenants/pages/TenantsListPage'));
 const TenantDetailPage = lazy(() => import('@/features/tenants/pages/TenantDetailPage'));
 const ProfilePage = lazy(() => import('@/features/profile/pages/ProfilePage'));
+const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage'));
+const NotFoundPage = lazy(() => import('@/routes/NotFoundPage'));
+
+// Core feature pages (always loaded — these features ship with every build)
+const AuditLogsPage = lazy(() => import('@/features/audit-logs/pages/AuditLogsPage'));
 const NotificationsPage = lazy(() => import('@/features/notifications/pages/NotificationsPage'));
 const FilesPage = lazy(() => import('@/features/files/pages/FilesPage'));
 const ReportsPage = lazy(() => import('@/features/reports/pages/ReportsPage'));
-const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage'));
 const ApiKeysPage = lazy(() => import('@/features/api-keys/pages/ApiKeysPage'));
 const FeatureFlagsPage = lazy(() => import('@/features/feature-flags/pages/FeatureFlagsPage'));
-const WebhooksPage = lazy(() => import('@/features/webhooks/pages/WebhooksPage'));
-const WebhookAdminPage = lazy(() => import('@/features/webhooks/pages/WebhookAdminPage'));
-const WebhookAdminDetailPage = lazy(() => import('@/features/webhooks/pages/WebhookAdminDetailPage'));
-const BillingPage = lazy(() => import('@/features/billing/pages/BillingPage'));
-const BillingPlansPage = lazy(() => import('@/features/billing/pages/BillingPlansPage'));
-const PricingPage = lazy(() => import('@/features/billing/pages/PricingPage'));
-const SubscriptionsPage = lazy(() => import('@/features/billing/pages/SubscriptionsPage'));
-const SubscriptionDetailPage = lazy(() => import('@/features/billing/pages/SubscriptionDetailPage'));
-const ImportExportPage = lazy(() => import('@/features/import-export/pages/ImportExportPage'));
-const NotFoundPage = lazy(() => import('@/routes/NotFoundPage'));
+
+// Module pages (conditionally loaded based on modules.config.ts)
+const NullPage = () => null;
+const WebhooksPage = activeModules.webhooks ? lazy(() => import('@/features/webhooks/pages/WebhooksPage')) : NullPage;
+const WebhookAdminPage = activeModules.webhooks ? lazy(() => import('@/features/webhooks/pages/WebhookAdminPage')) : NullPage;
+const WebhookAdminDetailPage = activeModules.webhooks ? lazy(() => import('@/features/webhooks/pages/WebhookAdminDetailPage')) : NullPage;
+const BillingPage = activeModules.billing ? lazy(() => import('@/features/billing/pages/BillingPage')) : NullPage;
+const BillingPlansPage = activeModules.billing ? lazy(() => import('@/features/billing/pages/BillingPlansPage')) : NullPage;
+const PricingPage = activeModules.billing ? lazy(() => import('@/features/billing/pages/PricingPage')) : NullPage;
+const SubscriptionsPage = activeModules.billing ? lazy(() => import('@/features/billing/pages/SubscriptionsPage')) : NullPage;
+const SubscriptionDetailPage = activeModules.billing ? lazy(() => import('@/features/billing/pages/SubscriptionDetailPage')) : NullPage;
+const ImportExportPage = activeModules.importExport ? lazy(() => import('@/features/import-export/pages/ImportExportPage')) : NullPage;
+const ProductsListPage = activeModules.products ? lazy(() => import('@/features/products/pages/ProductsListPage')) : NullPage;
+const ProductCreatePage = activeModules.products ? lazy(() => import('@/features/products/pages/ProductCreatePage')) : NullPage;
+const ProductDetailPage = activeModules.products ? lazy(() => import('@/features/products/pages/ProductDetailPage')) : NullPage;
 
 export const routes: RouteObject[] = [
   // Public landing page (always accessible)
@@ -50,7 +59,7 @@ export const routes: RouteObject[] = [
     element: <PublicLayout />,
     children: [
       { path: ROUTES.LANDING, element: <LandingPage /> },
-      { path: ROUTES.PRICING, element: <PricingPage /> },
+      ...(activeModules.billing ? [{ path: ROUTES.PRICING, element: <PricingPage /> }] : []),
     ],
   },
 
@@ -80,9 +89,9 @@ export const routes: RouteObject[] = [
       {
         element: <MainLayout />,
         children: [
+          // ── Core routes (always present) ──
           { path: ROUTES.DASHBOARD, element: <DashboardPage /> },
           { path: ROUTES.PROFILE, element: <ProfilePage /> },
-          { path: ROUTES.NOTIFICATIONS, element: <NotificationsPage /> },
 
           // Users
           {
@@ -128,13 +137,26 @@ export const routes: RouteObject[] = [
             ],
           },
 
-          // Organization (tenant self-service — same component, self-service mode)
+          // Organization (tenant self-service)
           {
             element: <PermissionGuard permission={PERMISSIONS.Tenants.View} />,
             children: [
               { path: ROUTES.ORGANIZATION, element: <TenantDetailPage /> },
             ],
           },
+
+          // Settings
+          {
+            element: <PermissionGuard permission={PERMISSIONS.System.ManageSettings} />,
+            children: [
+              { path: ROUTES.SETTINGS, element: <SettingsPage /> },
+            ],
+          },
+
+          // ── Core feature routes (always present) ──
+
+          // Notifications
+          { path: ROUTES.NOTIFICATIONS, element: <NotificationsPage /> },
 
           // Audit Logs
           {
@@ -160,27 +182,6 @@ export const routes: RouteObject[] = [
             ],
           },
 
-          // Import / Export
-          {
-            element: (
-              <PermissionGuard
-                permissions={[PERMISSIONS.System.ExportData, PERMISSIONS.System.ImportData]}
-                mode="any"
-              />
-            ),
-            children: [
-              { path: ROUTES.IMPORT_EXPORT, element: <ImportExportPage /> },
-            ],
-          },
-
-          // Settings
-          {
-            element: <PermissionGuard permission={PERMISSIONS.System.ManageSettings} />,
-            children: [
-              { path: ROUTES.SETTINGS, element: <SettingsPage /> },
-            ],
-          },
-
           // API Keys
           {
             element: <PermissionGuard permission={PERMISSIONS.ApiKeys.View} />,
@@ -197,45 +198,77 @@ export const routes: RouteObject[] = [
             ],
           },
 
-          // Webhooks
-          {
-            element: <PermissionGuard permission={PERMISSIONS.Webhooks.View} />,
-            children: [
-              { path: ROUTES.WEBHOOKS, element: <WebhooksPage /> },
-            ],
-          },
+          // ── Module routes (conditional on modules.config.ts) ──
 
-          // Webhooks Admin (platform admin)
-          {
-            element: <PermissionGuard permission={PERMISSIONS.Webhooks.ViewPlatform} />,
+          // Import / Export
+          ...(activeModules.importExport ? [{
+            element: (
+              <PermissionGuard
+                permissions={[PERMISSIONS.System.ExportData, PERMISSIONS.System.ImportData]}
+                mode="any"
+              />
+            ),
             children: [
-              { path: ROUTES.WEBHOOKS_ADMIN.LIST, element: <WebhookAdminPage /> },
-              { path: ROUTES.WEBHOOKS_ADMIN.DETAIL, element: <WebhookAdminDetailPage /> },
+              { path: ROUTES.IMPORT_EXPORT, element: <ImportExportPage /> },
             ],
-          },
+          }] : []),
+
+          // Webhooks
+          ...(activeModules.webhooks ? [
+            {
+              element: <PermissionGuard permission={PERMISSIONS.Webhooks.View} />,
+              children: [
+                { path: ROUTES.WEBHOOKS, element: <WebhooksPage /> },
+              ],
+            },
+            {
+              element: <PermissionGuard permission={PERMISSIONS.Webhooks.ViewPlatform} />,
+              children: [
+                { path: ROUTES.WEBHOOKS_ADMIN.LIST, element: <WebhookAdminPage /> },
+                { path: ROUTES.WEBHOOKS_ADMIN.DETAIL, element: <WebhookAdminDetailPage /> },
+              ],
+            },
+          ] : []),
+
+          // Products
+          ...(activeModules.products ? [
+            {
+              element: <PermissionGuard permission={PERMISSIONS.Products.View} />,
+              children: [
+                { path: ROUTES.PRODUCTS.LIST, element: <ProductsListPage /> },
+                { path: ROUTES.PRODUCTS.DETAIL, element: <ProductDetailPage /> },
+              ],
+            },
+            {
+              element: <PermissionGuard permission={PERMISSIONS.Products.Create} />,
+              children: [
+                { path: ROUTES.PRODUCTS.CREATE, element: <ProductCreatePage /> },
+              ],
+            },
+          ] : []),
 
           // Billing
-          {
-            element: <PermissionGuard permission={PERMISSIONS.Billing.View} />,
-            children: [
-              { path: ROUTES.BILLING, element: <BillingPage /> },
-            ],
-          },
-          {
-            element: <PermissionGuard permission={PERMISSIONS.Billing.ViewPlans} />,
-            children: [
-              { path: ROUTES.BILLING_PLANS, element: <BillingPlansPage /> },
-            ],
-          },
-
-          // Subscriptions (platform admin)
-          {
-            element: <PermissionGuard permission={PERMISSIONS.Billing.ManageTenantSubscriptions} />,
-            children: [
-              { path: ROUTES.SUBSCRIPTIONS.LIST, element: <SubscriptionsPage /> },
-              { path: ROUTES.SUBSCRIPTIONS.DETAIL, element: <SubscriptionDetailPage /> },
-            ],
-          },
+          ...(activeModules.billing ? [
+            {
+              element: <PermissionGuard permission={PERMISSIONS.Billing.View} />,
+              children: [
+                { path: ROUTES.BILLING, element: <BillingPage /> },
+              ],
+            },
+            {
+              element: <PermissionGuard permission={PERMISSIONS.Billing.ViewPlans} />,
+              children: [
+                { path: ROUTES.BILLING_PLANS, element: <BillingPlansPage /> },
+              ],
+            },
+            {
+              element: <PermissionGuard permission={PERMISSIONS.Billing.ManageTenantSubscriptions} />,
+              children: [
+                { path: ROUTES.SUBSCRIPTIONS.LIST, element: <SubscriptionsPage /> },
+                { path: ROUTES.SUBSCRIPTIONS.DETAIL, element: <SubscriptionDetailPage /> },
+              ],
+            },
+          ] : []),
         ],
       },
     ],

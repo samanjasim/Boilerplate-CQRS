@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
 using Starter.Application.Common.Models;
 using Starter.Application.Features.ApiKeys.DTOs;
+using Starter.Domain.ApiKeys.Entities;
 using Starter.Shared.Results;
 
 namespace Starter.Application.Features.ApiKeys.Queries.GetApiKeys;
@@ -23,7 +24,7 @@ public sealed class GetApiKeysQueryHandler(
         if (isPlatformAdmin)
         {
             // Platform admin: use IgnoreQueryFilters, filter by keyType
-            var baseQuery = dbContext.ApiKeys
+            var baseQuery = dbContext.Set<ApiKey>()
                 .IgnoreQueryFilters()
                 .AsNoTracking();
 
@@ -56,7 +57,7 @@ public sealed class GetApiKeysQueryHandler(
         else
         {
             // Tenant user: global filter applies, no join needed
-            query = dbContext.ApiKeys
+            query = dbContext.Set<ApiKey>()
                 .AsNoTracking()
                 .OrderByDescending(k => k.CreatedAt)
                 .Select(k => new ApiKeyDto(

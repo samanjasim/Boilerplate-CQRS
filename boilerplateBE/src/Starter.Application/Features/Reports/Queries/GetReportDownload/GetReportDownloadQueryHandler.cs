@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
+using Starter.Domain.Common;
 using Starter.Domain.Common.Enums;
 using Starter.Domain.Identity.Errors;
 using Starter.Shared.Results;
@@ -18,7 +19,7 @@ internal sealed class GetReportDownloadQueryHandler(
         if (userId is null)
             return Result.Failure<string>(UserErrors.Unauthorized());
 
-        var report = await context.ReportRequests
+        var report = await context.Set<ReportRequest>()
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.Id == request.Id, cancellationToken);
 

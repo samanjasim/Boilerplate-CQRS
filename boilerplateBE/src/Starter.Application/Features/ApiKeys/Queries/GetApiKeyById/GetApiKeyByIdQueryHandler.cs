@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
 using Starter.Application.Features.ApiKeys.DTOs;
+using Starter.Domain.ApiKeys.Entities;
 using Starter.Domain.ApiKeys.Errors;
 using Starter.Shared.Results;
 
@@ -20,7 +21,7 @@ public sealed class GetApiKeyByIdQueryHandler(
         {
             // Platform admin: see all keys, populate TenantName
             var result = await (
-                from k in dbContext.ApiKeys.IgnoreQueryFilters().AsNoTracking()
+                from k in dbContext.Set<ApiKey>().IgnoreQueryFilters().AsNoTracking()
                 join t in dbContext.Tenants.IgnoreQueryFilters() on k.TenantId equals t.Id into tj
                 from tenant in tj.DefaultIfEmpty()
                 where k.Id == request.Id
@@ -39,7 +40,7 @@ public sealed class GetApiKeyByIdQueryHandler(
         else
         {
             // Tenant user: global filter applies
-            var apiKey = await dbContext.ApiKeys
+            var apiKey = await dbContext.Set<ApiKey>()
                 .AsNoTracking()
                 .FirstOrDefaultAsync(k => k.Id == request.Id, cancellationToken);
 

@@ -1,4 +1,5 @@
 using Starter.Application.Common.Interfaces;
+using Starter.Domain.Common;
 using Starter.Domain.Identity.Errors;
 using Starter.Shared.Results;
 using MediatR;
@@ -16,7 +17,7 @@ internal sealed class MarkNotificationReadCommandHandler(
         if (userId is null)
             return Result.Failure(UserErrors.Unauthorized());
 
-        var notification = await context.Notifications
+        var notification = await context.Set<Notification>()
             .FirstOrDefaultAsync(n => n.Id == request.Id && n.UserId == userId.Value, cancellationToken);
 
         if (notification is null)

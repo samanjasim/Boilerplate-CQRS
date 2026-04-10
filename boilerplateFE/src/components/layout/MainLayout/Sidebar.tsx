@@ -17,10 +17,12 @@ import {
   ListChecks,
   Webhook,
   ArrowLeftRight,
+  Package,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore, useAuthStore, selectSidebarCollapsed, selectUser } from '@/stores';
 import { ROUTES } from '@/config';
+import { activeModules } from '@/config/modules.config';
 import { usePermissions, useFeatureFlag } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
 
@@ -56,7 +58,7 @@ export function Sidebar() {
     ...(hasPermission(PERMISSIONS.Files.View)
       ? [{ label: t('nav.files'), icon: FolderOpen, path: ROUTES.FILES.LIST }]
       : []),
-    ...((hasPermission(PERMISSIONS.System.ExportData) && exportsFlag.isEnabled) || (hasPermission(PERMISSIONS.System.ImportData) && importsFlag.isEnabled)
+    ...(activeModules.importExport && ((hasPermission(PERMISSIONS.System.ExportData) && exportsFlag.isEnabled) || (hasPermission(PERMISSIONS.System.ImportData) && importsFlag.isEnabled))
       ? [{ label: t('nav.importExport'), icon: ArrowLeftRight, path: ROUTES.IMPORT_EXPORT }]
       : []),
     ...(hasPermission(PERMISSIONS.System.ViewAuditLogs)
@@ -65,19 +67,22 @@ export function Sidebar() {
     ...(hasPermission(PERMISSIONS.ApiKeys.View)
       ? [{ label: t('nav.apiKeys'), icon: KeyRound, path: ROUTES.API_KEYS.LIST }]
       : []),
-    ...(hasPermission(PERMISSIONS.Webhooks.View) && user?.tenantId && webhooksFlag.isEnabled
+    ...(activeModules.products && hasPermission(PERMISSIONS.Products.View)
+      ? [{ label: t('nav.products', 'Products'), icon: Package, path: ROUTES.PRODUCTS.LIST }]
+      : []),
+    ...(activeModules.webhooks && hasPermission(PERMISSIONS.Webhooks.View) && user?.tenantId && webhooksFlag.isEnabled
       ? [{ label: t('nav.webhooks'), icon: Webhook, path: ROUTES.WEBHOOKS }]
       : []),
-    ...(hasPermission(PERMISSIONS.Billing.View) && user?.tenantId
+    ...(activeModules.billing && hasPermission(PERMISSIONS.Billing.View) && user?.tenantId
       ? [{ label: t('nav.billing'), icon: CreditCard, path: ROUTES.BILLING }]
       : []),
-    ...(hasPermission(PERMISSIONS.Billing.ViewPlans)
+    ...(activeModules.billing && hasPermission(PERMISSIONS.Billing.ViewPlans)
       ? [{ label: t('nav.billingPlans'), icon: ReceiptText, path: ROUTES.BILLING_PLANS }]
       : []),
-    ...(hasPermission(PERMISSIONS.Billing.ManageTenantSubscriptions)
+    ...(activeModules.billing && hasPermission(PERMISSIONS.Billing.ManageTenantSubscriptions)
       ? [{ label: t('nav.subscriptions'), icon: ListChecks, path: ROUTES.SUBSCRIPTIONS.LIST }]
       : []),
-    ...(hasPermission(PERMISSIONS.Webhooks.ViewPlatform)
+    ...(activeModules.webhooks && hasPermission(PERMISSIONS.Webhooks.ViewPlatform)
       ? [{ label: t('nav.webhooksAdmin'), icon: Webhook, path: ROUTES.WEBHOOKS_ADMIN.LIST }]
       : []),
     ...(hasPermission(PERMISSIONS.FeatureFlags.View)

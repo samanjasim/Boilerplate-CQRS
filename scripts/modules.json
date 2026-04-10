@@ -1,0 +1,37 @@
+{
+  "_comment": "Optional modules in the Starter boilerplate. After the true-modularity refactor (2026-04-07), only these three features remain as removable modules. Files, Notifications, FeatureFlags, ApiKeys, AuditLogs, and Reports are now part of core and ship with every build.",
+  "billing": {
+    "displayName": "Billing",
+    "backendModule": "Starter.Module.Billing",
+    "frontendFeature": "billing",
+    "mobileModule": "BillingModule",
+    "mobileFolder": "billing",
+    "configKey": "billing",
+    "required": false,
+    "description": "Subscription plans, payments, free-tier auto-provisioning. Implements IBillingProvider; null fallback returns 501. Frontend slot: tenant-detail-tabs. Mobile: plans list + subscription view."
+  },
+  "webhooks": {
+    "displayName": "Webhooks",
+    "backendModule": "Starter.Module.Webhooks",
+    "frontendFeature": "webhooks",
+    "configKey": "webhooks",
+    "required": false,
+    "description": "Webhook endpoints, delivery, admin dashboard. Implements IWebhookPublisher; null fallback is a silent no-op. No mobile counterpart (admin-only feature)."
+  },
+  "importExport": {
+    "displayName": "Import / Export",
+    "backendModule": "Starter.Module.ImportExport",
+    "frontendFeature": "import-export",
+    "configKey": "importExport",
+    "required": false,
+    "description": "Data import/export with async processing. Implements IImportExportRegistry; null fallback returns empty lists. Frontend slot: users-list-toolbar. No mobile counterpart (admin-only feature)."
+  },
+  "products": {
+    "displayName": "Products",
+    "backendModule": "Starter.Module.Products",
+    "frontendFeature": "products",
+    "configKey": "products",
+    "required": false,
+    "description": "E-commerce product catalog with CRUD, image upload, demo catalog seeding. Uses IQuotaChecker + IWebhookPublisher capabilities. Frontend slots: tenant-detail-tabs, dashboard-cards."
+  }
+}

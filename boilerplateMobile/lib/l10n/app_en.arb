@@ -1,0 +1,143 @@
+{
+  "@@locale": "en",
+
+  "appName": "Starter",
+
+  "commonLoading": "Loading...",
+  "commonRetry": "Retry",
+  "commonSave": "Save",
+  "commonCancel": "Cancel",
+  "commonDelete": "Delete",
+  "commonEdit": "Edit",
+  "commonRequired": "Required",
+  "commonError": "An error occurred",
+  "commonNoData": "No data available",
+  "commonSuccess": "Success",
+
+  "loginTitle": "Sign in to your account",
+  "loginEmail": "Email",
+  "loginPassword": "Password",
+  "loginSignIn": "Sign In",
+  "loginEmailRequired": "Email is required",
+  "loginEmailInvalid": "Enter a valid email",
+  "loginPasswordRequired": "Password is required",
+
+  "twoFactorTitle": "Two-Factor Authentication",
+  "twoFactorSubtitle": "Open your authenticator app and enter the 6-digit code.",
+  "twoFactorCode": "Code",
+  "twoFactorVerify": "Verify",
+
+  "profileTitle": "Profile",
+  "profileEditTitle": "Edit Profile",
+  "profileFirstName": "First Name",
+  "profileLastName": "Last Name",
+  "profileEmail": "Email",
+  "profilePhone": "Phone (optional)",
+  "profileName": "Name",
+  "profileTwoFactor": "Two-Factor Auth",
+  "profileTwoFactorEnabled": "Enabled",
+  "profileTwoFactorDisabled": "Disabled",
+  "profileTenant": "Tenant",
+  "profileEditButton": "Edit Profile",
+  "profileChangePasswordButton": "Change Password",
+  "profileUpdated": "Profile updated",
+
+  "changePasswordTitle": "Change Password",
+  "changePasswordCurrent": "Current Password",
+  "changePasswordNew": "New Password",
+  "changePasswordConfirm": "Confirm New Password",
+  "changePasswordMinLength": "At least 6 characters",
+  "changePasswordMismatch": "Passwords do not match",
+  "changePasswordSuccess": "Password changed successfully",
+  "changePasswordButton": "Change Password",
+
+  "notificationsTitle": "Notifications",
+  "notificationsMarkAllRead": "Mark all read",
+  "notificationsEmpty": "No notifications",
+  "notificationsEmptySubtitle": "You''re all caught up!",
+  "notificationsLoading": "Loading notifications...",
+
+  "notificationTimeNow": "now",
+  "notificationTimeMinutes": "{count}m",
+  "@notificationTimeMinutes": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "notificationTimeHours": "{count}h",
+  "@notificationTimeHours": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "notificationTimeDays": "{count}d",
+  "@notificationTimeDays": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "notificationTimeWeeks": "{count}w",
+  "@notificationTimeWeeks": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+
+  "billingTitle": "Billing",
+  "billingCurrentSubscription": "Current Subscription",
+  "billingAvailablePlans": "Available Plans",
+  "billingNoPlans": "No plans available",
+  "billingPlan": "Plan",
+  "billingStatus": "Status",
+  "billingInterval": "Billing",
+  "billingIntervalMonthly": "Monthly",
+  "billingIntervalAnnual": "Annual",
+  "billingPrice": "Price",
+  "billingPeriod": "Period",
+  "billingAutoRenew": "Auto-renew",
+  "billingYes": "Yes",
+  "billingNo": "No",
+  "billingCurrentPlan": "Current",
+  "billingFree": "Free",
+  "billingPerMonth": "{price} {currency}/mo",
+  "@billingPerMonth": {
+    "placeholders": {
+      "price": { "type": "String" },
+      "currency": { "type": "String" }
+    }
+  },
+  "billingPerYear": "{price} {currency}/yr",
+  "@billingPerYear": {
+    "placeholders": {
+      "price": { "type": "String" },
+      "currency": { "type": "String" }
+    }
+  },
+  "billingTrialDays": "{count}-day free trial",
+  "@billingTrialDays": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "billingLoading": "Loading billing...",
+  "billingSubscriptionCard": "Billing & Subscription",
+  "billingSubscriptionCardSubtitle": "View your plan and billing details",
+
+  "navHome": "Home",
+  "navNotifications": "Notifications",
+  "navProfile": "Profile",
+
+  "logout": "Logout",
+
+  "errorNetwork": "No internet connection",
+  "errorTimeout": "Connection timed out",
+  "errorServer": "Server error. Please try again later.",
+  "errorUnknown": "Something went wrong",
+
+  "stagingBanner": "Staging — {url}",
+  "@stagingBanner": {
+    "placeholders": {
+      "url": { "type": "String" }
+    }
+  }
+}

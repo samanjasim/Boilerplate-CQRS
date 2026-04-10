@@ -40,7 +40,7 @@ internal sealed class GetUsersQueryHandler(
         if (!string.IsNullOrWhiteSpace(request.Role))
         {
             var roleName = request.Role.Trim();
-            query = query.Where(u => u.UserRoles.Any(ur => ur.Role.Name == roleName));
+            query = query.Where(u => u.UserRoles.Any(ur => ur.Role != null && ur.Role.Name == roleName));
         }
 
         query = request.SortBy?.ToLowerInvariant() switch

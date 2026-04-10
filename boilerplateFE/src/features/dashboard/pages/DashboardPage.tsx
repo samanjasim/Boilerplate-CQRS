@@ -6,6 +6,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Slot } from '@/lib/extensions';
 import { useAuthStore, selectUser } from '@/stores';
 import { useUsers, useSearchUsers } from '@/features/users/api';
 import { useRoles } from '@/features/roles/api';
@@ -108,6 +109,7 @@ export default function DashboardPage() {
         <StatCard icon={Shield} label={t('dashboard.activeRoles')} value={activeRoles.length} color="accent" />
         <StatCard icon={TrendingUp} label={t('dashboard.totalRoles')} value={roles.length} color="success" />
         <StatCard icon={Blocks} label={isTenantUser ? t('dashboard.myOrganization') : t('dashboard.platformStatus')} value={t('common.active')} color="info" />
+        <Slot id="dashboard-cards" props={{}} />
       </div>
 
       {/* Recent Activity + Recent Users */}

@@ -1,6 +1,6 @@
 # Project: Boilerplate CQRS
 
-Full-stack boilerplate — .NET 10 backend (Clean Architecture + CQRS) and React 19 frontend (TypeScript + Tailwind CSS 4 + shadcn/ui).
+Full-stack boilerplate — .NET 10 backend (Clean Architecture + CQRS), React 19 frontend (TypeScript + Tailwind CSS 4 + shadcn/ui), and Flutter mobile client (Dart 3 + flutter_bloc + modular Clean Architecture).
 
 ## Build & Run
 
@@ -13,6 +13,11 @@ cd boilerplateFE && npm run dev
 
 # Build check
 cd boilerplateFE && npm run build
+
+# Mobile (Flutter)
+cd boilerplateMobile && flutter pub get
+dart run build_runner build --delete-conflicting-outputs
+flutter run --flavor staging -t lib/main_staging.dart
 
 # Docker services (from boilerplateBE/)
 docker compose up -d
@@ -275,6 +280,40 @@ The `entityType` prop must match the `EntityType` string in the backend definiti
 - **State** — Zustand for client state (`src/stores/`), TanStack Query for server state.
 - **Constants** — shared mappings (permissions, status variants, audit actions) go in `src/constants/`.
 - **Hooks** — reusable logic in `src/hooks/` (permissions, back nav, theme preset, tenant branding, etc.).
+
+## Mobile Development Patterns
+
+### Architecture
+
+```
+Presentation (Cubit/Bloc) → Domain (UseCases + Repository ifaces) → Data (DTOs + Dio + RepoImpl) → Core (Dio, Hive, DI)
+```
+
+- **Cubit-first** — use `Cubit` for simple state, `Bloc` only when event streams help.
+- **Result<T>** — all repos/use cases return `Result<T>` (sealed `Success`/`Err`). Never throw from domain/data layers.
+- **One UseCase per action** — keeps cubits thin, business logic testable.
+
+### Module System
+
+- Optional modules live in `lib/modules/` and implement `AppModule` (DI, nav items, slots, permissions).
+- `lib/app/modules.config.dart` is the single source of truth — edited by `rename.ps1` via markers.
+- Modules provide `pageBuilder` in nav items so the shell never imports module code directly.
+- Cross-module communication uses capability contracts + Null Object fallbacks.
+
+### Adding a Mobile Feature
+
+1. **Domain** — Create entity + repository interface + use cases in `lib/core/features/{name}/domain/`
+2. **Data** — Create freezed DTOs, remote datasource (Dio), repository impl in `lib/core/features/{name}/data/`
+3. **Presentation** — Create freezed state, Cubit, pages in `lib/core/features/{name}/presentation/`
+4. **DI** — Register datasource, repository, use cases, cubit in `lib/core/di/injection.dart`
+5. **Shell** — Add page rendering in `lib/app/shell/main_shell_page.dart`'s `_buildTab` switch
+6. **Codegen** — Run `dart run build_runner build --delete-conflicting-outputs`
+
+### Key Sync Points with BE/FE
+
+- Permission strings: `lib/core/permissions/permissions.dart` must mirror `Starter.Shared/Constants/Permissions.cs`
+- Theme: `lib/app/theme/app_colors.dart` mirrors FE active preset (manual sync)
+- API response envelope: `lib/core/network/api_response.dart` matches BE `ApiResponse<T>`
 
 ## Post-Feature Testing Workflow
 

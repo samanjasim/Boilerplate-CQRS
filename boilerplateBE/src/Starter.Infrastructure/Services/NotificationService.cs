@@ -22,7 +22,7 @@ public sealed class NotificationService(
     {
         var notification = Notification.Create(userId, tenantId, type, title, message, data);
 
-        context.Notifications.Add(notification);
+        context.Set<Notification>().Add(notification);
         await context.SaveChangesAsync(ct);
 
         await realtimeService.PublishToUserAsync(userId, "notification", new

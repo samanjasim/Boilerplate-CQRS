@@ -86,6 +86,14 @@ export const ROUTES = {
   // Import / Export
   IMPORT_EXPORT: '/import-export',
 
+  // Products
+  PRODUCTS: {
+    LIST: '/products',
+    CREATE: '/products/new',
+    DETAIL: '/products/:id',
+    getDetail: (id: string) => `/products/${id}`,
+  },
+
   // Billing
   BILLING: '/billing',
   BILLING_PLANS: '/billing/plans',

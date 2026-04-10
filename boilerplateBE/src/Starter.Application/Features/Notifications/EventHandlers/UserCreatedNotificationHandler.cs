@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Starter.Application.Common.Constants;
 using Starter.Application.Common.Interfaces;
+using Starter.Domain.Identity.Entities;
 using Starter.Domain.Identity.Events;
 
 namespace Starter.Application.Features.Notifications.EventHandlers;
@@ -16,7 +17,7 @@ internal sealed class UserCreatedNotificationHandler(
     {
         try
         {
-            var user = await context.Users
+            var user = await context.Set<User>()
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Id == notification.UserId, cancellationToken);
 

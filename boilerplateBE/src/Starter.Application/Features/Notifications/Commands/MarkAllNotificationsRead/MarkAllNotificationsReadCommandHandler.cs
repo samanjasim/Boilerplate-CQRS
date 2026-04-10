@@ -1,4 +1,5 @@
 using Starter.Application.Common.Interfaces;
+using Starter.Domain.Common;
 using Starter.Domain.Identity.Errors;
 using Starter.Shared.Results;
 using MediatR;
@@ -18,7 +19,7 @@ internal sealed class MarkAllNotificationsReadCommandHandler(
 
         var now = DateTime.UtcNow;
 
-        await context.Notifications
+        await context.Set<Notification>()
             .Where(n => n.UserId == userId.Value && !n.IsRead)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(n => n.IsRead, true)

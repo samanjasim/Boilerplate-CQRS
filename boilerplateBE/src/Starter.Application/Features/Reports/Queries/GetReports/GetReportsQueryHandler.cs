@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
 using Starter.Application.Common.Models;
 using Starter.Application.Features.Reports.DTOs;
+using Starter.Domain.Common;
 using Starter.Domain.Common.Enums;
 using Starter.Domain.Identity.Errors;
 using Starter.Shared.Results;
@@ -19,7 +20,7 @@ internal sealed class GetReportsQueryHandler(
         if (userId is null)
             return Result.Failure<PaginatedList<ReportDto>>(UserErrors.Unauthorized());
 
-        var query = context.ReportRequests
+        var query = context.Set<ReportRequest>()
             .AsNoTracking()
             .AsQueryable();
 

@@ -7,12 +7,11 @@ using Starter.Application.Common.Interfaces;
 using Starter.Application.Common.Messages;
 using Starter.Domain.Common;
 using Starter.Domain.Common.Enums;
-using Starter.Infrastructure.Persistence;
 
 namespace Starter.Infrastructure.Consumers;
 
 public sealed class GenerateReportConsumer(
-    ApplicationDbContext dbContext,
+    IApplicationDbContext dbContext,
     IExportService exportService,
     IFileService fileService,
     INotificationService notificationService,
@@ -25,7 +24,7 @@ public sealed class GenerateReportConsumer(
         var cancellationToken = context.CancellationToken;
 
         // Use IgnoreQueryFilters — consumer runs without HTTP context, no tenant scoping
-        var report = await dbContext.ReportRequests
+        var report = await dbContext.Set<ReportRequest>()
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(r => r.Id == reportRequestId, cancellationToken);
 
@@ -217,7 +216,7 @@ public sealed class GenerateReportConsumer(
 
     private async Task<byte[]> GenerateFilesReportAsync(ReportRequest report, CancellationToken cancellationToken)
     {
-        var query = dbContext.FileMetadata
+        var query = dbContext.Set<FileMetadata>()
             .IgnoreQueryFilters()
             .AsNoTracking()
             .Where(f => report.TenantId == null || f.TenantId == report.TenantId)

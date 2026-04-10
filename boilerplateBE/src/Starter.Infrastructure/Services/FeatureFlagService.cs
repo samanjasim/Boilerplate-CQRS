@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
+using Starter.Domain.FeatureFlags.Entities;
 
 namespace Starter.Infrastructure.Services;
 
@@ -59,12 +60,12 @@ internal sealed class FeatureFlagService(
     private async Task<Dictionary<string, string>> BuildResolvedMapAsync(
         Guid? tenantId, CancellationToken cancellationToken)
     {
-        var flags = await context.FeatureFlags
+        var flags = await context.Set<FeatureFlag>()
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
         var overrides = tenantId.HasValue
-            ? await context.TenantFeatureFlags
+            ? await context.Set<TenantFeatureFlag>()
                 .AsNoTracking()
                 .Where(t => t.TenantId == tenantId.Value)
                 .ToDictionaryAsync(t => t.FeatureFlagId, t => t.Value, cancellationToken)

@@ -45,7 +45,7 @@ import { STATUS_BADGE_VARIANT, PERMISSIONS } from '@/constants';
 import { usePermissions } from '@/hooks';
 import { TenantFeatureFlagsTab } from '../components/TenantFeatureFlagsTab';
 import { ActivityTab } from '../components/ActivityTab';
-import { SubscriptionTab } from '../components/SubscriptionTab';
+import { Slot, hasSlotEntries } from '@/lib/extensions';
 
 type TabKey = 'overview' | 'branding' | 'businessInfo' | 'customText' | 'activity' | 'featureFlags' | 'subscription';
 type LangKey = 'en' | 'ar' | 'ku';
@@ -101,7 +101,14 @@ export default function TenantDetailPage() {
     ...(hasPermission(PERMISSIONS.Tenants.Update) ? ['branding' as TabKey, 'businessInfo' as TabKey, 'customText' as TabKey] : []),
     ...(hasPermission(PERMISSIONS.System.ViewAuditLogs) ? ['activity' as TabKey] : []),
     ...(hasPermission(PERMISSIONS.FeatureFlags.View) ? ['featureFlags' as TabKey] : []),
-    ...(isPlatformAdmin && hasPermission(PERMISSIONS.Billing?.ManageTenantSubscriptions) ? ['subscription' as TabKey] : []),
+    // Only show the subscription tab if (a) the user has permission AND
+    // (b) a module has actually registered a component for the slot. When
+    // Billing is disabled in modules.config.ts, the slot is empty and the
+    // tab button disappears entirely.
+    ...(isPlatformAdmin
+        && hasPermission(PERMISSIONS.Billing?.ManageTenantSubscriptions)
+        && hasSlotEntries('tenant-detail-tabs')
+      ? ['subscription' as TabKey] : []),
   ];
 
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
@@ -625,9 +632,9 @@ export default function TenantDetailPage() {
             <TenantFeatureFlagsTab tenantId={tenantId} />
           )}
 
-          {/* -- Subscription Tab (SuperAdmin only) -- */}
+          {/* -- Subscription Tab (slot — populated by the billing module) -- */}
           {activeTab === 'subscription' && tenantId && (
-            <SubscriptionTab tenantId={tenantId} />
+            <Slot id="tenant-detail-tabs" props={{ tenantId, tenantName: tenant.name }} />
           )}
 
           {/* -- Custom Text Tab -- */}

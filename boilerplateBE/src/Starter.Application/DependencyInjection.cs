@@ -8,13 +8,18 @@ namespace Starter.Application;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddApplication(this IServiceCollection services)
+    public static IServiceCollection AddApplication(
+        this IServiceCollection services,
+        IReadOnlyList<Assembly>? moduleAssemblies = null)
     {
-        var assembly = Assembly.GetExecutingAssembly();
+        var assemblies = new List<Assembly> { Assembly.GetExecutingAssembly() };
+        if (moduleAssemblies is not null)
+            assemblies.AddRange(moduleAssemblies);
 
         services.AddMediatR(config =>
         {
-            config.RegisterServicesFromAssembly(assembly);
+            foreach (var assembly in assemblies)
+                config.RegisterServicesFromAssembly(assembly);
 
             config.AddBehavior(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
             config.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
@@ -22,7 +27,8 @@ public static class DependencyInjection
             config.AddBehavior(typeof(IPipelineBehavior<,>), typeof(PerformanceBehavior<,>));
         });
 
-        services.AddValidatorsFromAssembly(assembly);
+        foreach (var assembly in assemblies)
+            services.AddValidatorsFromAssembly(assembly);
 
         return services;
     }

@@ -19,7 +19,7 @@ internal sealed class OptOutFeatureFlagCommandHandler(
         if (tenantId is null)
             return Result.Failure(Error.Forbidden("Only tenant users can opt out of feature flags."));
 
-        var flag = await context.FeatureFlags.FirstOrDefaultAsync(f => f.Id == request.FeatureFlagId, cancellationToken);
+        var flag = await context.Set<FeatureFlag>().FirstOrDefaultAsync(f => f.Id == request.FeatureFlagId, cancellationToken);
         if (flag is null) return Result.Failure(FeatureFlagErrors.NotFound);
 
         if (flag.IsSystem || flag.ValueType != FlagValueType.Boolean)
@@ -30,7 +30,7 @@ internal sealed class OptOutFeatureFlagCommandHandler(
         if (resolvedValue != "true" && resolvedValue != "True")
             return Result.Failure(Error.Validation("FeatureFlags.OptOut", "Cannot opt out of a feature that is not enabled for your tenant."));
 
-        var existing = await context.TenantFeatureFlags.IgnoreQueryFilters()
+        var existing = await context.Set<TenantFeatureFlag>().IgnoreQueryFilters()
             .FirstOrDefaultAsync(t => t.FeatureFlagId == request.FeatureFlagId && t.TenantId == tenantId.Value, cancellationToken);
 
         if (existing is not null)
@@ -47,7 +47,7 @@ internal sealed class OptOutFeatureFlagCommandHandler(
         else
         {
             var tenantOverride = TenantFeatureFlag.Create(tenantId.Value, request.FeatureFlagId, "false");
-            context.TenantFeatureFlags.Add(tenantOverride);
+            context.Set<TenantFeatureFlag>().Add(tenantOverride);
         }
 
         await context.SaveChangesAsync(cancellationToken);

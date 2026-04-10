@@ -1,13 +1,13 @@
 using Starter.Application.Common.Constants;
+using Starter.Application.Common.Events;
 using Starter.Application.Common.Interfaces;
-using Starter.Domain.Billing.Entities;
-using Starter.Domain.Billing.Enums;
 using Starter.Domain.Identity.Entities;
 using Starter.Domain.Identity.Errors;
 using Starter.Domain.Identity.ValueObjects;
 using Starter.Domain.Tenants.Entities;
 using Starter.Domain.Tenants.Errors;
 using Starter.Shared.Results;
+using MassTransit;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
@@ -21,7 +21,7 @@ internal sealed class RegisterTenantCommandHandler(
     IOtpService otpService,
     IEmailService emailService,
     IEmailTemplateService emailTemplateService,
-    IUsageTracker usageTracker) : IRequestHandler<RegisterTenantCommand, Result<Guid>>
+    IPublishEndpoint publishEndpoint) : IRequestHandler<RegisterTenantCommand, Result<Guid>>
 {
     public async Task<Result<Guid>> Handle(RegisterTenantCommand request, CancellationToken cancellationToken)
     {
@@ -67,23 +67,22 @@ internal sealed class RegisterTenantCommandHandler(
             user.AddRole(ownerRole);
 
         context.Users.Add(user);
+
+        // Publish TenantRegisteredEvent via the transactional outbox so any
+        // installed module (Billing → free-tier subscription, Webhooks →
+        // tenant.created event, etc.) can react asynchronously. The outbox row
+        // is committed in the same SaveChangesAsync as the tenant + user, so
+        // the event is guaranteed to fire iff the tenant was actually persisted.
+        await publishEndpoint.Publish(
+            new TenantRegisteredEvent(
+                tenant.Id,
+                tenant.Name,
+                tenant.Slug ?? string.Empty,
+                user.Id,
+                DateTime.UtcNow),
+            cancellationToken);
+
         await context.SaveChangesAsync(cancellationToken);
-
-        // Auto-assign Free plan
-        var freePlan = await context.SubscriptionPlans
-            .FirstOrDefaultAsync(p => p.IsFree && p.IsActive, cancellationToken);
-
-        if (freePlan is not null)
-        {
-            var now = DateTime.UtcNow;
-            var subscription = TenantSubscription.Create(
-                tenant.Id, freePlan.Id, 0, 0, freePlan.Currency,
-                BillingInterval.Monthly, now, now.AddYears(100),
-                trialEndAt: null, autoRenew: false);
-            context.TenantSubscriptions.Add(subscription);
-            await context.SaveChangesAsync(cancellationToken);
-            await usageTracker.SetAsync(tenant.Id, "users", 1, cancellationToken);
-        }
 
         // Send email verification OTP
         var otpCode = await otpService.GenerateAsync(OtpPurpose.EmailVerification, user.Email.Value, cancellationToken);

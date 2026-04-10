@@ -1,0 +1,34 @@
+using MediatR;
+using Microsoft.EntityFrameworkCore;
+using Starter.Application.Common.Interfaces;
+using Starter.Module.Billing.Domain.Errors;
+using Starter.Module.Billing.Application.DTOs;
+using Starter.Module.Billing.Infrastructure.Persistence;
+using Starter.Shared.Results;
+
+namespace Starter.Module.Billing.Application.Queries.GetSubscription;
+
+internal sealed class GetSubscriptionQueryHandler(
+    BillingDbContext context,
+    ICurrentUserService currentUser) : IRequestHandler<GetSubscriptionQuery, Result<TenantSubscriptionDto>>
+{
+    public async Task<Result<TenantSubscriptionDto>> Handle(
+        GetSubscriptionQuery request, CancellationToken cancellationToken)
+    {
+        var tenantId = request.TenantId ?? currentUser.TenantId;
+
+        if (!tenantId.HasValue)
+            return Result.Failure<TenantSubscriptionDto>(BillingErrors.SubscriptionNotFound);
+
+        var subscription = await context.TenantSubscriptions
+            .IgnoreQueryFilters()
+            .Include(s => s.Plan)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.TenantId == tenantId.Value, cancellationToken);
+
+        if (subscription is null)
+            return Result.Failure<TenantSubscriptionDto>(BillingErrors.SubscriptionNotFound);
+
+        return Result.Success(subscription.ToDto());
+    }
+}

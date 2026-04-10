@@ -1,5 +1,7 @@
 using Starter.Application.Common.Constants;
 using Starter.Application.Common.Interfaces;
+using Starter.Application.Features.Notifications.DTOs;
+using Starter.Domain.Common;
 using Starter.Domain.Identity.Errors;
 using Starter.Shared.Results;
 using MediatR;
@@ -30,7 +32,7 @@ internal sealed class GetNotificationPreferencesQueryHandler(
         if (userId is null)
             return Result.Failure<List<NotificationPreferenceDto>>(UserErrors.Unauthorized());
 
-        var existing = await context.NotificationPreferences
+        var existing = await context.Set<NotificationPreference>()
             .AsNoTracking()
             .Where(np => np.UserId == userId.Value)
             .ToDictionaryAsync(np => np.NotificationType, cancellationToken);

@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Starter.Application.Features.AuditLogs.Queries.GetAuditLogs;
 using Starter.Shared.Constants;

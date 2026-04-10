@@ -54,7 +54,7 @@ public sealed class FileService(
             entityType: entityType,
             entityId: entityId);
 
-        context.FileMetadata.Add(metadata);
+        context.Set<FileMetadata>().Add(metadata);
         await context.SaveChangesAsync(ct);
 
         return metadata;
@@ -62,7 +62,7 @@ public sealed class FileService(
 
     public async Task<string> GetUrlAsync(Guid fileId, CancellationToken ct = default)
     {
-        var metadata = await context.FileMetadata
+        var metadata = await context.Set<FileMetadata>()
             .AsNoTracking()
             .FirstOrDefaultAsync(f => f.Id == fileId, ct)
             ?? throw new InvalidOperationException($"File with ID {fileId} not found.");
@@ -78,13 +78,13 @@ public sealed class FileService(
 
     public async Task DeleteAsync(Guid fileId, CancellationToken ct = default)
     {
-        var metadata = await context.FileMetadata
+        var metadata = await context.Set<FileMetadata>()
             .FirstOrDefaultAsync(f => f.Id == fileId, ct)
             ?? throw new InvalidOperationException($"File with ID {fileId} not found.");
 
         await storageService.DeleteAsync(metadata.StorageKey, ct);
 
-        context.FileMetadata.Remove(metadata);
+        context.Set<FileMetadata>().Remove(metadata);
         await context.SaveChangesAsync(ct);
     }
 
@@ -124,7 +124,7 @@ public sealed class FileService(
             origin: FileOrigin.ProcessUpload,
             expiresAt: DateTime.UtcNow.AddMinutes(ttlMinutes));
 
-        context.FileMetadata.Add(metadata);
+        context.Set<FileMetadata>().Add(metadata);
         await context.SaveChangesAsync(ct);
 
         return metadata;
@@ -160,7 +160,7 @@ public sealed class FileService(
             origin: FileOrigin.SystemGenerated,
             expiresAt: expiresAt);
 
-        context.FileMetadata.Add(metadata);
+        context.Set<FileMetadata>().Add(metadata);
         await context.SaveChangesAsync(ct);
 
         return metadata;
@@ -168,7 +168,7 @@ public sealed class FileService(
 
     public async Task AttachToEntityAsync(Guid fileId, Guid entityId, string entityType, CancellationToken ct = default)
     {
-        var metadata = await context.FileMetadata
+        var metadata = await context.Set<FileMetadata>()
             .FirstOrDefaultAsync(f => f.Id == fileId, ct)
             ?? throw new InvalidOperationException($"File with ID {fileId} not found.");
 
@@ -179,7 +179,7 @@ public sealed class FileService(
 
     public async Task DetachFromEntityAsync(Guid fileId, CancellationToken ct = default)
     {
-        var metadata = await context.FileMetadata
+        var metadata = await context.Set<FileMetadata>()
             .FirstOrDefaultAsync(f => f.Id == fileId, ct)
             ?? throw new InvalidOperationException($"File with ID {fileId} not found.");
 
@@ -193,7 +193,7 @@ public sealed class FileService(
 
         if (oldFileId.HasValue)
         {
-            var oldFile = await context.FileMetadata
+            var oldFile = await context.Set<FileMetadata>()
                 .FirstOrDefaultAsync(f => f.Id == oldFileId.Value, ct);
 
             if (oldFile is not null)
@@ -201,7 +201,7 @@ public sealed class FileService(
                 if (oldFile.Origin == FileOrigin.ProcessUpload)
                 {
                     await storageService.DeleteAsync(oldFile.StorageKey, ct);
-                    context.FileMetadata.Remove(oldFile);
+                    context.Set<FileMetadata>().Remove(oldFile);
                 }
                 else
                 {
@@ -210,7 +210,7 @@ public sealed class FileService(
             }
         }
 
-        var newFile = await context.FileMetadata
+        var newFile = await context.Set<FileMetadata>()
             .FirstOrDefaultAsync(f => f.Id == newFileId, ct)
             ?? throw new InvalidOperationException($"File with ID {newFileId} not found.");
 

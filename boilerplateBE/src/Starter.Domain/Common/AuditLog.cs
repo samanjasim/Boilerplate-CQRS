@@ -2,7 +2,7 @@ using Starter.Domain.Common.Enums;
 
 namespace Starter.Domain.Common;
 
-public class AuditLog
+public class AuditLog : ITenantEntity
 {
     public Guid Id { get; set; }
     public AuditEntityType EntityType { get; set; }

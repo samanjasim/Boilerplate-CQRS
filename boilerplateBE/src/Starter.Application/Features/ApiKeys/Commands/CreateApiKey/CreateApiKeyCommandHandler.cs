@@ -63,7 +63,7 @@ public sealed class CreateApiKeyCommandHandler(
         var fullKey = $"sk_live_{randomPart}";
         var keyPrefix = $"sk_live_{randomPart[..8]}";
 
-        var prefixExists = await dbContext.ApiKeys
+        var prefixExists = await dbContext.Set<ApiKey>()
             .IgnoreQueryFilters()
             .AnyAsync(k => k.KeyPrefix == keyPrefix, cancellationToken);
 
@@ -73,16 +73,24 @@ public sealed class CreateApiKeyCommandHandler(
 
         var keyHash = await passwordService.HashPasswordAsync(fullKey);
 
+        // Normalize ExpiresAt to UTC. JSON deserialization yields DateTime
+        // with Kind=Unspecified unless the payload includes a Z suffix or
+        // explicit offset, and Npgsql rejects non-UTC values when writing
+        // to `timestamp with time zone` columns.
+        var expiresAtUtc = request.ExpiresAt.HasValue
+            ? DateTime.SpecifyKind(request.ExpiresAt.Value, DateTimeKind.Utc)
+            : (DateTime?)null;
+
         var apiKey = ApiKey.Create(
             tenantId,
             request.Name,
             keyPrefix,
             keyHash,
             request.Scopes,
-            request.ExpiresAt,
+            expiresAtUtc,
             currentUserService.UserId);
 
-        dbContext.ApiKeys.Add(apiKey);
+        dbContext.Set<ApiKey>().Add(apiKey);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         if (apiKeyTenantId.HasValue)

@@ -1,0 +1,24 @@
+include: package:very_good_analysis/analysis_options.yaml
+
+analyzer:
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "**/*.gr.dart"
+    - "lib/generated/**"
+    - "lib/l10n/generated/**"
+  errors:
+    # Allow TODO comments without being an error.
+    todo: ignore
+    # Missing_return is still useful as warning not error.
+    invalid_annotation_target: ignore
+
+linter:
+  rules:
+    # Opinionated overrides on top of very_good_analysis.
+    public_member_api_docs: false
+    lines_longer_than_80_chars: false
+    prefer_relative_imports: false
+    always_use_package_imports: true
+    sort_pub_dependencies: false
+    avoid_catches_without_on_clauses: false

@@ -1,7 +1,9 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
+using Starter.Domain.ApiKeys.Entities;
 using Starter.Domain.ApiKeys.Errors;
+using Starter.Shared.Constants;
 using Starter.Shared.Results;
 
 namespace Starter.Application.Features.ApiKeys.Commands.RevokeApiKey;
@@ -13,7 +15,7 @@ public sealed class RevokeApiKeyCommandHandler(
 {
     public async Task<Result> Handle(RevokeApiKeyCommand request, CancellationToken cancellationToken)
     {
-        var apiKey = await dbContext.ApiKeys
+        var apiKey = await dbContext.Set<ApiKey>()
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(k => k.Id == request.Id, cancellationToken);
 

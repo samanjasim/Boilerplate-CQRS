@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Starter.Application.Common.Interfaces;
+using Starter.Domain.Common;
 using Starter.Application.Common.Constants;
 using Starter.Domain.Common.Enums;
 
@@ -27,7 +28,7 @@ public sealed class OrphanFileCleanupService(
                 var context = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
                 var storageService = scope.ServiceProvider.GetRequiredService<IStorageService>();
 
-                var expiredFiles = await context.FileMetadata
+                var expiredFiles = await context.Set<FileMetadata>()
                     .IgnoreQueryFilters()
                     .Where(f => f.Status == FileStatus.Temporary && f.ExpiresAt != null && f.ExpiresAt < DateTime.UtcNow)
                     .Take(100)
@@ -44,7 +45,7 @@ public sealed class OrphanFileCleanupService(
                         logger.LogWarning(ex, "Failed to delete storage for orphan file {FileId}", file.Id);
                     }
 
-                    context.FileMetadata.Remove(file);
+                    context.Set<FileMetadata>().Remove(file);
                 }
 
                 if (expiredFiles.Count > 0)

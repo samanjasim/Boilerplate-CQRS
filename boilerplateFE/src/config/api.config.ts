@@ -126,6 +126,13 @@ export const API_ENDPOINTS = {
     TENANT_PAYMENTS: (tenantId: string) => `/Billing/tenants/${tenantId}/payments`,
     PLAN_OPTIONS: '/Billing/plan-options',
   },
+  PRODUCTS: {
+    LIST: '/Products',
+    DETAIL: (id: string) => `/Products/${id}`,
+    PUBLISH: (id: string) => `/Products/${id}/publish`,
+    ARCHIVE: (id: string) => `/Products/${id}/archive`,
+    IMAGE: (id: string) => `/Products/${id}/image`,
+  },
   IMPORT_EXPORT: {
     TYPES: '/ImportExport/types',
     TEMPLATE: (type: string) => `/ImportExport/${type}/template`,
