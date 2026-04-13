@@ -1097,3 +1097,55 @@ Optional enhancements (when present):
 ```
 
 The AI module has **zero hard dependencies** on other modules. It uses the same capability pattern as the rest of the system — `IQuotaChecker`, `IWebhookPublisher` fall back to null objects when their modules are absent.
+
+---
+
+## UX Decisions (from user journey review, 2026-04-13)
+
+### Embedding Provider
+- **Configurable** via `AI:EmbeddingProvider` in appsettings (default: "OpenAI"). Supports Ollama-only deployments.
+
+### Chat Sidebar Context
+- **Opt-in page context** — a "Pin context" button attaches the current page entity to the conversation. User controls when context is shared.
+
+### Agent Task Results
+- **Notification + conversation** — result appears as a notification AND as a conversation in the chat sidebar, so the user can continue discussing it.
+
+### Trigger Execution Identity
+- **Dedicated service account** — triggers run as a system-level identity with a configurable permission set, not tied to any human user. Avoids issues with deactivated users.
+
+### System Prompt Templates
+- **Built-in + cloneable** — ship 5-6 pre-built templates (HR, Accounting, Support, etc.). Admins can also clone/duplicate any existing assistant as a starting point.
+
+### File Attachments in Chat
+- **Deferred** — not in initial scope. Chat is text-only. Users upload to knowledge base for RAG.
+
+### Mobile Chat
+- **Separate plan** — mobile AI gets its own plan after web frontend is complete.
+
+### Real-Time Updates
+- **Ably** — use existing `IRealtimeService` (Ably) already in the boilerplate. No new dependency.
+
+### First-Time Chat Experience
+- **Suggested prompts** — empty state shows "Try asking:" with 3-4 clickable suggestions driven by the selected assistant's domain.
+
+### Message Editing & Regeneration
+- **Neither** — user sends follow-up messages to correct. Keeps implementation simple.
+
+### Quota Exceeded UX
+- **Full visibility** — quota bar always visible in sidebar footer. Warning at 80% usage. Hard block at 100% with friendly message to user + notification to tenant admin.
+
+### Admin Testing Assistants
+- **Via sidebar** — "Test in Chat" button opens the sidebar with the draft assistant pre-selected. Test messages are saved as normal conversations.
+
+### Event Triggers Discovery
+- **Auto-discovered** — system scans all registered domain events and presents them in a dropdown. Fully dynamic, zero manual maintenance.
+
+### API Key Management
+- **Environment variables only** — no UI for key management. Platform admin sets keys via env vars or appsettings. No `PUT` endpoint for API keys; settings endpoint is for model/provider preferences only.
+
+### Trigger Failure Handling
+- **No retry, notify admin** — fail once, mark as failed, send notification to admin. Avoids wasting tokens on retries.
+
+### Audit Trail for AI Actions
+- **AI-initiated + conversation link** — audit entries for AI-executed tool calls are tagged as AI-initiated and include a reference to the conversation/task ID for full traceability.
