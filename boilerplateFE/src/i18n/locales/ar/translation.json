@@ -874,5 +874,34 @@
     "processing": "المعالجة",
     "completed": "مكتمل",
     "partialSuccess": "نجاح جزئي"
+  },
+  "commentsActivity": {
+    "title": "التعليقات والنشاط",
+    "filterAll": "الكل",
+    "filterComments": "التعليقات",
+    "filterActivity": "النشاط",
+    "writeComment": "اكتب تعليقاً...",
+    "send": "إرسال",
+    "save": "حفظ",
+    "reply": "رد",
+    "edit": "تعديل",
+    "delete": "حذف",
+    "edited": "معدّل",
+    "replyingTo": "الرد على تعليق...",
+    "editing": "تعديل التعليق...",
+    "deletedComment": "[تم حذف هذا التعليق]",
+    "commentAdded": "تمت إضافة التعليق",
+    "commentEdited": "تم تحديث التعليق",
+    "commentDeleted": "تم حذف التعليق",
+    "watch": "متابعة",
+    "watching": "متابَع",
+    "unwatched": "توقفت عن متابعة هذا العنصر",
+    "loadMore": "تحميل المزيد",
+    "emptyTitle": "لا توجد تعليقات أو نشاط بعد",
+    "noUsersFound": "لم يتم العثور على مستخدمين",
+    "activityAction": "{{action}}",
+    "entityTypes": {
+      "product": "منتج"
+    }
   }
 }

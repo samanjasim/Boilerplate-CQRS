@@ -922,5 +922,34 @@
     "processing": "Processing",
     "completed": "Completed",
     "partialSuccess": "Partial Success"
+  },
+  "commentsActivity": {
+    "title": "Comments & Activity",
+    "filterAll": "All",
+    "filterComments": "Comments",
+    "filterActivity": "Activity",
+    "writeComment": "Write a comment...",
+    "send": "Send",
+    "save": "Save",
+    "reply": "Reply",
+    "edit": "Edit",
+    "delete": "Delete",
+    "edited": "edited",
+    "replyingTo": "Replying to comment...",
+    "editing": "Editing comment...",
+    "deletedComment": "[This comment has been deleted]",
+    "commentAdded": "Comment added",
+    "commentEdited": "Comment updated",
+    "commentDeleted": "Comment deleted",
+    "watch": "Watch",
+    "watching": "Watching",
+    "unwatched": "You stopped watching this item",
+    "loadMore": "Load more",
+    "emptyTitle": "No comments or activity yet",
+    "noUsersFound": "No users found",
+    "activityAction": "{{action}}",
+    "entityTypes": {
+      "product": "Product"
+    }
   }
 }
