@@ -39,6 +39,7 @@
     <ProjectReference Include="..\modules\Starter.Module.Billing\Starter.Module.Billing.csproj" />
     <ProjectReference Include="..\modules\Starter.Module.Products\Starter.Module.Products.csproj" />
     <ProjectReference Include="..\Starter.Infrastructure.Identity\Starter.Infrastructure.Identity.csproj" />
+    <ProjectReference Include="..\modules\Starter.Module.CommentsActivity\Starter.Module.CommentsActivity.csproj" />
   </ItemGroup>
 
 </Project>
