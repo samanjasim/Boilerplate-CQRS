@@ -1,5 +1,3 @@
-using System.Text.Json;
-
 namespace Starter.Abstractions.Capabilities;
 
 /// <summary>
