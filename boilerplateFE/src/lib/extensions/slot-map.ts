@@ -27,6 +27,12 @@ export interface SlotMap {
 
   /** Cards rendered in the dashboard stats grid by modules. */
   'dashboard-cards': Record<string, never>;
+
+  /** Timeline (comments + activity) embedded in entity detail pages. */
+  'entity-detail-timeline': {
+    entityType: string;
+    entityId: string;
+  };
 }
 
 export type SlotId = keyof SlotMap;
