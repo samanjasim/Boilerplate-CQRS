@@ -75,6 +75,12 @@ public static class DependencyInjection
         services.TryAddScoped<IWebhookPublisher, NullWebhookPublisher>();
         services.TryAddSingleton<IImportExportRegistry, NullImportExportRegistry>();
 
+        // Comments & Activity — Null Object fallbacks
+        services.TryAddSingleton<ICommentableEntityRegistry, NullCommentableEntityRegistry>();
+        services.TryAddScoped<ICommentService, NullCommentService>();
+        services.TryAddScoped<IActivityService, NullActivityService>();
+        services.TryAddScoped<IEntityWatcherService, NullEntityWatcherService>();
+
         // Core usage metric calculators — one per core-owned metric. Modules
         // that own their own counted entities (e.g. Webhooks) register
         // additional IUsageMetricCalculator implementations in their own
