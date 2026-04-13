@@ -35,6 +35,16 @@ public sealed class ProductsModule : IModule
 
         services.AddScoped<IUsageMetricCalculator, ProductsUsageMetricCalculator>();
 
+        services.AddSingleton<ICommentableEntityRegistration>(
+            new CommentableEntityRegistration(new CommentableEntityDefinition(
+                EntityType: "Product",
+                DisplayNameKey: "commentsActivity.entityTypes.product",
+                EnableComments: true,
+                EnableActivity: true,
+                CustomActivityTypes: ["PriceChanged", "Published", "Archived"],
+                AutoWatchOnCreate: true,
+                AutoWatchOnComment: true)));
+
         return services;
     }
 
