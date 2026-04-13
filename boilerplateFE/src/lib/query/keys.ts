@@ -149,4 +149,29 @@ export const queryKeys = {
       detail: (id: string) => ['importExport', 'imports', 'detail', id] as const,
     },
   },
+  commentsActivity: {
+    all: ['commentsActivity'] as const,
+    comments: {
+      all: ['commentsActivity', 'comments'] as const,
+      list: (entityType: string, entityId: string, params?: Record<string, unknown>) =>
+        ['commentsActivity', 'comments', 'list', entityType, entityId, params] as const,
+    },
+    activity: {
+      all: ['commentsActivity', 'activity'] as const,
+      list: (entityType: string, entityId: string, params?: Record<string, unknown>) =>
+        ['commentsActivity', 'activity', 'list', entityType, entityId, params] as const,
+    },
+    timeline: {
+      all: ['commentsActivity', 'timeline'] as const,
+      list: (entityType: string, entityId: string, params?: Record<string, unknown>) =>
+        ['commentsActivity', 'timeline', 'list', entityType, entityId, params] as const,
+    },
+    watchers: {
+      all: ['commentsActivity', 'watchers'] as const,
+      status: (entityType: string, entityId: string) =>
+        ['commentsActivity', 'watchers', 'status', entityType, entityId] as const,
+    },
+    mentionableUsers: (search?: string) =>
+      ['commentsActivity', 'mentionable-users', search] as const,
+  },
 } as const;
