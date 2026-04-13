@@ -60,6 +60,7 @@ public static class DependencyInjection
     ///   <item><c>NullWebhookPublisher</c> → Scoped (matches <c>WebhookPublisher</c>)</item>
     ///   <item><c>NullImportExportRegistry</c> → Singleton (matches <c>ImportExportRegistry</c>)</item>
     ///   <item><c>NullQuotaChecker</c> → Singleton (stateless; no module override yet)</item>
+    ///   <item><c>NullAiService</c> → Scoped (matches real AI provider lifetime)</item>
     /// </list>
     /// </summary>
     private static IServiceCollection AddCapabilities(this IServiceCollection services)
@@ -74,6 +75,7 @@ public static class DependencyInjection
         services.TryAddScoped<IBillingProvider, NullBillingProvider>();
         services.TryAddScoped<IWebhookPublisher, NullWebhookPublisher>();
         services.TryAddSingleton<IImportExportRegistry, NullImportExportRegistry>();
+        services.TryAddScoped<IAiService, NullAiService>();
 
         // Core usage metric calculators — one per core-owned metric. Modules
         // that own their own counted entities (e.g. Webhooks) register
