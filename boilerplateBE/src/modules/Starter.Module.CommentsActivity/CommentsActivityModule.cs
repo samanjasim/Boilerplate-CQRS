@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Modularity;
 using Starter.Module.CommentsActivity.Constants;
 using Starter.Module.CommentsActivity.Infrastructure.Persistence;
+using Starter.Module.CommentsActivity.Infrastructure.Services;
 
 namespace Starter.Module.CommentsActivity;
 
@@ -30,6 +32,16 @@ public sealed class CommentsActivityModule : IModule
                         errorCodesToAdd: ["40001"]);
                 });
         });
+
+        // Capability services — override Null Object fallbacks
+        services.AddSingleton<ICommentableEntityRegistry>(sp =>
+        {
+            var registrations = sp.GetServices<ICommentableEntityRegistration>();
+            return new CommentableEntityRegistry(registrations);
+        });
+        services.AddScoped<ICommentService, CommentService>();
+        services.AddScoped<IActivityService, ActivityService>();
+        services.AddScoped<IEntityWatcherService, EntityWatcherService>();
 
         return services;
     }
