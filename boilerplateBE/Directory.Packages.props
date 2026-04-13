@@ -67,5 +67,13 @@
     <PackageVersion Include="Serilog.Sinks.OpenTelemetry" Version="4.2.0" />
     <!-- Utils -->
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
+    <!-- AI Module -->
+    <PackageVersion Include="Anthropic.SDK" Version="4.4.0" />
+    <PackageVersion Include="OpenAI" Version="2.2.0" />
+    <PackageVersion Include="Qdrant.Client" Version="1.12.0" />
+    <PackageVersion Include="SharpToken" Version="2.0.4" />
+    <PackageVersion Include="Tesseract" Version="5.2.0" />
+    <PackageVersion Include="PdfPig" Version="0.1.9" />
+    <PackageVersion Include="DocumentFormat.OpenXml" Version="3.2.0" />
   </ItemGroup>
 </Project>
