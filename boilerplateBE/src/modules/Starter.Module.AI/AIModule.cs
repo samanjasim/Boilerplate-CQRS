@@ -34,7 +34,10 @@ public sealed class AIModule : IModule
                 });
         });
 
-        services.AddSingleton<AiProviderFactory>();
+        services.AddScoped<AnthropicAiProvider>();
+        services.AddScoped<OpenAiProvider>();
+        services.AddScoped<OllamaAiProvider>();
+        services.AddScoped<AiProviderFactory>();
         services.AddScoped<IAiService, AiService>();
         services.AddScoped<IUsageMetricCalculator, AiUsageMetricCalculator>();
 

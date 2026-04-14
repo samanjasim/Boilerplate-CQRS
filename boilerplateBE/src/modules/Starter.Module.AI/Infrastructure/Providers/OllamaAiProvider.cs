@@ -9,18 +9,19 @@ namespace Starter.Module.AI.Infrastructure.Providers;
 
 internal sealed class OllamaAiProvider(
     IConfiguration configuration,
+    IHttpClientFactory httpClientFactory,
     ILogger<OllamaAiProvider> logger) : IAiProvider
 {
     private const string DefaultChatModel = "llama3.1";
     private const string DefaultEmbeddingModel = "nomic-embed-text";
-
-    private static readonly HttpClient Http = new();
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
+
+    private HttpClient CreateHttpClient() => httpClientFactory.CreateClient();
 
     private string GetBaseUrl()
         => configuration["AI:Providers:Ollama:BaseUrl"] ?? "http://localhost:11434";
@@ -48,7 +49,8 @@ internal sealed class OllamaAiProvider(
 
         logger.LogDebug("Sending Ollama chat request. Model={Model}, Messages={Count}", model, messages.Count);
 
-        using var response = await Http.PostAsJsonAsync(url, request, JsonOptions, ct);
+        using var http = CreateHttpClient();
+        using var response = await http.PostAsJsonAsync(url, request, JsonOptions, ct);
         response.EnsureSuccessStatusCode();
 
         var result = await response.Content.ReadFromJsonAsync<OllamaChatResponse>(JsonOptions, ct)
@@ -81,7 +83,8 @@ internal sealed class OllamaAiProvider(
             Content = new StringContent(requestJson, System.Text.Encoding.UTF8, "application/json")
         };
 
-        using var httpResponse = await Http.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, ct);
+        using var httpForStream = CreateHttpClient();
+        using var httpResponse = await httpForStream.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, ct);
         httpResponse.EnsureSuccessStatusCode();
 
         await using var stream = await httpResponse.Content.ReadAsStreamAsync(ct);
@@ -121,7 +124,8 @@ internal sealed class OllamaAiProvider(
 
         var request = new OllamaEmbedRequest(model, [text]);
 
-        using var response = await Http.PostAsJsonAsync(url, request, JsonOptions, ct);
+        using var http = CreateHttpClient();
+        using var response = await http.PostAsJsonAsync(url, request, JsonOptions, ct);
         response.EnsureSuccessStatusCode();
 
         var result = await response.Content.ReadFromJsonAsync<OllamaEmbedResponse>(JsonOptions, ct)

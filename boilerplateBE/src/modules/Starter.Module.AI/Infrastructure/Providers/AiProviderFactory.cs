@@ -1,20 +1,20 @@
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using Starter.Module.AI.Domain.Enums;
 
 namespace Starter.Module.AI.Infrastructure.Providers;
 
 internal sealed class AiProviderFactory(
-    IConfiguration configuration,
-    ILoggerFactory loggerFactory)
+    IServiceProvider serviceProvider,
+    IConfiguration configuration)
 {
     public IAiProvider Create(AiProviderType providerType)
     {
         return providerType switch
         {
-            AiProviderType.Anthropic => new AnthropicAiProvider(configuration, loggerFactory.CreateLogger<AnthropicAiProvider>()),
-            AiProviderType.OpenAI => new OpenAiProvider(configuration, loggerFactory.CreateLogger<OpenAiProvider>()),
-            AiProviderType.Ollama => new OllamaAiProvider(configuration, loggerFactory.CreateLogger<OllamaAiProvider>()),
+            AiProviderType.Anthropic => serviceProvider.GetRequiredService<AnthropicAiProvider>(),
+            AiProviderType.OpenAI => serviceProvider.GetRequiredService<OpenAiProvider>(),
+            AiProviderType.Ollama => serviceProvider.GetRequiredService<OllamaAiProvider>(),
             _ => throw new ArgumentOutOfRangeException(nameof(providerType), providerType, "Unknown AI provider type")
         };
     }
