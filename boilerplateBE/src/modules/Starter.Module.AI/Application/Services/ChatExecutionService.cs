@@ -53,8 +53,7 @@ internal sealed class ChatExecutionService(
         }
         catch (Exception ex)
         {
-            state.Conversation.MarkFailed();
-            await context.SaveChangesAsync(CancellationToken.None);
+            await FailTurnAsync(state);
             return Result.Failure<AiChatReplyDto>(AiErrors.ProviderError(ex.Message));
         }
 
@@ -111,7 +110,6 @@ internal sealed class ChatExecutionService(
 
         var contentBuilder = new StringBuilder();
         var finishReason = "stop";
-        var streamFailed = false;
         var inputTokens = 0;
         var outputTokens = 0;
 
@@ -120,15 +118,13 @@ internal sealed class ChatExecutionService(
         {
             if (chunkOrError.Error is not null)
             {
-                state.Conversation.MarkFailed();
-                await context.SaveChangesAsync(CancellationToken.None);
+                await FailTurnAsync(state);
 
                 yield return new ChatStreamEvent("error", new
                 {
                     Code = "Ai.ProviderError",
                     Message = chunkOrError.Error
                 });
-                streamFailed = true;
                 yield break;
             }
 
@@ -143,9 +139,6 @@ internal sealed class ChatExecutionService(
                 yield return new ChatStreamEvent("delta", new { Content = delta });
             }
         }
-
-        if (streamFailed)
-            yield break;
 
         var finalContent = contentBuilder.ToString();
 
@@ -225,9 +218,10 @@ internal sealed class ChatExecutionService(
             context.AiConversations.Add(conversation);
         }
 
-        // Quota pre-check acts as can-they-send-at-all gate (not per-message token gate).
-        // Full token quota enforcement (with actual token count) happens after the provider
-        // call inside FinalizeTurnAsync.
+        // Pre-flight quota gate: increments by 1 to block tenants already at their limit.
+        // Concurrent requests can pass simultaneously before any real usage lands;
+        // over-consumption is bounded by (concurrent-requests × 1) tokens until IncrementAsync
+        // in FinalizeTurnAsync catches up. Acceptable for v1 — revisit if this becomes material.
         if (currentUser.TenantId is Guid tenantId)
         {
             var quotaResult = await quotaChecker.CheckAsync(tenantId, AiTokensMetric, 1, ct);
@@ -383,6 +377,26 @@ internal sealed class ChatExecutionService(
     // ──────────────────────────────────────────────────────────────
     // Private helpers
     // ──────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Cleans up after a failed turn. Detaches the pending user message so it is never
+    /// flushed as an orphan row. For newly created conversations (never saved to DB) the
+    /// conversation is also detached — nothing is persisted and MarkFailed is skipped.
+    /// For pre-existing conversations the Failed status is saved so clients can see the
+    /// conversation reached a terminal state.
+    /// </summary>
+    private async Task FailTurnAsync(ChatTurnState state)
+    {
+        var wasNew = context.Entry(state.Conversation).State == EntityState.Added;
+        context.Entry(state.UserMessage).State = EntityState.Detached;
+        if (wasNew)
+        {
+            context.Entry(state.Conversation).State = EntityState.Detached;
+            return; // nothing to persist — new conversation never made it to DB
+        }
+        state.Conversation.MarkFailed();
+        await context.SaveChangesAsync(CancellationToken.None);
+    }
 
     private AiProviderType ResolveProvider(AiAssistant assistant) =>
         assistant.Provider ?? providerFactory.GetDefaultProviderType();
