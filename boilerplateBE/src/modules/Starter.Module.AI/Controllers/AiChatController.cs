@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -11,11 +12,15 @@ using Starter.Module.AI.Application.Queries.GetConversations;
 using Starter.Module.AI.Application.Services;
 using Starter.Module.AI.Constants;
 using Starter.Shared.Models;
+using Starter.Shared.Results;
 
 namespace Starter.Module.AI.Controllers;
 
 [Route("api/v{version:apiVersion}/ai")]
-public sealed class AiChatController(ISender mediator, IChatExecutionService chat)
+public sealed class AiChatController(
+    ISender mediator,
+    IChatExecutionService chat,
+    IValidator<SendChatMessageCommand> chatValidator)
     : Starter.Abstractions.Web.BaseApiController(mediator)
 {
     private static readonly JsonSerializerOptions StreamJsonOptions = new(JsonSerializerDefaults.Web);
@@ -33,8 +38,23 @@ public sealed class AiChatController(ISender mediator, IChatExecutionService cha
 
     [HttpPost("chat/stream")]
     [Authorize(Policy = AiPermissions.Chat)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task StreamChat([FromBody] SendChatMessageCommand command, CancellationToken ct = default)
     {
+        // Enforce the same validator as POST /chat before any SSE headers/frames are emitted.
+        // Once text/event-stream headers are flushed, the status code can no longer be changed.
+        var validationResult = await chatValidator.ValidateAsync(command, ct);
+        if (!validationResult.IsValid)
+        {
+            var validationErrors = ValidationErrors.FromErrors(
+                validationResult.Errors.Select(f => new ValidationError(f.PropertyName, f.ErrorMessage)));
+
+            Response.StatusCode = StatusCodes.Status400BadRequest;
+            await Response.WriteAsJsonAsync(ApiResponse.Fail(validationErrors), ct);
+            return;
+        }
+
         Response.Headers["Content-Type"] = "text/event-stream";
         Response.Headers["Cache-Control"] = "no-cache";
         Response.Headers["X-Accel-Buffering"] = "no"; // disable Nginx buffering
