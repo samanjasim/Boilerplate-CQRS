@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Starter.Abstractions.Capabilities;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.CommentsActivity.Application.DTOs;
 using Starter.Shared.Results;
@@ -8,17 +9,35 @@ namespace Starter.Module.CommentsActivity.Application.Queries.GetMentionableUser
 
 internal sealed class GetMentionableUsersQueryHandler(
     IApplicationDbContext dbContext,
-    ICurrentUserService currentUser) : IRequestHandler<GetMentionableUsersQuery, Result<List<MentionableUserDto>>>
+    ICurrentUserService currentUser,
+    ICommentableEntityRegistry entityRegistry,
+    IServiceProvider services) : IRequestHandler<GetMentionableUsersQuery, Result<List<MentionableUserDto>>>
 {
     public async Task<Result<List<MentionableUserDto>>> Handle(
         GetMentionableUsersQuery request, CancellationToken cancellationToken)
     {
-        var query = dbContext.Users.AsNoTracking().AsQueryable();
+        var query = dbContext.Users.IgnoreQueryFilters().AsNoTracking().AsQueryable();
 
-        // Tenant users can only mention users in their own tenant
         if (currentUser.TenantId.HasValue)
         {
-            query = query.Where(u => u.TenantId == currentUser.TenantId.Value);
+            // Tenant users: only users in their own tenant.
+            var tenantId = currentUser.TenantId.Value;
+            query = query.Where(u => u.TenantId == tenantId);
+        }
+        else
+        {
+            // Platform admin: scope to the entity's tenant + platform users.
+            var entityTenantId = await ResolveEntityTenantIdAsync(request, cancellationToken);
+            if (entityTenantId.HasValue)
+            {
+                var tenantId = entityTenantId.Value;
+                query = query.Where(u => u.TenantId == tenantId || u.TenantId == null);
+            }
+            else
+            {
+                // Global entity (no tenant) — only platform users.
+                query = query.Where(u => u.TenantId == null);
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(request.Search))
@@ -42,5 +61,19 @@ internal sealed class GetMentionableUsersQueryHandler(
             .ToListAsync(cancellationToken);
 
         return Result.Success(users);
+    }
+
+    private async Task<Guid?> ResolveEntityTenantIdAsync(
+        GetMentionableUsersQuery request, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.EntityType) || !request.EntityId.HasValue)
+            return null;
+
+        var definition = entityRegistry.GetDefinition(request.EntityType);
+        if (definition?.ResolveTenantIdAsync is null)
+            return null;
+
+        return await definition.ResolveTenantIdAsync(
+            request.EntityId.Value, services, cancellationToken);
     }
 }

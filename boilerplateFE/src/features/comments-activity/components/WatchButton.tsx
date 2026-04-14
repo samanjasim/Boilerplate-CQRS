@@ -45,7 +45,12 @@ export function WatchButton({ entityType, entityId }: WatchButtonProps) {
           : t('commentsActivity.watch', 'Watch')}
       </Button>
       {watcherCount > 0 && (
-        <Badge variant="secondary">{watcherCount}</Badge>
+        <Badge
+          variant="secondary"
+          aria-label={t('commentsActivity.watchersCount', { count: watcherCount })}
+        >
+          {watcherCount}
+        </Badge>
       )}
     </div>
   );

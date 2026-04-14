@@ -67,7 +67,7 @@ export function EntityTimeline({ entityType, entityId, tenantId }: EntityTimelin
     }
   }, [data, pageNumber, filter]);
 
-  const totalPages = data?.totalPages ?? 1;
+  const totalPages = data?.pagination?.totalPages ?? 1;
   const canLoadMore = pageNumber < totalPages;
   const canCreate = hasPermission(PERMISSIONS.Comments.Create);
 
@@ -82,6 +82,29 @@ export function EntityTimeline({ entityType, entityId, tenantId }: EntityTimelin
     setPageNumber(1);
     setAccumulatedItems([]);
   }, []);
+
+  // ArrowLeft / ArrowRight on the tablist moves focus + selection to the
+  // neighbouring tab, Home/End jump to the ends. Matches WAI-ARIA tab pattern.
+  const handleTablistKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      const keys = ['ArrowLeft', 'ArrowRight', 'Home', 'End'];
+      if (!keys.includes(event.key)) return;
+      event.preventDefault();
+      const currentIndex = filters.findIndex((f) => f.key === filter);
+      let nextIndex = currentIndex;
+      if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % filters.length;
+      if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + filters.length) % filters.length;
+      if (event.key === 'Home') nextIndex = 0;
+      if (event.key === 'End') nextIndex = filters.length - 1;
+      const next = filters[nextIndex];
+      handleFilterChange(next.key);
+      const tab = event.currentTarget.querySelector<HTMLButtonElement>(
+        `[data-filter-key="${next.key}"]`,
+      );
+      tab?.focus();
+    },
+    [filter, filters, handleFilterChange],
+  );
 
   const handleLoadMore = useCallback(() => {
     setPageNumber((p) => p + 1);
@@ -101,24 +124,33 @@ export function EntityTimeline({ entityType, entityId, tenantId }: EntityTimelin
 
       <CardContent className="space-y-4">
         {/* Filter toggle */}
-        <div className="flex items-center gap-1 rounded-lg bg-secondary p-1">
-          {filters.map((f) => (
-            <Button
-              key={f.key}
-              variant={filter === f.key ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => handleFilterChange(f.key)}
-              className={cn(
-                'flex-1',
-                filter !== f.key && 'text-muted-foreground',
-              )}
-            >
-              {f.key === 'comments' && <MessageSquare className="ltr:mr-1.5 rtl:ml-1.5 h-3.5 w-3.5" />}
-              {f.key === 'activity' && <Activity className="ltr:mr-1.5 rtl:ml-1.5 h-3.5 w-3.5" />}
-              {f.key === 'all' && <Clock className="ltr:mr-1.5 rtl:ml-1.5 h-3.5 w-3.5" />}
-              {f.label}
-            </Button>
-          ))}
+        <div
+          role="tablist"
+          aria-label={t('commentsActivity.filterLabel', 'Timeline filter')}
+          onKeyDown={handleTablistKeyDown}
+          className="flex items-center gap-1 rounded-lg bg-secondary p-1"
+        >
+          {filters.map((f) => {
+            const selected = filter === f.key;
+            return (
+              <Button
+                key={f.key}
+                role="tab"
+                aria-selected={selected}
+                tabIndex={selected ? 0 : -1}
+                data-filter-key={f.key}
+                variant={selected ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => handleFilterChange(f.key)}
+                className={cn('flex-1', !selected && 'text-muted-foreground')}
+              >
+                {f.key === 'comments' && <MessageSquare className="ltr:mr-1.5 rtl:ml-1.5 h-3.5 w-3.5" />}
+                {f.key === 'activity' && <Activity className="ltr:mr-1.5 rtl:ml-1.5 h-3.5 w-3.5" />}
+                {f.key === 'all' && <Clock className="ltr:mr-1.5 rtl:ml-1.5 h-3.5 w-3.5" />}
+                {f.label}
+              </Button>
+            );
+          })}
         </div>
 
         {/* Loading state — only for initial load */}

@@ -6,4 +6,6 @@ namespace Starter.Module.CommentsActivity.Application.Queries.GetMentionableUser
 
 public sealed record GetMentionableUsersQuery(
     string? Search,
-    int PageSize = 10) : IRequest<Result<List<MentionableUserDto>>>;
+    int PageSize = 10,
+    string? EntityType = null,
+    Guid? EntityId = null) : IRequest<Result<List<MentionableUserDto>>>;

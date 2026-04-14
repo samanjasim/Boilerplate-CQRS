@@ -30,7 +30,7 @@ export function ReactionPicker({ commentId, reactions }: ReactionPickerProps) {
   const [open, setOpen] = useState(false);
   const { mutate: toggleReaction } = useToggleReaction();
   const { hasPermission } = usePermissions();
-  const canReact = hasPermission(PERMISSIONS.Comments.Create);
+  const canReact = hasPermission(PERMISSIONS.Comments.View);
 
   const handleToggle = (reactionType: string) => {
     toggleReaction({ commentId, reactionType });

@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Starter.Abstractions.Web;
 using Starter.Module.CommentsActivity.Application.Commands.AddComment;
 using Starter.Module.CommentsActivity.Application.Commands.DeleteComment;
 using Starter.Module.CommentsActivity.Application.Commands.EditComment;
@@ -19,7 +20,8 @@ using Starter.Shared.Models;
 
 namespace Starter.Module.CommentsActivity.Controllers;
 
-public sealed class CommentsActivityController(ISender mediator) : Starter.Abstractions.Web.BaseApiController(mediator)
+[RequireFeatureFlag("comments.activity_enabled")]
+public sealed class CommentsActivityController(ISender mediator) : BaseApiController(mediator)
 {
     [HttpGet("comments")]
     [Authorize(Policy = CommentsActivityPermissions.ViewComments)]
@@ -70,9 +72,13 @@ public sealed class CommentsActivityController(ISender mediator) : Starter.Abstr
         return HandleResult(result);
     }
 
+    // Reacting is a read-adjacent action: any user who can see the thread
+    // should be able to react. We intentionally gate this behind ViewComments,
+    // not CreateComments, so read-only roles can still react.
     [HttpPost("comments/{id:guid}/reactions")]
-    [Authorize(Policy = CommentsActivityPermissions.CreateComments)]
+    [Authorize(Policy = CommentsActivityPermissions.ViewComments)]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ToggleReaction(
         Guid id, [FromBody] ToggleReactionRequest request, CancellationToken ct = default)
@@ -82,7 +88,7 @@ public sealed class CommentsActivityController(ISender mediator) : Starter.Abstr
     }
 
     [HttpDelete("comments/{id:guid}/reactions/{reactionType}")]
-    [Authorize(Policy = CommentsActivityPermissions.CreateComments)]
+    [Authorize(Policy = CommentsActivityPermissions.ViewComments)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RemoveReaction(
@@ -163,9 +169,12 @@ public sealed class CommentsActivityController(ISender mediator) : Starter.Abstr
     public async Task<IActionResult> GetMentionableUsers(
         [FromQuery] string? search,
         [FromQuery] int pageSize = 10,
+        [FromQuery] string? entityType = null,
+        [FromQuery] Guid? entityId = null,
         CancellationToken ct = default)
     {
-        var result = await Mediator.Send(new GetMentionableUsersQuery(search, pageSize), ct);
+        var result = await Mediator.Send(
+            new GetMentionableUsersQuery(search, pageSize, entityType, entityId), ct);
         return HandleResult(result);
     }
 }

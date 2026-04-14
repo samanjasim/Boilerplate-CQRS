@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { formatDistanceToNow } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import { MoreHorizontal, Reply, Pencil, Trash2, Paperclip } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -15,7 +14,7 @@ import {
 import { ConfirmDialog } from '@/components/common';
 import { UserAvatar } from '@/components/common/UserAvatar';
 import { useAuthStore, selectUser } from '@/stores';
-import { usePermissions } from '@/hooks';
+import { usePermissions, useTimeAgo } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
 import { useDeleteComment } from '../api';
 import { ReactionPicker } from './ReactionPicker';
@@ -33,10 +32,10 @@ export function CommentItem({ comment, isReply, onReply, onEditStart }: CommentI
   const { t } = useTranslation();
   const currentUser = useAuthStore(selectUser);
   const { hasPermission } = usePermissions();
-  const { mutate: deleteComment } = useDeleteComment();
+  const { mutate: deleteComment, isPending: isDeleting } = useDeleteComment();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  const timeAgo = formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true });
+  const timeAgo = useTimeAgo(comment.createdAt);
 
   const isAuthor = currentUser?.id === comment.authorId;
   const canManage = hasPermission(PERMISSIONS.Comments.Manage);
@@ -117,6 +116,7 @@ export function CommentItem({ comment, isReply, onReply, onEditStart }: CommentI
                         {((!isReply && onReply) || (canEdit && onEditStart)) && <DropdownMenuSeparator />}
                         <DropdownMenuItem
                           onClick={() => setShowDeleteDialog(true)}
+                          disabled={isDeleting}
                           className="text-destructive focus:text-destructive"
                         >
                           <Trash2 className="ltr:mr-2 rtl:ml-2 h-4 w-4" />
@@ -130,8 +130,8 @@ export function CommentItem({ comment, isReply, onReply, onEditStart }: CommentI
             )}
           </div>
 
-          {/* Body (markdown) */}
-          <div className="prose prose-sm mt-1 max-w-none text-sm text-foreground [&_p]:my-1 [&_a]:text-primary [&_a]:underline">
+          {/* Body (markdown) — explicit utilities instead of `prose` so theme tokens drive color */}
+          <div className="mt-1 text-sm leading-6 text-foreground [&_p]:my-1 [&_a]:text-primary [&_a]:underline [&_code]:rounded [&_code]:bg-muted [&_code]:px-1">
             <ReactMarkdown
               components={{
                 a: ({ href, children }) => {
@@ -151,7 +151,9 @@ export function CommentItem({ comment, isReply, onReply, onEditStart }: CommentI
                 },
               }}
             >
-              {comment.body}
+              {/* Wire format is `@[Name](id)`; the link renderer prepends its own `@`,
+                  so strip the literal one to avoid `@@Name`. */}
+              {comment.body.replace(/@(\[[^\]]+\]\([0-9a-f-]{36}\))/gi, '$1')}
             </ReactMarkdown>
           </div>
 
