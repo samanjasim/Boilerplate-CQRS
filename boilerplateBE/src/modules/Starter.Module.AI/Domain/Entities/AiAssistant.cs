@@ -5,6 +5,9 @@ namespace Starter.Module.AI.Domain.Entities;
 
 public sealed class AiAssistant : AggregateRoot, ITenantEntity
 {
+    private List<string> _enabledToolNames = new();
+    private List<Guid> _knowledgeBaseDocIds = new();
+
     public Guid? TenantId { get; private set; }
     public string Name { get; private set; } = default!;
     public string? Description { get; private set; }
@@ -13,8 +16,21 @@ public sealed class AiAssistant : AggregateRoot, ITenantEntity
     public string? Model { get; private set; }
     public double Temperature { get; private set; } = 0.7;
     public int MaxTokens { get; private set; } = 4096;
-    public string EnabledToolNames { get; private set; } = "[]";
-    public string KnowledgeBaseDocIds { get; private set; } = "[]";
+
+    /// <summary>Names of tools this assistant is allowed to call. Persisted as jsonb.</summary>
+    public IReadOnlyList<string> EnabledToolNames
+    {
+        get => _enabledToolNames;
+        private set => _enabledToolNames = value?.ToList() ?? new();
+    }
+
+    /// <summary>IDs of documents this assistant's RAG retrieval is scoped to. Persisted as jsonb.</summary>
+    public IReadOnlyList<Guid> KnowledgeBaseDocIds
+    {
+        get => _knowledgeBaseDocIds;
+        private set => _knowledgeBaseDocIds = value?.ToList() ?? new();
+    }
+
     public AssistantExecutionMode ExecutionMode { get; private set; }
     public int MaxAgentSteps { get; private set; } = 10;
     public bool IsActive { get; private set; }
@@ -99,15 +115,20 @@ public sealed class AiAssistant : AggregateRoot, ITenantEntity
         ModifiedAt = DateTime.UtcNow;
     }
 
-    public void SetEnabledTools(string enabledToolNamesJson)
+    public void SetEnabledTools(IEnumerable<string> toolNames)
     {
-        EnabledToolNames = enabledToolNamesJson;
+        _enabledToolNames = toolNames?.Where(n => !string.IsNullOrWhiteSpace(n))
+            .Select(n => n.Trim())
+            .Distinct()
+            .ToList() ?? new();
         ModifiedAt = DateTime.UtcNow;
     }
 
-    public void SetKnowledgeBase(string knowledgeBaseDocIdsJson)
+    public void SetKnowledgeBase(IEnumerable<Guid> documentIds)
     {
-        KnowledgeBaseDocIds = knowledgeBaseDocIdsJson;
+        _knowledgeBaseDocIds = documentIds?.Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList() ?? new();
         ModifiedAt = DateTime.UtcNow;
     }
 

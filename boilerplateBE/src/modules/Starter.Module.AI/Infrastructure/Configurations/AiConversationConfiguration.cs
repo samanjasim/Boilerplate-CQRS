@@ -32,6 +32,7 @@ internal sealed class AiConversationConfiguration : IEntityTypeConfiguration<AiC
 
         builder.Property(e => e.Status)
             .HasColumnName("status")
+            .HasConversion<string>()
             .HasMaxLength(20)
             .IsRequired();
 

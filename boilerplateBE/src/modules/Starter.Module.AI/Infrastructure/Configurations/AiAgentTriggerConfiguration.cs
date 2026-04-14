@@ -59,6 +59,10 @@ internal sealed class AiAgentTriggerConfiguration : IEntityTypeConfiguration<AiA
         builder.Property(e => e.NextRunAt)
             .HasColumnName("next_run_at");
 
+        builder.Property(e => e.CreatedByUserId)
+            .HasColumnName("created_by_user_id")
+            .IsRequired();
+
         builder.Property(e => e.CreatedAt)
             .HasColumnName("created_at")
             .IsRequired();

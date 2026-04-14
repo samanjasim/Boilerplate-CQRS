@@ -16,6 +16,7 @@ public sealed class AiAgentTrigger : BaseEntity, ITenantEntity
     public bool IsActive { get; private set; }
     public DateTime? LastRunAt { get; private set; }
     public DateTime? NextRunAt { get; private set; }
+    public Guid CreatedByUserId { get; private set; }
 
     private AiAgentTrigger() { }
 
@@ -29,7 +30,8 @@ public sealed class AiAgentTrigger : BaseEntity, ITenantEntity
         string? cronExpression,
         string? eventType,
         string instruction,
-        bool isActive) : base(id)
+        bool isActive,
+        Guid createdByUserId) : base(id)
     {
         TenantId = tenantId;
         AssistantId = assistantId;
@@ -40,6 +42,7 @@ public sealed class AiAgentTrigger : BaseEntity, ITenantEntity
         EventType = eventType;
         Instruction = instruction;
         IsActive = isActive;
+        CreatedByUserId = createdByUserId;
     }
 
     public static AiAgentTrigger CreateCron(
@@ -48,6 +51,7 @@ public sealed class AiAgentTrigger : BaseEntity, ITenantEntity
         string name,
         string instruction,
         string cronExpression,
+        Guid createdByUserId,
         string? description = null,
         bool isActive = true)
     {
@@ -61,7 +65,8 @@ public sealed class AiAgentTrigger : BaseEntity, ITenantEntity
             cronExpression.Trim(),
             null,
             instruction.Trim(),
-            isActive);
+            isActive,
+            createdByUserId);
     }
 
     public static AiAgentTrigger CreateEvent(
@@ -70,6 +75,7 @@ public sealed class AiAgentTrigger : BaseEntity, ITenantEntity
         string name,
         string instruction,
         string eventType,
+        Guid createdByUserId,
         string? description = null,
         bool isActive = true)
     {
@@ -83,7 +89,8 @@ public sealed class AiAgentTrigger : BaseEntity, ITenantEntity
             null,
             eventType.Trim(),
             instruction.Trim(),
-            isActive);
+            isActive,
+            createdByUserId);
     }
 
     public void UpdateLastRun()

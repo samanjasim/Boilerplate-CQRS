@@ -1,4 +1,5 @@
 using Starter.Domain.Common;
+using Starter.Module.AI.Domain.Enums;
 
 namespace Starter.Module.AI.Domain.Entities;
 
@@ -8,7 +9,7 @@ public sealed class AiConversation : BaseEntity, ITenantEntity
     public Guid AssistantId { get; private set; }
     public Guid UserId { get; private set; }
     public string? Title { get; private set; }
-    public string Status { get; private set; } = "Active";
+    public ConversationStatus Status { get; private set; } = ConversationStatus.Active;
     public int MessageCount { get; private set; }
     public int TotalTokensUsed { get; private set; }
     public DateTime LastMessageAt { get; private set; }
@@ -59,13 +60,13 @@ public sealed class AiConversation : BaseEntity, ITenantEntity
 
     public void MarkCompleted()
     {
-        Status = "Completed";
+        Status = ConversationStatus.Completed;
         ModifiedAt = DateTime.UtcNow;
     }
 
     public void MarkFailed()
     {
-        Status = "Failed";
+        Status = ConversationStatus.Failed;
         ModifiedAt = DateTime.UtcNow;
     }
 }

@@ -1,11 +1,16 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Starter.Module.AI.Domain.Entities;
 
 namespace Starter.Module.AI.Infrastructure.Configurations;
 
 internal sealed class AiAssistantConfiguration : IEntityTypeConfiguration<AiAssistant>
 {
+    private static readonly JsonSerializerOptions JsonOpts = new();
+
     public void Configure(EntityTypeBuilder<AiAssistant> builder)
     {
         builder.ToTable("ai_assistants");
@@ -47,14 +52,32 @@ internal sealed class AiAssistantConfiguration : IEntityTypeConfiguration<AiAssi
             .HasColumnName("max_tokens")
             .IsRequired();
 
+        var stringListConverter = new ValueConverter<IReadOnlyList<string>, string>(
+            v => JsonSerializer.Serialize(v, JsonOpts),
+            v => JsonSerializer.Deserialize<List<string>>(v, JsonOpts) ?? new List<string>());
+        var stringListComparer = new ValueComparer<IReadOnlyList<string>>(
+            (a, b) => a!.SequenceEqual(b!),
+            v => v.Aggregate(0, (hash, s) => HashCode.Combine(hash, s.GetHashCode())),
+            v => v.ToList());
+
         builder.Property(e => e.EnabledToolNames)
             .HasColumnName("enabled_tool_names")
             .HasColumnType("jsonb")
+            .HasConversion(stringListConverter, stringListComparer)
             .IsRequired();
+
+        var guidListConverter = new ValueConverter<IReadOnlyList<Guid>, string>(
+            v => JsonSerializer.Serialize(v, JsonOpts),
+            v => JsonSerializer.Deserialize<List<Guid>>(v, JsonOpts) ?? new List<Guid>());
+        var guidListComparer = new ValueComparer<IReadOnlyList<Guid>>(
+            (a, b) => a!.SequenceEqual(b!),
+            v => v.Aggregate(0, (hash, g) => HashCode.Combine(hash, g.GetHashCode())),
+            v => v.ToList());
 
         builder.Property(e => e.KnowledgeBaseDocIds)
             .HasColumnName("knowledge_base_doc_ids")
             .HasColumnType("jsonb")
+            .HasConversion(guidListConverter, guidListComparer)
             .IsRequired();
 
         builder.Property(e => e.ExecutionMode)

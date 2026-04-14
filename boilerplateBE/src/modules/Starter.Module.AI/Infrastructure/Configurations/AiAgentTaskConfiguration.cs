@@ -54,6 +54,7 @@ internal sealed class AiAgentTaskConfiguration : IEntityTypeConfiguration<AiAgen
 
         builder.Property(e => e.TriggeredBy)
             .HasColumnName("triggered_by")
+            .HasConversion<string>()
             .HasMaxLength(20)
             .IsRequired();
 

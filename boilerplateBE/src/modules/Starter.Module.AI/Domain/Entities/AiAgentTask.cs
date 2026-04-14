@@ -14,7 +14,7 @@ public sealed class AiAgentTask : BaseEntity, ITenantEntity
     public string? Result { get; private set; }
     public int TotalTokensUsed { get; private set; }
     public int StepCount { get; private set; }
-    public string TriggeredBy { get; private set; } = "User";
+    public AgentTriggerSource TriggeredBy { get; private set; }
     public Guid? TriggerId { get; private set; }
     public DateTime? StartedAt { get; private set; }
     public DateTime? CompletedAt { get; private set; }
@@ -27,7 +27,7 @@ public sealed class AiAgentTask : BaseEntity, ITenantEntity
         Guid assistantId,
         Guid userId,
         string instruction,
-        string triggeredBy,
+        AgentTriggerSource triggeredBy,
         Guid? triggerId) : base(id)
     {
         TenantId = tenantId;
@@ -44,7 +44,7 @@ public sealed class AiAgentTask : BaseEntity, ITenantEntity
         Guid assistantId,
         Guid userId,
         string instruction,
-        string triggeredBy = "User",
+        AgentTriggerSource triggeredBy = AgentTriggerSource.User,
         Guid? triggerId = null)
     {
         return new AiAgentTask(
