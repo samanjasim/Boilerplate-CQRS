@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
 using Starter.Application.Common.Models;
+using Starter.Domain.Identity.Errors;
 using Starter.Module.AI.Application.DTOs;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Module.AI.Infrastructure.Persistence;
@@ -17,19 +18,21 @@ internal sealed class GetConversationsQueryHandler(
     public async Task<Result<PaginatedList<AiConversationDto>>> Handle(
         GetConversationsQuery request, CancellationToken cancellationToken)
     {
-        // Users only see their own conversations. Tenant filter is enforced by EF query filter.
-        var query = context.AiConversations.AsNoTracking().AsQueryable();
+        var userId = currentUser.UserId;
+        if (userId is null)
+            return Result.Failure<PaginatedList<AiConversationDto>>(UserErrors.Unauthorized());
 
-        if (currentUser.UserId is Guid userId)
-            query = query.Where(c => c.UserId == userId);
+        // Users only see their own conversations. Tenant filter is enforced by EF query filter.
+        var query = context.AiConversations.AsNoTracking()
+            .Where(c => c.UserId == userId.Value);
 
         if (request.AssistantId.HasValue)
             query = query.Where(c => c.AssistantId == request.AssistantId.Value);
 
         if (!string.IsNullOrWhiteSpace(request.SearchTerm))
         {
-            var term = request.SearchTerm.Trim().ToLowerInvariant();
-            query = query.Where(c => c.Title != null && c.Title.ToLower().Contains(term));
+            var pattern = $"%{request.SearchTerm.Trim()}%";
+            query = query.Where(c => c.Title != null && EF.Functions.ILike(c.Title, pattern));
         }
 
         query = query.OrderByDescending(c => c.LastMessageAt);
