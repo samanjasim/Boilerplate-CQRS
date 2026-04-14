@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Starter.Abstractions.Capabilities;
 using Starter.Module.AI.Domain.Enums;
@@ -7,8 +8,14 @@ namespace Starter.Module.AI.Infrastructure.Services;
 
 internal sealed class AiService(
     AiProviderFactory providerFactory,
+    IConfiguration configuration,
     ILogger<AiService> logger) : IAiService
 {
+    private AiProviderType EmbeddingProvider =>
+        Enum.TryParse<AiProviderType>(configuration["AI:EmbeddingProvider"], ignoreCase: true, out var p)
+            ? p
+            : AiProviderType.OpenAI;
+
     public async Task<AiCompletionResult?> CompleteAsync(
         string prompt, AiCompletionOptions? options = null, CancellationToken ct = default)
     {
@@ -92,7 +99,7 @@ internal sealed class AiService(
     {
         try
         {
-            var provider = providerFactory.Create(AiProviderType.OpenAI);
+            var provider = providerFactory.Create(EmbeddingProvider);
             return await provider.EmbedAsync(text, ct);
         }
         catch (Exception ex)

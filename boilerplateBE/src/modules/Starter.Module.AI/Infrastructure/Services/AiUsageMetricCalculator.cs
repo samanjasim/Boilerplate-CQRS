@@ -8,9 +8,14 @@ internal sealed class AiUsageMetricCalculator(AiDbContext db) : IUsageMetricCalc
 {
     public string Metric => "ai_tokens";
 
-    public async Task<long> CalculateAsync(Guid tenantId, CancellationToken cancellationToken = default) =>
-        await db.AiUsageLogs
+    public async Task<long> CalculateAsync(Guid tenantId, CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        var periodStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        return await db.AiUsageLogs
             .IgnoreQueryFilters()
-            .Where(l => l.TenantId == tenantId)
+            .Where(l => l.TenantId == tenantId && l.CreatedAt >= periodStart)
             .SumAsync(l => (long)l.InputTokens + l.OutputTokens, cancellationToken);
+    }
 }
