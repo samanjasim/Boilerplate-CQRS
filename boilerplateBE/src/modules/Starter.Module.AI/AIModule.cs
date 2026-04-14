@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Modularity;
+using Starter.Module.AI.Application.Services;
 using Starter.Module.AI.Constants;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Providers;
@@ -42,6 +43,7 @@ public sealed class AIModule : IModule
         services.AddScoped<AiProviderFactory>();
         services.AddScoped<IAiService, AiService>();
         services.AddScoped<IUsageMetricCalculator, AiUsageMetricCalculator>();
+        services.AddScoped<IChatExecutionService, ChatExecutionService>();
 
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(AIModule).Assembly));
         services.AddValidatorsFromAssembly(typeof(AIModule).Assembly);
