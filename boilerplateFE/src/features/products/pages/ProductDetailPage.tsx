@@ -277,7 +277,7 @@ function ProductDetailForm({ product }: { product: Product }) {
         )}
       </form>
 
-      <Slot id="entity-detail-timeline" props={{ entityType: 'Product', entityId: product.id }} />
+      <Slot id="entity-detail-timeline" props={{ entityType: 'Product', entityId: product.id, tenantId: product.tenantId }} />
 
       <ConfirmDialog
         isOpen={showArchiveDialog}

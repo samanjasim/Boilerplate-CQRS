@@ -898,6 +898,10 @@
     "unwatched": "توقفت عن متابعة هذا العنصر",
     "loadMore": "تحميل المزيد",
     "emptyTitle": "لا توجد تعليقات أو نشاط بعد",
+    "emptyDescription": "كن أول من يترك تعليقاً على هذا العنصر.",
+    "deleteTitle": "حذف التعليق",
+    "deleteDescription": "هل أنت متأكد من حذف هذا التعليق؟ لا يمكن التراجع عن هذا الإجراء.",
+    "attach": "إرفاق",
     "noUsersFound": "لم يتم العثور على مستخدمين",
     "activityAction": "{{action}}",
     "entityTypes": {

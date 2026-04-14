@@ -1,4 +1,3 @@
-using System.Text.Json;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Starter.Abstractions.Readers;
@@ -14,6 +13,8 @@ namespace Starter.Module.CommentsActivity.Application.Queries.GetComments;
 internal sealed class GetCommentsQueryHandler(
     CommentsActivityDbContext context,
     IUserReader userReader,
+    IFileReader fileReader,
+    IFileService fileService,
     ICurrentUserService currentUser) : IRequestHandler<GetCommentsQuery, Result<PaginatedList<CommentDto>>>
 {
     public async Task<Result<PaginatedList<CommentDto>>> Handle(
@@ -50,6 +51,18 @@ internal sealed class GetCommentsQueryHandler(
             .Where(r => allCommentIds.Contains(r.CommentId))
             .ToListAsync(cancellationToken);
 
+        // Resolve file metadata for attachments
+        var fileIds = attachments.Select(a => a.FileMetadataId).Distinct();
+        var fileSummaries = await fileReader.GetManyAsync(fileIds, cancellationToken);
+        var fileMap = fileSummaries.ToDictionary(f => f.Id);
+
+        // Resolve file URLs
+        var fileUrlMap = new Dictionary<Guid, string>();
+        foreach (var fid in fileMap.Keys)
+        {
+            fileUrlMap[fid] = await fileService.GetUrlAsync(fid, cancellationToken);
+        }
+
         // Resolve all author names
         var authorIds = page.Items.Select(c => c.AuthorId)
             .Concat(replies.Select(r => r.AuthorId))
@@ -59,129 +72,12 @@ internal sealed class GetCommentsQueryHandler(
 
         var currentUserId = currentUser.UserId;
 
-        var dtos = page.Items.Select(c => MapToDto(
-            c, replies, attachments, reactions, userMap, currentUserId)).ToList();
+        var dtos = page.Items.Select(c => CommentDtoMapper.MapComment(
+            c, replies, attachments, reactions, userMap, fileMap, fileUrlMap, currentUserId)).ToList();
 
         var result = PaginatedList<CommentDto>.Create(
             dtos.AsReadOnly(), page.TotalCount, page.PageNumber, page.PageSize);
 
         return Result.Success(result);
-    }
-
-    private static CommentDto MapToDto(
-        Comment comment,
-        List<Comment> allReplies,
-        List<CommentAttachment> allAttachments,
-        List<CommentReaction> allReactions,
-        Dictionary<Guid, UserSummary> userMap,
-        Guid? currentUserId)
-    {
-        var author = userMap.GetValueOrDefault(comment.AuthorId);
-        var commentReplies = allReplies
-            .Where(r => r.ParentCommentId == comment.Id)
-            .Select(r => MapReplyToDto(r, allAttachments, allReactions, userMap, currentUserId))
-            .ToList();
-
-        var commentAttachments = allAttachments
-            .Where(a => a.CommentId == comment.Id)
-            .Select(a => new CommentAttachmentDto(a.Id, a.FileMetadataId, string.Empty, string.Empty, 0, null))
-            .ToList();
-
-        var commentReactions = allReactions
-            .Where(r => r.CommentId == comment.Id)
-            .GroupBy(r => r.ReactionType)
-            .Select(g => new ReactionSummaryDto(
-                g.Key,
-                g.Count(),
-                currentUserId.HasValue && g.Any(r => r.UserId == currentUserId.Value)))
-            .ToList();
-
-        var mentions = ParseMentions(comment.MentionsJson, userMap);
-
-        return new CommentDto(
-            comment.Id,
-            comment.EntityType,
-            comment.EntityId,
-            comment.ParentCommentId,
-            comment.AuthorId,
-            author?.DisplayName ?? "Unknown",
-            author?.Email ?? string.Empty,
-            comment.Body,
-            mentions,
-            commentAttachments,
-            commentReactions,
-            comment.IsDeleted,
-            commentReplies.Count > 0 ? commentReplies : null,
-            comment.CreatedAt,
-            comment.ModifiedAt);
-    }
-
-    private static CommentDto MapReplyToDto(
-        Comment reply,
-        List<CommentAttachment> allAttachments,
-        List<CommentReaction> allReactions,
-        Dictionary<Guid, UserSummary> userMap,
-        Guid? currentUserId)
-    {
-        var author = userMap.GetValueOrDefault(reply.AuthorId);
-
-        var replyAttachments = allAttachments
-            .Where(a => a.CommentId == reply.Id)
-            .Select(a => new CommentAttachmentDto(a.Id, a.FileMetadataId, string.Empty, string.Empty, 0, null))
-            .ToList();
-
-        var replyReactions = allReactions
-            .Where(r => r.CommentId == reply.Id)
-            .GroupBy(r => r.ReactionType)
-            .Select(g => new ReactionSummaryDto(
-                g.Key,
-                g.Count(),
-                currentUserId.HasValue && g.Any(r => r.UserId == currentUserId.Value)))
-            .ToList();
-
-        var mentions = ParseMentions(reply.MentionsJson, userMap);
-
-        return new CommentDto(
-            reply.Id,
-            reply.EntityType,
-            reply.EntityId,
-            reply.ParentCommentId,
-            reply.AuthorId,
-            author?.DisplayName ?? "Unknown",
-            author?.Email ?? string.Empty,
-            reply.Body,
-            mentions,
-            replyAttachments,
-            replyReactions,
-            reply.IsDeleted,
-            null,
-            reply.CreatedAt,
-            reply.ModifiedAt);
-    }
-
-    private static List<MentionRefDto>? ParseMentions(
-        string? mentionsJson,
-        Dictionary<Guid, UserSummary> userMap)
-    {
-        if (string.IsNullOrEmpty(mentionsJson)) return null;
-
-        try
-        {
-            var userIds = JsonSerializer.Deserialize<List<Guid>>(mentionsJson);
-            if (userIds is null or { Count: 0 }) return null;
-
-            return userIds
-                .Where(id => userMap.ContainsKey(id))
-                .Select(id =>
-                {
-                    var user = userMap[id];
-                    return new MentionRefDto(user.Id, user.Username, user.DisplayName);
-                })
-                .ToList();
-        }
-        catch
-        {
-            return null;
-        }
     }
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MessageSquare, Activity, Clock } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -21,28 +21,54 @@ type FilterType = 'all' | 'comments' | 'activity';
 interface EntityTimelineProps {
   entityType: string;
   entityId: string;
+  tenantId?: string;
 }
 
-export function EntityTimeline({ entityType, entityId }: EntityTimelineProps) {
+export function EntityTimeline({ entityType, entityId, tenantId }: EntityTimelineProps) {
   const { t } = useTranslation();
   const { hasPermission } = usePermissions();
   const [filter, setFilter] = useState<FilterType>('all');
   const [pageNumber, setPageNumber] = useState(1);
+  const [accumulatedItems, setAccumulatedItems] = useState<TimelineItem[]>([]);
   const pageSize = 20;
+  const prevFilterRef = useRef(filter);
 
   // Real-time updates
-  useEntityChannel(entityType, entityId);
+  useEntityChannel(entityType, entityId, tenantId);
 
-  const { data, isLoading } = useTimeline(entityType, entityId, {
+  const { data, isLoading, isFetching } = useTimeline(entityType, entityId, {
     filter: filter === 'all' ? undefined : filter,
     pageNumber,
     pageSize,
   });
 
-  const items: TimelineItem[] = data?.data ?? [];
+  // Accumulate items across pages; reset when filter changes or data is refetched for page 1
+  useEffect(() => {
+    if (!data?.data) return;
+    const filterChanged = prevFilterRef.current !== filter;
+    prevFilterRef.current = filter;
+
+    if (pageNumber === 1 || filterChanged) {
+      setAccumulatedItems(data.data);
+    } else {
+      setAccumulatedItems((prev) => {
+        const existingIds = new Set(
+          prev.map((item) =>
+            item.type === 'comment' ? `c-${item.comment?.id}` : `a-${item.activity?.id}`,
+          ),
+        );
+        const newItems = data.data.filter((item: TimelineItem) => {
+          const key =
+            item.type === 'comment' ? `c-${item.comment?.id}` : `a-${item.activity?.id}`;
+          return !existingIds.has(key);
+        });
+        return [...prev, ...newItems];
+      });
+    }
+  }, [data, pageNumber, filter]);
+
   const totalPages = data?.totalPages ?? 1;
   const canLoadMore = pageNumber < totalPages;
-
   const canCreate = hasPermission(PERMISSIONS.Comments.Create);
 
   const filters: { key: FilterType; label: string }[] = [
@@ -51,10 +77,18 @@ export function EntityTimeline({ entityType, entityId }: EntityTimelineProps) {
     { key: 'activity', label: t('commentsActivity.filterActivity', 'Activity') },
   ];
 
-  const handleFilterChange = (f: FilterType) => {
+  const handleFilterChange = useCallback((f: FilterType) => {
     setFilter(f);
     setPageNumber(1);
-  };
+    setAccumulatedItems([]);
+  }, []);
+
+  const handleLoadMore = useCallback(() => {
+    setPageNumber((p) => p + 1);
+  }, []);
+
+  const showEmpty = !isLoading && accumulatedItems.length === 0;
+  const showItems = accumulatedItems.length > 0;
 
   return (
     <Card>
@@ -87,15 +121,15 @@ export function EntityTimeline({ entityType, entityId }: EntityTimelineProps) {
           ))}
         </div>
 
-        {/* Loading state */}
-        {isLoading && (
+        {/* Loading state — only for initial load */}
+        {isLoading && accumulatedItems.length === 0 && (
           <div className="flex items-center justify-center py-10">
             <Spinner size="md" />
           </div>
         )}
 
         {/* Empty state */}
-        {!isLoading && items.length === 0 && (
+        {showEmpty && (
           <EmptyState
             icon={MessageSquare}
             title={t('commentsActivity.emptyTitle', 'No comments or activity yet')}
@@ -108,9 +142,9 @@ export function EntityTimeline({ entityType, entityId }: EntityTimelineProps) {
         )}
 
         {/* Timeline items */}
-        {!isLoading && items.length > 0 && (
+        {showItems && (
           <div className="divide-y divide-border/30">
-            {items.map((item) => {
+            {accumulatedItems.map((item) => {
               if (item.type === 'comment' && item.comment) {
                 return (
                   <div key={`comment-${item.comment.id}`}>
@@ -136,9 +170,12 @@ export function EntityTimeline({ entityType, entityId }: EntityTimelineProps) {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setPageNumber((p) => p + 1)}
+              onClick={handleLoadMore}
+              disabled={isFetching}
             >
-              {t('commentsActivity.loadMore', 'Load more')}
+              {isFetching
+                ? t('common.loading', 'Loading...')
+                : t('commentsActivity.loadMore', 'Load more')}
             </Button>
           </div>
         )}

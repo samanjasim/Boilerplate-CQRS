@@ -946,6 +946,10 @@
     "unwatched": "You stopped watching this item",
     "loadMore": "Load more",
     "emptyTitle": "No comments or activity yet",
+    "emptyDescription": "Be the first to leave a comment on this item.",
+    "deleteTitle": "Delete Comment",
+    "deleteDescription": "Are you sure you want to delete this comment? This action cannot be undone.",
+    "attach": "Attach",
     "noUsersFound": "No users found",
     "activityAction": "{{action}}",
     "entityTypes": {

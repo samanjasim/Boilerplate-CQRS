@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { usePermissions } from '@/hooks';
+import { PERMISSIONS } from '@/constants';
 import { useToggleReaction } from '../api';
 import { cn } from '@/lib/utils';
 import type { ReactionSummary } from '@/types/comments-activity.types';
@@ -27,6 +29,8 @@ interface ReactionPickerProps {
 export function ReactionPicker({ commentId, reactions }: ReactionPickerProps) {
   const [open, setOpen] = useState(false);
   const { mutate: toggleReaction } = useToggleReaction();
+  const { hasPermission } = usePermissions();
+  const canReact = hasPermission(PERMISSIONS.Comments.Create);
 
   const handleToggle = (reactionType: string) => {
     toggleReaction({ commentId, reactionType });
@@ -39,12 +43,14 @@ export function ReactionPicker({ commentId, reactions }: ReactionPickerProps) {
         <button
           key={r.reactionType}
           type="button"
-          onClick={() => handleToggle(r.reactionType)}
+          onClick={() => canReact && handleToggle(r.reactionType)}
+          disabled={!canReact}
           className={cn(
             'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors duration-150',
             r.userReacted
               ? 'border-primary/30 [background:var(--active-bg)] [color:var(--active-text)]'
               : 'border-border/50 bg-secondary text-muted-foreground hover:bg-secondary/70',
+            !canReact && 'cursor-default',
           )}
         >
           <span>{emojiForType(r.reactionType)}</span>
@@ -52,31 +58,33 @@ export function ReactionPicker({ commentId, reactions }: ReactionPickerProps) {
         </button>
       ))}
 
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 rounded-full"
-          >
-            <Plus className="h-3.5 w-3.5" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-2" align="start">
-          <div className="grid grid-cols-6 gap-1">
-            {PRESET_EMOJIS.map((e) => (
-              <button
-                key={e.type}
-                type="button"
-                onClick={() => handleToggle(e.type)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-lg transition-colors duration-150 hover:bg-secondary"
-              >
-                {e.emoji}
-              </button>
-            ))}
-          </div>
-        </PopoverContent>
-      </Popover>
+      {canReact && (
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 rounded-full"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-2" align="start">
+            <div className="grid grid-cols-6 gap-1">
+              {PRESET_EMOJIS.map((e) => (
+                <button
+                  key={e.type}
+                  type="button"
+                  onClick={() => handleToggle(e.type)}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-lg transition-colors duration-150 hover:bg-secondary"
+                >
+                  {e.emoji}
+                </button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
     </div>
   );
 }

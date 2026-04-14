@@ -1,9 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
 import { queryKeys } from '@/lib/query/keys';
 import { commentsActivityApi } from './comments-activity.api';
 import type { CreateCommentData, EditCommentData } from '@/types/comments-activity.types';
 import { toast } from 'sonner';
 import i18n from '@/i18n';
+
+function handleMutationError(error: unknown) {
+  const message =
+    error instanceof AxiosError && error.response?.data?.message
+      ? error.response.data.message
+      : i18n.t('common.error', 'Something went wrong');
+  toast.error(message);
+}
 
 // ── Queries ────────────────────────────────────────────────────────────────
 
@@ -61,6 +70,7 @@ export function useAddComment() {
       });
       toast.success(i18n.t('commentsActivity.commentAdded', 'Comment added'));
     },
+    onError: handleMutationError,
   });
 }
 
@@ -73,6 +83,7 @@ export function useEditComment() {
       queryClient.invalidateQueries({ queryKey: queryKeys.commentsActivity.comments.all });
       toast.success(i18n.t('commentsActivity.commentEdited', 'Comment updated'));
     },
+    onError: handleMutationError,
   });
 }
 
@@ -85,6 +96,7 @@ export function useDeleteComment() {
       queryClient.invalidateQueries({ queryKey: queryKeys.commentsActivity.comments.all });
       toast.success(i18n.t('commentsActivity.commentDeleted', 'Comment deleted'));
     },
+    onError: handleMutationError,
   });
 }
 
@@ -97,6 +109,7 @@ export function useToggleReaction() {
       queryClient.invalidateQueries({ queryKey: queryKeys.commentsActivity.timeline.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.commentsActivity.comments.all });
     },
+    onError: handleMutationError,
   });
 }
 
@@ -110,6 +123,7 @@ export function useWatch() {
       });
       toast.success(i18n.t('commentsActivity.watching', 'You are now watching this item'));
     },
+    onError: handleMutationError,
   });
 }
 
@@ -123,5 +137,6 @@ export function useUnwatch() {
       });
       toast.success(i18n.t('commentsActivity.unwatched', 'You stopped watching this item'));
     },
+    onError: handleMutationError,
   });
 }

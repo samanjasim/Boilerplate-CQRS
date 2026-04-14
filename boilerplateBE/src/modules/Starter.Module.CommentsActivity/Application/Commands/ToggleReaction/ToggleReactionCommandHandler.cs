@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.CommentsActivity.Domain.Entities;
 using Starter.Module.CommentsActivity.Domain.Errors;
-using Starter.Module.CommentsActivity.Domain.Events;
 using Starter.Module.CommentsActivity.Infrastructure.Persistence;
 using Starter.Shared.Results;
 
@@ -11,8 +10,7 @@ namespace Starter.Module.CommentsActivity.Application.Commands.ToggleReaction;
 
 internal sealed class ToggleReactionCommandHandler(
     CommentsActivityDbContext context,
-    ICurrentUserService currentUser,
-    IPublisher publisher) : IRequestHandler<ToggleReactionCommand, Result>
+    ICurrentUserService currentUser) : IRequestHandler<ToggleReactionCommand, Result>
 {
     public async Task<Result> Handle(ToggleReactionCommand request, CancellationToken cancellationToken)
     {
@@ -45,17 +43,10 @@ internal sealed class ToggleReactionCommandHandler(
             added = true;
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        // Raise domain event through the aggregate root — dispatched by the interceptor on SaveChanges
+        comment.RecordReactionToggle(reactionType, added);
 
-        await publisher.Publish(
-            new ReactionToggledEvent(
-                request.CommentId,
-                comment.EntityType,
-                comment.EntityId,
-                comment.TenantId,
-                reactionType,
-                added),
-            cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }

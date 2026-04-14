@@ -1,14 +1,19 @@
+using System.Text.Json;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Starter.Abstractions.Capabilities;
 using Starter.Module.CommentsActivity.Domain.Entities;
 using Starter.Module.CommentsActivity.Domain.Events;
-using DomainWatchReason = Starter.Module.CommentsActivity.Domain.Enums.WatchReason;
 using Starter.Module.CommentsActivity.Infrastructure.Persistence;
+using DomainWatchReason = Starter.Module.CommentsActivity.Domain.Enums.WatchReason;
 
 namespace Starter.Module.CommentsActivity.Application.EventHandlers;
 
+/// <summary>
+/// Consolidated handler: auto-watches the comment author and any mentioned users.
+/// Single DB round-trip instead of two separate handlers.
+/// </summary>
 internal sealed class AutoWatchOnCommentHandler(
     CommentsActivityDbContext context,
     ICommentableEntityRegistry registry,
@@ -19,27 +24,64 @@ internal sealed class AutoWatchOnCommentHandler(
         try
         {
             var definition = registry.GetDefinition(notification.EntityType);
-            if (definition is null || !definition.AutoWatchOnComment)
-                return;
 
-            var alreadyWatching = await context.EntityWatchers
-                .AnyAsync(
-                    w => w.EntityType == notification.EntityType &&
-                         w.EntityId == notification.EntityId &&
-                         w.UserId == notification.AuthorId,
-                    cancellationToken);
+            // Collect all user IDs that should be auto-watched
+            var candidateWatchers = new List<(Guid UserId, DomainWatchReason Reason)>();
 
-            if (alreadyWatching) return;
+            if (definition?.AutoWatchOnComment == true)
+            {
+                candidateWatchers.Add((notification.AuthorId, DomainWatchReason.Participated));
+            }
 
-            var watcher = EntityWatcher.Create(
-                notification.TenantId,
-                notification.EntityType,
-                notification.EntityId,
-                notification.AuthorId,
-                DomainWatchReason.Participated);
+            // Parse mentioned users
+            if (!string.IsNullOrEmpty(notification.MentionsJson))
+            {
+                var mentionedUserIds = JsonSerializer.Deserialize<List<Guid>>(notification.MentionsJson);
+                if (mentionedUserIds is { Count: > 0 })
+                {
+                    foreach (var userId in mentionedUserIds)
+                    {
+                        candidateWatchers.Add((userId, DomainWatchReason.Mentioned));
+                    }
+                }
+            }
 
-            context.EntityWatchers.Add(watcher);
-            await context.SaveChangesAsync(cancellationToken);
+            if (candidateWatchers.Count == 0) return;
+
+            // Deduplicate by userId (author takes priority if they're also mentioned)
+            var uniqueUserIds = candidateWatchers.Select(c => c.UserId).Distinct().ToList();
+
+            // Check which are already watching
+            var existingWatcherUserIds = await context.EntityWatchers
+                .Where(w => w.EntityType == notification.EntityType &&
+                            w.EntityId == notification.EntityId &&
+                            uniqueUserIds.Contains(w.UserId))
+                .Select(w => w.UserId)
+                .ToListAsync(cancellationToken);
+
+            var existingSet = existingWatcherUserIds.ToHashSet();
+            var added = false;
+
+            foreach (var candidate in candidateWatchers)
+            {
+                if (existingSet.Contains(candidate.UserId)) continue;
+                existingSet.Add(candidate.UserId); // prevent duplicate adds within this batch
+
+                var watcher = EntityWatcher.Create(
+                    notification.TenantId,
+                    notification.EntityType,
+                    notification.EntityId,
+                    candidate.UserId,
+                    candidate.Reason);
+
+                context.EntityWatchers.Add(watcher);
+                added = true;
+            }
+
+            if (added)
+            {
+                await context.SaveChangesAsync(cancellationToken);
+            }
         }
         catch (Exception ex)
         {

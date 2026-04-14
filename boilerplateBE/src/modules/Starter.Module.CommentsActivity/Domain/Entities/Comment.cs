@@ -89,9 +89,16 @@ public sealed class Comment : AggregateRoot, ITenantEntity
         IsDeleted = true;
         DeletedAt = DateTime.UtcNow;
         DeletedBy = deletedBy;
+        Body = string.Empty;
         ModifiedAt = DateTime.UtcNow;
 
         RaiseDomainEvent(new CommentDeletedEvent(
             Id, EntityType, EntityId, TenantId, deletedBy));
+    }
+
+    public void RecordReactionToggle(string reactionType, bool added)
+    {
+        RaiseDomainEvent(new ReactionToggledEvent(
+            Id, EntityType, EntityId, TenantId, reactionType, added));
     }
 }

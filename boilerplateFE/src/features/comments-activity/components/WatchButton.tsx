@@ -16,8 +16,8 @@ export function WatchButton({ entityType, entityId }: WatchButtonProps) {
   const { mutate: unwatch, isPending: isUnwatching } = useUnwatch();
   const isPending = isWatching || isUnwatching;
 
-  const isCurrentlyWatching = watchStatus?.isWatching ?? false;
-  const watcherCount = watchStatus?.watcherCount ?? 0;
+  const isCurrentlyWatching = watchStatus?.data?.isWatching ?? false;
+  const watcherCount = watchStatus?.data?.watcherCount ?? 0;
 
   const handleToggle = () => {
     if (isCurrentlyWatching) {

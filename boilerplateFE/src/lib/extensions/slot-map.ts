@@ -32,6 +32,7 @@ export interface SlotMap {
   'entity-detail-timeline': {
     entityType: string;
     entityId: string;
+    tenantId?: string;
   };
 }
 

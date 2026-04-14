@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import { MoreHorizontal, Reply, Pencil, Trash2, Paperclip } from 'lucide-react';
@@ -11,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { ConfirmDialog } from '@/components/common';
 import { UserAvatar } from '@/components/common/UserAvatar';
 import { useAuthStore, selectUser } from '@/stores';
 import { usePermissions } from '@/hooks';
@@ -32,6 +34,7 @@ export function CommentItem({ comment, isReply, onReply, onEditStart }: CommentI
   const currentUser = useAuthStore(selectUser);
   const { hasPermission } = usePermissions();
   const { mutate: deleteComment } = useDeleteComment();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const timeAgo = formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true });
 
@@ -64,6 +67,7 @@ export function CommentItem({ comment, isReply, onReply, onEditStart }: CommentI
 
   const handleDelete = () => {
     deleteComment(comment.id);
+    setShowDeleteDialog(false);
   };
 
   return (
@@ -112,7 +116,7 @@ export function CommentItem({ comment, isReply, onReply, onEditStart }: CommentI
                       <>
                         {((!isReply && onReply) || (canEdit && onEditStart)) && <DropdownMenuSeparator />}
                         <DropdownMenuItem
-                          onClick={handleDelete}
+                          onClick={() => setShowDeleteDialog(true)}
                           className="text-destructive focus:text-destructive"
                         >
                           <Trash2 className="ltr:mr-2 rtl:ml-2 h-4 w-4" />
@@ -128,7 +132,27 @@ export function CommentItem({ comment, isReply, onReply, onEditStart }: CommentI
 
           {/* Body (markdown) */}
           <div className="prose prose-sm mt-1 max-w-none text-sm text-foreground [&_p]:my-1 [&_a]:text-primary [&_a]:underline">
-            <ReactMarkdown>{comment.body}</ReactMarkdown>
+            <ReactMarkdown
+              components={{
+                a: ({ href, children }) => {
+                  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(href ?? '');
+                  if (isUuid) {
+                    return (
+                      <span className="inline-flex items-center rounded bg-primary/10 px-1 py-0.5 text-xs font-medium text-primary no-underline">
+                        @{children}
+                      </span>
+                    );
+                  }
+                  return (
+                    <a href={href} target="_blank" rel="noopener noreferrer">
+                      {children}
+                    </a>
+                  );
+                },
+              }}
+            >
+              {comment.body}
+            </ReactMarkdown>
           </div>
 
           {/* Attachments */}
@@ -165,6 +189,19 @@ export function CommentItem({ comment, isReply, onReply, onEditStart }: CommentI
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        title={t('commentsActivity.deleteTitle', 'Delete Comment')}
+        description={t(
+          'commentsActivity.deleteDescription',
+          'Are you sure you want to delete this comment? This action cannot be undone.',
+        )}
+        onConfirm={handleDelete}
+        confirmLabel={t('commentsActivity.delete', 'Delete')}
+        variant="danger"
+      />
     </div>
   );
 }

@@ -7,14 +7,18 @@ import * as Ably from 'ably';
 export function useEntityChannel(
   entityType: string,
   entityId: string,
+  entityTenantId?: string,
 ): { connected: boolean } {
   const [connected, setConnected] = useState(false);
   const queryClient = useQueryClient();
   const user = useAuthStore(selectUser);
 
+  // Use entity's tenantId (for platform admins viewing tenant entities) or user's tenantId
+  const tenantId = entityTenantId ?? user?.tenantId;
+
   useEffect(() => {
     const ABLY_API_KEY = import.meta.env.VITE_ABLY_API_KEY;
-    if (!ABLY_API_KEY || !user?.tenantId || !entityType || !entityId) {
+    if (!ABLY_API_KEY || !tenantId || !entityType || !entityId) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setConnected(false);
       return;
@@ -22,7 +26,7 @@ export function useEntityChannel(
 
     try {
       const client = new Ably.Realtime({ key: ABLY_API_KEY });
-      const channelName = `entity-${user.tenantId}-${entityType}-${entityId}`;
+      const channelName = `entity-${tenantId}-${entityType}-${entityId}`;
       const channel = client.channels.get(channelName);
 
       client.connection.on('connected', () => setConnected(true));
@@ -51,7 +55,7 @@ export function useEntityChannel(
     } catch {
       setConnected(false);
     }
-  }, [entityType, entityId, user?.tenantId, queryClient]);
+  }, [entityType, entityId, tenantId, queryClient]);
 
   return { connected };
 }
