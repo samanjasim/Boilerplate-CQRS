@@ -1,8 +1,8 @@
 import { lazy } from 'react';
 import { registerSlot } from '@/lib/extensions';
 
-const EntityTimeline = lazy(() =>
-  import('./components/EntityTimeline').then((m) => ({ default: m.EntityTimeline })),
+const EntityTimelineSlot = lazy(() =>
+  import('./components/EntityTimelineSlot').then((m) => ({ default: m.EntityTimelineSlot })),
 );
 
 export const commentsActivityModule = {
@@ -13,7 +13,7 @@ export const commentsActivityModule = {
       module: 'commentsActivity',
       order: 10,
       permission: 'Comments.View',
-      component: EntityTimeline,
+      component: EntityTimelineSlot,
     });
   },
 };

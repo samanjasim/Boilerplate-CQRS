@@ -1,5 +1,5 @@
-import { formatDistanceToNow } from 'date-fns';
 import { useTranslation } from 'react-i18next';
+import { useTimeAgo } from '@/hooks';
 import type { ActivityEntry } from '@/types/comments-activity.types';
 
 const DOT_COLORS: Record<string, string> = {
@@ -19,7 +19,7 @@ interface ActivityItemProps {
 
 export function ActivityItem({ activity }: ActivityItemProps) {
   const { t } = useTranslation();
-  const timeAgo = formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true });
+  const timeAgo = useTimeAgo(activity.createdAt);
 
   return (
     <div className="flex items-start gap-3 py-2">

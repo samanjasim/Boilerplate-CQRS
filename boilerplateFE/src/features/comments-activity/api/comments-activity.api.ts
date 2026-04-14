@@ -37,6 +37,11 @@ export const commentsActivityApi = {
   unwatch: (params: { entityType: string; entityId: string }) =>
     apiClient.delete(API_ENDPOINTS.COMMENTS_ACTIVITY.WATCHERS, { params }).then((r) => r.data),
 
-  getMentionableUsers: (params: { search?: string; pageSize?: number }) =>
+  getMentionableUsers: (params: {
+    search?: string;
+    pageSize?: number;
+    entityType?: string;
+    entityId?: string;
+  }) =>
     apiClient.get(API_ENDPOINTS.COMMENTS_ACTIVITY.MENTIONABLE_USERS, { params }).then((r) => r.data),
 };

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Starter.Abstractions.Capabilities;
@@ -18,8 +19,10 @@ public sealed class ProductsModule : IModule
 
     public IServiceCollection ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
-        services.AddDbContext<ProductsDbContext>(options =>
+        services.AddDbContext<ProductsDbContext>((sp, options) =>
         {
+            options.AddInterceptors(sp.GetServices<ISaveChangesInterceptor>());
+
             options.UseNpgsql(
                 configuration.GetConnectionString("DefaultConnection"),
                 npgsqlOptions =>
@@ -43,7 +46,8 @@ public sealed class ProductsModule : IModule
                 EnableActivity: true,
                 CustomActivityTypes: ["PriceChanged", "Published", "Archived"],
                 AutoWatchOnCreate: true,
-                AutoWatchOnComment: true)));
+                AutoWatchOnComment: true,
+                ResolveTenantIdAsync: ResolveProductTenantIdAsync)));
 
         return services;
     }
@@ -71,5 +75,18 @@ public sealed class ProductsModule : IModule
         using var scope = services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ProductsDbContext>();
         await context.Database.MigrateAsync(cancellationToken);
+    }
+
+    private static async Task<Guid?> ResolveProductTenantIdAsync(
+        Guid productId, IServiceProvider services, CancellationToken cancellationToken)
+    {
+        using var scope = services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ProductsDbContext>();
+        return await context.Products
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(p => p.Id == productId)
+            .Select(p => p.TenantId)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 }

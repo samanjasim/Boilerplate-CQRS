@@ -345,6 +345,7 @@ public static class DataSeeder
             FeatureFlag.Create("imports.enabled", "Imports Enabled", "Enable data imports", "false", FlagValueType.Boolean, FlagCategory.System, false),
             FeatureFlag.Create("imports.max_rows", "Max Import Rows", "Maximum rows per import", "0", FlagValueType.Integer, FlagCategory.System, false),
             FeatureFlag.Create("exports.enabled", "Exports Enabled", "Enable data exports", "true", FlagValueType.Boolean, FlagCategory.System, true),
+            FeatureFlag.Create("comments.activity_enabled", "Comments & Activity Enabled", "Enable comments and activity timeline on supported entities", "true", FlagValueType.Boolean, FlagCategory.System, true),
         };
 
         context.Set<FeatureFlag>().AddRange(flags);

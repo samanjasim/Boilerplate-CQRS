@@ -1,12 +1,47 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Send, Paperclip, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useAddComment, useEditComment } from '../api';
 import { useUploadFile } from '@/features/files/api';
-import { MentionAutocomplete } from './MentionAutocomplete';
+import { getCaretCoordinates } from '@/lib/dom/getCaretCoordinates';
+import { MentionAutocomplete, type MentionAutocompleteHandle } from './MentionAutocomplete';
 import type { MentionableUser } from '@/types/comments-activity.types';
+
+const MENTION_POPUP_WIDTH = 288;
+const MENTION_POPUP_GAP = 6;
+// Conservative estimate of fully-populated popup height (header + ~5 rows + footer).
+// Used only for placement decisions, not actual sizing.
+const MENTION_POPUP_HEIGHT = 320;
+
+type MentionRef = { id: string; displayName: string };
+
+// Convert stored markdown form `@[Name](id)` → display form `@Name` and pull out mentions.
+function deserializeMentions(stored: string): { displayBody: string; mentions: MentionRef[] } {
+  const mentions: MentionRef[] = [];
+  const displayBody = stored.replace(/@\[([^\]]+)\]\(([^)]+)\)/g, (_m, displayName: string, id: string) => {
+    mentions.push({ id, displayName });
+    return `@${displayName}`;
+  });
+  return { displayBody, mentions };
+}
+
+// Convert display form `@Name` → stored markdown `@[Name](id)` using tracked mentions.
+// Walks `mentions` in insertion order so duplicate display-names map to the right ids.
+function serializeMentions(displayBody: string, mentions: MentionRef[]): string {
+  let result = displayBody;
+  let cursor = 0;
+  for (const m of mentions) {
+    const needle = `@${m.displayName}`;
+    const idx = result.indexOf(needle, cursor);
+    if (idx < 0) continue;
+    const replacement = `@[${m.displayName}](${m.id})`;
+    result = result.slice(0, idx) + replacement + result.slice(idx + needle.length);
+    cursor = idx + replacement.length;
+  }
+  return result;
+}
 
 interface CommentComposerProps {
   entityType: string;
@@ -24,26 +59,50 @@ export function CommentComposer({
   editMode,
 }: CommentComposerProps) {
   const { t } = useTranslation();
-  const [body, setBody] = useState(editMode?.initialBody ?? '');
-  const [mentionUserIds, setMentionUserIds] = useState<string[]>([]);
+  const [body, setBody] = useState(() =>
+    editMode?.initialBody ? deserializeMentions(editMode.initialBody).displayBody : '',
+  );
+  const [mentions, setMentions] = useState<MentionRef[]>(() =>
+    editMode?.initialBody ? deserializeMentions(editMode.initialBody).mentions : [],
+  );
   const [mentionSearch, setMentionSearch] = useState('');
   const [mentionVisible, setMentionVisible] = useState(false);
-  const [mentionPos, setMentionPos] = useState<{ top: number; left: number } | undefined>();
+  const [mentionPos, setMentionPos] = useState<
+    { top: number; left: number; placement: 'top' | 'bottom' } | undefined
+  >();
   const [attachments, setAttachments] = useState<{ fileId: string; fileName: string }[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mentionStartRef = useRef<number>(-1);
+  const mentionRef = useRef<MentionAutocompleteHandle>(null);
 
   const { mutate: addComment, isPending: isAdding } = useAddComment();
   const { mutate: editComment, isPending: isEditing } = useEditComment();
   const { mutateAsync: uploadFile, isPending: isUploading } = useUploadFile();
   const isPending = isAdding || isEditing;
 
+  // Derive mention user ids from the live mention list (single source of truth).
+  const mentionUserIds = useMemo(
+    () => Array.from(new Set(mentions.map((m) => m.id))),
+    [mentions],
+  );
+
   useEffect(() => {
     if (editMode?.initialBody) {
-      setBody(editMode.initialBody);
+      const { displayBody, mentions: parsed } = deserializeMentions(editMode.initialBody);
+      setBody(displayBody);
+      setMentions(parsed);
     }
-  }, [editMode?.initialBody]);
+  }, [editMode?.commentId, editMode?.initialBody]);
+
+  // Drop tracked mentions whose display text was deleted from the body.
+  // Keeps notifications honest when a user backspaces over @Name.
+  useEffect(() => {
+    setMentions((prev) => {
+      const next = prev.filter((m) => body.includes(`@${m.displayName}`));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [body]);
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -64,10 +123,35 @@ export function CommentComposer({
           setMentionSearch(searchStr);
           setMentionVisible(true);
 
-          // Position the autocomplete below the textarea
-          if (textareaRef.current) {
-            const rect = textareaRef.current.getBoundingClientRect();
-            setMentionPos({ top: rect.height + 4, left: 0 });
+          // Anchor the autocomplete to the caret (Slack/Teams-style).
+          // direction is mirrored inside getCaretCoordinates so RTL works automatically.
+          const ta = textareaRef.current;
+          if (ta) {
+            const caret = getCaretCoordinates(ta, lastAtIndex);
+            const containerWidth = ta.offsetWidth;
+            const isRtl = getComputedStyle(ta).direction === 'rtl';
+
+            // Horizontal: anchor at caret X, clamp so popup stays in-bounds.
+            let left = caret.left - ta.scrollLeft;
+            if (isRtl) left = left - MENTION_POPUP_WIDTH;
+            left = Math.max(0, Math.min(left, containerWidth - MENTION_POPUP_WIDTH));
+
+            // Vertical: prefer below, flip to above only when below can't fit
+            // the full popup AND above has strictly more room. CSS handles the
+            // upward shift with translateY(-100%) so we don't need to know the
+            // popup's actual height.
+            const taRect = ta.getBoundingClientRect();
+            const caretViewportTop = taRect.top + caret.top - ta.scrollTop;
+            const caretViewportBottom = caretViewportTop + caret.height;
+            const spaceBelow = window.innerHeight - caretViewportBottom;
+            const spaceAbove = caretViewportTop;
+            const placeAbove = spaceBelow < MENTION_POPUP_HEIGHT && spaceAbove > spaceBelow;
+
+            const top = placeAbove
+              ? caret.top - ta.scrollTop - MENTION_POPUP_GAP
+              : caret.top - ta.scrollTop + caret.height + MENTION_POPUP_GAP;
+
+            setMentionPos({ top, left, placement: placeAbove ? 'top' : 'bottom' });
           }
           return;
         }
@@ -87,10 +171,12 @@ export function CommentComposer({
       const before = body.slice(0, start);
       const cursorPos = textareaRef.current?.selectionStart ?? body.length;
       const after = body.slice(cursorPos);
-      const mention = `@[${user.displayName}](${user.id}) `;
+      // Insert plain `@Name ` for a clean, chat-like composer.
+      // The `@[Name](id)` markdown is reconstructed at submit time.
+      const mention = `@${user.displayName} `;
 
       setBody(before + mention + after);
-      setMentionUserIds((prev) => (prev.includes(user.id) ? prev : [...prev, user.id]));
+      setMentions((prev) => [...prev, { id: user.id, displayName: user.displayName }]);
       setMentionVisible(false);
       setMentionSearch('');
       mentionStartRef.current = -1;
@@ -131,13 +217,15 @@ export function CommentComposer({
     const trimmed = body.trim();
     if (!trimmed) return;
 
+    const serialized = serializeMentions(trimmed, mentions);
+
     if (editMode) {
       editComment(
-        { id: editMode.commentId, body: trimmed, mentionUserIds },
+        { id: editMode.commentId, body: serialized, mentionUserIds },
         {
           onSuccess: () => {
             setBody('');
-            setMentionUserIds([]);
+            setMentions([]);
             setAttachments([]);
             onCancel?.();
           },
@@ -148,7 +236,7 @@ export function CommentComposer({
         {
           entityType,
           entityId,
-          body: trimmed,
+          body: serialized,
           mentionUserIds: mentionUserIds.length > 0 ? mentionUserIds : undefined,
           parentCommentId,
           attachmentFileIds: attachments.length > 0 ? attachments.map((a) => a.fileId) : undefined,
@@ -156,9 +244,15 @@ export function CommentComposer({
         {
           onSuccess: () => {
             setBody('');
-            setMentionUserIds([]);
+            setMentions([]);
             setAttachments([]);
-            onCancel?.();
+            if (onCancel) {
+              onCancel();
+            } else {
+              // Root composer: refocus so the user can keep typing follow-ups
+              // without reaching for the mouse.
+              requestAnimationFrame(() => textareaRef.current?.focus());
+            }
           },
         },
       );
@@ -166,14 +260,34 @@ export function CommentComposer({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (mentionVisible) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        mentionRef.current?.moveDown();
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        mentionRef.current?.moveUp();
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        if (mentionRef.current?.selectActive()) {
+          e.preventDefault();
+          return;
+        }
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setMentionVisible(false);
+        return;
+      }
+    }
+
     // Submit on Cmd/Ctrl + Enter
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       handleSubmit();
-    }
-    // Close mention on Escape
-    if (e.key === 'Escape' && mentionVisible) {
-      setMentionVisible(false);
     }
   };
 
@@ -203,9 +317,13 @@ export function CommentComposer({
           disabled={isPending}
         />
         <MentionAutocomplete
+          ref={mentionRef}
           search={mentionSearch}
           onSelect={handleMentionSelect}
+          onClose={() => setMentionVisible(false)}
           visible={mentionVisible}
+          entityType={entityType}
+          entityId={entityId}
           position={mentionPos}
         />
       </div>

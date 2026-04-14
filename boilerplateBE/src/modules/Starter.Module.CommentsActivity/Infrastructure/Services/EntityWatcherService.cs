@@ -17,7 +17,13 @@ public sealed class EntityWatcherService(CommentsActivityDbContext context) : IE
         AbsWatchReason reason = AbsWatchReason.Explicit,
         CancellationToken ct = default)
     {
+        // Dedup must be cross-tenant: the unique index is (entity_type,
+        // entity_id, user_id) with no tenant column, so a stale row from a
+        // prior cross-tenant action (tenant_id = NULL) would collide with a
+        // new insert under the active tenant if we relied on the tenant
+        // filter alone.
         var alreadyWatching = await context.EntityWatchers
+            .IgnoreQueryFilters()
             .AnyAsync(
                 w => w.EntityType == entityType &&
                      w.EntityId == entityId &&

@@ -171,7 +171,7 @@ export const queryKeys = {
       status: (entityType: string, entityId: string) =>
         ['commentsActivity', 'watchers', 'status', entityType, entityId] as const,
     },
-    mentionableUsers: (search?: string) =>
-      ['commentsActivity', 'mentionable-users', search] as const,
+    mentionableUsers: (search?: string, entityType?: string, entityId?: string) =>
+      ['commentsActivity', 'mentionable-users', search, entityType, entityId] as const,
   },
 } as const;

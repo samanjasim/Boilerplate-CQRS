@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
+import { useTimeAgoFormatter } from '@/hooks';
 import { Webhook, Globe, CheckCircle, XCircle, Activity } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -61,6 +61,7 @@ export default function WebhookAdminPage() {
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(getPersistedPageSize);
   const [searchTerm, setSearchTerm] = useState('');
+  const formatTimeAgo = useTimeAgoFormatter();
 
   const params = useMemo(() => {
     const p: Record<string, unknown> = { pageNumber, pageSize };
@@ -211,7 +212,7 @@ export default function WebhookAdminPage() {
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
                       {row.lastDeliveryAt
-                        ? formatDistanceToNow(new Date(row.lastDeliveryAt), { addSuffix: true })
+                        ? formatTimeAgo(row.lastDeliveryAt)
                         : t('webhooks.never')}
                     </TableCell>
                     <TableCell>

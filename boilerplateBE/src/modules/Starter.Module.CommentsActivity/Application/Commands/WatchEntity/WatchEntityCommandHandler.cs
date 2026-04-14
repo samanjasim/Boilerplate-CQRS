@@ -16,7 +16,11 @@ internal sealed class WatchEntityCommandHandler(
     {
         var userId = currentUser.UserId!.Value;
 
+        // Cross-tenant dedup: unique index is (entity_type, entity_id, user_id)
+        // with no tenant column, so a stale cross-tenant row (tenant_id = NULL
+        // from an earlier SuperAdmin action) would collide on insert.
         var alreadyWatching = await context.EntityWatchers
+            .IgnoreQueryFilters()
             .AnyAsync(
                 w => w.EntityType == request.EntityType &&
                      w.EntityId == request.EntityId &&

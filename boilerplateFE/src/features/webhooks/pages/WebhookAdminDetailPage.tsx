@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { formatDistanceToNow } from 'date-fns';
 import { Webhook, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +13,7 @@ import {
 } from '@/components/ui/select';
 import { PageHeader, EmptyState, Pagination, getPersistedPageSize } from '@/components/common';
 import { useWebhookAdminEndpoints, useWebhookAdminDeliveries } from '../api';
-import { useBackNavigation } from '@/hooks';
+import { useBackNavigation, useTimeAgo } from '@/hooks';
 import { ROUTES } from '@/config';
 import { statusBadge } from '../utils/badges';
 import { tryPrettyJson } from '../utils/format';
@@ -26,7 +25,7 @@ function DeliveryRow({ delivery }: { delivery: WebhookDelivery }) {
   const [expanded, setExpanded] = useState(false);
   const { t } = useTranslation();
 
-  const timeAgo = formatDistanceToNow(new Date(delivery.createdAt), { addSuffix: true });
+  const timeAgo = useTimeAgo(delivery.createdAt);
 
   return (
     <>

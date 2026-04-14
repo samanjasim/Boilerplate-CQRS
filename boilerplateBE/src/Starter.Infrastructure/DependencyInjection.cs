@@ -3,6 +3,7 @@ using QuestPDF.Infrastructure;
 using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Readers;
 using Starter.Application.Common.Interfaces;
+using Starter.Infrastructure.Capabilities.Adapters;
 using Starter.Infrastructure.Capabilities.MetricCalculators;
 using Starter.Infrastructure.Capabilities.NullObjects;
 using Starter.Infrastructure.Email.Templates;
@@ -81,6 +82,23 @@ public static class DependencyInjection
         services.TryAddScoped<ICommentService, NullCommentService>();
         services.TryAddScoped<IActivityService, NullActivityService>();
         services.TryAddScoped<IEntityWatcherService, NullEntityWatcherService>();
+
+        // Notifications capability — registration order matters.
+        //
+        // Line 1 (TryAddScoped Null): only registers if no INotificationServiceCapability
+        // is already bound. Acts as a fallback for isolated module tests that don't
+        // wire the host's notification stack.
+        //
+        // Line 2 (AddScoped Adapter): appends the real adapter. When the container
+        // resolves a single INotificationServiceCapability, MSDI returns the LAST
+        // registration for that service — so the Adapter wins in the host. The Null
+        // remains reachable only via IEnumerable<INotificationServiceCapability>,
+        // which nothing currently injects.
+        //
+        // Do not swap these lines or convert line 2 to TryAddScoped — the Null would
+        // win and notifications would silently no-op in production.
+        services.TryAddScoped<INotificationServiceCapability, NullNotificationServiceCapability>();
+        services.AddScoped<INotificationServiceCapability, NotificationServiceCapabilityAdapter>();
 
         // Core usage metric calculators — one per core-owned metric. Modules
         // that own their own counted entities (e.g. Webhooks) register

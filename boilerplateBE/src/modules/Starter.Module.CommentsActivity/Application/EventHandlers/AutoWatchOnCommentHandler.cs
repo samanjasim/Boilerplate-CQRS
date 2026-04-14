@@ -51,8 +51,13 @@ internal sealed class AutoWatchOnCommentHandler(
             // Deduplicate by userId (author takes priority if they're also mentioned)
             var uniqueUserIds = candidateWatchers.Select(c => c.UserId).Distinct().ToList();
 
-            // Check which are already watching
+            // Dedup must be cross-tenant: the unique index is (entity_type,
+            // entity_id, user_id) with no tenant column, so a row from a
+            // previous SuperAdmin action (tenant_id = NULL) would collide
+            // with a new insert under the active tenant if we relied on the
+            // tenant filter alone.
             var existingWatcherUserIds = await context.EntityWatchers
+                .IgnoreQueryFilters()
                 .Where(w => w.EntityType == notification.EntityType &&
                             w.EntityId == notification.EntityId &&
                             uniqueUserIds.Contains(w.UserId))
