@@ -1,3 +1,5 @@
+using FluentValidation;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,6 +42,9 @@ public sealed class AIModule : IModule
         services.AddScoped<AiProviderFactory>();
         services.AddScoped<IAiService, AiService>();
         services.AddScoped<IUsageMetricCalculator, AiUsageMetricCalculator>();
+
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(AIModule).Assembly));
+        services.AddValidatorsFromAssembly(typeof(AIModule).Assembly);
 
         return services;
     }

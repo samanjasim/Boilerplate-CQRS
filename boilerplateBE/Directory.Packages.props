@@ -20,6 +20,7 @@
     <!-- MediatR (CQRS) -->
     <PackageVersion Include="MediatR" Version="12.5.0" />
     <!-- Validation -->
+    <PackageVersion Include="FluentValidation" Version="12.1.1" />
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <!-- Mapping -->
     <PackageVersion Include="Riok.Mapperly" Version="4.3.1" />
