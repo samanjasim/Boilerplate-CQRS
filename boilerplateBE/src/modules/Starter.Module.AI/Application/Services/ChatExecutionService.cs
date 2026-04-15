@@ -49,28 +49,71 @@ internal sealed class ChatExecutionService(
         var provider = providerFactory.Create(ResolveProvider(state.Assistant));
         var chatOptions = BuildChatOptions(state.Assistant, state.Tools.ProviderTools);
 
-        AiChatCompletion completion;
+        var messages = new List<AiChatMessage>(state.ProviderMessages);
+        var totalInput = 0;
+        var totalOutput = 0;
+        var stepBudget = Math.Clamp(state.Assistant.MaxAgentSteps, 1, 20);
+        var nextOrder = state.NextOrder;
+
         try
         {
-            completion = await provider.ChatAsync(state.ProviderMessages, chatOptions, ct);
+            for (var step = 0; step < stepBudget; step++)
+            {
+                var completion = await provider.ChatAsync(messages, chatOptions, ct);
+                totalInput += completion.InputTokens;
+                totalOutput += completion.OutputTokens;
+
+                if (completion.ToolCalls is null || completion.ToolCalls.Count == 0)
+                {
+                    var finalMessage = await FinalizeTurnAsync(
+                        state, completion.Content, totalInput, totalOutput, nextOrder, ct);
+                    return Result.Success(new AiChatReplyDto(
+                        state.Conversation.Id,
+                        state.UserMessage.ToDto(),
+                        finalMessage.ToDto()));
+                }
+
+                var toolCallsJson = System.Text.Json.JsonSerializer.Serialize(
+                    completion.ToolCalls, SerializerOptions);
+
+                var assistantCallMsg = AiMessage.CreateAssistantMessage(
+                    state.Conversation.Id,
+                    completion.Content ?? "",
+                    nextOrder++,
+                    completion.InputTokens,
+                    completion.OutputTokens,
+                    toolCalls: toolCallsJson);
+                context.AiMessages.Add(assistantCallMsg);
+                messages.Add(new AiChatMessage(
+                    "assistant", completion.Content, ToolCalls: completion.ToolCalls));
+
+                foreach (var call in completion.ToolCalls)
+                {
+                    var resultJson = await DispatchToolAsync(call, state.Tools, ct);
+
+                    var toolResultMsg = AiMessage.CreateToolResultMessage(
+                        state.Conversation.Id, call.Id, resultJson, nextOrder++);
+                    context.AiMessages.Add(toolResultMsg);
+                    messages.Add(new AiChatMessage("tool", resultJson, ToolCallId: call.Id));
+                }
+
+                await context.SaveChangesAsync(ct);
+            }
+
+            var hitLimitMsg = await FinalizeTurnAsync(
+                state,
+                "I couldn't fully complete the task within my step budget. Please narrow the request.",
+                totalInput, totalOutput, nextOrder, ct);
+            return Result.Success(new AiChatReplyDto(
+                state.Conversation.Id,
+                state.UserMessage.ToDto(),
+                hitLimitMsg.ToDto()));
         }
         catch (Exception ex)
         {
             await FailTurnAsync(state);
             return Result.Failure<AiChatReplyDto>(AiErrors.ProviderError(ex.Message));
         }
-
-        var assistantMessage = await FinalizeTurnAsync(
-            state,
-            completion.Content,
-            completion.InputTokens,
-            completion.OutputTokens,
-            ct);
-
-        return Result.Success(new AiChatReplyDto(
-            state.Conversation.Id,
-            state.UserMessage.ToDto(),
-            assistantMessage.ToDto()));
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -160,6 +203,7 @@ internal sealed class ChatExecutionService(
             finalContent,
             inputTokens,
             outputTokens,
+            state.NextOrder,
             ct);
 
         yield return new ChatStreamEvent("done", new
@@ -311,12 +355,13 @@ internal sealed class ChatExecutionService(
         string? content,
         int inputTokens,
         int outputTokens,
+        int order,
         CancellationToken ct)
     {
         var assistantMessage = AiMessage.CreateAssistantMessage(
             state.Conversation.Id,
             content ?? "",
-            state.NextOrder,
+            order,
             inputTokens,
             outputTokens);
 
@@ -517,6 +562,55 @@ internal sealed class ChatExecutionService(
             await enumerator.DisposeAsync();
         }
     }
+
+    private async Task<string> DispatchToolAsync(
+        AiToolCall call,
+        ToolResolutionResult tools,
+        CancellationToken ct)
+    {
+        if (!tools.DefinitionsByName.TryGetValue(call.Name, out var def))
+            return SerializeError($"Unknown tool '{call.Name}'.");
+
+        if (!currentUser.HasPermission(def.RequiredPermission))
+            return SerializeError($"Permission '{def.RequiredPermission}' required.");
+
+        object? command;
+        try
+        {
+            command = System.Text.Json.JsonSerializer.Deserialize(
+                call.ArgumentsJson,
+                def.CommandType,
+                SerializerOptions);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to deserialize args for tool {Tool}.", call.Name);
+            return SerializeError($"Arguments could not be deserialized: {ex.Message}");
+        }
+
+        if (command is null)
+            return SerializeError("Deserialized arguments were null.");
+
+        try
+        {
+            var result = await sender.Send(command, ct);
+            return System.Text.Json.JsonSerializer.Serialize(result, SerializerOptions);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Tool {Tool} threw during dispatch.", call.Name);
+            return SerializeError(ex.Message);
+        }
+
+        static string SerializeError(string message) =>
+            System.Text.Json.JsonSerializer.Serialize(new { ok = false, error = message });
+    }
+
+    private static readonly System.Text.Json.JsonSerializerOptions SerializerOptions =
+        new(System.Text.Json.JsonSerializerDefaults.Web)
+        {
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+        };
 
     // ──────────────────────────────────────────────────────────────
     // Private types
