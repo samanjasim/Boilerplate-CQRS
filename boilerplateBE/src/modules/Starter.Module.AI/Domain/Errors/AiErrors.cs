@@ -17,6 +17,9 @@ public static class AiErrors
     public static Error AgentTaskAlreadyCompleted => Error.Validation("Ai.AgentTaskAlreadyCompleted", "Agent task has already completed.");
     public static Error DocumentProcessingFailed(string reason) => Error.Failure("Ai.DocumentProcessingFailed", $"Document processing failed: {reason}");
     public static Error AssistantNameAlreadyExists => Error.Conflict("Ai.AssistantNameAlreadyExists", "An assistant with this name already exists.");
+    public static Error AssistantInUse => Error.Conflict(
+        "Ai.AssistantInUse",
+        "This assistant has conversations and cannot be deleted. Deactivate it instead.");
     public static Error ToolPermissionDenied(string toolName) => new("Ai.ToolPermissionDenied", $"You don't have permission to use the tool '{toolName}'.", ErrorType.Forbidden);
     public static Error AiNotEnabled => new("Ai.NotEnabled", "AI features are not enabled for this tenant.", ErrorType.Forbidden);
     public static Error NotAuthenticated => new("Ai.NotAuthenticated", "You must be signed in to chat.", ErrorType.Unauthorized);
