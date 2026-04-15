@@ -20,11 +20,14 @@ internal sealed class CreateAssistantCommandHandler(
     {
         // Name uniqueness is scoped per tenant. Platform admins (TenantId=null) share the
         // "global" namespace; tenant users collide only within their own tenant.
+        // IgnoreQueryFilters makes the scope explicit — otherwise a SuperAdmin create would
+        // match across every tenant because the global filter passes for TenantId=null.
         var tenantId = currentUser.TenantId;
         var normalized = request.Name.Trim();
 
         var nameTaken = await context.AiAssistants
-            .AnyAsync(a => a.Name == normalized, cancellationToken);
+            .IgnoreQueryFilters()
+            .AnyAsync(a => a.TenantId == tenantId && a.Name == normalized, cancellationToken);
         if (nameTaken)
             return Result.Failure<AiAssistantDto>(AiErrors.AssistantNameAlreadyExists);
 

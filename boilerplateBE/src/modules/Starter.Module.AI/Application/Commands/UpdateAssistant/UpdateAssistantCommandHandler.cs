@@ -19,12 +19,19 @@ internal sealed class UpdateAssistantCommandHandler(AiDbContext context)
         if (assistant is null)
             return Result.Failure<AiAssistantDto>(AiErrors.AssistantNotFound);
 
-        // Uniqueness scoped within what the tenant can see (global filter already applied).
+        // Uniqueness scoped to the existing assistant's tenant — IgnoreQueryFilters makes
+        // the scope explicit and avoids SuperAdmin crossing tenants on the global filter.
         var normalized = request.Name.Trim();
         if (normalized != assistant.Name)
         {
+            var tenantId = assistant.TenantId;
             var nameTaken = await context.AiAssistants
-                .AnyAsync(a => a.Id != assistant.Id && a.Name == normalized, cancellationToken);
+                .IgnoreQueryFilters()
+                .AnyAsync(
+                    a => a.Id != assistant.Id
+                         && a.TenantId == tenantId
+                         && a.Name == normalized,
+                    cancellationToken);
             if (nameTaken)
                 return Result.Failure<AiAssistantDto>(AiErrors.AssistantNameAlreadyExists);
         }
