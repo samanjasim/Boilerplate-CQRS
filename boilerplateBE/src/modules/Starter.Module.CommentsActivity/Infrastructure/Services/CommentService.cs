@@ -1,11 +1,16 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Starter.Abstractions.Capabilities;
 using Starter.Module.CommentsActivity.Domain.Entities;
 using Starter.Module.CommentsActivity.Infrastructure.Persistence;
 
 namespace Starter.Module.CommentsActivity.Infrastructure.Services;
 
-public sealed class CommentService(CommentsActivityDbContext context) : ICommentService
+public sealed class CommentService(
+    CommentsActivityDbContext context,
+    ICommentableEntityRegistry registry,
+    IServiceProvider services,
+    ILogger<CommentService> logger) : ICommentService
 {
     public async Task<Guid> AddCommentAsync(
         string entityType,
@@ -18,8 +23,11 @@ public sealed class CommentService(CommentsActivityDbContext context) : IComment
         Guid? parentCommentId = null,
         CancellationToken ct = default)
     {
+        var effectiveTenantId = await TenantResolution.ResolveEffectiveTenantIdAsync(
+            registry, services, logger, entityType, entityId, tenantId, ct);
+
         var comment = Comment.Create(
-            tenantId, entityType, entityId, parentCommentId,
+            effectiveTenantId, entityType, entityId, parentCommentId,
             authorId, body, mentionsJson);
 
         context.Comments.Add(comment);

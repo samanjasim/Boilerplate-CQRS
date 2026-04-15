@@ -1,13 +1,17 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Starter.Abstractions.Capabilities;
 using Starter.Module.CommentsActivity.Domain.Entities;
-using Starter.Module.CommentsActivity.Domain.Enums;
 using Starter.Module.CommentsActivity.Infrastructure.Persistence;
 using AbsWatchReason = Starter.Abstractions.Capabilities.WatchReason;
 
 namespace Starter.Module.CommentsActivity.Infrastructure.Services;
 
-public sealed class EntityWatcherService(CommentsActivityDbContext context) : IEntityWatcherService
+public sealed class EntityWatcherService(
+    CommentsActivityDbContext context,
+    ICommentableEntityRegistry registry,
+    IServiceProvider services,
+    ILogger<EntityWatcherService> logger) : IEntityWatcherService
 {
     public async Task WatchAsync(
         string entityType,
@@ -17,6 +21,9 @@ public sealed class EntityWatcherService(CommentsActivityDbContext context) : IE
         AbsWatchReason reason = AbsWatchReason.Explicit,
         CancellationToken ct = default)
     {
+        var effectiveTenantId = await TenantResolution.ResolveEffectiveTenantIdAsync(
+            registry, services, logger, entityType, entityId, tenantId, ct);
+
         // Dedup must be cross-tenant: the unique index is (entity_type,
         // entity_id, user_id) with no tenant column, so a stale row from a
         // prior cross-tenant action (tenant_id = NULL) would collide with a
@@ -40,7 +47,7 @@ public sealed class EntityWatcherService(CommentsActivityDbContext context) : IE
             _ => Domain.Enums.WatchReason.Explicit,
         };
 
-        var watcher = EntityWatcher.Create(tenantId, entityType, entityId, userId, domainReason);
+        var watcher = EntityWatcher.Create(effectiveTenantId, entityType, entityId, userId, domainReason);
         context.EntityWatchers.Add(watcher);
         await context.SaveChangesAsync(ct);
     }

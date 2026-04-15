@@ -7,6 +7,7 @@ using Starter.Abstractions.Modularity;
 using Starter.Module.Products.Constants;
 using Starter.Module.Products.Infrastructure.Persistence;
 using Starter.Module.Products.Infrastructure.Services;
+using Starter.Module.Products.Infrastructure.Tenancy;
 
 namespace Starter.Module.Products;
 
@@ -38,16 +39,12 @@ public sealed class ProductsModule : IModule
 
         services.AddScoped<IUsageMetricCalculator, ProductsUsageMetricCalculator>();
 
-        services.AddSingleton<ICommentableEntityRegistration>(
-            new CommentableEntityRegistration(new CommentableEntityDefinition(
-                EntityType: "Product",
-                DisplayNameKey: "commentsActivity.entityTypes.product",
-                EnableComments: true,
-                EnableActivity: true,
-                CustomActivityTypes: ["PriceChanged", "Published", "Archived"],
-                AutoWatchOnCreate: true,
-                AutoWatchOnComment: true,
-                ResolveTenantIdAsync: ResolveProductTenantIdAsync)));
+        services.AddScoped<ProductTenantResolver>();
+        services.AddCommentableEntity("Product", builder =>
+        {
+            builder.CustomActivityTypes = ["PriceChanged", "Published", "Archived"];
+            builder.UseTenantResolver<ProductTenantResolver>();
+        });
 
         return services;
     }
@@ -75,18 +72,5 @@ public sealed class ProductsModule : IModule
         using var scope = services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ProductsDbContext>();
         await context.Database.MigrateAsync(cancellationToken);
-    }
-
-    private static async Task<Guid?> ResolveProductTenantIdAsync(
-        Guid productId, IServiceProvider services, CancellationToken cancellationToken)
-    {
-        using var scope = services.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<ProductsDbContext>();
-        return await context.Products
-            .IgnoreQueryFilters()
-            .AsNoTracking()
-            .Where(p => p.Id == productId)
-            .Select(p => p.TenantId)
-            .FirstOrDefaultAsync(cancellationToken);
     }
 }
