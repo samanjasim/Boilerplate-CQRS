@@ -5,6 +5,8 @@ using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Modularity;
 using Starter.Module.AI.Application.Services;
 using Starter.Module.AI.Constants;
+using Starter.Module.AI.Domain.Entities;
+using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Services;
@@ -103,5 +105,34 @@ public sealed class AIModule : IModule
         using var scope = services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AiDbContext>();
         await context.Database.MigrateAsync(cancellationToken);
+
+        var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+        if (configuration.GetValue<bool>("AI:SeedSampleAssistant"))
+        {
+            const string SampleName = "AI Tools Demo";
+            var exists = await context.AiAssistants
+                .AnyAsync(a => a.Name == SampleName, cancellationToken);
+
+            if (!exists)
+            {
+                var sample = AiAssistant.Create(
+                    tenantId: null,
+                    name: SampleName,
+                    description: "Demonstrates AI function calling. Ask about your conversations.",
+                    systemPrompt:
+                        "You are a friendly assistant. When the user asks about their own " +
+                        "conversations, call the list_my_conversations tool and summarise the results.",
+                    provider: null,
+                    model: null,
+                    temperature: 0.2,
+                    maxTokens: 1024,
+                    executionMode: AssistantExecutionMode.Chat,
+                    maxAgentSteps: 5,
+                    isActive: true);
+                sample.SetEnabledTools(new[] { "list_my_conversations" });
+                context.AiAssistants.Add(sample);
+                await context.SaveChangesAsync(cancellationToken);
+            }
+        }
     }
 }
