@@ -60,21 +60,30 @@ internal sealed class AnthropicAiProvider(
 
         logger.LogDebug("Starting Anthropic streaming request. Model={Model}", parameters.Model);
 
+        string? currentToolId = null;
+        string? currentToolName = null;
+
         await foreach (var response in client.Messages.StreamClaudeMessageAsync(parameters, ct))
         {
+            // content_block_start carries the tool_use id/name; subsequent input_json_delta events belong to it.
+            if (response.ContentBlock is { Type: "tool_use" } block)
+            {
+                currentToolId = block.Id;
+                currentToolName = block.Name;
+            }
+
             var delta = response.Delta;
             if (delta is null) continue;
 
-            string? contentDelta = delta.Type == "content_block_delta" ? delta.Text : null;
+            string? contentDelta = delta.Type == "text_delta" ? delta.Text : null;
             AiToolCall? toolCallDelta = null;
 
-            if (delta.Type == "input_json_delta" && response.ContentBlock is not null)
+            if (delta.Type == "input_json_delta" && !string.IsNullOrEmpty(delta.PartialJson))
             {
-                // partial tool input — accumulate via PartialJson
                 toolCallDelta = new AiToolCall(
-                    response.ContentBlock.Id ?? string.Empty,
-                    response.ContentBlock.Name ?? string.Empty,
-                    delta.PartialJson ?? string.Empty);
+                    currentToolId ?? string.Empty,
+                    currentToolName ?? string.Empty,
+                    delta.PartialJson);
             }
 
             string? finishReason = delta.StopReason;
