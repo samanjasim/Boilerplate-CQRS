@@ -89,12 +89,12 @@ internal sealed class ChatExecutionService(
 
                 foreach (var call in completion.ToolCalls)
                 {
-                    var resultJson = await DispatchToolAsync(call, state.Tools, ct);
+                    var dispatch = await DispatchToolAsync(call, state.Tools, ct);
 
                     var toolResultMsg = AiMessage.CreateToolResultMessage(
-                        state.Conversation.Id, call.Id, resultJson, nextOrder++);
+                        state.Conversation.Id, call.Id, dispatch.Json, nextOrder++);
                     context.AiMessages.Add(toolResultMsg);
-                    messages.Add(new AiChatMessage("tool", resultJson, ToolCallId: call.Id));
+                    messages.Add(new AiChatMessage("tool", dispatch.Json, ToolCallId: call.Id));
                 }
 
                 await context.SaveChangesAsync(ct);
@@ -238,18 +238,18 @@ internal sealed class ChatExecutionService(
                     ArgumentsJson = call.ArgumentsJson
                 });
 
-                var resultJson = await DispatchToolAsync(call, state.Tools, ct);
+                var dispatch = await DispatchToolAsync(call, state.Tools, ct);
 
                 var toolResultMsg = AiMessage.CreateToolResultMessage(
-                    state.Conversation.Id, call.Id, resultJson, nextOrder++);
+                    state.Conversation.Id, call.Id, dispatch.Json, nextOrder++);
                 context.AiMessages.Add(toolResultMsg);
-                messages.Add(new AiChatMessage("tool", resultJson, ToolCallId: call.Id));
+                messages.Add(new AiChatMessage("tool", dispatch.Json, ToolCallId: call.Id));
 
                 yield return new ChatStreamEvent("tool_result", new
                 {
                     CallId = call.Id,
-                    IsError = resultJson.Contains("\"ok\":false", StringComparison.Ordinal),
-                    Content = resultJson
+                    IsError = dispatch.IsError,
+                    Content = dispatch.Json
                 });
             }
 
@@ -617,16 +617,16 @@ internal sealed class ChatExecutionService(
         }
     }
 
-    private async Task<string> DispatchToolAsync(
+    private async Task<ToolDispatchResult> DispatchToolAsync(
         AiToolCall call,
         ToolResolutionResult tools,
         CancellationToken ct)
     {
         if (!tools.DefinitionsByName.TryGetValue(call.Name, out var def))
-            return SerializeError($"Unknown tool '{call.Name}'.");
+            return Failure(AiErrors.ToolNotFound);
 
         if (!currentUser.HasPermission(def.RequiredPermission))
-            return SerializeError($"Permission '{def.RequiredPermission}' required.");
+            return Failure(AiErrors.ToolPermissionDenied(call.Name));
 
         object? command;
         try
@@ -639,25 +639,50 @@ internal sealed class ChatExecutionService(
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to deserialize args for tool {Tool}.", call.Name);
-            return SerializeError($"Arguments could not be deserialized: {ex.Message}");
+            return Failure(AiErrors.ToolArgumentsInvalid(call.Name, ex.Message));
         }
 
         if (command is null)
-            return SerializeError("Deserialized arguments were null.");
+            return Failure(AiErrors.ToolArgumentsInvalid(call.Name, "Deserialized arguments were null."));
 
+        object? rawResult;
         try
         {
-            var result = await sender.Send(command, ct);
-            return System.Text.Json.JsonSerializer.Serialize(result, SerializerOptions);
+            rawResult = await sender.Send(command, ct);
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Tool {Tool} threw during dispatch.", call.Name);
-            return SerializeError(ex.Message);
+            return Failure(AiErrors.ToolExecutionFailed(call.Name, ex.Message));
         }
 
-        static string SerializeError(string message) =>
-            System.Text.Json.JsonSerializer.Serialize(new { ok = false, error = message });
+        // Commands that return Result / Result<T> surface failure through Error rather than throwing.
+        if (rawResult is Result r)
+        {
+            if (r.IsFailure)
+                return Failure(r.Error);
+
+            var resultType = rawResult.GetType();
+            if (resultType.IsGenericType && resultType.GetGenericTypeDefinition() == typeof(Result<>))
+            {
+                var value = resultType.GetProperty("Value")!.GetValue(rawResult);
+                return Success(value);
+            }
+
+            return Success(null);
+        }
+
+        return Success(rawResult);
+
+        static ToolDispatchResult Success(object? value) => new(
+            System.Text.Json.JsonSerializer.Serialize(new { ok = true, value }, SerializerOptions),
+            IsError: false);
+
+        static ToolDispatchResult Failure(Error error) => new(
+            System.Text.Json.JsonSerializer.Serialize(
+                new { ok = false, error = new { code = error.Code, message = error.Description } },
+                SerializerOptions),
+            IsError: true);
     }
 
     private static readonly System.Text.Json.JsonSerializerOptions SerializerOptions =
@@ -671,6 +696,8 @@ internal sealed class ChatExecutionService(
     // ──────────────────────────────────────────────────────────────
 
     private sealed record ChunkOrError(AiChatChunk? Chunk, string? Error);
+
+    private sealed record ToolDispatchResult(string Json, bool IsError);
 
     private sealed class ToolCallBuilder(string id, string name)
     {
