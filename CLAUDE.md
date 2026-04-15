@@ -237,10 +237,20 @@ The `entityType` prop must match the `EntityType` string in the backend definiti
 
 ### Default Credentials
 
-- **App**: `superadmin@starter.com` / `Admin@123456`
+- **App SuperAdmin**: `superadmin@starter.com` / `Admin@123456`
 - **MinIO**: `minioadmin` / `minioadmin`
 - **RabbitMQ**: `guest` / `guest`
 - **PostgreSQL**: `postgres` / `123456`
+
+**Demo tenants** (all seeded active + email-confirmed; password `Admin@123456`):
+
+| Tenant | Slug | Admin | Users |
+|---|---|---|---|
+| Acme Corporation | `acme` | `acme.admin@acme.com` | `acme.alice@acme.com`, `acme.bob@acme.com` |
+| Globex Industries | `globex` | `globex.admin@globex.com` | `globex.hank@globex.com`, `globex.ivy@globex.com` |
+| Initech Systems | `initech` | `initech.admin@initech.com` | `initech.milton@initech.com`, `initech.samir@initech.com` |
+
+Usernames are the email local-part (e.g. `acme.admin`). Admin users have the `Admin` role; others have `User`.
 
 ## Frontend Rules — Must Always Follow
 
