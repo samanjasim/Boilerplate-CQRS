@@ -94,6 +94,7 @@ export const API_ENDPOINTS = {
   FEATURE_FLAGS: {
     LIST: '/FeatureFlags',
     BY_KEY: (key: string) => `/FeatureFlags/${key}`,
+    RESOLVE: (key: string) => `/FeatureFlags/resolve/${key}`,
     DETAIL: (id: string) => `/FeatureFlags/${id}`,
     TENANT_OVERRIDE: (id: string, tenantId: string) => `/FeatureFlags/${id}/tenants/${tenantId}`,
     OPT_OUT: (id: string) => `/FeatureFlags/${id}/opt-out`,

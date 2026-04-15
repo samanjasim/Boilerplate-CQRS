@@ -91,6 +91,8 @@ export const queryKeys = {
     list: (filters?: object) => [...queryKeys.featureFlags.lists(), filters ?? {}] as const,
     details: () => [...queryKeys.featureFlags.all, 'detail'] as const,
     detail: (key: string) => [...queryKeys.featureFlags.details(), key] as const,
+    resolves: () => [...queryKeys.featureFlags.all, 'resolve'] as const,
+    resolve: (key: string) => [...queryKeys.featureFlags.resolves(), key] as const,
   },
 
   webhooks: {
