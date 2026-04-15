@@ -7,7 +7,6 @@ using Starter.Module.AI.Application.DTOs;
 using Starter.Module.AI.Application.Queries.GetTools;
 using Starter.Module.AI.Constants;
 using Starter.Shared.Models;
-using Starter.Shared.Results;
 
 namespace Starter.Module.AI.Controllers;
 
@@ -17,16 +16,18 @@ public sealed class AiToolsController(ISender mediator)
 {
     [HttpGet]
     [Authorize(Policy = AiPermissions.ManageTools)]
-    [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<AiToolDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(PagedApiResponse<AiToolDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> List(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 50,
         [FromQuery] string? category = null,
         [FromQuery] bool? isEnabled = null,
         [FromQuery] string? searchTerm = null,
         CancellationToken ct = default)
     {
         var result = await Mediator.Send(
-            new GetToolsQuery(category, isEnabled, searchTerm), ct);
-        return HandleResult(result);
+            new GetToolsQuery(pageNumber, pageSize, category, isEnabled, searchTerm), ct);
+        return HandlePagedResult(result);
     }
 
     [HttpPut("{name}/toggle")]

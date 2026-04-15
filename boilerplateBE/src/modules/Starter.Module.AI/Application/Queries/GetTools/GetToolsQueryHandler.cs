@@ -1,4 +1,5 @@
 using MediatR;
+using Starter.Application.Common.Models;
 using Starter.Module.AI.Application.DTOs;
 using Starter.Module.AI.Application.Services;
 using Starter.Shared.Results;
@@ -6,9 +7,9 @@ using Starter.Shared.Results;
 namespace Starter.Module.AI.Application.Queries.GetTools;
 
 internal sealed class GetToolsQueryHandler(IAiToolRegistry registry)
-    : IRequestHandler<GetToolsQuery, Result<IReadOnlyList<AiToolDto>>>
+    : IRequestHandler<GetToolsQuery, Result<PaginatedList<AiToolDto>>>
 {
-    public async Task<Result<IReadOnlyList<AiToolDto>>> Handle(
+    public async Task<Result<PaginatedList<AiToolDto>>> Handle(
         GetToolsQuery request,
         CancellationToken cancellationToken)
     {
@@ -30,6 +31,15 @@ internal sealed class GetToolsQueryHandler(IAiToolRegistry registry)
                 t.Description.Contains(term, StringComparison.OrdinalIgnoreCase));
         }
 
-        return Result.Success<IReadOnlyList<AiToolDto>>(q.ToList());
+        var pageNumber = Math.Max(1, request.PageNumber);
+        var pageSize = Math.Clamp(request.PageSize, 1, 200);
+
+        var filtered = q.ToList();
+        var page = filtered
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        return Result.Success(PaginatedList<AiToolDto>.Create(page, filtered.Count, pageNumber, pageSize));
     }
 }
