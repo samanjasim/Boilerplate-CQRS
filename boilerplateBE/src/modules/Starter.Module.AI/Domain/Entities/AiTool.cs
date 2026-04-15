@@ -63,4 +63,21 @@ public sealed class AiTool : BaseEntity
         IsEnabled = enabled;
         ModifiedAt = DateTime.UtcNow;
     }
+
+    public void RefreshFromDefinition(
+        string description,
+        string commandType,
+        string requiredPermission,
+        string category,
+        string parameterSchema,
+        bool isReadOnly)
+    {
+        Description = description.Trim();
+        CommandType = commandType.Trim();
+        RequiredPermission = requiredPermission.Trim();
+        Category = category.Trim();
+        ParameterSchema = parameterSchema;
+        IsReadOnly = isReadOnly;
+        ModifiedAt = DateTime.UtcNow;
+    }
 }
