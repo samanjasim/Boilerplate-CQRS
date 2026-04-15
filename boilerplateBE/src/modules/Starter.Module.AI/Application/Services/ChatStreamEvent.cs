@@ -6,6 +6,8 @@ namespace Starter.Module.AI.Application.Services;
 ///   "delta"  — { Content } (text chunk)
 ///   "done"   — { MessageId, InputTokens, OutputTokens, FinishReason }
 ///   "error"  — { Code, Message }
+///   "tool_call"   — { CallId, Name, ArgumentsJson } emitted once per tool invocation.
+///   "tool_result" — { CallId, IsError, Content } emitted after the tool returns.
 ///
 /// Stability of identifiers:
 ///   • start.ConversationId and start.UserMessageId are persisted before the frame is

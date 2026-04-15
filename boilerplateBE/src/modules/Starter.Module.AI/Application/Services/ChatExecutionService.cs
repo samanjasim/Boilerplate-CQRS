@@ -139,78 +139,132 @@ internal sealed class ChatExecutionService(
 
         var state = stateResult.Value;
 
-        // Reserve an advisory ID so the client can correlate the "start" event with the
-        // eventual persisted message. The factory always generates a fresh Guid, so the
-        // authoritative ID comes back in the "done" event (done.MessageId).
-        var advisoryAssistantMessageId = Guid.NewGuid();
-
         yield return new ChatStreamEvent("start", new
         {
             ConversationId = state.Conversation.Id,
-            UserMessageId = state.UserMessage.Id,
-            AssistantMessageId = advisoryAssistantMessageId
+            UserMessageId = state.UserMessage.Id
         });
 
         var provider = providerFactory.Create(ResolveProvider(state.Assistant));
         var chatOptions = BuildChatOptions(state.Assistant, state.Tools.ProviderTools);
 
-        var contentBuilder = new StringBuilder();
+        var messages = new List<AiChatMessage>(state.ProviderMessages);
+        var totalInput = 0;
+        var totalOutput = 0;
+        var stepBudget = Math.Clamp(state.Assistant.MaxAgentSteps, 1, 20);
+        var nextOrder = state.NextOrder;
+
+        var finalContentBuilder = new StringBuilder();
         var finishReason = "stop";
-        int? providerInputTokens = null;
-        int? providerOutputTokens = null;
 
-        await foreach (var chunkOrError in EnumerateSafelyAsync(
-            provider.StreamChatAsync(state.ProviderMessages, chatOptions, ct), ct))
+        for (var step = 0; step < stepBudget; step++)
         {
-            if (chunkOrError.Error is not null)
-            {
-                await FailTurnAsync(state);
+            var roundContent = new StringBuilder();
+            var toolCallBuilders = new Dictionary<string, ToolCallBuilder>(StringComparer.Ordinal);
+            int? roundInput = null;
+            int? roundOutput = null;
+            string? roundFinish = null;
 
-                yield return new ChatStreamEvent("error", new
+            await foreach (var chunkOrError in EnumerateSafelyAsync(
+                provider.StreamChatAsync(messages, chatOptions, ct), ct))
+            {
+                if (chunkOrError.Error is not null)
                 {
-                    Code = "Ai.ProviderError",
-                    Message = chunkOrError.Error
-                });
-                yield break;
+                    await FailTurnAsync(state);
+                    yield return new ChatStreamEvent("error", new
+                    {
+                        Code = "Ai.ProviderError",
+                        Message = chunkOrError.Error
+                    });
+                    yield break;
+                }
+
+                var chunk = chunkOrError.Chunk!;
+
+                if (chunk.FinishReason is not null) roundFinish = chunk.FinishReason;
+                if (chunk.InputTokens is int ci && ci > 0) roundInput = ci;
+                if (chunk.OutputTokens is int co && co > 0) roundOutput = co;
+
+                if (chunk.ContentDelta is { Length: > 0 } delta)
+                {
+                    roundContent.Append(delta);
+                    yield return new ChatStreamEvent("delta", new { Content = delta });
+                }
+
+                if (chunk.ToolCallDelta is { } tc)
+                {
+                    if (!toolCallBuilders.TryGetValue(tc.Id, out var builder))
+                    {
+                        builder = new ToolCallBuilder(tc.Id, tc.Name);
+                        toolCallBuilders[tc.Id] = builder;
+                    }
+                    builder.AppendArguments(tc.ArgumentsJson);
+                }
             }
 
-            var chunk = chunkOrError.Chunk!;
+            totalInput += roundInput ?? EstimateTokens(messages.Sum(m => m.Content?.Length ?? 0));
+            totalOutput += roundOutput ?? EstimateTokens(roundContent.Length);
+            if (roundFinish is not null) finishReason = roundFinish;
 
-            if (chunk.FinishReason is not null)
-                finishReason = chunk.FinishReason;
-
-            // Providers emit final usage on the end-of-stream chunk (alongside FinishReason).
-            if (chunk.InputTokens is int ci && ci > 0) providerInputTokens = ci;
-            if (chunk.OutputTokens is int co && co > 0) providerOutputTokens = co;
-
-            if (chunk.ContentDelta is { Length: > 0 } delta)
+            if (toolCallBuilders.Count == 0)
             {
-                contentBuilder.Append(delta);
-                yield return new ChatStreamEvent("delta", new { Content = delta });
+                finalContentBuilder.Append(roundContent);
+                break;
             }
+
+            var assembledCalls = toolCallBuilders.Values.Select(b => b.Build()).ToList();
+            var toolCallsJson = System.Text.Json.JsonSerializer.Serialize(
+                assembledCalls, SerializerOptions);
+
+            var assistantCallMsg = AiMessage.CreateAssistantMessage(
+                state.Conversation.Id,
+                roundContent.ToString(),
+                nextOrder++,
+                roundInput ?? 0,
+                roundOutput ?? 0,
+                toolCalls: toolCallsJson);
+            context.AiMessages.Add(assistantCallMsg);
+            messages.Add(new AiChatMessage(
+                "assistant",
+                roundContent.Length == 0 ? null : roundContent.ToString(),
+                ToolCalls: assembledCalls));
+
+            foreach (var call in assembledCalls)
+            {
+                yield return new ChatStreamEvent("tool_call", new
+                {
+                    CallId = call.Id,
+                    Name = call.Name,
+                    ArgumentsJson = call.ArgumentsJson
+                });
+
+                var resultJson = await DispatchToolAsync(call, state.Tools, ct);
+
+                var toolResultMsg = AiMessage.CreateToolResultMessage(
+                    state.Conversation.Id, call.Id, resultJson, nextOrder++);
+                context.AiMessages.Add(toolResultMsg);
+                messages.Add(new AiChatMessage("tool", resultJson, ToolCallId: call.Id));
+
+                yield return new ChatStreamEvent("tool_result", new
+                {
+                    CallId = call.Id,
+                    IsError = resultJson.Contains("\"ok\":false", StringComparison.Ordinal),
+                    Content = resultJson
+                });
+            }
+
+            await context.SaveChangesAsync(ct);
         }
 
-        var finalContent = contentBuilder.ToString();
-
-        // Prefer authoritative provider counts; fall back to the 4-chars-per-token heuristic
-        // only when the provider did not emit usage (some Ollama models, proxies, etc.).
-        var totalInputChars = state.ProviderMessages.Sum(m => m.Content?.Length ?? 0);
-        var inputTokens = providerInputTokens ?? EstimateTokens(totalInputChars);
-        var outputTokens = providerOutputTokens ?? EstimateTokens(finalContent.Length);
-
+        var finalContent = finalContentBuilder.ToString();
         var assistantMessage = await FinalizeTurnAsync(
-            state,
-            finalContent,
-            inputTokens,
-            outputTokens,
-            state.NextOrder,
-            ct);
+            state, finalContent, totalInput, totalOutput, nextOrder, ct);
 
         yield return new ChatStreamEvent("done", new
         {
             MessageId = assistantMessage.Id,
-            InputTokens = inputTokens,
-            OutputTokens = outputTokens,
+            InputTokens = totalInput,
+            OutputTokens = totalOutput,
             FinishReason = finishReason
         });
     }
@@ -617,6 +671,25 @@ internal sealed class ChatExecutionService(
     // ──────────────────────────────────────────────────────────────
 
     private sealed record ChunkOrError(AiChatChunk? Chunk, string? Error);
+
+    private sealed class ToolCallBuilder(string id, string name)
+    {
+        private readonly StringBuilder _args = new();
+
+        public string Id { get; } = id;
+        public string Name { get; } = name;
+
+        public void AppendArguments(string fragment)
+        {
+            if (!string.IsNullOrEmpty(fragment)) _args.Append(fragment);
+        }
+
+        public AiToolCall Build()
+        {
+            var json = _args.Length == 0 ? "{}" : _args.ToString();
+            return new AiToolCall(Id, Name, json);
+        }
+    }
 
     private sealed record ChatTurnState(
         AiConversation Conversation,
