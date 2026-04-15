@@ -12,8 +12,7 @@ namespace Starter.Module.AI.Infrastructure.Services;
 
 internal sealed class AiToolRegistryService(
     IEnumerable<IAiToolDefinition> definitions,
-    IServiceScopeFactory scopeFactory,
-    ICurrentUserService currentUser)
+    IServiceScopeFactory scopeFactory)
     : IAiToolRegistry
 {
     // Definitions are singleton DI registrations — snapshot them once.
@@ -53,6 +52,8 @@ internal sealed class AiToolRegistryService(
 
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AiDbContext>();
+        // Resolve per-call to avoid capturing the first request's user into this singleton.
+        var currentUser = scope.ServiceProvider.GetRequiredService<ICurrentUserService>();
 
         // Load the enable-state rows in one round trip.
         var enabledRowNames = new HashSet<string>(
