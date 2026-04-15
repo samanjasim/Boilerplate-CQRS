@@ -105,34 +105,39 @@ public sealed class AIModule : IModule
         using var scope = services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AiDbContext>();
         await context.Database.MigrateAsync(cancellationToken);
+    }
 
+    public async Task SeedDataAsync(IServiceProvider services, CancellationToken cancellationToken = default)
+    {
+        using var scope = services.CreateScope();
         var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
-        if (configuration.GetValue<bool>("AI:SeedSampleAssistant"))
-        {
-            const string SampleName = "AI Tools Demo";
-            var exists = await context.AiAssistants
-                .AnyAsync(a => a.Name == SampleName, cancellationToken);
+        if (!configuration.GetValue<bool>("AI:SeedSampleAssistant"))
+            return;
 
-            if (!exists)
-            {
-                var sample = AiAssistant.Create(
-                    tenantId: null,
-                    name: SampleName,
-                    description: "Demonstrates AI function calling. Ask about your conversations.",
-                    systemPrompt:
-                        "You are a friendly assistant. When the user asks about their own " +
-                        "conversations, call the list_my_conversations tool and summarise the results.",
-                    provider: null,
-                    model: null,
-                    temperature: 0.2,
-                    maxTokens: 1024,
-                    executionMode: AssistantExecutionMode.Chat,
-                    maxAgentSteps: 5,
-                    isActive: true);
-                sample.SetEnabledTools(new[] { "list_my_conversations" });
-                context.AiAssistants.Add(sample);
-                await context.SaveChangesAsync(cancellationToken);
-            }
-        }
+        var context = scope.ServiceProvider.GetRequiredService<AiDbContext>();
+        const string SampleName = "AI Tools Demo";
+        var exists = await context.AiAssistants
+            .AnyAsync(a => a.Name == SampleName, cancellationToken);
+
+        if (exists)
+            return;
+
+        var sample = AiAssistant.Create(
+            tenantId: null,
+            name: SampleName,
+            description: "Demonstrates AI function calling. Ask about your conversations.",
+            systemPrompt:
+                "You are a friendly assistant. When the user asks about their own " +
+                "conversations, call the list_my_conversations tool and summarise the results.",
+            provider: null,
+            model: null,
+            temperature: 0.2,
+            maxTokens: 1024,
+            executionMode: AssistantExecutionMode.Chat,
+            maxAgentSteps: 5,
+            isActive: true);
+        sample.SetEnabledTools(new[] { "list_my_conversations" });
+        context.AiAssistants.Add(sample);
+        await context.SaveChangesAsync(cancellationToken);
     }
 }
