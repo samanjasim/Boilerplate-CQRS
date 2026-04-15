@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Text;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -22,6 +23,8 @@ internal sealed class ChatExecutionService(
     IQuotaChecker quotaChecker,
     IUsageTracker usageTracker,
     IWebhookPublisher webhookPublisher,
+    IAiToolRegistry toolRegistry,
+    ISender sender,
     IConfiguration configuration,
     ILogger<ChatExecutionService> logger) : IChatExecutionService
 {
@@ -44,7 +47,7 @@ internal sealed class ChatExecutionService(
 
         var state = stateResult.Value;
         var provider = providerFactory.Create(ResolveProvider(state.Assistant));
-        var chatOptions = BuildChatOptions(state.Assistant);
+        var chatOptions = BuildChatOptions(state.Assistant, state.Tools.ProviderTools);
 
         AiChatCompletion completion;
         try
@@ -106,7 +109,7 @@ internal sealed class ChatExecutionService(
         });
 
         var provider = providerFactory.Create(ResolveProvider(state.Assistant));
-        var chatOptions = BuildChatOptions(state.Assistant);
+        var chatOptions = BuildChatOptions(state.Assistant, state.Tools.ProviderTools);
 
         var contentBuilder = new StringBuilder();
         var finishReason = "stop";
@@ -287,12 +290,15 @@ internal sealed class ChatExecutionService(
         // Append the current user message last
         providerMessages.Add(new AiChatMessage("user", trimmed));
 
+        var toolResolution = await toolRegistry.ResolveForAssistantAsync(assistant, ct);
+
         return Result.Success(new ChatTurnState(
             conversation,
             assistant,
             userMsg,
             providerMessages,
-            nextOrder + 1  // NextOrder = order for the upcoming assistant reply
+            nextOrder + 1,  // NextOrder = order for the upcoming assistant reply
+            toolResolution
         ));
     }
 
@@ -435,13 +441,15 @@ internal sealed class ChatExecutionService(
     private AiProviderType ResolveProvider(AiAssistant assistant) =>
         assistant.Provider ?? providerFactory.GetDefaultProviderType();
 
-    private static AiChatOptions BuildChatOptions(AiAssistant assistant) =>
+    private static AiChatOptions BuildChatOptions(
+        AiAssistant assistant,
+        IReadOnlyList<AiToolDefinitionDto> tools) =>
         new(
             Model: assistant.Model ?? "",
             Temperature: assistant.Temperature,
             MaxTokens: assistant.MaxTokens,
             SystemPrompt: assistant.SystemPrompt,
-            Tools: null);
+            Tools: tools.Count == 0 ? null : tools);
 
     /// <summary>
     /// 4 chars per token is a widely used rough heuristic (GPT tokenizer averages ~3.5-4).
@@ -521,5 +529,6 @@ internal sealed class ChatExecutionService(
         AiAssistant Assistant,
         AiMessage UserMessage,
         List<AiChatMessage> ProviderMessages,
-        int NextOrder);
+        int NextOrder,
+        ToolResolutionResult Tools);
 }
