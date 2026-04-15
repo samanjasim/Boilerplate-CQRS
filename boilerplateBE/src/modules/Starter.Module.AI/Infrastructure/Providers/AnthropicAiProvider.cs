@@ -11,6 +11,7 @@ namespace Starter.Module.AI.Infrastructure.Providers;
 
 internal sealed class AnthropicAiProvider(
     IConfiguration configuration,
+    IHttpClientFactory httpClientFactory,
     ILogger<AnthropicAiProvider> logger) : IAiProvider
 {
     private const string DefaultModel = "claude-sonnet-4-20250514";
@@ -19,7 +20,10 @@ internal sealed class AnthropicAiProvider(
     {
         var apiKey = configuration["AI:Providers:Anthropic:ApiKey"]
             ?? throw new InvalidOperationException("Anthropic API key is not configured (AI:Providers:Anthropic:ApiKey).");
-        return new AnthropicClient(new APIAuthentication(apiKey));
+        // Use a pooled HttpClient so socket/DNS caches are shared and a single provider
+        // instance does not spin up a new connection pool per call.
+        var httpClient = httpClientFactory.CreateClient(nameof(AnthropicAiProvider));
+        return new AnthropicClient(new APIAuthentication(apiKey), httpClient);
     }
 
     private string ResolveModel(string model)
@@ -62,9 +66,24 @@ internal sealed class AnthropicAiProvider(
 
         string? currentToolId = null;
         string? currentToolName = null;
+        int inputTokens = 0;
+        int outputTokens = 0;
 
         await foreach (var response in client.Messages.StreamClaudeMessageAsync(parameters, ct))
         {
+            // message_start: captures prompt-side usage (input_tokens, plus a rolling output_tokens starting at 0).
+            if (response.StreamStartMessage?.Usage is { } startUsage)
+            {
+                inputTokens = startUsage.InputTokens;
+                outputTokens = startUsage.OutputTokens;
+            }
+
+            // message_delta: carries the final cumulative output_tokens and the stop_reason.
+            if (response.Usage is { } endUsage)
+            {
+                outputTokens = endUsage.OutputTokens;
+            }
+
             // content_block_start carries the tool_use id/name; subsequent input_json_delta events belong to it.
             if (response.ContentBlock is { Type: "tool_use" } block)
             {
@@ -90,7 +109,15 @@ internal sealed class AnthropicAiProvider(
 
             if (contentDelta is not null || toolCallDelta is not null || finishReason is not null)
             {
-                yield return new AiChatChunk(contentDelta, toolCallDelta, finishReason);
+                // Attach final usage to the frame that carries finish_reason so the consumer gets one authoritative end-of-stream chunk.
+                if (finishReason is not null)
+                {
+                    yield return new AiChatChunk(contentDelta, toolCallDelta, finishReason, inputTokens, outputTokens);
+                }
+                else
+                {
+                    yield return new AiChatChunk(contentDelta, toolCallDelta, finishReason);
+                }
             }
         }
     }
@@ -179,7 +206,7 @@ internal sealed class AnthropicAiProvider(
         if (string.IsNullOrWhiteSpace(systemPrompt))
             return null;
 
-        return [new SystemMessage(systemPrompt, cacheControl: null!)];
+        return [new SystemMessage(systemPrompt)];
     }
 
     private static IList<Anthropic.SDK.Common.Tool>? BuildTools(IReadOnlyList<AiToolDefinitionDto>? tools)

@@ -1,4 +1,5 @@
 using System.ClientModel;
+using System.ClientModel.Primitives;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Microsoft.Extensions.Configuration;
@@ -11,6 +12,7 @@ namespace Starter.Module.AI.Infrastructure.Providers;
 
 internal sealed class OpenAiProvider(
     IConfiguration configuration,
+    IHttpClientFactory httpClientFactory,
     ILogger<OpenAiProvider> logger) : IAiProvider
 {
     private const string DefaultChatModel = "gpt-4o";
@@ -19,6 +21,13 @@ internal sealed class OpenAiProvider(
     private string GetApiKey()
         => configuration["AI:Providers:OpenAI:ApiKey"]
            ?? throw new InvalidOperationException("OpenAI API key is not configured (AI:Providers:OpenAI:ApiKey).");
+
+    // Route the OpenAI SDK's pipeline through a pooled HttpClient so socket/DNS caches
+    // are shared instead of a fresh connection pool per ChatClient/EmbeddingClient instance.
+    private OpenAIClientOptions BuildClientOptions() => new()
+    {
+        Transport = new HttpClientPipelineTransport(httpClientFactory.CreateClient(nameof(OpenAiProvider)))
+    };
 
     private string ResolveChatModel(string model)
     {
@@ -37,7 +46,7 @@ internal sealed class OpenAiProvider(
     {
         var apiKey = GetApiKey();
         var model = ResolveChatModel(options.Model);
-        var client = new ChatClient(model, new ApiKeyCredential(apiKey));
+        var client = new ChatClient(model, new ApiKeyCredential(apiKey), BuildClientOptions());
 
         var chatMessages = MapMessages(messages, options.SystemPrompt);
         var completionOptions = BuildOptions(options);
@@ -63,7 +72,7 @@ internal sealed class OpenAiProvider(
     {
         var apiKey = GetApiKey();
         var model = ResolveChatModel(options.Model);
-        var client = new ChatClient(model, new ApiKeyCredential(apiKey));
+        var client = new ChatClient(model, new ApiKeyCredential(apiKey), BuildClientOptions());
 
         var chatMessages = MapMessages(messages, options.SystemPrompt);
         var completionOptions = BuildOptions(options);
@@ -72,6 +81,9 @@ internal sealed class OpenAiProvider(
 
         // Track tool call accumulation per index
         var toolCallBuilders = new Dictionary<int, (string Id, string Name, StringBuilder Args)>();
+        string? pendingFinishReason = null;
+        int inputTokens = 0;
+        int outputTokens = 0;
 
         await foreach (var update in client.CompleteChatStreamingAsync(chatMessages, completionOptions, ct))
         {
@@ -105,11 +117,24 @@ internal sealed class OpenAiProvider(
                 }
             }
 
-            // Finish reason
+            // Finish reason — hold until we see usage (OpenAI sends usage in a trailing update when IncludeUsage is on).
             if (update.FinishReason.HasValue)
             {
-                yield return new AiChatChunk(null, null, MapFinishReason(update.FinishReason.Value));
+                pendingFinishReason = MapFinishReason(update.FinishReason.Value);
             }
+
+            // Usage arrives in the final update (SDK sets IncludeUsage=true automatically for streams).
+            if (update.Usage is { } usage)
+            {
+                inputTokens = usage.InputTokenCount;
+                outputTokens = usage.OutputTokenCount;
+            }
+        }
+
+        // Flush the terminal frame with finish reason and final usage.
+        if (pendingFinishReason is not null)
+        {
+            yield return new AiChatChunk(null, null, pendingFinishReason, inputTokens, outputTokens);
         }
     }
 
@@ -117,7 +142,7 @@ internal sealed class OpenAiProvider(
     {
         var apiKey = GetApiKey();
         var embeddingModel = ResolveEmbeddingModel();
-        var client = new EmbeddingClient(embeddingModel, new ApiKeyCredential(apiKey));
+        var client = new EmbeddingClient(embeddingModel, new ApiKeyCredential(apiKey), BuildClientOptions());
 
         var result = await client.GenerateEmbeddingAsync(text, cancellationToken: ct);
         return result.Value.ToFloats().ToArray();
@@ -127,7 +152,7 @@ internal sealed class OpenAiProvider(
     {
         var apiKey = GetApiKey();
         var embeddingModel = ResolveEmbeddingModel();
-        var client = new EmbeddingClient(embeddingModel, new ApiKeyCredential(apiKey));
+        var client = new EmbeddingClient(embeddingModel, new ApiKeyCredential(apiKey), BuildClientOptions());
 
         var result = await client.GenerateEmbeddingsAsync(texts, cancellationToken: ct);
         return result.Value.Select(e => e.ToFloats().ToArray()).ToArray();

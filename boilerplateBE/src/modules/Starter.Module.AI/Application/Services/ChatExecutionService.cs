@@ -110,8 +110,8 @@ internal sealed class ChatExecutionService(
 
         var contentBuilder = new StringBuilder();
         var finishReason = "stop";
-        var inputTokens = 0;
-        var outputTokens = 0;
+        int? providerInputTokens = null;
+        int? providerOutputTokens = null;
 
         await foreach (var chunkOrError in EnumerateSafelyAsync(
             provider.StreamChatAsync(state.ProviderMessages, chatOptions, ct), ct))
@@ -133,6 +133,10 @@ internal sealed class ChatExecutionService(
             if (chunk.FinishReason is not null)
                 finishReason = chunk.FinishReason;
 
+            // Providers emit final usage on the end-of-stream chunk (alongside FinishReason).
+            if (chunk.InputTokens is int ci && ci > 0) providerInputTokens = ci;
+            if (chunk.OutputTokens is int co && co > 0) providerOutputTokens = co;
+
             if (chunk.ContentDelta is { Length: > 0 } delta)
             {
                 contentBuilder.Append(delta);
@@ -142,19 +146,18 @@ internal sealed class ChatExecutionService(
 
         var finalContent = contentBuilder.ToString();
 
-        // Fallback token estimation — providers that support streaming may not emit
-        // token counts mid-stream. Use the 4-chars-per-token heuristic.
+        // Prefer authoritative provider counts; fall back to the 4-chars-per-token heuristic
+        // only when the provider did not emit usage (some Ollama models, proxies, etc.).
         var totalInputChars = state.ProviderMessages.Sum(m => m.Content?.Length ?? 0);
-        inputTokens = inputTokens > 0 ? inputTokens : EstimateTokens(totalInputChars);
-        outputTokens = outputTokens > 0 ? outputTokens : EstimateTokens(finalContent.Length);
+        var inputTokens = providerInputTokens ?? EstimateTokens(totalInputChars);
+        var outputTokens = providerOutputTokens ?? EstimateTokens(finalContent.Length);
 
         var assistantMessage = await FinalizeTurnAsync(
             state,
             finalContent,
             inputTokens,
             outputTokens,
-            ct,
-            advisoryAssistantMessageId);
+            ct);
 
         yield return new ChatStreamEvent("done", new
         {
@@ -177,26 +180,23 @@ internal sealed class ChatExecutionService(
     {
         // Auth guard — must be signed in to chat
         if (currentUser.UserId is not Guid userId)
-            return Result.Failure<ChatTurnState>(
-                new Error("Ai.NotAuthenticated", "You must be signed in to chat.", ErrorType.Unauthorized));
+            return Result.Failure<ChatTurnState>(AiErrors.NotAuthenticated);
 
-        AiConversation conversation;
-        AiAssistant assistant;
+        AiConversation? conversation;
+        AiAssistant? assistant;
 
         if (conversationId.HasValue)
         {
             // Load existing conversation — returning ConversationNotFound for both missing
             // and foreign ownership avoids leaking existence of other users' data.
             conversation = await context.AiConversations
-                .FirstOrDefaultAsync(c => c.Id == conversationId.Value, ct)
-                ?? null!;
+                .FirstOrDefaultAsync(c => c.Id == conversationId.Value, ct);
 
             if (conversation is null || conversation.UserId != userId)
                 return Result.Failure<ChatTurnState>(AiErrors.ConversationNotFound);
 
             assistant = await context.AiAssistants
-                .FirstOrDefaultAsync(a => a.Id == conversation.AssistantId, ct)
-                ?? null!;
+                .FirstOrDefaultAsync(a => a.Id == conversation.AssistantId, ct);
 
             if (assistant is null || !assistant.IsActive)
                 return Result.Failure<ChatTurnState>(AiErrors.AssistantNotFound);
@@ -208,8 +208,7 @@ internal sealed class ChatExecutionService(
                 return Result.Failure<ChatTurnState>(AiErrors.AssistantNotFound);
 
             assistant = await context.AiAssistants
-                .FirstOrDefaultAsync(a => a.Id == assistantId.Value, ct)
-                ?? null!;
+                .FirstOrDefaultAsync(a => a.Id == assistantId.Value, ct);
 
             if (assistant is null || !assistant.IsActive)
                 return Result.Failure<ChatTurnState>(AiErrors.AssistantNotFound);
@@ -226,7 +225,32 @@ internal sealed class ChatExecutionService(
         {
             var quotaResult = await quotaChecker.CheckAsync(tenantId, AiTokensMetric, 1, ct);
             if (!quotaResult.Allowed)
+            {
+                // Fire-and-forget webhook so ops/billing can react (e.g. notify the tenant admin).
+                // Failure here must not shadow the quota error the user is about to see.
+                try
+                {
+                    await webhookPublisher.PublishAsync(
+                        "ai.quota.exceeded",
+                        tenantId,
+                        new
+                        {
+                            TenantId = tenantId,
+                            UserId = userId,
+                            Metric = AiTokensMetric,
+                            Limit = quotaResult.Limit,
+                            Current = quotaResult.Current
+                        },
+                        ct);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex,
+                        "Failed to publish ai.quota.exceeded webhook for tenant {TenantId}.", tenantId);
+                }
+
                 return Result.Failure<ChatTurnState>(AiErrors.QuotaExceeded(quotaResult.Limit));
+            }
         }
 
         // Load prior messages ordered by Order to feed to the provider
@@ -281,13 +305,8 @@ internal sealed class ChatExecutionService(
         string? content,
         int inputTokens,
         int outputTokens,
-        CancellationToken ct,
-        Guid? presetMessageId = null)
+        CancellationToken ct)
     {
-        // The factory always generates a fresh Guid — presetMessageId is advisory only.
-        // Clients should use done.MessageId (returned here) as the authoritative message ID.
-        _ = presetMessageId;
-
         var assistantMessage = AiMessage.CreateAssistantMessage(
             state.Conversation.Id,
             content ?? "",
@@ -395,7 +414,22 @@ internal sealed class ChatExecutionService(
             return; // nothing to persist — new conversation never made it to DB
         }
         state.Conversation.MarkFailed();
-        await context.SaveChangesAsync(CancellationToken.None);
+
+        // Bound the save on a 5-second timeout so a hung DB can't leave the request
+        // pinned forever. Using a non-cancellable token here is intentional — the caller's
+        // token may already be cancelled (mid-stream client disconnect) and we still want
+        // to best-effort persist the Failed status so the conversation has a terminal state.
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        try
+        {
+            await context.SaveChangesAsync(cts.Token);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Failed to persist Failed status for conversation {ConversationId}.",
+                state.Conversation.Id);
+        }
     }
 
     private AiProviderType ResolveProvider(AiAssistant assistant) =>

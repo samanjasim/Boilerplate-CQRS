@@ -18,10 +18,18 @@ internal sealed record AiChatCompletion(
     int OutputTokens,
     string FinishReason);
 
+/// <summary>
+/// A single frame from a streaming chat response. Any field may be null — providers
+/// emit multiple chunks that collectively cover content, tool calls, final usage,
+/// and a finish reason. Usage fields are populated by an "end-of-stream" chunk
+/// that most providers send after the last content delta.
+/// </summary>
 internal sealed record AiChatChunk(
     string? ContentDelta,
     AiToolCall? ToolCallDelta,
-    string? FinishReason);
+    string? FinishReason,
+    int? InputTokens = null,
+    int? OutputTokens = null);
 
 internal sealed record AiToolCall(
     string Id,

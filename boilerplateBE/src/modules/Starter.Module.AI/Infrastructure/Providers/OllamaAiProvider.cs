@@ -111,8 +111,20 @@ internal sealed class OllamaAiProvider(
             var contentDelta = chunk.Message?.Content;
             string? finishReason = chunk.Done == true ? (chunk.DoneReason ?? "stop") : null;
 
-            if (!string.IsNullOrEmpty(contentDelta) || finishReason is not null)
-                yield return new AiChatChunk(contentDelta, null, finishReason);
+            if (finishReason is not null)
+            {
+                // Final chunk — attach prompt/eval counts for quota/usage accounting.
+                yield return new AiChatChunk(
+                    contentDelta,
+                    null,
+                    finishReason,
+                    chunk.PromptEvalCount ?? 0,
+                    chunk.EvalCount ?? 0);
+            }
+            else if (!string.IsNullOrEmpty(contentDelta))
+            {
+                yield return new AiChatChunk(contentDelta, null, null);
+            }
         }
     }
 
