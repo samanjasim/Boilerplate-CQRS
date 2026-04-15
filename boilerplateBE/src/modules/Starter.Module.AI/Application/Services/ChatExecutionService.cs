@@ -156,9 +156,16 @@ internal sealed class ChatExecutionService(
 
         var finalContentBuilder = new StringBuilder();
         var finishReason = "stop";
+        var priorPromptChars = 0;
 
         for (var step = 0; step < stepBudget; step++)
         {
+            // Count only the chars added to the prompt since the previous round so the
+            // fallback estimate grows linearly with conversation size instead of O(N^2).
+            var currentPromptChars = messages.Sum(m => m.Content?.Length ?? 0);
+            var newPromptChars = currentPromptChars - priorPromptChars;
+            priorPromptChars = currentPromptChars;
+
             var roundContent = new StringBuilder();
             var toolCallBuilders = new Dictionary<string, ToolCallBuilder>(StringComparer.Ordinal);
             int? roundInput = null;
@@ -202,7 +209,7 @@ internal sealed class ChatExecutionService(
                 }
             }
 
-            totalInput += roundInput ?? EstimateTokens(messages.Sum(m => m.Content?.Length ?? 0));
+            totalInput += roundInput ?? EstimateTokens(newPromptChars);
             totalOutput += roundOutput ?? EstimateTokens(roundContent.Length);
             if (roundFinish is not null) finishReason = roundFinish;
 
