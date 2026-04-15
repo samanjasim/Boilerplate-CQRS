@@ -94,7 +94,7 @@ public sealed class AiChatController(
     }
 
     [HttpDelete("conversations/{id:guid}")]
-    [Authorize(Policy = AiPermissions.ViewConversations)]
+    [Authorize(Policy = AiPermissions.DeleteConversation)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteConversation(Guid id, CancellationToken ct = default)

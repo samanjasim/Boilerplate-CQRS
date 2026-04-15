@@ -4,6 +4,7 @@ public static class AiPermissions
 {
     public const string Chat = "Ai.Chat";
     public const string ViewConversations = "Ai.ViewConversations";
+    public const string DeleteConversation = "Ai.DeleteConversation";
     public const string ManageAssistants = "Ai.ManageAssistants";
     public const string ManageDocuments = "Ai.ManageDocuments";
     public const string ManageTools = "Ai.ManageTools";

@@ -50,6 +50,7 @@ public sealed class AIModule : IModule
     {
         yield return (AiPermissions.Chat, "Send messages to AI assistants", "AI");
         yield return (AiPermissions.ViewConversations, "View AI conversation history", "AI");
+        yield return (AiPermissions.DeleteConversation, "Delete AI conversations", "AI");
         yield return (AiPermissions.ManageAssistants, "Create and manage AI assistants", "AI");
         yield return (AiPermissions.ManageDocuments, "Upload and manage AI knowledge documents", "AI");
         yield return (AiPermissions.ManageTools, "Create and manage AI tools", "AI");
@@ -64,6 +65,7 @@ public sealed class AIModule : IModule
         yield return ("SuperAdmin", [
             AiPermissions.Chat,
             AiPermissions.ViewConversations,
+            AiPermissions.DeleteConversation,
             AiPermissions.ManageAssistants,
             AiPermissions.ManageDocuments,
             AiPermissions.ManageTools,
@@ -76,6 +78,7 @@ public sealed class AIModule : IModule
         yield return ("Admin", [
             AiPermissions.Chat,
             AiPermissions.ViewConversations,
+            AiPermissions.DeleteConversation,
             AiPermissions.ManageAssistants,
             AiPermissions.ManageDocuments,
             AiPermissions.ManageTools,
@@ -86,7 +89,8 @@ public sealed class AIModule : IModule
 
         yield return ("User", [
             AiPermissions.Chat,
-            AiPermissions.ViewConversations
+            AiPermissions.ViewConversations,
+            AiPermissions.DeleteConversation
         ]);
     }
 

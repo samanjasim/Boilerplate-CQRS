@@ -29,11 +29,13 @@ internal sealed class DeleteConversationCommandHandler(
         if (conversation.UserId != userId.Value)
             return Result.Failure(AiErrors.ConversationNotFound);
 
-        // Cascade-delete messages (no FK cascade in EF config yet — do it explicitly).
-        var messages = context.AiMessages.Where(m => m.ConversationId == conversation.Id);
-        context.AiMessages.RemoveRange(messages);
-        context.AiConversations.Remove(conversation);
+        // Server-side cascade — ExecuteDeleteAsync issues a single DELETE per table instead of
+        // loading every message into the change tracker. Matters for conversations with many messages.
+        await context.AiMessages
+            .Where(m => m.ConversationId == conversation.Id)
+            .ExecuteDeleteAsync(cancellationToken);
 
+        context.AiConversations.Remove(conversation);
         await context.SaveChangesAsync(cancellationToken);
         return Result.Success();
     }
