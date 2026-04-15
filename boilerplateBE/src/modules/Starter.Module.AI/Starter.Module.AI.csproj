@@ -20,4 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Starter.Abstractions.Web\Starter.Abstractions.Web.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Starter.Api.Tests" />
+  </ItemGroup>
 </Project>
