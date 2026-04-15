@@ -132,15 +132,12 @@ public sealed class AiAssistant : AggregateRoot, ITenantEntity
         ModifiedAt = DateTime.UtcNow;
     }
 
-    public void Deactivate()
+    public void SetActive(bool isActive)
     {
-        IsActive = false;
+        IsActive = isActive;
         ModifiedAt = DateTime.UtcNow;
     }
 
-    public void Activate()
-    {
-        IsActive = true;
-        ModifiedAt = DateTime.UtcNow;
-    }
+    public void Deactivate() => SetActive(false);
+    public void Activate() => SetActive(true);
 }
