@@ -18,4 +18,5 @@ public sealed record UpdateAssistantCommand(
     int MaxAgentSteps,
     IReadOnlyList<string>? EnabledToolNames,
     IReadOnlyList<Guid>? KnowledgeBaseDocIds,
-    bool IsActive) : IRequest<Result<AiAssistantDto>>;
+    bool IsActive)
+    : IRequest<Result<AiAssistantDto>>, IAssistantInput;

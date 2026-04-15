@@ -16,4 +16,5 @@ public sealed record CreateAssistantCommand(
     AssistantExecutionMode ExecutionMode,
     int MaxAgentSteps,
     IReadOnlyList<string>? EnabledToolNames,
-    IReadOnlyList<Guid>? KnowledgeBaseDocIds) : IRequest<Result<AiAssistantDto>>;
+    IReadOnlyList<Guid>? KnowledgeBaseDocIds)
+    : IRequest<Result<AiAssistantDto>>, IAssistantInput;
