@@ -43,6 +43,10 @@ public sealed class AIModule : IModule
         services.AddScoped<IUsageMetricCalculator, AiUsageMetricCalculator>();
         services.AddScoped<IChatExecutionService, ChatExecutionService>();
 
+        services.AddSingleton<IAiToolRegistry, AiToolRegistryService>();
+        services.AddSingleton<IAiToolDefinition, Infrastructure.Tools.ListMyConversationsAiTool>();
+        services.AddHostedService<AiToolRegistrySyncHostedService>();
+
         return services;
     }
 
