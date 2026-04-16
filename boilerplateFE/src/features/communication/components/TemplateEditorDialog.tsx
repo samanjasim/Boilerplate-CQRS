@@ -54,6 +54,7 @@ export function TemplateEditorDialog({ templateId, open, onOpenChange }: Templat
   useEffect(() => {
     if (template) {
       const hasOverride = !!template.override;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync form state when selected template changes
       setIsEditing(false);
       setShowPreview(false);
       setSubjectTemplate(

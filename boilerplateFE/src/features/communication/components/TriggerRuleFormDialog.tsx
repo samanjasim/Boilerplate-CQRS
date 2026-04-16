@@ -57,6 +57,7 @@ export function TriggerRuleFormDialog({ open, onOpenChange, editRule }: TriggerR
 
   useEffect(() => {
     if (open && editRule) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- form reset on dialog open
       setName(editRule.name);
       setEventName(editRule.eventName);
       setMessageTemplateId(editRule.messageTemplateId);

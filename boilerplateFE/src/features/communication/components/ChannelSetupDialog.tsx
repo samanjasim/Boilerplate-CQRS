@@ -50,7 +50,10 @@ export function ChannelSetupDialog({ open, onOpenChange, editConfig }: ChannelSe
   const createMutation = useCreateChannelConfig();
   const updateMutation = useUpdateChannelConfig();
 
-  const providers: AvailableProviderDto[] = providersData?.data ?? [];
+  const providers: AvailableProviderDto[] = useMemo(
+    () => providersData?.data ?? [],
+    [providersData?.data]
+  );
 
   // Unique channels from available providers
   const availableChannels = useMemo(() => {
@@ -74,6 +77,7 @@ export function ChannelSetupDialog({ open, onOpenChange, editConfig }: ChannelSe
   useEffect(() => {
     if (open) {
       if (isEditing && editConfig) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- form reset on dialog open
         setSelectedChannel(editConfig.channel);
         setSelectedProvider(editConfig.provider);
         setDisplayName(editConfig.displayName);
@@ -98,6 +102,7 @@ export function ChannelSetupDialog({ open, onOpenChange, editConfig }: ChannelSe
       for (const key of Object.keys(masked)) {
         creds[key] = ''; // empty = keep existing
       }
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- pre-fill credentials from fetched detail data
       setCredentials(creds);
     }
   }, [isEditing, detailData]);

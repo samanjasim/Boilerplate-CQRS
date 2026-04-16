@@ -39,6 +39,7 @@ const ApiKeysPage = lazy(() => import('@/features/api-keys/pages/ApiKeysPage'));
 const FeatureFlagsPage = lazy(() => import('@/features/feature-flags/pages/FeatureFlagsPage'));
 
 // Module pages (conditionally loaded based on modules.config.ts)
+// eslint-disable-next-line react-refresh/only-export-components
 const NullPage = () => null;
 const WebhooksPage = activeModules.webhooks ? lazy(() => import('@/features/webhooks/pages/WebhooksPage')) : NullPage;
 const WebhookAdminPage = activeModules.webhooks ? lazy(() => import('@/features/webhooks/pages/WebhookAdminPage')) : NullPage;

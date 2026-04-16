@@ -47,6 +47,7 @@ export function EditPlanDialog({ open, onOpenChange, plan }: EditPlanDialogProps
 
   // Sync form when plan prop changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm({
       id: plan.id,
       name: plan.name,

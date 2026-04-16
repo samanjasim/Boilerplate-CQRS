@@ -44,6 +44,7 @@ export function NotificationPreferencesPanel() {
         }))
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- prefs is derived from prefsData; avoid redundant re-runs
   }, [prefsData]);
 
   const isRequired = (category: string, channel: NotificationChannel) =>

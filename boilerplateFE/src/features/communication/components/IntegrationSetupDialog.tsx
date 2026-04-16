@@ -71,6 +71,7 @@ export function IntegrationSetupDialog({ open, onOpenChange, editConfig }: Integ
   useEffect(() => {
     if (open) {
       if (isEditing && editConfig) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- form reset on dialog open
         setSelectedType(editConfig.integrationType);
         setDisplayName(editConfig.displayName);
         setStep(2); // Skip type selection when editing
@@ -91,6 +92,7 @@ export function IntegrationSetupDialog({ open, onOpenChange, editConfig }: Integ
       for (const key of Object.keys(masked)) {
         creds[key] = ''; // empty = keep existing
       }
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- pre-fill credentials from fetched detail data
       setCredentials(creds);
     }
   }, [isEditing, detailData]);
