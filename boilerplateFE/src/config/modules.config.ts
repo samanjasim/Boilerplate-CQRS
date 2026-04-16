@@ -2,6 +2,7 @@ import { billingModule } from '@/features/billing';
 import { webhooksModule } from '@/features/webhooks';
 import { importExportModule } from '@/features/import-export';
 import { productsModule } from '@/features/products';
+import { commentsActivityModule } from '@/features/comments-activity';
 import { communicationModule } from '@/features/communication';
 
 /**
@@ -17,6 +18,7 @@ export const activeModules = {
   webhooks: true,
   importExport: true,
   products: true,
+  commentsActivity: true,
   communication: true,
 } as const;
 
@@ -42,6 +44,7 @@ const enabledModules: AppModule[] = [
   webhooksModule,
   importExportModule,
   productsModule,
+  commentsActivityModule,
   communicationModule,
 ];
 

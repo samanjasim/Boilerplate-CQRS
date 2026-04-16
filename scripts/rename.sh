@@ -104,7 +104,7 @@ find "$TARGET_ROOT" -type f \( \
 \) | while IFS= read -r file; do
     if grep -q "Starter\|starter" "$file" 2>/dev/null; then
         # Order matters: longer matches first
-        sed -i'' \
+        sed -i '' \
             -e "s|Starter\.Infrastructure\.Identity|${NAME}.Infrastructure.Identity|g" \
             -e "s|Starter\.Infrastructure|${NAME}.Infrastructure|g" \
             -e "s|Starter\.Application|${NAME}.Application|g" \

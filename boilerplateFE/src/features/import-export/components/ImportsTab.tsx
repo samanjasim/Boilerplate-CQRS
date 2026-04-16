@@ -17,7 +17,7 @@ import { ImportWizard } from './ImportWizard';
 import { useImportJobs, useDeleteImportJob } from '../api';
 import { StatusBadge } from '../utils/badges';
 import { downloadImportErrors } from '../utils/download';
-import { formatDistanceToNow } from 'date-fns';
+import { useTimeAgoFormatter } from '@/hooks';
 import type { ImportJob } from '@/types';
 
 function ProgressCell({ job }: { job: ImportJob }) {
@@ -86,6 +86,7 @@ export function ImportsTab() {
   const [deleteTarget, setDeleteTarget] = useState<ImportJob | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(getPersistedPageSize);
+  const formatTimeAgo = useTimeAgoFormatter();
 
   const { data, isLoading, isError } = useImportJobs({ pageNumber, pageSize });
   const deleteMutation = useDeleteImportJob();
@@ -184,7 +185,7 @@ export function ImportsTab() {
 
                 {/* Created at */}
                 <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                  {formatDistanceToNow(new Date(job.createdAt), { addSuffix: true })}
+                  {formatTimeAgo(job.createdAt)}
                 </TableCell>
 
                 {/* Actions */}

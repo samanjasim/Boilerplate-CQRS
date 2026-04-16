@@ -12,4 +12,7 @@ public sealed class NoOpRealtimeService(ILogger<NoOpRealtimeService> logger) : I
             userId, eventName);
         return Task.CompletedTask;
     }
+
+    public Task PublishToChannelAsync(string channel, string eventName, object data, CancellationToken ct = default)
+        => Task.CompletedTask;
 }

@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ROUTES } from '@/config';
+import { Slot } from '@/lib/extensions';
 import { useBackNavigation, usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
 import { useAuthStore, selectUser } from '@/stores';
@@ -276,6 +277,8 @@ function ProductDetailForm({ product }: { product: Product }) {
           </div>
         )}
       </form>
+
+      <Slot id="entity-detail-timeline" props={{ entityType: 'Product', entityId: product.id, tenantId: product.tenantId }} />
 
       <ConfirmDialog
         isOpen={showArchiveDialog}

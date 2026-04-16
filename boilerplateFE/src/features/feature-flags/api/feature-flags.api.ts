@@ -38,12 +38,20 @@ export interface SetTenantOverrideData {
   value: string;
 }
 
+export interface ResolvedFeatureFlagDto {
+  key: string;
+  value: string;
+}
+
 export const featureFlagsApi = {
   getAll: (params?: Record<string, unknown>) =>
     apiClient.get(API_ENDPOINTS.FEATURE_FLAGS.LIST, { params }).then(r => r.data),
 
   getByKey: (key: string) =>
     apiClient.get<{ data: FeatureFlagDto }>(API_ENDPOINTS.FEATURE_FLAGS.BY_KEY(key)).then(r => r.data.data),
+
+  resolve: (key: string) =>
+    apiClient.get<{ data: ResolvedFeatureFlagDto }>(API_ENDPOINTS.FEATURE_FLAGS.RESOLVE(key)).then(r => r.data.data),
 
   create: (data: CreateFeatureFlagData) =>
     apiClient.post(API_ENDPOINTS.FEATURE_FLAGS.LIST, data).then(r => r.data),

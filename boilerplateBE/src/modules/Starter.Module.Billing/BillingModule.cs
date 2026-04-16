@@ -91,6 +91,7 @@ public sealed class BillingModule : IModule
             new { key = "imports.enabled", value = "false", translations = new { en = new { label = "Imports disabled" }, ar = new { label = "الاستيراد معطل" } } },
             new { key = "imports.max_rows", value = "0", translations = new { en = new { label = "No imports" }, ar = new { label = "لا استيراد" } } },
             new { key = "exports.enabled", value = "false", translations = new { en = new { label = "Exports disabled" }, ar = new { label = "التصدير معطل" } } },
+            new { key = "comments.activity_enabled", value = "false", translations = new { en = new { label = "Comments & activity disabled" }, ar = new { label = "التعليقات والنشاط معطل" } } },
         });
 
         var starterFeatures = JsonSerializer.Serialize(new[]
@@ -110,6 +111,7 @@ public sealed class BillingModule : IModule
             new { key = "imports.enabled", value = "true", translations = new { en = new { label = "Imports enabled" }, ar = new { label = "الاستيراد مفعل" } } },
             new { key = "imports.max_rows", value = "500", translations = new { en = new { label = "Up to 500 rows per import" }, ar = new { label = "حتى 500 صف لكل استيراد" } } },
             new { key = "exports.enabled", value = "true", translations = new { en = new { label = "Data exports" }, ar = new { label = "تصدير البيانات" } } },
+            new { key = "comments.activity_enabled", value = "false", translations = new { en = new { label = "Comments & activity disabled" }, ar = new { label = "التعليقات والنشاط معطل" } } },
         });
 
         var proFeatures = JsonSerializer.Serialize(new[]
@@ -129,6 +131,7 @@ public sealed class BillingModule : IModule
             new { key = "imports.enabled", value = "true", translations = new { en = new { label = "Imports enabled" }, ar = new { label = "الاستيراد مفعل" } } },
             new { key = "imports.max_rows", value = "5000", translations = new { en = new { label = "Up to 5,000 rows per import" }, ar = new { label = "حتى 5,000 صف لكل استيراد" } } },
             new { key = "exports.enabled", value = "true", translations = new { en = new { label = "Data exports" }, ar = new { label = "تصدير البيانات" } } },
+            new { key = "comments.activity_enabled", value = "true", translations = new { en = new { label = "Comments & activity enabled" }, ar = new { label = "التعليقات والنشاط مفعلة" } } },
         });
 
         var enterpriseFeatures = JsonSerializer.Serialize(new[]
@@ -148,6 +151,7 @@ public sealed class BillingModule : IModule
             new { key = "imports.enabled", value = "true", translations = new { en = new { label = "Imports enabled" }, ar = new { label = "الاستيراد مفعل" } } },
             new { key = "imports.max_rows", value = "50000", translations = new { en = new { label = "Up to 50,000 rows per import" }, ar = new { label = "حتى 50,000 صف لكل استيراد" } } },
             new { key = "exports.enabled", value = "true", translations = new { en = new { label = "Data exports" }, ar = new { label = "تصدير البيانات" } } },
+            new { key = "comments.activity_enabled", value = "true", translations = new { en = new { label = "Comments & activity enabled" }, ar = new { label = "التعليقات والنشاط مفعلة" } } },
         });
 
         var plans = new[]

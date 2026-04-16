@@ -61,4 +61,37 @@ public sealed class AblyRealtimeService : IRealtimeService
             _logger.LogError(ex, "Failed to publish realtime notification to user {UserId}", userId);
         }
     }
+
+    public async Task PublishToChannelAsync(string channel, string eventName, object data, CancellationToken ct = default)
+    {
+        try
+        {
+            var url = $"https://rest.ably.io/channels/{Uri.EscapeDataString(channel)}/messages";
+
+            var payload = new
+            {
+                name = eventName,
+                data = JsonSerializer.Serialize(data)
+            };
+
+            var content = new StringContent(
+                JsonSerializer.Serialize(payload),
+                Encoding.UTF8,
+                "application/json");
+
+            var response = await _httpClient.PostAsync(url, content, ct);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync(ct);
+                _logger.LogWarning(
+                    "Ably publish failed for channel {Channel}: {StatusCode} - {Body}",
+                    channel, response.StatusCode, body);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to publish realtime event to channel {Channel}", channel);
+        }
+    }
 }

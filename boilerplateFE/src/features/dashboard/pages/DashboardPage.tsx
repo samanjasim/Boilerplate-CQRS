@@ -2,7 +2,7 @@ import { Users, Shield, TrendingUp, Blocks, UserPlus, Pencil, Trash2, Activity }
 import { UserAvatar } from '@/components/common';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
+import { useTimeAgoFormatter } from '@/hooks';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -64,6 +64,7 @@ export default function DashboardPage() {
   const { t } = useTranslation();
   const user = useAuthStore(selectUser);
   const { hasPermission } = usePermissions();
+  const formatTimeAgo = useTimeAgoFormatter();
 
   const isTenantUser = !!user?.tenantId;
 
@@ -150,7 +151,7 @@ export default function DashboardPage() {
                           </p>
                         </div>
                         <span className="text-xs text-muted-foreground whitespace-nowrap">
-                          {formatDistanceToNow(new Date(log.performedAt), { addSuffix: true })}
+                          {formatTimeAgo(log.performedAt)}
                         </span>
                       </div>
                     );
@@ -202,7 +203,7 @@ export default function DashboardPage() {
                         )}
                         {u.createdAt && (
                           <span className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(u.createdAt), { addSuffix: true })}
+                            {formatTimeAgo(u.createdAt)}
                           </span>
                         )}
                       </div>

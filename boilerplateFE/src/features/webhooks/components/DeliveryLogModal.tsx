@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { formatDistanceToNow } from 'date-fns';
+import { useTimeAgo } from '@/hooks';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import {
   Dialog,
@@ -43,7 +43,7 @@ function DeliveryRow({ delivery }: { delivery: WebhookDelivery }) {
   const [expanded, setExpanded] = useState(false);
   const { t } = useTranslation();
 
-  const timeAgo = formatDistanceToNow(new Date(delivery.createdAt), { addSuffix: true });
+  const timeAgo = useTimeAgo(delivery.createdAt);
 
   return (
     <>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { formatDistanceToNow } from 'date-fns';
+import { useTimeAgoFormatter } from '@/hooks';
 import { Bell, CheckCheck } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +18,7 @@ export default function NotificationsPage() {
   const [filter, setFilter] = useState<FilterType>('all');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(getPersistedPageSize);
+  const formatTimeAgo = useTimeAgoFormatter();
 
   const isReadParam = filter === 'unread' ? false : undefined;
 
@@ -80,9 +81,7 @@ export default function NotificationsPage() {
             <div className="divide-y">
               {notifications.map((notification) => {
                 const Icon = NOTIFICATION_ICONS[notification.type] || NOTIFICATION_ICONS.default;
-                const timeAgo = formatDistanceToNow(new Date(notification.createdAt), {
-                  addSuffix: true,
-                });
+                const timeAgo = formatTimeAgo(notification.createdAt);
 
                 return (
                   <div

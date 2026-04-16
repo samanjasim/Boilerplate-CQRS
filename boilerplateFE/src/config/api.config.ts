@@ -94,6 +94,7 @@ export const API_ENDPOINTS = {
   FEATURE_FLAGS: {
     LIST: '/FeatureFlags',
     BY_KEY: (key: string) => `/FeatureFlags/${key}`,
+    RESOLVE: (key: string) => `/FeatureFlags/resolve/${key}`,
     DETAIL: (id: string) => `/FeatureFlags/${id}`,
     TENANT_OVERRIDE: (id: string, tenantId: string) => `/FeatureFlags/${id}/tenants/${tenantId}`,
     OPT_OUT: (id: string) => `/FeatureFlags/${id}/opt-out`,
@@ -183,5 +184,16 @@ export const API_ENDPOINTS = {
     IMPORTS: '/ImportExport/imports',
     IMPORT_DETAIL: (id: string) => `/ImportExport/imports/${id}`,
     IMPORT_ERRORS: (id: string) => `/ImportExport/imports/${id}/errors`,
+  },
+  COMMENTS_ACTIVITY: {
+    COMMENTS: '/CommentsActivity/comments',
+    COMMENT_DETAIL: (id: string) => `/CommentsActivity/comments/${id}`,
+    COMMENT_REACTIONS: (id: string) => `/CommentsActivity/comments/${id}/reactions`,
+    COMMENT_REACTION: (id: string, reactionType: string) => `/CommentsActivity/comments/${id}/reactions/${reactionType}`,
+    ACTIVITY: '/CommentsActivity/activity',
+    TIMELINE: '/CommentsActivity/timeline',
+    WATCHERS_STATUS: '/CommentsActivity/watchers/status',
+    WATCHERS: '/CommentsActivity/watchers',
+    MENTIONABLE_USERS: '/CommentsActivity/mentionable-users',
   },
 } as const;

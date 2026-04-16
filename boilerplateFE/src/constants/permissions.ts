@@ -73,6 +73,16 @@ export const PERMISSIONS = {
     Create: 'Products.Create',
     Update: 'Products.Update',
   },
+  Comments: {
+    View: 'Comments.View',
+    Create: 'Comments.Create',
+    Edit: 'Comments.Edit',
+    Delete: 'Comments.Delete',
+    Manage: 'Comments.Manage',
+  },
+  Activity: {
+    View: 'Activity.View',
+  },
   System: {
     ViewAuditLogs: 'System.ViewAuditLogs',
     ManageSettings: 'System.ManageSettings',

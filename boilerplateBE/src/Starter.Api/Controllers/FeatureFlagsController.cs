@@ -12,6 +12,7 @@ using Starter.Application.Features.FeatureFlags.Commands.SetTenantOverride;
 using Starter.Application.Features.FeatureFlags.Commands.UpdateFeatureFlag;
 using Starter.Application.Features.FeatureFlags.Queries.GetFeatureFlagByKey;
 using Starter.Application.Features.FeatureFlags.Queries.GetFeatureFlags;
+using Starter.Application.Features.FeatureFlags.Queries.ResolveFeatureFlag;
 using Starter.Domain.FeatureFlags.Enums;
 using Starter.Shared.Constants;
 using Starter.Shared.Models;
@@ -40,6 +41,19 @@ public sealed class FeatureFlagsController(ISender mediator) : BaseApiController
     public async Task<IActionResult> GetByKey(string key, CancellationToken ct = default)
     {
         var result = await Mediator.Send(new GetFeatureFlagByKeyQuery(key), ct);
+        return HandleResult(result);
+    }
+
+    // Lightweight flag resolution for the current user — returns only key + resolved value
+    // (tenant override else default). Any authenticated user can call this; the full GetByKey
+    // endpoint above leaks metadata (IsSystem, description, timestamps) and stays admin-only.
+    [HttpGet("resolve/{key}")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<ResolvedFeatureFlagDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Resolve(string key, CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(new ResolveFeatureFlagQuery(key), ct);
         return HandleResult(result);
     }
 
