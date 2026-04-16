@@ -26,7 +26,18 @@ internal sealed class QdrantVectorStore : IVectorStore
         var name = CollectionName(tenantId);
         var collections = await _client.ListCollectionsAsync(ct);
         if (collections.Any(c => c == name))
+        {
+            var info = await _client.GetCollectionInfoAsync(name, ct);
+            var existingDim = (int)(info?.Config?.Params?.VectorsConfig?.Params?.Size ?? 0);
+            if (existingDim > 0 && existingDim != vectorSize)
+            {
+                throw new InvalidOperationException(
+                    $"Qdrant collection '{name}' has vector dimension {existingDim} but the embedding " +
+                    $"provider produced vectors of dimension {vectorSize}. Drop the collection (and its " +
+                    "documents/chunks) before switching embedding models.");
+            }
             return;
+        }
 
         await _client.CreateCollectionAsync(
             collectionName: name,
