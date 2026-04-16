@@ -8,15 +8,14 @@ namespace Starter.Module.CommentsActivity.Application.EventHandlers;
 /// <summary>
 /// Republishes <see cref="ReactionToggledEvent"/> as the public
 /// <see cref="ReactionToggledIntegrationEvent"/> so external consumers can
-/// react to reaction changes. <c>UserId</c> is read from
-/// <see cref="ICurrentUserService"/> because the internal domain event does
-/// not carry it — toggling reactions is only reachable through the HTTP
-/// command path today, where the current user is always set. See sibling
+/// react to reaction changes. <c>UserId</c> flows through the domain event
+/// so the handler stays independent of request-scope services, making the
+/// event payload trustworthy for out-of-band producers (background jobs,
+/// webhook replays). See sibling
 /// <see cref="PublishCommentCreatedIntegrationEvent"/> for the at-most-once
 /// caveat this handler shares.
 /// </summary>
 internal sealed class PublishReactionToggledIntegrationEvent(
-    ICurrentUserService currentUser,
     IMessagePublisher messagePublisher,
     TimeProvider clock) : INotificationHandler<ReactionToggledEvent>
 {
@@ -27,7 +26,7 @@ internal sealed class PublishReactionToggledIntegrationEvent(
                 notification.EntityType,
                 notification.EntityId,
                 notification.TenantId,
-                currentUser.UserId ?? Guid.Empty,
+                notification.UserId,
                 notification.ReactionType,
                 notification.Added,
                 clock.GetUtcNow().UtcDateTime),

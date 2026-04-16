@@ -51,6 +51,17 @@ internal sealed class NotifyMentionedUsersOnCommentCreatedHandler(
         // orphan the notification behind the recipient's tenant filter.
         var recipients = await userReader.GetManyAsync(recipientIds, cancellationToken);
 
+        if (recipients.Count < recipientIds.Count)
+        {
+            var foundIds = recipients.Select(r => r.Id).ToHashSet();
+            var missing = recipientIds.Where(id => !foundIds.Contains(id)).ToArray();
+            logger.LogDebug(
+                "Skipping mention notification for {Count} unresolved user id(s) on comment {CommentId}: {MissingIds}",
+                missing.Length, notification.CommentId, missing);
+        }
+
+        if (recipients.Count == 0) return;
+
         var data = JsonSerializer.Serialize(new
         {
             commentId = notification.CommentId,

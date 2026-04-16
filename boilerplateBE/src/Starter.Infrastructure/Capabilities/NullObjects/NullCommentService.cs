@@ -31,6 +31,7 @@ public sealed class NullCommentService(ILogger<NullCommentService> logger) : ICo
         Guid commentId,
         string newBody,
         string? newMentionsJson,
+        Guid editorId,
         CancellationToken ct = default)
     {
         logger.LogDebug(

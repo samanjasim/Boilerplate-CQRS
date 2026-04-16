@@ -355,8 +355,7 @@ The core registers a `NullCommentAnalysisCapability` fallback (no-op or returns 
 - Read queries respect global EF filters — tenant users only see their own tenant's data automatically.
 - Write paths accept an explicit `tenantId`. For foreground requests from tenant users, this is always `ICurrentUserService.TenantId`. For **background jobs, webhooks, and platform-admin flows**, the module calls your `ResolveTenantIdAsync` to determine the owning tenant of the entity.
 - Watchers are tenant-scoped. Mentions only resolve within the tenant of the caller (or the tenant of the entity, for platform admins) — no integrator code required to enforce this. See §2 Step 1.
-- **Server-enforced tenant on capability writes (create paths).** `ICommentService.AddCommentAsync`, `IActivityService.RecordAsync`, and `IEntityWatcherService.WatchAsync` now reconcile the caller-supplied `tenantId` against the registered `ResolveTenantIdAsync` for the entity. If they disagree, the resolved value wins and a warning is logged. Callers that register a resolver (or an `ITenantResolver`) get cross-tenant-write protection for free.
-- **Edit/delete paths still trust persisted state.** `EditCommentAsync` / `DeleteCommentAsync` operate on the comment's existing `TenantId`; a cross-tenant edit API call is still possible if the caller has the raw comment id. Tracked in [`ROADMAP.md`](./ROADMAP.md) under *Write-side tenant hardening for edit/delete*.
+- **Server-enforced tenant on every capability write.** `ICommentService.AddCommentAsync` / `EditCommentAsync` / `DeleteCommentAsync`, `IActivityService.RecordAsync`, and `IEntityWatcherService.WatchAsync` / `UnwatchAsync` all reconcile the caller-supplied `tenantId` against the registered `ResolveTenantIdAsync` for the entity. If they disagree, the resolved value wins and a warning is logged. Edit and delete paths look up the target row under `.IgnoreQueryFilters()`, derive `(EntityType, EntityId)` from it, then reconcile — so a cross-tenant call with a raw comment id is detected and corrected.
 - **No resolver registered = legacy behavior.** If an entity omits `ResolveTenantIdAsync`, the caller-supplied `tenantId` is accepted as-is. This preserves back-compat for non-tenant-scoped entities.
 
 ---
@@ -392,4 +391,12 @@ Any entity page that renders `<Slot id="entity-detail-timeline" props={{…}} />
 
 ## 10. Roadmap
 
-Planned improvements — outbox upgrade, typed-metadata reads, source-gen attribute, cross-entity analytics, FE slot config, enrichment pipeline, edit/delete tenant hardening — are tracked in [`ROADMAP.md`](./ROADMAP.md) with explicit "pick this up when" triggers. Consult it before opening a capability-change RFC.
+Planned improvements — outbox upgrade, typed-metadata reads, source-gen attribute, cross-entity analytics, FE slot config, enrichment pipeline — are tracked in [`ROADMAP.md`](./ROADMAP.md) with explicit "pick this up when" triggers. Consult it before opening a capability-change RFC.
+
+---
+
+## 11. Observability
+
+The module inherits host-level tracing via the pipeline `TracingBehavior` and the OpenTelemetry configuration in `Starter.Infrastructure`. All CQRS command/query handlers appear in Jaeger (`testcommactivity-api` service) with request-scoped spans. A dedicated `CommentsActivityDbContext` health check is registered under the tag `db` and reports per-migration schema drift separate from the primary database check.
+
+Module-local tracing — a dedicated `ActivitySource` around hot paths like `ICommentService.AddCommentAsync` and the publisher handlers — is deferred. Add it when the module's events are landing on a broker that another team's service consumes, or when the AI module (see §6) starts chaining slow calls off `CommentCreatedIntegrationEvent`. Tracked in [`ROADMAP.md`](./ROADMAP.md).

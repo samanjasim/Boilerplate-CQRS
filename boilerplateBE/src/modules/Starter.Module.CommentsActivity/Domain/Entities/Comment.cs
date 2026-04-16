@@ -74,14 +74,14 @@ public sealed class Comment : AggregateRoot, ITenantEntity
         return comment;
     }
 
-    public void Edit(string newBody, string? newMentionsJson)
+    public void Edit(string newBody, string? newMentionsJson, Guid editorId)
     {
         Body = newBody.Trim();
         MentionsJson = newMentionsJson;
         ModifiedAt = DateTime.UtcNow;
 
         RaiseDomainEvent(new CommentEditedEvent(
-            Id, EntityType, EntityId, TenantId));
+            Id, EntityType, EntityId, TenantId, editorId));
     }
 
     public void SoftDelete(Guid deletedBy)
@@ -96,9 +96,9 @@ public sealed class Comment : AggregateRoot, ITenantEntity
             Id, EntityType, EntityId, TenantId, deletedBy));
     }
 
-    public void RecordReactionToggle(string reactionType, bool added)
+    public void RecordReactionToggle(Guid userId, string reactionType, bool added)
     {
         RaiseDomainEvent(new ReactionToggledEvent(
-            Id, EntityType, EntityId, TenantId, reactionType, added));
+            Id, EntityType, EntityId, TenantId, userId, reactionType, added));
     }
 }

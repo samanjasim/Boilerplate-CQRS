@@ -6,4 +6,5 @@ public sealed record CommentEditedEvent(
     Guid CommentId,
     string EntityType,
     Guid EntityId,
-    Guid? TenantId) : DomainEventBase;
+    Guid? TenantId,
+    Guid EditorId) : DomainEventBase;

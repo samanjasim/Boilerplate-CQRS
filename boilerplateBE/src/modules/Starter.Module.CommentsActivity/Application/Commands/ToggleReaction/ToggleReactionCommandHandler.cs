@@ -43,8 +43,7 @@ internal sealed class ToggleReactionCommandHandler(
             added = true;
         }
 
-        // Raise domain event through the aggregate root — dispatched by the interceptor on SaveChanges
-        comment.RecordReactionToggle(reactionType, added);
+        comment.RecordReactionToggle(userId, reactionType, added);
 
         await context.SaveChangesAsync(cancellationToken);
 

@@ -16,7 +16,6 @@ namespace Starter.Module.CommentsActivity.Application.EventHandlers;
 /// </summary>
 internal sealed class PublishCommentEditedIntegrationEvent(
     CommentsActivityDbContext context,
-    ICurrentUserService currentUser,
     IMessagePublisher messagePublisher,
     TimeProvider clock,
     ILogger<PublishCommentEditedIntegrationEvent> logger)
@@ -39,7 +38,7 @@ internal sealed class PublishCommentEditedIntegrationEvent(
                 notification.EntityType,
                 notification.EntityId,
                 notification.TenantId,
-                currentUser.UserId ?? Guid.Empty,
+                notification.EditorId,
                 comment.Body,
                 comment.MentionsJson,
                 clock.GetUtcNow().UtcDateTime),

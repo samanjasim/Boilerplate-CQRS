@@ -59,17 +59,22 @@ public sealed class EntityWatcherService(
         CancellationToken ct = default)
     {
         var watcher = await context.EntityWatchers
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(
                 w => w.EntityType == entityType &&
                      w.EntityId == entityId &&
                      w.UserId == userId,
                 ct);
 
-        if (watcher is not null)
-        {
-            context.EntityWatchers.Remove(watcher);
-            await context.SaveChangesAsync(ct);
-        }
+        if (watcher is null) return;
+
+        var resolved = await TenantResolution.ResolveEffectiveTenantIdAsync(
+            registry, services, logger, watcher.EntityType, watcher.EntityId, watcher.TenantId, ct);
+
+        if (resolved != watcher.TenantId) return;
+
+        context.EntityWatchers.Remove(watcher);
+        await context.SaveChangesAsync(ct);
     }
 
     public async Task<bool> IsWatchingAsync(

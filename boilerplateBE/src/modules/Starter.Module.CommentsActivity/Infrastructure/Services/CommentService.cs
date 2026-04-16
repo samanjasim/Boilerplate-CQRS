@@ -49,14 +49,19 @@ public sealed class CommentService(
         Guid commentId,
         string newBody,
         string? newMentionsJson,
+        Guid editorId,
         CancellationToken ct = default)
     {
         var comment = await context.Comments
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(c => c.Id == commentId, ct);
 
         if (comment is null) return;
 
-        comment.Edit(newBody, newMentionsJson);
+        if (!await IsTenantReconciledAsync(comment.EntityType, comment.EntityId, comment.TenantId, ct))
+            return;
+
+        comment.Edit(newBody, newMentionsJson, editorId);
         await context.SaveChangesAsync(ct);
     }
 
@@ -66,12 +71,27 @@ public sealed class CommentService(
         CancellationToken ct = default)
     {
         var comment = await context.Comments
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(c => c.Id == commentId, ct);
 
         if (comment is null || comment.IsDeleted) return;
 
+        if (!await IsTenantReconciledAsync(comment.EntityType, comment.EntityId, comment.TenantId, ct))
+            return;
+
         comment.SoftDelete(deletedBy);
         await context.SaveChangesAsync(ct);
+    }
+
+    private async Task<bool> IsTenantReconciledAsync(
+        string entityType,
+        Guid entityId,
+        Guid? persistedTenantId,
+        CancellationToken ct)
+    {
+        var resolved = await TenantResolution.ResolveEffectiveTenantIdAsync(
+            registry, services, logger, entityType, entityId, persistedTenantId, ct);
+        return resolved == persistedTenantId;
     }
 
     public async Task<CommentSummary?> GetByIdAsync(

@@ -7,5 +7,6 @@ public sealed record ReactionToggledEvent(
     string EntityType,
     Guid EntityId,
     Guid? TenantId,
+    Guid UserId,
     string ReactionType,
     bool Added) : DomainEventBase;

@@ -46,6 +46,11 @@ public sealed class CommentsActivityModule : IModule
         services.AddScoped<IActivityService, ActivityService>();
         services.AddScoped<IEntityWatcherService, EntityWatcherService>();
 
+        services.AddHealthChecks()
+            .AddDbContextCheck<CommentsActivityDbContext>(
+                name: "commentsactivity-db",
+                tags: ["db", "comments-activity"]);
+
         return services;
     }
 

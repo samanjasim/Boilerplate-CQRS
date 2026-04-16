@@ -1,5 +1,6 @@
 using System.Text.Json;
 using MediatR;
+using Starter.Module.CommentsActivity.Constants;
 using Starter.Module.CommentsActivity.Domain.Entities;
 using Starter.Module.CommentsActivity.Domain.Events;
 using Starter.Module.CommentsActivity.Infrastructure.Persistence;
@@ -24,7 +25,7 @@ internal sealed class RecordCommentActivityHandler(
             notification.TenantId,
             notification.EntityType,
             notification.EntityId,
-            "comment_added",
+            CommentsActivityActions.CommentAdded,
             notification.AuthorId,
             metadata,
             notification.ParentCommentId.HasValue ? "Replied to a comment" : "Added a comment");

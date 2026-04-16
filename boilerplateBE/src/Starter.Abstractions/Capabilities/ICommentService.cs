@@ -22,6 +22,7 @@ public interface ICommentService : ICapability
         Guid commentId,
         string newBody,
         string? newMentionsJson,
+        Guid editorId,
         CancellationToken ct = default);
 
     Task DeleteCommentAsync(

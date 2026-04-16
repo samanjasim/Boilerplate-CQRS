@@ -38,6 +38,17 @@ internal sealed class NotifyWatchersOnCommentCreatedHandler(
             // admits the row. See note in NotifyMentionedUsersOnCommentCreatedHandler.
             var recipients = await userReader.GetManyAsync(recipientIds, cancellationToken);
 
+            if (recipients.Count < recipientIds.Count)
+            {
+                var foundIds = recipients.Select(r => r.Id).ToHashSet();
+                var missing = recipientIds.Where(id => !foundIds.Contains(id)).ToArray();
+                logger.LogDebug(
+                    "Skipping watcher notification for {Count} unresolved user id(s) on comment {CommentId}: {MissingIds}",
+                    missing.Length, notification.CommentId, missing);
+            }
+
+            if (recipients.Count == 0) return;
+
             var data = JsonSerializer.Serialize(new
             {
                 commentId = notification.CommentId,

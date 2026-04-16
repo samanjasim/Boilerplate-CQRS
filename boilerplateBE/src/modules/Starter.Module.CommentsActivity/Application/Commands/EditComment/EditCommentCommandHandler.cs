@@ -35,7 +35,7 @@ internal sealed class EditCommentCommandHandler(
             mentionsJson = JsonSerializer.Serialize(request.MentionUserIds);
         }
 
-        comment.Edit(request.Body, mentionsJson);
+        comment.Edit(request.Body, mentionsJson, currentUser.UserId!.Value);
         await context.SaveChangesAsync(cancellationToken);
 
         return Result.Success();

@@ -1,6 +1,6 @@
-# Test output (rename.ps1 scaffolded test apps)
-_test*/
-Test*/
+# Test output (rename.ps1 scaffolded test apps at repo root only)
+/_test*/
+/Test*/
 
 # IDE
 .vs/
