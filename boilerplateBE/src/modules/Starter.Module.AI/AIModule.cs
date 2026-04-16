@@ -52,6 +52,13 @@ public sealed class AIModule : IModule
         services.AddScoped<IChatExecutionService, ChatExecutionService>();
 
         services.AddSingleton<TokenCounter>();
+
+        var ocrEnabled = configuration.GetValue<bool?>("AI:Ocr:Enabled") ?? true;
+        if (ocrEnabled)
+            services.AddScoped<IOcrService, Infrastructure.Ingestion.Ocr.TesseractOcrService>();
+        else
+            services.AddScoped<IOcrService, Infrastructure.Ingestion.Ocr.NullOcrService>();
+
         services.AddSingleton<IAiToolRegistry, AiToolRegistryService>();
         services.AddSingleton<IAiToolDefinition, Infrastructure.Tools.ListMyConversationsAiTool>();
         services.AddHostedService<AiToolRegistrySyncHostedService>();
