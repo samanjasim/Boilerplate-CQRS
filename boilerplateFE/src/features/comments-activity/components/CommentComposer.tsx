@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Send, Paperclip, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -81,28 +81,30 @@ export function CommentComposer({
   const { mutateAsync: uploadFile, isPending: isUploading } = useUploadFile();
   const isPending = isAdding || isEditing;
 
-  // Derive mention user ids from the live mention list (single source of truth).
-  const mentionUserIds = useMemo(
-    () => Array.from(new Set(mentions.map((m) => m.id))),
-    [mentions],
-  );
-
-  useEffect(() => {
+  // Re-seed body/mentions when switching which comment is being edited.
+  // Adjust-state-in-render pattern — avoids the cascading rerender of an
+  // effect-based reset and keeps the next paint in sync with the new prop.
+  const [lastEditCommentId, setLastEditCommentId] = useState(editMode?.commentId);
+  if (editMode?.commentId !== lastEditCommentId) {
+    setLastEditCommentId(editMode?.commentId);
     if (editMode?.initialBody) {
       const { displayBody, mentions: parsed } = deserializeMentions(editMode.initialBody);
       setBody(displayBody);
       setMentions(parsed);
     }
-  }, [editMode?.commentId, editMode?.initialBody]);
+  }
 
-  // Drop tracked mentions whose display text was deleted from the body.
-  // Keeps notifications honest when a user backspaces over @Name.
-  useEffect(() => {
-    setMentions((prev) => {
-      const next = prev.filter((m) => body.includes(`@${m.displayName}`));
-      return next.length === prev.length ? prev : next;
-    });
-  }, [body]);
+  // Derived: drop tracked mentions whose display text was backspaced out of
+  // the body so notifications stay honest.
+  const activeMentions = useMemo(
+    () => mentions.filter((m) => body.includes(`@${m.displayName}`)),
+    [mentions, body],
+  );
+
+  const mentionUserIds = useMemo(
+    () => Array.from(new Set(activeMentions.map((m) => m.id))),
+    [activeMentions],
+  );
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -217,7 +219,7 @@ export function CommentComposer({
     const trimmed = body.trim();
     if (!trimmed) return;
 
-    const serialized = serializeMentions(trimmed, mentions);
+    const serialized = serializeMentions(trimmed, activeMentions);
 
     if (editMode) {
       editComment(

@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from 'react';
+import { forwardRef, useImperativeHandle, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AtSign, Loader2 } from 'lucide-react';
 import { UserAvatar } from '@/components/common';
@@ -60,9 +60,14 @@ export const MentionAutocomplete = forwardRef<MentionAutocompleteHandle, Mention
       return raw as MentionableUser[];
     }, [data]);
 
-    useEffect(() => {
+    // Reset the keyboard selection whenever the search term or result list
+    // changes. Adjust-state-in-render pattern — cheaper than an effect and
+    // the new index is visible on the same paint as the new list.
+    const [lastReset, setLastReset] = useState({ search: debouncedSearch, count: users.length });
+    if (lastReset.search !== debouncedSearch || lastReset.count !== users.length) {
+      setLastReset({ search: debouncedSearch, count: users.length });
       setActiveIndex(0);
-    }, [debouncedSearch, users.length]);
+    }
 
     useImperativeHandle(
       ref,

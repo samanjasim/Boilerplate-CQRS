@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MessageSquare, Activity, Clock } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -31,7 +31,6 @@ export function EntityTimeline({ entityType, entityId, tenantId }: EntityTimelin
   const [pageNumber, setPageNumber] = useState(1);
   const [accumulatedItems, setAccumulatedItems] = useState<TimelineItem[]>([]);
   const pageSize = 20;
-  const prevFilterRef = useRef(filter);
 
   // Real-time updates
   useEntityChannel(entityType, entityId, tenantId);
@@ -42,14 +41,25 @@ export function EntityTimeline({ entityType, entityId, tenantId }: EntityTimelin
     pageSize,
   });
 
-  // Accumulate items across pages; reset when filter changes or data is refetched for page 1
-  useEffect(() => {
-    if (!data?.data) return;
-    const filterChanged = prevFilterRef.current !== filter;
-    prevFilterRef.current = filter;
+  // Accumulate items across pages; reset when filter changes or page is 1.
+  // Adjust-state-in-render pattern — we sync with the fetched page as soon
+  // as React renders with a new `data` reference, without the extra pass of
+  // an effect.
+  const [lastSync, setLastSync] = useState<{
+    data: TimelineItem[] | undefined;
+    filter: FilterType;
+    page: number;
+  }>({ data: undefined, filter, page: pageNumber });
 
+  if (
+    data?.data &&
+    (lastSync.data !== data.data || lastSync.filter !== filter || lastSync.page !== pageNumber)
+  ) {
+    const filterChanged = lastSync.filter !== filter;
+    const incoming = data.data;
+    setLastSync({ data: incoming, filter, page: pageNumber });
     if (pageNumber === 1 || filterChanged) {
-      setAccumulatedItems(data.data);
+      setAccumulatedItems(incoming);
     } else {
       setAccumulatedItems((prev) => {
         const existingIds = new Set(
@@ -57,7 +67,7 @@ export function EntityTimeline({ entityType, entityId, tenantId }: EntityTimelin
             item.type === 'comment' ? `c-${item.comment?.id}` : `a-${item.activity?.id}`,
           ),
         );
-        const newItems = data.data.filter((item: TimelineItem) => {
+        const newItems = incoming.filter((item: TimelineItem) => {
           const key =
             item.type === 'comment' ? `c-${item.comment?.id}` : `a-${item.activity?.id}`;
           return !existingIds.has(key);
@@ -65,17 +75,20 @@ export function EntityTimeline({ entityType, entityId, tenantId }: EntityTimelin
         return [...prev, ...newItems];
       });
     }
-  }, [data, pageNumber, filter]);
+  }
 
   const totalPages = data?.pagination?.totalPages ?? 1;
   const canLoadMore = pageNumber < totalPages;
   const canCreate = hasPermission(PERMISSIONS.Comments.Create);
 
-  const filters: { key: FilterType; label: string }[] = [
-    { key: 'all', label: t('commentsActivity.filterAll', 'All') },
-    { key: 'comments', label: t('commentsActivity.filterComments', 'Comments') },
-    { key: 'activity', label: t('commentsActivity.filterActivity', 'Activity') },
-  ];
+  const filters = useMemo<{ key: FilterType; label: string }[]>(
+    () => [
+      { key: 'all', label: t('commentsActivity.filterAll', 'All') },
+      { key: 'comments', label: t('commentsActivity.filterComments', 'Comments') },
+      { key: 'activity', label: t('commentsActivity.filterActivity', 'Activity') },
+    ],
+    [t],
+  );
 
   const handleFilterChange = useCallback((f: FilterType) => {
     setFilter(f);

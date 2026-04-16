@@ -20,21 +20,19 @@ export function useEntityChannel(
 
   useEffect(() => {
     const ABLY_API_KEY = import.meta.env.VITE_ABLY_API_KEY;
+    // Early-returns rely on `connected` defaulting to false (useState above)
+    // and on the previous effect's cleanup to reset state on re-runs, so we
+    // don't need a redundant synchronous setConnected(false) here.
     if (!ABLY_API_KEY) {
       if (!missingKeyWarned) {
         missingKeyWarned = true;
-        // eslint-disable-next-line no-console
         console.warn(
           '[comments-activity] VITE_ABLY_API_KEY missing — realtime updates disabled.',
         );
       }
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setConnected(false);
       return;
     }
     if (!tenantId || !entityType || !entityId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setConnected(false);
       return;
     }
 
@@ -89,7 +87,8 @@ export function useEntityChannel(
         setConnected(false);
       };
     } catch {
-      setConnected(false);
+      // No setConnected(false) — construction failed before any 'connected'
+      // listener fired, so state is still the default false.
     }
   }, [entityType, entityId, tenantId, queryClient]);
 
