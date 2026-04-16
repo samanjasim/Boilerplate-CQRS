@@ -72,7 +72,7 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
                 content: p.Content,
                 chunkIndex: p.Index,
                 tokenCount: p.TokenCount,
-                qdrantPointId: Guid.Empty,
+                qdrantPointId: Guid.NewGuid(),
                 parentChunkId: null,
                 sectionTitle: p.SectionTitle,
                 pageNumber: p.PageNumber)).ToList();
