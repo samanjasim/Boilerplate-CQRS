@@ -7,6 +7,7 @@ using Starter.Module.AI.Application.Services;
 using Starter.Module.AI.Constants;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Module.AI.Domain.Enums;
+using Starter.Module.AI.Infrastructure.Ingestion;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Services;
@@ -50,6 +51,7 @@ public sealed class AIModule : IModule
         services.AddScoped<IUsageMetricCalculator, AiUsageMetricCalculator>();
         services.AddScoped<IChatExecutionService, ChatExecutionService>();
 
+        services.AddSingleton<TokenCounter>();
         services.AddSingleton<IAiToolRegistry, AiToolRegistryService>();
         services.AddSingleton<IAiToolDefinition, Infrastructure.Tools.ListMyConversationsAiTool>();
         services.AddHostedService<AiToolRegistrySyncHostedService>();
