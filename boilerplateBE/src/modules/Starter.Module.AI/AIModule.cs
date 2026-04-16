@@ -67,6 +67,7 @@ public sealed class AIModule : IModule
         services.AddScoped<IDocumentTextExtractorRegistry, Infrastructure.Ingestion.DocumentTextExtractorRegistry>();
         services.AddSingleton<IDocumentChunker, Infrastructure.Ingestion.HierarchicalDocumentChunker>();
         services.AddSingleton<IVectorStore, Infrastructure.Ingestion.QdrantVectorStore>();
+        services.AddScoped<IEmbeddingService, Infrastructure.Ingestion.EmbeddingService>();
 
         services.AddSingleton<IAiToolRegistry, AiToolRegistryService>();
         services.AddSingleton<IAiToolDefinition, Infrastructure.Tools.ListMyConversationsAiTool>();
