@@ -61,6 +61,17 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
                 ChildOverlapTokens: ragOptions.ChunkOverlap));
 
             var childTexts = chunks.Children.Select(c => c.Content).ToList();
+
+            if (childTexts.Count == 0)
+            {
+                doc.MarkCompleted(chunkCount: 0);
+                await db.SaveChangesAsync(ct);
+                logger.LogInformation(
+                    "Document {Id} produced no chunks (empty or whitespace-only); marked Completed.",
+                    doc.Id);
+                return;
+            }
+
             var vectors = await embedder.EmbedAsync(childTexts, ct);
 
             var tenantId = doc.TenantId ?? Guid.Empty;
