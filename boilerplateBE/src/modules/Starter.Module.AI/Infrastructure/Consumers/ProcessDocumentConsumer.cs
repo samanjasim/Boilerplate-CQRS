@@ -72,7 +72,10 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
                 return;
             }
 
-            var vectors = await embedder.EmbedAsync(childTexts, ct);
+            var attribution = new EmbedAttribution(
+                TenantId: context.Message.TenantId,
+                UserId: context.Message.InitiatingUserId);
+            var vectors = await embedder.EmbedAsync(childTexts, ct, attribution);
 
             var tenantId = doc.TenantId ?? Guid.Empty;
             await vectorStore.EnsureCollectionAsync(tenantId, embedder.VectorSize, ct);

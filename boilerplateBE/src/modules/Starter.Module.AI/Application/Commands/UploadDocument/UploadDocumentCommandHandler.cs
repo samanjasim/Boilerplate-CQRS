@@ -41,7 +41,7 @@ internal sealed class UploadDocumentCommandHandler(
         db.AiDocuments.Add(doc);
         await db.SaveChangesAsync(ct);
 
-        await bus.Publish(new ProcessDocumentMessage(doc.Id), ct);
+        await bus.Publish(new ProcessDocumentMessage(doc.Id, doc.TenantId, userId), ct);
         await appDb.SaveChangesAsync(ct);
 
         return Result.Success(doc.ToDto());

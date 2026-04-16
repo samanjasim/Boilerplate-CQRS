@@ -21,7 +21,10 @@ internal sealed class EmbeddingService(
         ? _vectorSize
         : throw new InvalidOperationException("Call EmbedAsync at least once before reading VectorSize.");
 
-    public async Task<float[][]> EmbedAsync(IReadOnlyList<string> texts, CancellationToken ct)
+    public async Task<float[][]> EmbedAsync(
+        IReadOnlyList<string> texts,
+        CancellationToken ct,
+        EmbedAttribution? attribution = null)
     {
         if (texts.Count == 0) return Array.Empty<float[]>();
 
@@ -42,11 +45,15 @@ internal sealed class EmbeddingService(
 
         if (_vectorSize < 0 && all.Count > 0) _vectorSize = all[0].Length;
 
-        if (currentUser.UserId is Guid userId)
+        var (logTenant, logUser) = attribution is { } a
+            ? (a.TenantId, (Guid?)a.UserId)
+            : (currentUser.TenantId, currentUser.UserId);
+
+        if (logUser is Guid uid)
         {
             var log = AiUsageLog.Create(
-                tenantId: currentUser.TenantId,
-                userId: userId,
+                tenantId: logTenant,
+                userId: uid,
                 provider: providerType,
                 model: "embedding",
                 inputTokens: totalTokens,

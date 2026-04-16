@@ -34,7 +34,7 @@ internal sealed class ReprocessDocumentCommandHandler(
         doc.ResetForReprocessing();
         await db.SaveChangesAsync(ct);
 
-        await bus.Publish(new ProcessDocumentMessage(doc.Id), ct);
+        await bus.Publish(new ProcessDocumentMessage(doc.Id, doc.TenantId, doc.UploadedByUserId), ct);
         await appDb.SaveChangesAsync(ct);
 
         return Result.Success();
