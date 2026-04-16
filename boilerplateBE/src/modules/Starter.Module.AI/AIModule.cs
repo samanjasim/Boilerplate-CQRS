@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Modularity;
 using Starter.Module.AI.Application.Services;
+using Starter.Module.AI.Application.Services.Ingestion;
 using Starter.Module.AI.Constants;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Module.AI.Domain.Enums;
@@ -58,6 +59,12 @@ public sealed class AIModule : IModule
             services.AddScoped<IOcrService, Infrastructure.Ingestion.Ocr.TesseractOcrService>();
         else
             services.AddScoped<IOcrService, Infrastructure.Ingestion.Ocr.NullOcrService>();
+
+        services.AddSingleton<IDocumentTextExtractor, Infrastructure.Ingestion.Extractors.PlainTextExtractor>();
+        services.AddSingleton<IDocumentTextExtractor, Infrastructure.Ingestion.Extractors.CsvTextExtractor>();
+        services.AddSingleton<IDocumentTextExtractor, Infrastructure.Ingestion.Extractors.DocxTextExtractor>();
+        services.AddScoped<IDocumentTextExtractor, Infrastructure.Ingestion.Extractors.PdfTextExtractor>();
+        services.AddScoped<IDocumentTextExtractorRegistry, Infrastructure.Ingestion.DocumentTextExtractorRegistry>();
 
         services.AddSingleton<IAiToolRegistry, AiToolRegistryService>();
         services.AddSingleton<IAiToolDefinition, Infrastructure.Tools.ListMyConversationsAiTool>();
