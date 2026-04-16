@@ -10,6 +10,7 @@ using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Services;
+using Starter.Module.AI.Infrastructure.Settings;
 
 namespace Starter.Module.AI;
 
@@ -22,6 +23,10 @@ public sealed class AIModule : IModule
 
     public IServiceCollection ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
+        services.Configure<AiRagSettings>(configuration.GetSection(AiRagSettings.SectionName));
+        services.Configure<AiQdrantSettings>(configuration.GetSection(AiQdrantSettings.SectionName));
+        services.Configure<AiOcrSettings>(configuration.GetSection(AiOcrSettings.SectionName));
+
         services.AddDbContext<AiDbContext>(options =>
         {
             options.UseNpgsql(
