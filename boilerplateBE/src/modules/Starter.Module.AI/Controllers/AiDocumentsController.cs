@@ -53,12 +53,12 @@ public sealed class AiDocumentsController(ISender mediator)
         CancellationToken ct = default)
     {
         var result = await Mediator.Send(new UploadDocumentCommand(file, name), ct);
-        return HandleResult(result);
+        return HandleCreatedResult(result, nameof(GetById), new { id = result.IsSuccess ? result.Value.Id : (Guid?)null });
     }
 
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = AiPermissions.ManageDocuments)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct = default)
     {
@@ -68,7 +68,7 @@ public sealed class AiDocumentsController(ISender mediator)
 
     [HttpPost("{id:guid}/reprocess")]
     [Authorize(Policy = AiPermissions.ManageDocuments)]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Reprocess(Guid id, CancellationToken ct = default)
