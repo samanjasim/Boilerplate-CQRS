@@ -132,6 +132,13 @@
     "billingPlans": "خطط الاشتراك",
     "subscriptions": "الاشتراكات",
     "webhooksAdmin": "الويب هوكس",
+    "organization": "المؤسسة",
+    "communication": "الاتصالات",
+    "channels": "القنوات",
+    "templates": "القوالب",
+    "triggerRules": "قواعد التشغيل",
+    "integrations": "التكاملات",
+    "deliveryLog": "سجل التسليم",
     "collapse": "طي"
   },
   "header": {
@@ -874,5 +881,212 @@
     "processing": "المعالجة",
     "completed": "مكتمل",
     "partialSuccess": "نجاح جزئي"
+  },
+  "communication": {
+    "title": "الاتصالات",
+    "channels": {
+      "title": "القنوات",
+      "subtitle": "إعداد مزودي قنوات الإشعارات لمؤسستك",
+      "addChannel": "إضافة قناة",
+      "noChannels": "لا توجد قنوات مُعدّة",
+      "noChannelsDescription": "قم بإعداد أول قناة إشعارات للبدء في إرسال الرسائل.",
+      "created": "تم إنشاء إعداد القناة",
+      "updated": "تم تحديث إعداد القناة",
+      "deleted": "تم حذف إعداد القناة",
+      "testButton": "اختبار",
+      "testSuccess": "نجح اختبار الاتصال",
+      "testFailed": "فشل اختبار الاتصال",
+      "setDefault": "تم تحديث القناة الافتراضية",
+      "channelNames": {
+        "Email": "البريد الإلكتروني",
+        "Sms": "الرسائل النصية",
+        "Push": "الإشعارات الفورية",
+        "WhatsApp": "واتساب",
+        "InApp": "داخل التطبيق"
+      },
+      "status": {
+        "Active": "نشط",
+        "Inactive": "غير نشط",
+        "Error": "خطأ"
+      },
+      "fields": {
+        "displayName": "اسم العرض",
+        "channel": "القناة",
+        "provider": "المزود",
+        "credentials": "بيانات الاعتماد",
+        "isDefault": "القناة الافتراضية",
+        "lastTested": "آخر اختبار"
+      },
+      "setup": {
+        "title": "إعداد القناة",
+        "editTitle": "تعديل القناة",
+        "selectChannel": "اختر نوع القناة",
+        "selectProvider": "اختر المزود",
+        "configureCredentials": "إعداد بيانات الاعتماد",
+        "step": "الخطوة {{current}} من {{total}}",
+        "displayNamePlaceholder": "مثال: SMTP الإنتاج"
+      },
+      "confirmDelete": "هل أنت متأكد من حذف إعداد هذه القناة؟ لا يمكن التراجع عن هذا الإجراء."
+    },
+    "templates": {
+      "title": "القوالب",
+      "subtitle": "إدارة قوالب الرسائل وتخصيصات المستأجر",
+      "noTemplates": "لم يتم العثور على قوالب",
+      "noTemplatesDescription": "ستظهر قوالب النظام هنا بعد تهيئة الوحدة.",
+      "category": "الفئة",
+      "allCategories": "جميع الفئات",
+      "systemTemplate": "النظام",
+      "customized": "مخصص",
+      "moduleSource": "الوحدة",
+      "defaultChannel": "القناة الافتراضية",
+      "availableChannels": "القنوات المتاحة",
+      "variables": "المتغيرات",
+      "variableReference": "مرجع المتغيرات",
+      "customize": "تخصيص",
+      "resetToDefault": "إعادة التعيين للافتراضي",
+      "resetConfirm": "سيؤدي هذا إلى حذف التخصيص الخاص بك والعودة إلى القالب الافتراضي. هل تريد المتابعة؟",
+      "overrideCreated": "تم إنشاء تخصيص القالب",
+      "overrideUpdated": "تم تحديث تخصيص القالب",
+      "overrideDeleted": "تم إزالة تخصيص القالب — يُستخدم الافتراضي",
+      "preview": "معاينة",
+      "previewTitle": "معاينة القالب",
+      "editor": {
+        "title": "تفاصيل القالب",
+        "editTitle": "تعديل تخصيص القالب",
+        "subjectTemplate": "الموضوع",
+        "bodyTemplate": "المحتوى",
+        "systemDefault": "الافتراضي للنظام",
+        "yourOverride": "تخصيصك",
+        "subjectPlaceholder": "سطر موضوع البريد مع {{متغيرات}}",
+        "bodyPlaceholder": "محتوى الرسالة مع {{متغيرات}} و{{#شروط}} و{{#حلقات}}"
+      }
+    },
+    "triggerRules": {
+      "title": "قواعد التشغيل",
+      "subtitle": "أتمتة الرسائل بناءً على أحداث النظام",
+      "addRule": "إنشاء قاعدة",
+      "noRules": "لا توجد قواعد تشغيل مُعدّة",
+      "noRulesDescription": "قم بإعداد القواعد لإرسال الرسائل تلقائياً عند وقوع أحداث.",
+      "created": "تم إنشاء قاعدة التشغيل",
+      "updated": "تم تحديث قاعدة التشغيل",
+      "deleted": "تم حذف قاعدة التشغيل",
+      "toggled": "تم تحديث حالة قاعدة التشغيل",
+      "fields": {
+        "name": "الاسم",
+        "event": "الحدث",
+        "template": "القالب",
+        "recipientMode": "المستلم",
+        "channelSequence": "تسلسل القنوات",
+        "delaySeconds": "التأخير (ثوانٍ)",
+        "status": "الحالة"
+      },
+      "recipientModes": {
+        "event_user": "مستخدم الحدث",
+        "role": "الدور",
+        "specific": "مستخدم محدد"
+      },
+      "form": {
+        "title": "إنشاء قاعدة تشغيل",
+        "editTitle": "تعديل قاعدة التشغيل",
+        "selectEvent": "اختر الحدث",
+        "selectTemplate": "اختر القالب",
+        "selectChannels": "اختر القنوات (بترتيب الاحتياطي)",
+        "namePlaceholder": "مثال: بريد ترحيب عند التسجيل"
+      },
+      "confirmDelete": "هل أنت متأكد من حذف قاعدة التشغيل هذه؟"
+    },
+    "integrations": {
+      "title": "التكاملات",
+      "subtitle": "ربط منصات المراسلة الجماعية للإشعارات التلقائية",
+      "addIntegration": "إضافة تكامل",
+      "noIntegrations": "لا توجد تكاملات مُعدّة",
+      "noIntegrationsDescription": "قم بربط Slack أو Telegram أو Discord أو Teams لتلقي إشعارات الأحداث.",
+      "created": "تم إنشاء التكامل",
+      "updated": "تم تحديث التكامل",
+      "deleted": "تم حذف التكامل",
+      "testSuccess": "نجح اختبار التكامل",
+      "testFailed": "فشل اختبار التكامل",
+      "testButton": "اختبار",
+      "types": {
+        "Slack": "سلاك",
+        "Telegram": "تيليجرام",
+        "Discord": "ديسكورد",
+        "MicrosoftTeams": "مايكروسوفت تيمز"
+      },
+      "setup": {
+        "title": "إعداد التكامل",
+        "editTitle": "تعديل التكامل",
+        "selectType": "اختر المنصة",
+        "configureCredentials": "إعداد الاتصال"
+      },
+      "confirmDelete": "هل أنت متأكد من حذف هذا التكامل؟"
+    },
+    "preferences": {
+      "title": "تفضيلات الإشعارات",
+      "subtitle": "اختر كيف تتلقى الإشعارات لكل فئة",
+      "saved": "تم حفظ تفضيلات الإشعارات",
+      "required": "مطلوب",
+      "requiredTooltip": "تتطلب مؤسستك قناة الإشعار هذه لهذه الفئة"
+    },
+    "requiredNotifications": {
+      "title": "الإشعارات المطلوبة",
+      "subtitle": "فرض قنوات إشعار إلزامية لفئات محددة",
+      "added": "تمت إضافة الإشعار المطلوب",
+      "removed": "تم إزالة الإشعار المطلوب",
+      "addRequired": "إضافة مطلوب",
+      "selectCategory": "اختر الفئة",
+      "selectChannel": "اختر القناة",
+      "confirmRemove": "هل أنت متأكد من إزالة هذا الإشعار المطلوب؟"
+    },
+    "deliveryLog": {
+      "title": "سجل التسليم",
+      "subtitle": "تتبع سجل تسليم الرسائل وحالتها",
+      "noDeliveries": "لم يتم العثور على سجلات تسليم",
+      "noDeliveriesDescription": "ستظهر سجلات التسليم هنا بمجرد إرسال الرسائل.",
+      "resend": "إعادة إرسال",
+      "resendSuccess": "تم وضع الرسالة في قائمة الانتظار لإعادة التسليم",
+      "filters": {
+        "status": "الحالة",
+        "channel": "القناة",
+        "template": "القالب",
+        "dateRange": "نطاق التاريخ",
+        "allStatuses": "جميع الحالات",
+        "allChannels": "جميع القنوات"
+      },
+      "columns": {
+        "timestamp": "الوقت",
+        "recipient": "المستلم",
+        "template": "القالب",
+        "channel": "القناة",
+        "status": "الحالة",
+        "duration": "المدة",
+        "attempts": "المحاولات",
+        "actions": "الإجراءات"
+      },
+      "detail": {
+        "title": "تفاصيل التسليم",
+        "attempts": "محاولات التسليم",
+        "attemptNumber": "المحاولة #{{number}}",
+        "providerResponse": "استجابة المزود",
+        "noAttempts": "لم يتم تسجيل محاولات تسليم"
+      },
+      "statusLabels": {
+        "Pending": "قيد الانتظار",
+        "Queued": "في قائمة الانتظار",
+        "Sending": "جارٍ الإرسال",
+        "Delivered": "تم التسليم",
+        "Failed": "فشل",
+        "Bounced": "مرتجع"
+      }
+    },
+    "dashboard": {
+      "title": "الاتصالات",
+      "messagesSentToday": "اليوم",
+      "messagesSentWeek": "هذا الأسبوع",
+      "messagesSentMonth": "هذا الشهر",
+      "deliveryRate": "معدل التسليم",
+      "failedDeliveries": "فشل",
+      "viewLog": "عرض السجل"
+    }
   }
 }

@@ -140,6 +140,48 @@ export const queryKeys = {
     details: () => ['products', 'detail'] as const,
     detail: (id: string) => ['products', 'detail', id] as const,
   },
+  communication: {
+    all: ['communication'] as const,
+    channelConfigs: {
+      all: ['communication', 'channel-configs'] as const,
+      list: () => ['communication', 'channel-configs', 'list'] as const,
+      detail: (id: string) => ['communication', 'channel-configs', 'detail', id] as const,
+    },
+    providers: () => ['communication', 'providers'] as const,
+    templates: {
+      all: ['communication', 'templates'] as const,
+      list: (category?: string) => ['communication', 'templates', 'list', category] as const,
+      detail: (id: string) => ['communication', 'templates', 'detail', id] as const,
+      categories: () => ['communication', 'templates', 'categories'] as const,
+    },
+    triggerRules: {
+      all: ['communication', 'trigger-rules'] as const,
+      list: () => ['communication', 'trigger-rules', 'list'] as const,
+      detail: (id: string) => ['communication', 'trigger-rules', 'detail', id] as const,
+    },
+    events: {
+      list: () => ['communication', 'events', 'list'] as const,
+    },
+    integrationConfigs: {
+      all: ['communication', 'integration-configs'] as const,
+      list: () => ['communication', 'integration-configs', 'list'] as const,
+      detail: (id: string) => ['communication', 'integration-configs', 'detail', id] as const,
+    },
+    preferences: {
+      all: ['communication', 'preferences'] as const,
+      list: () => ['communication', 'preferences', 'list'] as const,
+    },
+    required: {
+      all: ['communication', 'required'] as const,
+      list: () => ['communication', 'required', 'list'] as const,
+    },
+    deliveryLogs: {
+      all: ['communication', 'delivery-logs'] as const,
+      list: (params?: Record<string, unknown>) => ['communication', 'delivery-logs', 'list', params] as const,
+      detail: (id: string) => ['communication', 'delivery-logs', 'detail', id] as const,
+    },
+    dashboard: () => ['communication', 'dashboard'] as const,
+  },
   importExport: {
     all: ['importExport'] as const,
     types: () => ['importExport', 'types'] as const,

@@ -74,6 +74,9 @@ public static class DependencyInjection
         services.TryAddScoped<IBillingProvider, NullBillingProvider>();
         services.TryAddScoped<IWebhookPublisher, NullWebhookPublisher>();
         services.TryAddSingleton<IImportExportRegistry, NullImportExportRegistry>();
+        services.TryAddScoped<IMessageDispatcher, NullMessageDispatcher>();
+        services.TryAddScoped<ICommunicationEventNotifier, NullCommunicationEventNotifier>();
+        services.TryAddScoped<ITemplateRegistrar, NullTemplateRegistrar>();
 
         // Core usage metric calculators — one per core-owned metric. Modules
         // that own their own counted entities (e.g. Webhooks) register
