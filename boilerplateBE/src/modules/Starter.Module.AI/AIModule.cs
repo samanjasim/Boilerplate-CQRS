@@ -65,6 +65,7 @@ public sealed class AIModule : IModule
         services.AddSingleton<IDocumentTextExtractor, Infrastructure.Ingestion.Extractors.DocxTextExtractor>();
         services.AddScoped<IDocumentTextExtractor, Infrastructure.Ingestion.Extractors.PdfTextExtractor>();
         services.AddScoped<IDocumentTextExtractorRegistry, Infrastructure.Ingestion.DocumentTextExtractorRegistry>();
+        services.AddSingleton<IDocumentChunker, Infrastructure.Ingestion.HierarchicalDocumentChunker>();
 
         services.AddSingleton<IAiToolRegistry, AiToolRegistryService>();
         services.AddSingleton<IAiToolDefinition, Infrastructure.Tools.ListMyConversationsAiTool>();

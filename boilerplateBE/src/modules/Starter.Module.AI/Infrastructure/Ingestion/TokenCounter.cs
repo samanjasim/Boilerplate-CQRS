@@ -26,4 +26,21 @@ public sealed class TokenCounter
             yield return _encoding.Decode(slice);
         }
     }
+
+    public IEnumerable<string> SlideWindow(string text, int windowTokens, int stepTokens)
+    {
+        if (windowTokens <= 0) throw new ArgumentOutOfRangeException(nameof(windowTokens));
+        if (stepTokens <= 0) throw new ArgumentOutOfRangeException(nameof(stepTokens));
+        if (string.IsNullOrEmpty(text)) yield break;
+
+        var tokens = _encoding.Encode(text);
+        if (tokens.Count == 0) yield break;
+
+        for (var i = 0; i < tokens.Count; i += stepTokens)
+        {
+            var size = Math.Min(windowTokens, tokens.Count - i);
+            yield return _encoding.Decode(tokens.GetRange(i, size));
+            if (i + size >= tokens.Count) yield break;
+        }
+    }
 }
