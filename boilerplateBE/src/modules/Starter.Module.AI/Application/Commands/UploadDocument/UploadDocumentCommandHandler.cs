@@ -22,15 +22,16 @@ internal sealed class UploadDocumentCommandHandler(
             return Result.Failure<AiDocumentDto>(Domain.Errors.AiErrors.NotAuthenticated);
 
         var file = request.File;
-        var key = $"ai/documents/{Guid.NewGuid():N}/{file.FileName}";
+        var safeName = SanitizeFileName(file.FileName);
+        var key = $"ai/documents/{Guid.NewGuid():N}/{safeName}";
 
         await using (var s = file.OpenReadStream())
             await storage.UploadAsync(s, key, file.ContentType, ct);
 
         var doc = AiDocument.Create(
             tenantId: currentUser.TenantId,
-            name: string.IsNullOrWhiteSpace(request.Name) ? file.FileName : request.Name!,
-            fileName: file.FileName,
+            name: string.IsNullOrWhiteSpace(request.Name) ? safeName : request.Name!,
+            fileName: safeName,
             fileRef: key,
             contentType: file.ContentType,
             sizeBytes: file.Length,
@@ -42,5 +43,15 @@ internal sealed class UploadDocumentCommandHandler(
         await bus.Publish(new ProcessDocumentMessage(doc.Id), ct);
 
         return Result.Success(doc.ToDto());
+    }
+
+    private static string SanitizeFileName(string raw)
+    {
+        var withoutPath = Path.GetFileName(raw.Replace('\\', '/'));
+        var sanitized = new string(withoutPath
+            .Where(c => char.IsLetterOrDigit(c) || c is '.' or '_' or '-' or ' ')
+            .ToArray())
+            .Trim();
+        return string.IsNullOrEmpty(sanitized) ? "upload" : sanitized;
     }
 }

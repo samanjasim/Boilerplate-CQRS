@@ -20,12 +20,14 @@ public sealed class UploadDocumentCommandValidator : AbstractValidator<UploadDoc
     {
         var maxBytes = ragOptions.Value.MaxUploadBytes;
 
-        RuleFor(c => c.File).NotNull();
-        RuleFor(c => c.File.Length).LessThanOrEqualTo(maxBytes)
-            .WithMessage($"File exceeds the {maxBytes / (1024 * 1024)} MB upload limit.");
-        RuleFor(c => c.File.ContentType)
-            .Must(t => AllowedContentTypes.Contains(t ?? ""))
-            .WithMessage("Content type is not supported for knowledge base ingestion.");
+        RuleFor(c => c.File)
+            .Cascade(CascadeMode.Stop)
+            .NotNull()
+            .Must(f => f.Length <= maxBytes)
+                .WithMessage($"File exceeds the {maxBytes / (1024 * 1024)} MB upload limit.")
+            .Must(f => AllowedContentTypes.Contains(f.ContentType ?? ""))
+                .WithMessage("Content type is not supported for knowledge base ingestion.");
+
         RuleFor(c => c.Name)
             .MaximumLength(200)
             .When(c => !string.IsNullOrWhiteSpace(c.Name));
