@@ -16,6 +16,15 @@ public static class AiErrors
     public static Error AgentStepLimitReached(int limit) => Error.Validation("Ai.AgentStepLimitReached", $"Agent reached the maximum step limit of {limit}.");
     public static Error AgentTaskAlreadyCompleted => Error.Validation("Ai.AgentTaskAlreadyCompleted", "Agent task has already completed.");
     public static Error DocumentProcessingFailed(string reason) => Error.Failure("Ai.DocumentProcessingFailed", $"Document processing failed: {reason}");
+    public static Error DocumentUnsupportedContentType(string contentType) => Error.Validation(
+        "Ai.DocumentUnsupportedContentType",
+        $"Content type '{contentType}' is not supported for knowledge base ingestion.");
+    public static Error DocumentTooLarge(long maxBytes) => Error.Validation(
+        "Ai.DocumentTooLarge",
+        $"Document exceeds the {maxBytes / (1024 * 1024)} MB upload limit.");
+    public static Error DocumentAlreadyProcessing => Error.Conflict(
+        "Ai.DocumentAlreadyProcessing",
+        "Document is currently being processed. Wait for it to finish before reprocessing.");
     public static Error AssistantNameAlreadyExists => Error.Conflict("Ai.AssistantNameAlreadyExists", "An assistant with this name already exists.");
     public static Error AssistantInUse => Error.Conflict(
         "Ai.AssistantInUse",
