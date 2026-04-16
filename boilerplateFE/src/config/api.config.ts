@@ -133,6 +133,48 @@ export const API_ENDPOINTS = {
     ARCHIVE: (id: string) => `/Products/${id}/archive`,
     IMAGE: (id: string) => `/Products/${id}/image`,
   },
+  COMMUNICATION: {
+    CHANNEL_CONFIGS: {
+      LIST: '/ChannelConfigs',
+      DETAIL: (id: string) => `/ChannelConfigs/${id}`,
+      TEST: (id: string) => `/ChannelConfigs/${id}/test`,
+      SET_DEFAULT: (id: string) => `/ChannelConfigs/${id}/set-default`,
+      PROVIDERS: '/ChannelConfigs/providers',
+    },
+    MESSAGE_TEMPLATES: {
+      LIST: '/MessageTemplates',
+      DETAIL: (id: string) => `/MessageTemplates/${id}`,
+      CATEGORIES: '/MessageTemplates/categories',
+      OVERRIDE: (id: string) => `/MessageTemplates/${id}/override`,
+      PREVIEW: (id: string) => `/MessageTemplates/${id}/preview`,
+    },
+    TRIGGER_RULES: {
+      LIST: '/TriggerRules',
+      DETAIL: (id: string) => `/TriggerRules/${id}`,
+      TOGGLE: (id: string) => `/TriggerRules/${id}/toggle`,
+    },
+    EVENT_REGISTRATIONS: {
+      LIST: '/EventRegistrations',
+    },
+    INTEGRATION_CONFIGS: {
+      LIST: '/IntegrationConfigs',
+      DETAIL: (id: string) => `/IntegrationConfigs/${id}`,
+      TEST: (id: string) => `/IntegrationConfigs/${id}/test`,
+    },
+    NOTIFICATION_PREFERENCES: {
+      LIST: '/NotificationPreferences',
+    },
+    REQUIRED_NOTIFICATIONS: {
+      LIST: '/RequiredNotifications',
+      DETAIL: (id: string) => `/RequiredNotifications/${id}`,
+    },
+    DELIVERY_LOGS: {
+      LIST: '/DeliveryLogs',
+      DETAIL: (id: string) => `/DeliveryLogs/${id}`,
+      RESEND: (id: string) => `/DeliveryLogs/${id}/resend`,
+    },
+    DASHBOARD: '/CommunicationDashboard',
+  },
   IMPORT_EXPORT: {
     TYPES: '/ImportExport/types',
     TEMPLATE: (type: string) => `/ImportExport/${type}/template`,

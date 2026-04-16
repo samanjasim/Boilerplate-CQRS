@@ -86,6 +86,15 @@ export const ROUTES = {
   // Import / Export
   IMPORT_EXPORT: '/import-export',
 
+  // Communication
+  COMMUNICATION: {
+    CHANNELS: '/communication/channels',
+    TEMPLATES: '/communication/templates',
+    TRIGGER_RULES: '/communication/trigger-rules',
+    INTEGRATIONS: '/communication/integrations',
+    DELIVERY_LOG: '/communication/delivery-log',
+  },
+
   // Products
   PRODUCTS: {
     LIST: '/products',

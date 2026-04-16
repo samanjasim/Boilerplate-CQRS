@@ -46,7 +46,6 @@ export function InlinePlanSelector({ currentPlanId, tenantId, tenantName }: Inli
 
   return (
     <>
-      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div onClick={(e) => e.stopPropagation()}>
         <Select value={currentPlanId} onValueChange={handleValueChange}>
           <SelectTrigger className="h-8 w-[140px] text-xs">
@@ -64,7 +63,6 @@ export function InlinePlanSelector({ currentPlanId, tenantId, tenantName }: Inli
         </Select>
       </div>
 
-      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div onClick={(e) => e.stopPropagation()}>
         <ConfirmDialog
           isOpen={!!pendingPlanId}

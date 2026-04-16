@@ -216,6 +216,7 @@ function ProductDetailForm({ product }: { product: Product }) {
 
               <div className="space-y-2">
                 <Label htmlFor="currency">{t('products.currency', 'Currency')}</Label>
+                {/* eslint-disable-next-line react-hooks/incompatible-library */}
                 <Select value={watch('currency')} onValueChange={(v) => setValue('currency', v, { shouldValidate: true, shouldDirty: true })} disabled={!canEdit}>
                   <SelectTrigger>
                     <SelectValue placeholder={t('products.selectCurrency', 'Select currency')} />
