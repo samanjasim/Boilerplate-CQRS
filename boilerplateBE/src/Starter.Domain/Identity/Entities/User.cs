@@ -68,7 +68,7 @@ public sealed class User : AggregateRoot, ITenantEntity
             passwordHash,
             tenantId);
 
-        user.RaiseDomainEvent(new UserCreatedEvent(user.Id, user.Email.Value, user.FullName.GetFullName()));
+        user.RaiseDomainEvent(new UserCreatedEvent(user.Id, user.Email.Value, user.FullName.GetFullName(), tenantId));
 
         return user;
     }

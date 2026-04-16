@@ -3,6 +3,7 @@ import { webhooksModule } from '@/features/webhooks';
 import { importExportModule } from '@/features/import-export';
 import { productsModule } from '@/features/products';
 import { commentsActivityModule } from '@/features/comments-activity';
+import { communicationModule } from '@/features/communication';
 
 /**
  * Optional module registry. To remove a module from a build, comment out
@@ -18,6 +19,7 @@ export const activeModules = {
   importExport: true,
   products: true,
   commentsActivity: true,
+  communication: true,
 } as const;
 
 export type ModuleName = keyof typeof activeModules;
@@ -43,6 +45,7 @@ const enabledModules: AppModule[] = [
   importExportModule,
   productsModule,
   commentsActivityModule,
+  communicationModule,
 ];
 
 /**

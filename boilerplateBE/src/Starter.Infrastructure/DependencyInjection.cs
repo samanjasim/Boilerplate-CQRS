@@ -76,6 +76,9 @@ public static class DependencyInjection
         services.TryAddScoped<IBillingProvider, NullBillingProvider>();
         services.TryAddScoped<IWebhookPublisher, NullWebhookPublisher>();
         services.TryAddSingleton<IImportExportRegistry, NullImportExportRegistry>();
+        services.TryAddScoped<IMessageDispatcher, NullMessageDispatcher>();
+        services.TryAddScoped<ICommunicationEventNotifier, NullCommunicationEventNotifier>();
+        services.TryAddScoped<ITemplateRegistrar, NullTemplateRegistrar>();
 
         // Comments & Activity — Null Object fallbacks
         services.TryAddSingleton<ICommentableEntityRegistry, NullCommentableEntityRegistry>();

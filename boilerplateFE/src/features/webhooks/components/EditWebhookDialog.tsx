@@ -35,6 +35,7 @@ export function EditWebhookDialog({ endpoint, onOpenChange }: EditWebhookDialogP
   // Sync form when endpoint changes
   useEffect(() => {
     if (endpoint) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm({
         id: endpoint.id,
         url: endpoint.url,

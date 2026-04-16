@@ -91,6 +91,16 @@ export const PERMISSIONS = {
     ForceExport: 'System.ForceExport',
     ImportData: 'System.ImportData',
   },
+  Communication: {
+    View: 'Communication.View',
+    ManageChannels: 'Communication.ManageChannels',
+    ManageIntegrations: 'Communication.ManageIntegrations',
+    ManageTemplates: 'Communication.ManageTemplates',
+    ManageTriggerRules: 'Communication.ManageTriggerRules',
+    ViewDeliveryLog: 'Communication.ViewDeliveryLog',
+    Resend: 'Communication.Resend',
+    ManageQuotas: 'Communication.ManageQuotas',
+  },
   Webhooks: {
     View: 'Webhooks.View',
     Create: 'Webhooks.Create',

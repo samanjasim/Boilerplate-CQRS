@@ -38,6 +38,10 @@ public static class SwaggerConfiguration
                 [new OpenApiSecuritySchemeReference("Bearer", document)] = new List<string>()
             });
 
+            // Use full type names as schema IDs to avoid conflicts between
+            // core and module types with the same short name
+            options.CustomSchemaIds(type => type.FullName?.Replace("+", "."));
+
             // Include XML comments from controllers
             var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
             var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);

@@ -18,6 +18,11 @@ import {
   Webhook,
   ArrowLeftRight,
   Package,
+  MessageSquare,
+  FileText,
+  Zap,
+  Link2,
+  ScrollText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore, useAuthStore, selectSidebarCollapsed, selectUser } from '@/stores';
@@ -69,6 +74,17 @@ export function Sidebar() {
       : []),
     ...(activeModules.products && hasPermission(PERMISSIONS.Products.View)
       ? [{ label: t('nav.products', 'Products'), icon: Package, path: ROUTES.PRODUCTS.LIST }]
+      : []),
+    ...(activeModules.communication && hasPermission(PERMISSIONS.Communication.View) && user?.tenantId
+      ? [
+          { label: t('nav.channels'), icon: MessageSquare, path: ROUTES.COMMUNICATION.CHANNELS },
+          { label: t('nav.templates'), icon: FileText, path: ROUTES.COMMUNICATION.TEMPLATES },
+          { label: t('nav.triggerRules'), icon: Zap, path: ROUTES.COMMUNICATION.TRIGGER_RULES },
+          { label: t('nav.integrations'), icon: Link2, path: ROUTES.COMMUNICATION.INTEGRATIONS },
+        ]
+      : []),
+    ...(activeModules.communication && hasPermission(PERMISSIONS.Communication.ViewDeliveryLog) && user?.tenantId
+      ? [{ label: t('nav.deliveryLog'), icon: ScrollText, path: ROUTES.COMMUNICATION.DELIVERY_LOG }]
       : []),
     ...(activeModules.webhooks && hasPermission(PERMISSIONS.Webhooks.View) && user?.tenantId && webhooksFlag.isEnabled
       ? [{ label: t('nav.webhooks'), icon: Webhook, path: ROUTES.WEBHOOKS }]

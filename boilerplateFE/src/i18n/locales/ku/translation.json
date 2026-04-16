@@ -132,6 +132,13 @@
     "billingPlans": "پلانەکانی بەشداریکردن",
     "subscriptions": "بەشداریکردنەکان",
     "webhooksAdmin": "وێبهووکەکان",
+    "organization": "Organization",
+    "communication": "Communication",
+    "channels": "Channels",
+    "templates": "Templates",
+    "triggerRules": "Trigger Rules",
+    "integrations": "Integrations",
+    "deliveryLog": "Delivery Log",
     "collapse": "کچکردن"
   },
   "header": {
@@ -874,5 +881,212 @@
     "processing": "پرۆسێسکردن",
     "completed": "تەواوبوو",
     "partialSuccess": "سەرکەوتنی بەشەکی"
+  },
+  "communication": {
+    "title": "Communication",
+    "channels": {
+      "title": "Channels",
+      "subtitle": "Configure notification channel providers for your organization",
+      "addChannel": "Add Channel",
+      "noChannels": "No channels configured",
+      "noChannelsDescription": "Set up your first notification channel to start sending messages.",
+      "created": "Channel configuration created",
+      "updated": "Channel configuration updated",
+      "deleted": "Channel configuration deleted",
+      "testButton": "Test",
+      "testSuccess": "Connection test passed",
+      "testFailed": "Connection test failed",
+      "setDefault": "Default channel updated",
+      "channelNames": {
+        "Email": "Email",
+        "Sms": "SMS",
+        "Push": "Push Notifications",
+        "WhatsApp": "WhatsApp",
+        "InApp": "In-App"
+      },
+      "status": {
+        "Active": "Active",
+        "Inactive": "Inactive",
+        "Error": "Error"
+      },
+      "fields": {
+        "displayName": "Display Name",
+        "channel": "Channel",
+        "provider": "Provider",
+        "credentials": "Credentials",
+        "isDefault": "Default Channel",
+        "lastTested": "Last Tested"
+      },
+      "setup": {
+        "title": "Setup Channel",
+        "editTitle": "Edit Channel",
+        "selectChannel": "Select Channel Type",
+        "selectProvider": "Select Provider",
+        "configureCredentials": "Configure Credentials",
+        "step": "Step {{current}} of {{total}}",
+        "displayNamePlaceholder": "e.g. Production SMTP"
+      },
+      "confirmDelete": "Are you sure you want to delete this channel configuration? This action cannot be undone."
+    },
+    "templates": {
+      "title": "Templates",
+      "subtitle": "Manage message templates and tenant overrides",
+      "noTemplates": "No templates found",
+      "noTemplatesDescription": "System templates will appear here after module initialization.",
+      "category": "Category",
+      "allCategories": "All Categories",
+      "systemTemplate": "System",
+      "customized": "Customized",
+      "moduleSource": "Module",
+      "defaultChannel": "Default Channel",
+      "availableChannels": "Available Channels",
+      "variables": "Variables",
+      "variableReference": "Variable Reference",
+      "customize": "Customize",
+      "resetToDefault": "Reset to Default",
+      "resetConfirm": "This will delete your custom override and revert to the system default template. Continue?",
+      "overrideCreated": "Template override created",
+      "overrideUpdated": "Template override updated",
+      "overrideDeleted": "Template override removed — using system default",
+      "preview": "Preview",
+      "previewTitle": "Template Preview",
+      "editor": {
+        "title": "Template Details",
+        "editTitle": "Edit Template Override",
+        "subjectTemplate": "Subject",
+        "bodyTemplate": "Body",
+        "systemDefault": "System Default",
+        "yourOverride": "Your Override",
+        "subjectPlaceholder": "Email subject line with {{variables}}",
+        "bodyPlaceholder": "Message body with {{variables}}, {{#if conditions}}, and {{#each loops}}"
+      }
+    },
+    "triggerRules": {
+      "title": "Trigger Rules",
+      "subtitle": "Automate messages based on system events",
+      "addRule": "Create Rule",
+      "noRules": "No trigger rules configured",
+      "noRulesDescription": "Set up rules to automatically send messages when events occur.",
+      "created": "Trigger rule created",
+      "updated": "Trigger rule updated",
+      "deleted": "Trigger rule deleted",
+      "toggled": "Trigger rule status updated",
+      "fields": {
+        "name": "Name",
+        "event": "Event",
+        "template": "Template",
+        "recipientMode": "Recipient",
+        "channelSequence": "Channel Sequence",
+        "delaySeconds": "Delay (seconds)",
+        "status": "Status"
+      },
+      "recipientModes": {
+        "event_user": "Event User",
+        "role": "Role",
+        "specific": "Specific User"
+      },
+      "form": {
+        "title": "Create Trigger Rule",
+        "editTitle": "Edit Trigger Rule",
+        "selectEvent": "Select Event",
+        "selectTemplate": "Select Template",
+        "selectChannels": "Select Channels (in fallback order)",
+        "namePlaceholder": "e.g. Welcome Email on Registration"
+      },
+      "confirmDelete": "Are you sure you want to delete this trigger rule?"
+    },
+    "integrations": {
+      "title": "Integrations",
+      "subtitle": "Connect team messaging platforms for automated notifications",
+      "addIntegration": "Add Integration",
+      "noIntegrations": "No integrations configured",
+      "noIntegrationsDescription": "Connect Slack, Telegram, Discord, or Teams to receive event notifications.",
+      "created": "Integration created",
+      "updated": "Integration updated",
+      "deleted": "Integration deleted",
+      "testSuccess": "Integration test passed",
+      "testFailed": "Integration test failed",
+      "testButton": "Test",
+      "types": {
+        "Slack": "Slack",
+        "Telegram": "Telegram",
+        "Discord": "Discord",
+        "MicrosoftTeams": "Microsoft Teams"
+      },
+      "setup": {
+        "title": "Setup Integration",
+        "editTitle": "Edit Integration",
+        "selectType": "Select Platform",
+        "configureCredentials": "Configure Connection"
+      },
+      "confirmDelete": "Are you sure you want to delete this integration?"
+    },
+    "preferences": {
+      "title": "Notification Preferences",
+      "subtitle": "Choose how you receive notifications for each category",
+      "saved": "Notification preferences saved",
+      "required": "Required",
+      "requiredTooltip": "Your organization requires this notification channel for this category"
+    },
+    "requiredNotifications": {
+      "title": "Required Notifications",
+      "subtitle": "Enforce mandatory notification channels for specific categories",
+      "added": "Required notification added",
+      "removed": "Required notification removed",
+      "addRequired": "Add Required",
+      "selectCategory": "Select Category",
+      "selectChannel": "Select Channel",
+      "confirmRemove": "Are you sure you want to remove this required notification?"
+    },
+    "deliveryLog": {
+      "title": "Delivery Log",
+      "subtitle": "Track message delivery history and status",
+      "noDeliveries": "No delivery records found",
+      "noDeliveriesDescription": "Delivery logs will appear here once messages are sent.",
+      "resend": "Resend",
+      "resendSuccess": "Message re-queued for delivery",
+      "filters": {
+        "status": "Status",
+        "channel": "Channel",
+        "template": "Template",
+        "dateRange": "Date Range",
+        "allStatuses": "All Statuses",
+        "allChannels": "All Channels"
+      },
+      "columns": {
+        "timestamp": "Timestamp",
+        "recipient": "Recipient",
+        "template": "Template",
+        "channel": "Channel",
+        "status": "Status",
+        "duration": "Duration",
+        "attempts": "Attempts",
+        "actions": "Actions"
+      },
+      "detail": {
+        "title": "Delivery Details",
+        "attempts": "Delivery Attempts",
+        "attemptNumber": "Attempt #{{number}}",
+        "providerResponse": "Provider Response",
+        "noAttempts": "No delivery attempts recorded"
+      },
+      "statusLabels": {
+        "Pending": "Pending",
+        "Queued": "Queued",
+        "Sending": "Sending",
+        "Delivered": "Delivered",
+        "Failed": "Failed",
+        "Bounced": "Bounced"
+      }
+    },
+    "dashboard": {
+      "title": "Communication",
+      "messagesSentToday": "Today",
+      "messagesSentWeek": "This Week",
+      "messagesSentMonth": "This Month",
+      "deliveryRate": "Delivery Rate",
+      "failedDeliveries": "Failed",
+      "viewLog": "View Log"
+    }
   }
 }

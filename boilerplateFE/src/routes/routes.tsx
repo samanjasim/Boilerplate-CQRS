@@ -39,6 +39,7 @@ const ApiKeysPage = lazy(() => import('@/features/api-keys/pages/ApiKeysPage'));
 const FeatureFlagsPage = lazy(() => import('@/features/feature-flags/pages/FeatureFlagsPage'));
 
 // Module pages (conditionally loaded based on modules.config.ts)
+// eslint-disable-next-line react-refresh/only-export-components
 const NullPage = () => null;
 const WebhooksPage = activeModules.webhooks ? lazy(() => import('@/features/webhooks/pages/WebhooksPage')) : NullPage;
 const WebhookAdminPage = activeModules.webhooks ? lazy(() => import('@/features/webhooks/pages/WebhookAdminPage')) : NullPage;
@@ -52,6 +53,11 @@ const ImportExportPage = activeModules.importExport ? lazy(() => import('@/featu
 const ProductsListPage = activeModules.products ? lazy(() => import('@/features/products/pages/ProductsListPage')) : NullPage;
 const ProductCreatePage = activeModules.products ? lazy(() => import('@/features/products/pages/ProductCreatePage')) : NullPage;
 const ProductDetailPage = activeModules.products ? lazy(() => import('@/features/products/pages/ProductDetailPage')) : NullPage;
+const ChannelsPage = activeModules.communication ? lazy(() => import('@/features/communication/pages/ChannelsPage')) : NullPage;
+const TemplatesPage = activeModules.communication ? lazy(() => import('@/features/communication/pages/TemplatesPage')) : NullPage;
+const TriggerRulesPage = activeModules.communication ? lazy(() => import('@/features/communication/pages/TriggerRulesPage')) : NullPage;
+const IntegrationsPage = activeModules.communication ? lazy(() => import('@/features/communication/pages/IntegrationsPage')) : NullPage;
+const DeliveryLogPage = activeModules.communication ? lazy(() => import('@/features/communication/pages/DeliveryLogPage')) : NullPage;
 
 export const routes: RouteObject[] = [
   // Public landing page (always accessible)
@@ -243,6 +249,25 @@ export const routes: RouteObject[] = [
               element: <PermissionGuard permission={PERMISSIONS.Products.Create} />,
               children: [
                 { path: ROUTES.PRODUCTS.CREATE, element: <ProductCreatePage /> },
+              ],
+            },
+          ] : []),
+
+          // Communication
+          ...(activeModules.communication ? [
+            {
+              element: <PermissionGuard permission={PERMISSIONS.Communication.View} />,
+              children: [
+                { path: ROUTES.COMMUNICATION.CHANNELS, element: <ChannelsPage /> },
+                { path: ROUTES.COMMUNICATION.TEMPLATES, element: <TemplatesPage /> },
+                { path: ROUTES.COMMUNICATION.TRIGGER_RULES, element: <TriggerRulesPage /> },
+                { path: ROUTES.COMMUNICATION.INTEGRATIONS, element: <IntegrationsPage /> },
+              ],
+            },
+            {
+              element: <PermissionGuard permission={PERMISSIONS.Communication.ViewDeliveryLog} />,
+              children: [
+                { path: ROUTES.COMMUNICATION.DELIVERY_LOG, element: <DeliveryLogPage /> },
               ],
             },
           ] : []),
