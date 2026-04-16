@@ -11,6 +11,7 @@ namespace Starter.Module.AI.Application.Commands.UploadDocument;
 
 internal sealed class UploadDocumentCommandHandler(
     AiDbContext db,
+    IApplicationDbContext appDb,
     IStorageService storage,
     ICurrentUserService currentUser,
     IPublishEndpoint bus)
@@ -41,6 +42,7 @@ internal sealed class UploadDocumentCommandHandler(
         await db.SaveChangesAsync(ct);
 
         await bus.Publish(new ProcessDocumentMessage(doc.Id), ct);
+        await appDb.SaveChangesAsync(ct);
 
         return Result.Success(doc.ToDto());
     }

@@ -1,6 +1,7 @@
 using MassTransit;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Messages;
 using Starter.Module.AI.Application.Services.Ingestion;
 using Starter.Module.AI.Domain.Enums;
@@ -12,6 +13,7 @@ namespace Starter.Module.AI.Application.Commands.ReprocessDocument;
 
 internal sealed class ReprocessDocumentCommandHandler(
     AiDbContext db,
+    IApplicationDbContext appDb,
     IVectorStore vectors,
     IPublishEndpoint bus) : IRequestHandler<ReprocessDocumentCommand, Result>
 {
@@ -33,6 +35,7 @@ internal sealed class ReprocessDocumentCommandHandler(
         await db.SaveChangesAsync(ct);
 
         await bus.Publish(new ProcessDocumentMessage(doc.Id), ct);
+        await appDb.SaveChangesAsync(ct);
 
         return Result.Success();
     }
