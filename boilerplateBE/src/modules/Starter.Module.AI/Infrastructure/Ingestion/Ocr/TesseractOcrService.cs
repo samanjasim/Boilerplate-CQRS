@@ -4,25 +4,21 @@ using Tesseract;
 
 namespace Starter.Module.AI.Infrastructure.Ingestion.Ocr;
 
-internal sealed class TesseractOcrService : IOcrService
+internal sealed class TesseractOcrService(IOptions<AiOcrSettings> options) : IOcrService
 {
-    private readonly string _tessdataPath;
-    private readonly string _language;
-
-    public TesseractOcrService(IOptions<AiOcrSettings> options)
-    {
-        _tessdataPath = options.Value.TessdataPath ?? ResolveDefaultTessdataPath();
-        _language = options.Value.Language;
-    }
+    private readonly string? _configuredTessdataPath = options.Value.TessdataPath;
+    private readonly string _language = options.Value.Language;
 
     public Task<string> ExtractAsync(Stream imageStream, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
 
+        var tessdataPath = _configuredTessdataPath ?? ResolveDefaultTessdataPath();
+
         using var ms = new MemoryStream();
         imageStream.CopyTo(ms);
 
-        using var engine = new TesseractEngine(_tessdataPath, _language, EngineMode.Default);
+        using var engine = new TesseractEngine(tessdataPath, _language, EngineMode.Default);
         using var img = Pix.LoadFromMemory(ms.ToArray());
         using var page = engine.Process(img);
         return Task.FromResult(page.GetText() ?? string.Empty);
