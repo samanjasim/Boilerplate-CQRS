@@ -69,7 +69,8 @@ public sealed class Comment : AggregateRoot, ITenantEntity
             tenantId,
             authorId,
             mentionsJson,
-            parentCommentId));
+            parentCommentId,
+            comment.Body));
 
         return comment;
     }

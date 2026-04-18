@@ -9,4 +9,5 @@ public sealed record CommentCreatedEvent(
     Guid? TenantId,
     Guid AuthorId,
     string? MentionsJson,
-    Guid? ParentCommentId) : DomainEventBase;
+    Guid? ParentCommentId,
+    string? Body = null) : DomainEventBase;

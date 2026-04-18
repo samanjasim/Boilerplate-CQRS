@@ -25,7 +25,7 @@ internal sealed class EmailMentionedUsersOnCommentCreatedHandler(
     : INotificationHandler<CommentCreatedEvent>
 {
     private const string TemplateName = "notification.comment-mention";
-    private const string PreferenceType = "CommentMentioned";
+    private const string PreferenceType = WellKnownNotificationTypes.CommentMentioned;
 
     public async Task Handle(CommentCreatedEvent notification, CancellationToken cancellationToken)
     {
@@ -72,12 +72,18 @@ internal sealed class EmailMentionedUsersOnCommentCreatedHandler(
                     continue;
                 }
 
+                var bodyPreview = string.IsNullOrWhiteSpace(notification.Body)
+                    ? ""
+                    : notification.Body.Length > 200
+                        ? string.Concat(notification.Body.AsSpan(0, 200), "…")
+                        : notification.Body;
+
                 var variables = new Dictionary<string, object>
                 {
                     ["mentionerName"] = mentionerName,
                     ["entityType"] = notification.EntityType,
                     ["entityId"] = notification.EntityId.ToString(),
-                    ["commentBody"] = "",
+                    ["commentBody"] = bodyPreview,
                     ["appUrl"] = appUrl,
                 };
 
