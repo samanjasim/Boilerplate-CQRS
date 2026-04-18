@@ -24,7 +24,7 @@ internal sealed class EmailMentionedUsersOnCommentCreatedHandler(
     ILogger<EmailMentionedUsersOnCommentCreatedHandler> logger)
     : INotificationHandler<CommentCreatedEvent>
 {
-    private const string TemplateName = "notification.comment-mention";
+    private const string TemplateName = "comment.user-mentioned";
     private const string PreferenceType = WellKnownNotificationTypes.CommentMentioned;
 
     public async Task Handle(CommentCreatedEvent notification, CancellationToken cancellationToken)
@@ -59,6 +59,21 @@ internal sealed class EmailMentionedUsersOnCommentCreatedHandler(
 
         var appUrl = configuration.GetValue<string>("AppSettings:BaseUrl") ?? "";
 
+        var bodyPreview = string.IsNullOrWhiteSpace(notification.Body)
+            ? ""
+            : notification.Body.Length > 200
+                ? string.Concat(notification.Body.AsSpan(0, 200), "…")
+                : notification.Body;
+
+        var variables = new Dictionary<string, object>
+        {
+            ["mentionerName"] = mentionerName,
+            ["entityType"] = notification.EntityType,
+            ["entityId"] = notification.EntityId.ToString(),
+            ["commentBody"] = bodyPreview,
+            ["appUrl"] = appUrl,
+        };
+
         foreach (var recipient in recipients)
         {
             try
@@ -71,21 +86,6 @@ internal sealed class EmailMentionedUsersOnCommentCreatedHandler(
                     logger.LogDebug("Skipping mention email for {UserId} — preference disabled", recipient.Id);
                     continue;
                 }
-
-                var bodyPreview = string.IsNullOrWhiteSpace(notification.Body)
-                    ? ""
-                    : notification.Body.Length > 200
-                        ? string.Concat(notification.Body.AsSpan(0, 200), "…")
-                        : notification.Body;
-
-                var variables = new Dictionary<string, object>
-                {
-                    ["mentionerName"] = mentionerName,
-                    ["entityType"] = notification.EntityType,
-                    ["entityId"] = notification.EntityId.ToString(),
-                    ["commentBody"] = bodyPreview,
-                    ["appUrl"] = appUrl,
-                };
 
                 await messageDispatcher.SendAsync(
                     TemplateName, recipient.Id, variables, recipient.TenantId, cancellationToken);

@@ -5,9 +5,10 @@ namespace Starter.Infrastructure.Capabilities.NullObjects;
 
 /// <summary>
 /// Null implementation of <see cref="INotificationPreferenceReader"/>.
-/// Returns <c>true</c> (email enabled) as the default — preferences are
-/// always resolved from the real implementation in practice, but the Null
-/// Object keeps isolated module tests compilable.
+/// Returns <c>true</c> (email enabled) as the default. The core
+/// <see cref="Capabilities.NotificationPreferenceReaderService"/> is always
+/// registered in the host, so this fallback is only used in isolated module
+/// test setups that wire DI without <c>Starter.Infrastructure</c>.
 /// </summary>
 public sealed class NullNotificationPreferenceReader(
     ILogger<NullNotificationPreferenceReader> logger) : INotificationPreferenceReader

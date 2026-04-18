@@ -60,11 +60,11 @@ public sealed class EmailMentionedUsersTests
         await handler.Handle(MakeEvent(mentionsJson), CancellationToken.None);
 
         dispatcher.Verify(
-            d => d.SendAsync("notification.comment-mention", user1.Id,
+            d => d.SendAsync("comment.user-mentioned", user1.Id,
                 It.IsAny<Dictionary<string, object>>(), user1.TenantId, It.IsAny<CancellationToken>()),
             Times.Once);
         dispatcher.Verify(
-            d => d.SendAsync("notification.comment-mention", user2.Id,
+            d => d.SendAsync("comment.user-mentioned", user2.Id,
                 It.IsAny<Dictionary<string, object>>(), user2.TenantId, It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -183,7 +183,7 @@ public sealed class EmailMentionedUsersTests
             .ReturnsAsync(true);
 
         // First recipient throws
-        dispatcher.Setup(d => d.SendAsync("notification.comment-mention", user1.Id,
+        dispatcher.Setup(d => d.SendAsync("comment.user-mentioned", user1.Id,
                 It.IsAny<Dictionary<string, object>>(), user1.TenantId, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("SMTP down"));
 
@@ -195,7 +195,7 @@ public sealed class EmailMentionedUsersTests
         await act.Should().NotThrowAsync();
 
         dispatcher.Verify(
-            d => d.SendAsync("notification.comment-mention", user2.Id,
+            d => d.SendAsync("comment.user-mentioned", user2.Id,
                 It.IsAny<Dictionary<string, object>>(), user2.TenantId, It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -263,5 +263,93 @@ public sealed class EmailMentionedUsersTests
         capturedVars!.Should().ContainKey("entityType").WhoseValue.Should().Be(evt.EntityType);
         capturedVars.Should().ContainKey("mentionerName").WhoseValue.Should().Be(authorUser.DisplayName);
         capturedVars.Should().ContainKey("appUrl").WhoseValue.Should().Be("https://app.example.com");
+    }
+
+    [Fact]
+    public async Task Handle_CommentBody_IncludedInVariables()
+    {
+        var user = MakeUser(Guid.NewGuid());
+        var mentionsJson = JsonSerializer.Serialize(new[] { user.Id });
+
+        var dispatcher = new Mock<IMessageDispatcher>();
+        var userReader = new Mock<IUserReader>();
+        var prefReader = new Mock<INotificationPreferenceReader>();
+
+        userReader.Setup(r => r.GetAsync(AuthorId, It.IsAny<CancellationToken>())).ReturnsAsync(MakeUser(AuthorId));
+        userReader.Setup(r => r.GetManyAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(new[] { user });
+        prefReader.Setup(p => p.IsEmailEnabledAsync(It.IsAny<Guid>(), "CommentMentioned", It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        Dictionary<string, object>? capturedVars = null;
+        dispatcher.Setup(d => d.SendAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<Dictionary<string, object>>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .Callback<string, Guid, Dictionary<string, object>, Guid?, CancellationToken>((_, _, vars, _, _) => capturedVars = vars)
+            .ReturnsAsync(Guid.NewGuid());
+
+        var evt = new CommentCreatedEvent(Guid.NewGuid(), "Product", Guid.NewGuid(), TenantId, AuthorId, mentionsJson, null, Body: "This is a short comment body");
+        var handler = new EmailMentionedUsersOnCommentCreatedHandler(dispatcher.Object, userReader.Object, prefReader.Object, BuildConfig(), NullLogger<EmailMentionedUsersOnCommentCreatedHandler>.Instance);
+
+        await handler.Handle(evt, CancellationToken.None);
+
+        capturedVars.Should().NotBeNull();
+        capturedVars!["commentBody"].Should().Be("This is a short comment body");
+    }
+
+    [Fact]
+    public async Task Handle_LongBody_TruncatedTo200Chars()
+    {
+        var user = MakeUser(Guid.NewGuid());
+        var mentionsJson = JsonSerializer.Serialize(new[] { user.Id });
+        var longBody = new string('x', 300);
+
+        var dispatcher = new Mock<IMessageDispatcher>();
+        var userReader = new Mock<IUserReader>();
+        var prefReader = new Mock<INotificationPreferenceReader>();
+
+        userReader.Setup(r => r.GetAsync(AuthorId, It.IsAny<CancellationToken>())).ReturnsAsync(MakeUser(AuthorId));
+        userReader.Setup(r => r.GetManyAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(new[] { user });
+        prefReader.Setup(p => p.IsEmailEnabledAsync(It.IsAny<Guid>(), "CommentMentioned", It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        Dictionary<string, object>? capturedVars = null;
+        dispatcher.Setup(d => d.SendAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<Dictionary<string, object>>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .Callback<string, Guid, Dictionary<string, object>, Guid?, CancellationToken>((_, _, vars, _, _) => capturedVars = vars)
+            .ReturnsAsync(Guid.NewGuid());
+
+        var evt = new CommentCreatedEvent(Guid.NewGuid(), "Product", Guid.NewGuid(), TenantId, AuthorId, mentionsJson, null, Body: longBody);
+        var handler = new EmailMentionedUsersOnCommentCreatedHandler(dispatcher.Object, userReader.Object, prefReader.Object, BuildConfig(), NullLogger<EmailMentionedUsersOnCommentCreatedHandler>.Instance);
+
+        await handler.Handle(evt, CancellationToken.None);
+
+        capturedVars.Should().NotBeNull();
+        var body = (string)capturedVars!["commentBody"];
+        body.Should().HaveLength(201); // 200 chars + ellipsis "…"
+        body.Should().EndWith("…");
+    }
+
+    [Fact]
+    public async Task Handle_PreferenceReaderThrows_ContinuesToNextRecipient()
+    {
+        var user1 = MakeUser(Guid.NewGuid());
+        var user2 = MakeUser(Guid.NewGuid());
+        var mentionsJson = JsonSerializer.Serialize(new[] { user1.Id, user2.Id });
+
+        var dispatcher = new Mock<IMessageDispatcher>();
+        var userReader = new Mock<IUserReader>();
+        var prefReader = new Mock<INotificationPreferenceReader>();
+
+        userReader.Setup(r => r.GetAsync(AuthorId, It.IsAny<CancellationToken>())).ReturnsAsync(MakeUser(AuthorId));
+        userReader.Setup(r => r.GetManyAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(new[] { user1, user2 });
+
+        // First user's preference check throws
+        prefReader.Setup(p => p.IsEmailEnabledAsync(user1.Id, "CommentMentioned", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("DB connection lost"));
+        prefReader.Setup(p => p.IsEmailEnabledAsync(user2.Id, "CommentMentioned", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var handler = new EmailMentionedUsersOnCommentCreatedHandler(dispatcher.Object, userReader.Object, prefReader.Object, BuildConfig(), NullLogger<EmailMentionedUsersOnCommentCreatedHandler>.Instance);
+
+        Func<Task> act = () => handler.Handle(MakeEvent(mentionsJson), CancellationToken.None);
+        await act.Should().NotThrowAsync();
+
+        // Second user should still get their email
+        dispatcher.Verify(d => d.SendAsync("comment.user-mentioned", user2.Id, It.IsAny<Dictionary<string, object>>(), user2.TenantId, It.IsAny<CancellationToken>()), Times.Once);
     }
 }

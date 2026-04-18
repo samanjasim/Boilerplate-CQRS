@@ -61,7 +61,7 @@ internal sealed class NotifyWatchersOnCommentCreatedHandler(
                 await notificationService.CreateAsync(
                     recipient.Id,
                     recipient.TenantId,
-                    "CommentOnWatchedEntity",
+                    WellKnownNotificationTypes.CommentOnWatchedEntity,
                     $"New comment on {notification.EntityType}",
                     "A new comment was added to an item you are watching.",
                     data,

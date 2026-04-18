@@ -105,7 +105,7 @@ public sealed class CommentsActivityModule : IModule
         // installed, NullTemplateRegistrar silently no-ops — the template is never
         // needed because NullMessageDispatcher also no-ops.
         await templateRegistrar.RegisterTemplateAsync(
-            name: "notification.comment-mention",
+            name: "comment.user-mentioned",
             moduleSource: "CommentsActivity",
             category: "comments",
             description: "Email sent to a user when they are @mentioned in a comment",

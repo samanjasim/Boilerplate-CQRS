@@ -81,7 +81,6 @@ public static class DependencyInjection
         services.TryAddScoped<IMessageDispatcher, NullMessageDispatcher>();
         services.TryAddScoped<ICommunicationEventNotifier, NullCommunicationEventNotifier>();
         services.TryAddScoped<ITemplateRegistrar, NullTemplateRegistrar>();
-        services.TryAddScoped<INotificationPreferenceReader, NullNotificationPreferenceReader>();
 
         // Comments & Activity — Null Object fallbacks
         services.TryAddSingleton<ICommentableEntityRegistry, NullCommentableEntityRegistry>();

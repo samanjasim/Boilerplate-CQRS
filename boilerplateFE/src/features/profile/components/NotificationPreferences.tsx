@@ -90,12 +90,14 @@ export function NotificationPreferences() {
                       type="button"
                       role="switch"
                       aria-checked={false}
+                      aria-label={`${t(notificationTypeLabels[pref.notificationType] ?? pref.notificationType)} — ${t('notifications.emailRequiresCommunication')}`}
                       disabled
+                      title={t('notifications.emailRequiresCommunication')}
                       className="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border-2 border-transparent bg-input opacity-50 cursor-not-allowed"
                     >
                       <span className="pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 translate-x-0" />
                     </button>
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 text-xs text-popover-foreground bg-popover border rounded-lg shadow-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 text-xs text-popover-foreground bg-popover border rounded-lg shadow-md opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
                       {t('notifications.emailRequiresCommunication')}
                     </div>
                   </div>
@@ -104,6 +106,7 @@ export function NotificationPreferences() {
                     type="button"
                     role="switch"
                     aria-checked={pref.emailEnabled}
+                    aria-label={`${t(notificationTypeLabels[pref.notificationType] ?? pref.notificationType)} — Email`}
                     onClick={() => togglePref(pref.notificationType, 'emailEnabled')}
                     className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                       pref.emailEnabled ? 'bg-primary' : 'bg-input'
