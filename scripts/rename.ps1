@@ -497,7 +497,19 @@ if (Test-Path $modulesJsonPath) {
             Set-Content -Path $routesTsxPath -Value $routesContent -NoNewline
         }
 
-        # 7. Delete mobile module folder and strip from modules.config.dart
+        # 7. Delete module-owned test folder under tests/{Name}.Api.Tests/
+        # Tests for each module live in tests/Starter.Api.Tests/{testsFolder}/. Leaving
+        # them behind after the module is removed orphans references to deleted types
+        # and breaks `dotnet build`.
+        $testsFolder = $module.testsFolder
+        if ($testsFolder) {
+            $testsPath = Join-Path (Join-Path (Join-Path $TargetBE "tests") "$Name.Api.Tests") $testsFolder
+            if (Test-Path $testsPath) {
+                Remove-Item $testsPath -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+
+        # 8. Delete mobile module folder and strip from modules.config.dart
         if ($IncludeMobile -and (Test-Path $TargetMobile)) {
             $mobileFolder = $module.mobileFolder
             $mobileModuleName = $module.mobileModule
