@@ -3,6 +3,7 @@ using QuestPDF.Infrastructure;
 using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Readers;
 using Starter.Application.Common.Interfaces;
+using Starter.Infrastructure.Capabilities;
 using Starter.Infrastructure.Capabilities.Adapters;
 using Starter.Infrastructure.Capabilities.MetricCalculators;
 using Starter.Infrastructure.Capabilities.NullObjects;
@@ -70,6 +71,7 @@ public static class DependencyInjection
         services.AddScoped<IUserReader, UserReader>();
         services.AddScoped<IRoleReader, RoleReader>();
         services.AddScoped<IFileReader, FileReader>();
+        services.AddScoped<INotificationPreferenceReader, NotificationPreferenceReaderService>();
 
         // Null Object fallbacks — lifetimes match the real module implementations
         services.TryAddSingleton<IQuotaChecker, NullQuotaChecker>();
