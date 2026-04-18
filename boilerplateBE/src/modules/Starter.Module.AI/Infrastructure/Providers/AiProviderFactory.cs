@@ -25,5 +25,15 @@ internal sealed class AiProviderFactory(
         return Enum.Parse<AiProviderType>(providerStr, ignoreCase: true);
     }
 
+    public AiProviderType GetEmbeddingProviderType()
+    {
+        var providerStr = configuration["AI:EmbeddingProvider"];
+        return string.IsNullOrWhiteSpace(providerStr)
+            ? GetDefaultProviderType()
+            : Enum.Parse<AiProviderType>(providerStr, ignoreCase: true);
+    }
+
     public IAiProvider CreateDefault() => Create(GetDefaultProviderType());
+
+    public IAiProvider CreateForEmbeddings() => Create(GetEmbeddingProviderType());
 }

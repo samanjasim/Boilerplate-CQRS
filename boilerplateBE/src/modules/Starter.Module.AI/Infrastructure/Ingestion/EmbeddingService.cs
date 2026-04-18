@@ -28,8 +28,8 @@ internal sealed class EmbeddingService(
     {
         if (texts.Count == 0) return Array.Empty<float[]>();
 
-        var provider = providerFactory.CreateDefault();
-        var providerType = providerFactory.GetDefaultProviderType();
+        var provider = providerFactory.CreateForEmbeddings();
+        var providerType = providerFactory.GetEmbeddingProviderType();
         var batchSize = ragOptions.Value.EmbedBatchSize;
         var all = new List<float[]>(texts.Count);
         var totalTokens = 0;
