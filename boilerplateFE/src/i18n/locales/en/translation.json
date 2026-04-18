@@ -420,8 +420,10 @@
       "passwordChanged": "Password Changed",
       "tenantCreated": "Tenant Created",
       "invitationAccepted": "Invitation Accepted",
-      "loginFromNewDevice": "Login From New Device"
-    }
+      "loginFromNewDevice": "Login From New Device",
+      "commentMentioned": "Comment Mentions"
+    },
+    "emailRequiresCommunication": "Email notifications are available when the Communication module is enabled"
   },
   "files": {
     "title": "Files",

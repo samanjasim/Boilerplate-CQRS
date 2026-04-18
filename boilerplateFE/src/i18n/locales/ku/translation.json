@@ -416,8 +416,10 @@
       "passwordChanged": "گۆڕینی وشەی نهێنی",
       "tenantCreated": "دروستکردنی خاوەنکار",
       "invitationAccepted": "وەرگرتنی بانگهێشت",
-      "loginFromNewDevice": "چوونەژوورەوە لە ئامێرێکی نوێ"
-    }
+      "loginFromNewDevice": "چوونەژوورەوە لە ئامێرێکی نوێ",
+      "commentMentioned": "ئاماژەدان لە کۆمێنتەکان"
+    },
+    "emailRequiresCommunication": "ئاگادارکردنەوەکانی ئیمەیل بەردەستن کاتێک مۆدیوولی کۆمیونیکەیشن چالاک بێت"
   },
   "files": {
     "title": "فایلەکان",
