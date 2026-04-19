@@ -43,6 +43,10 @@ public sealed class ReprocessDocumentCommandHandlerTests
                 It.IsAny<CancellationToken>()),
             Times.Once);
 
+        // The handler must wipe vectors before publishing the reprocess message,
+        // otherwise the consumer can race an in-flight embed against the deletion.
+        harness.CallLog.Should().Equal("delete", "publish");
+
         var reloaded = await harness.Db.AiDocuments
             .IgnoreQueryFilters()
             .AsNoTracking()
@@ -102,8 +106,9 @@ public sealed class ReprocessDocumentCommandHandlerTests
     {
         public AiDbContext Db { get; }
         public Mock<IApplicationDbContext> AppDb { get; } = new();
-        public RecordingVectorStore VectorStore { get; } = new();
+        public RecordingVectorStore VectorStore { get; }
         public Mock<IPublishEndpoint> Bus { get; } = new();
+        public List<string> CallLog { get; } = new();
 
         public ReprocessHarness()
         {
@@ -111,9 +116,16 @@ public sealed class ReprocessDocumentCommandHandlerTests
                 .UseInMemoryDatabase($"ai-reprocess-{Guid.NewGuid():N}")
                 .Options;
             Db = new AiDbContext(options);
+            VectorStore = new RecordingVectorStore(CallLog);
 
             AppDb.Setup(a => a.SaveChangesAsync(It.IsAny<CancellationToken>()))
                  .ReturnsAsync(0);
+
+            Bus.Setup(b => b.Publish(
+                    It.IsAny<ProcessDocumentMessage>(),
+                    It.IsAny<CancellationToken>()))
+               .Callback(() => CallLog.Add("publish"))
+               .Returns(Task.CompletedTask);
         }
 
         public AiDocument SeedCompletedDocumentWithChunks(int chunkCount, bool nullTenant = false)
@@ -156,6 +168,13 @@ public sealed class ReprocessDocumentCommandHandlerTests
 
     private sealed class RecordingVectorStore : IVectorStore
     {
+        private readonly List<string> _callLog;
+
+        public RecordingVectorStore(List<string> callLog)
+        {
+            _callLog = callLog;
+        }
+
         public List<(Guid TenantId, Guid DocumentId)> DeleteCalls { get; } = new();
 
         public Task EnsureCollectionAsync(Guid tenantId, int vectorSize, CancellationToken ct)
@@ -167,6 +186,7 @@ public sealed class ReprocessDocumentCommandHandlerTests
         public Task DeleteByDocumentAsync(Guid tenantId, Guid documentId, CancellationToken ct)
         {
             DeleteCalls.Add((tenantId, documentId));
+            _callLog.Add("delete");
             return Task.CompletedTask;
         }
 
