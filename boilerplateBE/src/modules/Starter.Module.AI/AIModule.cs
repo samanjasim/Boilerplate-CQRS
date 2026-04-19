@@ -5,6 +5,7 @@ using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Modularity;
 using Starter.Module.AI.Application.Services;
 using Starter.Module.AI.Application.Services.Ingestion;
+using Starter.Module.AI.Application.Services.Retrieval;
 using Starter.Module.AI.Constants;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Module.AI.Domain.Enums;
@@ -68,6 +69,8 @@ public sealed class AIModule : IModule
         services.AddSingleton<IDocumentChunker, Infrastructure.Ingestion.HierarchicalDocumentChunker>();
         services.AddSingleton<IVectorStore, Infrastructure.Ingestion.QdrantVectorStore>();
         services.AddScoped<IEmbeddingService, Infrastructure.Ingestion.EmbeddingService>();
+        services.AddScoped<IKeywordSearchService, Infrastructure.Retrieval.PostgresKeywordSearchService>();
+        services.AddScoped<IRagRetrievalService, Infrastructure.Retrieval.RagRetrievalService>();
 
         services.AddSingleton<IAiToolRegistry, AiToolRegistryService>();
         services.AddSingleton<IAiToolDefinition, Infrastructure.Tools.ListMyConversationsAiTool>();
