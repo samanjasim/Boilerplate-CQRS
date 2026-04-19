@@ -49,6 +49,7 @@ internal sealed class UpdateAssistantCommandHandler(AiDbContext context)
 
         assistant.SetEnabledTools(request.EnabledToolNames ?? Array.Empty<string>());
         assistant.SetKnowledgeBase(request.KnowledgeBaseDocIds ?? Array.Empty<Guid>());
+        assistant.SetRagScope(request.RagScope);
         assistant.SetActive(request.IsActive);
 
         await context.SaveChangesAsync(cancellationToken);

@@ -18,5 +18,6 @@ public sealed record UpdateAssistantCommand(
     int MaxAgentSteps,
     IReadOnlyList<string>? EnabledToolNames,
     IReadOnlyList<Guid>? KnowledgeBaseDocIds,
-    bool IsActive)
+    bool IsActive,
+    AiRagScope RagScope = AiRagScope.None)
     : IRequest<Result<AiAssistantDto>>, IAssistantInput;

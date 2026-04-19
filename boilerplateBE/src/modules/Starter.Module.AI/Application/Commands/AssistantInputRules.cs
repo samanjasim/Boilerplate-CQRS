@@ -1,5 +1,6 @@
 using FluentValidation;
 using Starter.Module.AI.Domain.Enums;
+using Starter.Module.AI.Domain.Errors;
 
 namespace Starter.Module.AI.Application.Commands;
 
@@ -17,6 +18,7 @@ internal interface IAssistantInput
     int MaxAgentSteps { get; }
     IReadOnlyList<string>? EnabledToolNames { get; }
     IReadOnlyList<Guid>? KnowledgeBaseDocIds { get; }
+    AiRagScope RagScope { get; }
 }
 
 internal static class AssistantInputRules
@@ -33,5 +35,10 @@ internal static class AssistantInputRules
         v.RuleForEach(x => x.EnabledToolNames!)
             .NotEmpty().MaximumLength(120)
             .When(x => x.EnabledToolNames is not null);
+        v.RuleFor(x => x)
+            .Must(x => x.RagScope != AiRagScope.SelectedDocuments
+                || (x.KnowledgeBaseDocIds is not null && x.KnowledgeBaseDocIds.Count > 0))
+            .WithMessage(AiErrors.RagScopeRequiresDocuments.Description)
+            .WithErrorCode(AiErrors.RagScopeRequiresDocuments.Code);
     }
 }

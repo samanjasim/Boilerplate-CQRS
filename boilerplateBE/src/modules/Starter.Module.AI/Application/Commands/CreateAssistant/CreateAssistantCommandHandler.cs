@@ -50,6 +50,9 @@ internal sealed class CreateAssistantCommandHandler(
         if (request.KnowledgeBaseDocIds is { Count: > 0 })
             assistant.SetKnowledgeBase(request.KnowledgeBaseDocIds);
 
+        if (request.RagScope != Domain.Enums.AiRagScope.None)
+            assistant.SetRagScope(request.RagScope);
+
         context.AiAssistants.Add(assistant);
         await context.SaveChangesAsync(cancellationToken);
 
