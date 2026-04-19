@@ -86,6 +86,11 @@ internal sealed class AiAssistantConfiguration : IEntityTypeConfiguration<AiAssi
             .HasMaxLength(20)
             .IsRequired();
 
+        builder.Property(e => e.RagScope)
+            .HasColumnName("rag_scope")
+            .HasConversion<int>()
+            .IsRequired();
+
         builder.Property(e => e.MaxAgentSteps)
             .HasColumnName("max_agent_steps")
             .IsRequired();
