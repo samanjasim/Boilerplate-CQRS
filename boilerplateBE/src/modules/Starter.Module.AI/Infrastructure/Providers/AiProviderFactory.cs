@@ -4,11 +4,11 @@ using Starter.Module.AI.Domain.Enums;
 
 namespace Starter.Module.AI.Infrastructure.Providers;
 
-internal sealed class AiProviderFactory(
+internal class AiProviderFactory(
     IServiceProvider serviceProvider,
     IConfiguration configuration)
 {
-    public IAiProvider Create(AiProviderType providerType)
+    public virtual IAiProvider Create(AiProviderType providerType)
     {
         return providerType switch
         {
@@ -19,7 +19,7 @@ internal sealed class AiProviderFactory(
         };
     }
 
-    public AiProviderType GetDefaultProviderType()
+    public virtual AiProviderType GetDefaultProviderType()
     {
         var providerStr = configuration["AI:DefaultProvider"] ?? "Anthropic";
         return Enum.Parse<AiProviderType>(providerStr, ignoreCase: true);
