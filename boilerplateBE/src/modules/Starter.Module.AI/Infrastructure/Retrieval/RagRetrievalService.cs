@@ -71,7 +71,8 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         if (string.IsNullOrWhiteSpace(queryText))
             return RetrievedContext.Empty;
 
-        var vectors = await _embeddingService.EmbedAsync([queryText], ct);
+        var vectors = await _embeddingService.EmbedAsync(
+            [queryText], ct, attribution: null, requestType: AiRequestType.QueryEmbedding);
         var queryVector = vectors[0];
 
         var retrievalTopK = _settings.RetrievalTopK;

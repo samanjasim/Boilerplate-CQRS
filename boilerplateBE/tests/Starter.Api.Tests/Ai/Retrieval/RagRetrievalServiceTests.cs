@@ -20,7 +20,8 @@ internal sealed class FakeEmbeddingService : IEmbeddingService
     public Task<float[][]> EmbedAsync(
         IReadOnlyList<string> texts,
         CancellationToken ct,
-        EmbedAttribution? attribution = null)
+        EmbedAttribution? attribution = null,
+        AiRequestType requestType = AiRequestType.Embedding)
         => Task.FromResult(texts.Select(_ => new float[1536]).ToArray());
 }
 
