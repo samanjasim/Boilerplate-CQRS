@@ -7,11 +7,13 @@ using Microsoft.Extensions.Logging;
 using Starter.Abstractions.Capabilities;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.DTOs;
+using Starter.Module.AI.Application.Services.Retrieval;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Domain.Errors;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Providers;
+using Starter.Module.AI.Infrastructure.Retrieval;
 using Starter.Shared.Results;
 
 namespace Starter.Module.AI.Application.Services;
@@ -24,6 +26,7 @@ internal sealed class ChatExecutionService(
     IUsageTracker usageTracker,
     IWebhookPublisher webhookPublisher,
     IAiToolRegistry toolRegistry,
+    IRagRetrievalService retrievalService,
     ISender sender,
     IConfiguration configuration,
     ILogger<ChatExecutionService> logger) : IChatExecutionService
@@ -46,8 +49,11 @@ internal sealed class ChatExecutionService(
             return Result.Failure<AiChatReplyDto>(stateResult.Error);
 
         var state = stateResult.Value;
+        var retrieved = await RetrieveContextSafelyAsync(state.Assistant, userMessage, ct);
+        var effectiveSystemPrompt = ResolveSystemPrompt(state.Assistant, retrieved);
+
         var provider = providerFactory.Create(ResolveProvider(state.Assistant));
-        var chatOptions = BuildChatOptions(state.Assistant, state.Tools.ProviderTools);
+        var chatOptions = BuildChatOptions(state.Assistant, effectiveSystemPrompt, state.Tools.ProviderTools);
 
         var messages = new List<AiChatMessage>(state.ProviderMessages);
         var totalInput = 0;
@@ -65,8 +71,9 @@ internal sealed class ChatExecutionService(
 
                 if (completion.ToolCalls is null || completion.ToolCalls.Count == 0)
                 {
+                    var citations = CitationParser.Parse(completion.Content, retrieved.Children);
                     var finalMessage = await FinalizeTurnAsync(
-                        state, completion.Content, totalInput, totalOutput, nextOrder, ct);
+                        state, completion.Content, totalInput, totalOutput, nextOrder, citations, ct);
                     return Result.Success(new AiChatReplyDto(
                         state.Conversation.Id,
                         state.UserMessage.ToDto(),
@@ -103,7 +110,7 @@ internal sealed class ChatExecutionService(
             var hitLimitMsg = await FinalizeTurnAsync(
                 state,
                 "I couldn't fully complete the task within my step budget. Please narrow the request.",
-                totalInput, totalOutput, nextOrder, ct);
+                totalInput, totalOutput, nextOrder, [], ct);
             return Result.Success(new AiChatReplyDto(
                 state.Conversation.Id,
                 state.UserMessage.ToDto(),
@@ -145,8 +152,11 @@ internal sealed class ChatExecutionService(
             UserMessageId = state.UserMessage.Id
         });
 
+        var retrieved = await RetrieveContextSafelyAsync(state.Assistant, userMessage, ct);
+        var effectiveSystemPrompt = ResolveSystemPrompt(state.Assistant, retrieved);
+
         var provider = providerFactory.Create(ResolveProvider(state.Assistant));
-        var chatOptions = BuildChatOptions(state.Assistant, state.Tools.ProviderTools);
+        var chatOptions = BuildChatOptions(state.Assistant, effectiveSystemPrompt, state.Tools.ProviderTools);
 
         var messages = new List<AiChatMessage>(state.ProviderMessages);
         var totalInput = 0;
@@ -264,8 +274,27 @@ internal sealed class ChatExecutionService(
         }
 
         var finalContent = finalContentBuilder.ToString();
+        var citations = CitationParser.Parse(finalContent, retrieved.Children);
+
+        if (citations.Count > 0)
+        {
+            yield return new ChatStreamEvent("citations", new
+            {
+                Items = citations.Select(c => new
+                {
+                    Marker = c.Marker,
+                    ChunkId = c.ChunkId,
+                    DocumentId = c.DocumentId,
+                    DocumentName = c.DocumentName,
+                    SectionTitle = c.SectionTitle,
+                    PageNumber = c.PageNumber,
+                    Score = c.Score
+                }).ToList()
+            });
+        }
+
         var assistantMessage = await FinalizeTurnAsync(
-            state, finalContent, totalInput, totalOutput, nextOrder, ct);
+            state, finalContent, totalInput, totalOutput, nextOrder, citations, ct);
 
         yield return new ChatStreamEvent("done", new
         {
@@ -417,14 +446,23 @@ internal sealed class ChatExecutionService(
         int inputTokens,
         int outputTokens,
         int order,
+        IReadOnlyList<AiMessageCitation> citations,
         CancellationToken ct)
     {
-        var assistantMessage = AiMessage.CreateAssistantMessage(
-            state.Conversation.Id,
-            content ?? "",
-            order,
-            inputTokens,
-            outputTokens);
+        var assistantMessage = citations.Count > 0
+            ? AiMessage.CreateAssistantMessageWithCitations(
+                state.Conversation.Id,
+                content ?? "",
+                order,
+                citations,
+                inputTokens,
+                outputTokens)
+            : AiMessage.CreateAssistantMessage(
+                state.Conversation.Id,
+                content ?? "",
+                order,
+                inputTokens,
+                outputTokens);
 
         context.AiMessages.Add(assistantMessage);
 
@@ -549,13 +587,37 @@ internal sealed class ChatExecutionService(
 
     private static AiChatOptions BuildChatOptions(
         AiAssistant assistant,
+        string systemPrompt,
         IReadOnlyList<AiToolDefinitionDto> tools) =>
         new(
             Model: assistant.Model ?? "",
             Temperature: assistant.Temperature,
             MaxTokens: assistant.MaxTokens,
-            SystemPrompt: assistant.SystemPrompt,
+            SystemPrompt: systemPrompt,
             Tools: tools.Count == 0 ? null : tools);
+
+    private async Task<RetrievedContext> RetrieveContextSafelyAsync(
+        AiAssistant assistant, string userMessage, CancellationToken ct)
+    {
+        if (assistant.RagScope == AiRagScope.None || string.IsNullOrWhiteSpace(userMessage))
+            return RetrievedContext.Empty;
+
+        try
+        {
+            return await retrievalService.RetrieveForTurnAsync(assistant, userMessage, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "RAG retrieval failed for assistant {AssistantId}; proceeding without context.",
+                assistant.Id);
+            return RetrievedContext.Empty;
+        }
+    }
+
+    private static string ResolveSystemPrompt(AiAssistant assistant, RetrievedContext retrieved) =>
+        retrieved.IsEmpty
+            ? assistant.SystemPrompt
+            : ContextPromptBuilder.Build(assistant.SystemPrompt, retrieved);
 
     /// <summary>
     /// 4 chars per token is a widely used rough heuristic (GPT tokenizer averages ~3.5-4).
