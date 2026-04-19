@@ -6,6 +6,20 @@ This file is maintainer-facing.
 
 ---
 
+## Phase 1 Enhancements Applied
+
+The following improvements were made after the initial Phase 1 implementation. They affect Phase 2 scope:
+
+- **Return-to-Draft holds for resubmit** — Initial states only auto-transition on `StartAsync`, not after `ReturnForRevision`. Phase 2's step data collection should allow the returned-for-revision step to pre-fill the form with the original submission data.
+- **Instance list with user/status scoping** — `GetInstancesAsync` now accepts `startedByUserId` and `status` filters. Regular users are auto-scoped to their own workflows. Phase 2's analytics should leverage this scoping for per-user metrics.
+- **Instance Detail page** — renders step timeline, comments slot, cancel action, and pending task actions. Phase 2's step data collection forms should render inline on this page, and SLA indicators (overdue badges) should attach to the step timeline.
+- **Workflow slot rendered on Products detail page** — proves the entity integration pattern. Phase 2's visual designer should generate slot-rendering code automatically for new entity types.
+- **`startedByDisplayName` in InstanceSummary** — enriches the API response. Phase 2's delegation feature should add `delegatedToDisplayName` similarly.
+
+---
+
+## Phase 2 Deferred Items
+
 ### Step data collection (dynamic forms)
 
 **What:** Allow workflow state definitions to declare a form schema so the assignee submits structured data (e.g. "reason for rejection", "revised budget amount") rather than a free-text comment. The submitted values would be stored in `WorkflowStep.MetadataJson` and made available to downstream condition evaluators.
