@@ -139,7 +139,9 @@
     "triggerRules": "قواعد التشغيل",
     "integrations": "التكاملات",
     "deliveryLog": "سجل التسليم",
-    "collapse": "طي"
+    "collapse": "طي",
+    "taskInbox": "صندوق المهام",
+    "workflowDefinitions": "التعريفات"
   },
   "header": {
     "logout": "تسجيل الخروج",
@@ -417,7 +419,8 @@
       "tenantCreated": "إنشاء مستأجر",
       "invitationAccepted": "قبول الدعوة",
       "loginFromNewDevice": "تسجيل دخول من جهاز جديد",
-      "commentMentioned": "الإشارة في التعليقات"
+      "commentMentioned": "الإشارة في التعليقات",
+      "workflowTaskAssigned": "تعيين مهمة سير العمل"
     },
     "emailRequiresCommunication": "إشعارات البريد الإلكتروني متاحة عند تفعيل وحدة الاتصال"
   },
@@ -1135,6 +1138,64 @@
       "deliveryRate": "معدل التسليم",
       "failedDeliveries": "فشل",
       "viewLog": "عرض السجل"
+    }
+  },
+  "workflow": {
+    "inbox": {
+      "title": "صندوق المهام",
+      "empty": "لا توجد مهام معلقة",
+      "emptyDesc": "لا توجد مهام موافقة بانتظار إجراءك",
+      "approve": "موافقة",
+      "reject": "رفض",
+      "return": "إرجاع للمراجعة",
+      "entity": "الكيان",
+      "workflowName": "سير العمل",
+      "step": "الخطوة",
+      "assignedDate": "تاريخ التعيين",
+      "dueDate": "تاريخ الاستحقاق",
+      "actions": "الإجراءات",
+      "viewAll": "عرض جميع المهام"
+    },
+    "definitions": {
+      "title": "تعريفات سير العمل",
+      "name": "الاسم",
+      "entityType": "نوع الكيان",
+      "steps": "الخطوات",
+      "source": "المصدر",
+      "status": "الحالة",
+      "systemTemplate": "قالب النظام",
+      "customized": "مخصص",
+      "clone": "نسخ",
+      "edit": "تعديل",
+      "view": "عرض",
+      "deactivate": "تعطيل",
+      "activate": "تفعيل",
+      "cloneSuccess": "تم نسخ التعريف بنجاح",
+      "updateSuccess": "تم تحديث التعريف بنجاح"
+    },
+    "detail": {
+      "title": "تعريف سير العمل",
+      "version": "الإصدار",
+      "cloneToCustomize": "نسخ للتخصيص",
+      "stateList": "الحالات",
+      "assignee": "المسؤول",
+      "hooks": "الخطافات"
+    },
+    "approval": {
+      "title": "إجراء سير العمل",
+      "comment": "تعليق (اختياري)",
+      "commentHint": "سيظهر تعليقك في الجدول الزمني لنشاط الكيان",
+      "success": "تم إتمام الإجراء بنجاح"
+    },
+    "status": {
+      "active": "نشط",
+      "completed": "مكتمل",
+      "cancelled": "ملغى",
+      "pending": "معلق"
+    },
+    "sidebar": {
+      "taskInbox": "صندوق المهام",
+      "definitions": "التعريفات"
     }
   }
 }

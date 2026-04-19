@@ -23,6 +23,8 @@ import {
   Zap,
   Link2,
   ScrollText,
+  ClipboardCheck,
+  GitBranch,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore, useAuthStore, selectSidebarCollapsed, selectUser } from '@/stores';
@@ -71,6 +73,12 @@ export function Sidebar() {
       : []),
     ...(hasPermission(PERMISSIONS.ApiKeys.View)
       ? [{ label: t('nav.apiKeys'), icon: KeyRound, path: ROUTES.API_KEYS.LIST }]
+      : []),
+    ...(activeModules.workflow && hasPermission(PERMISSIONS.Workflows.View)
+      ? [{ label: t('workflow.sidebar.taskInbox'), icon: ClipboardCheck, path: ROUTES.WORKFLOWS.INBOX }]
+      : []),
+    ...(activeModules.workflow && hasPermission(PERMISSIONS.Workflows.Manage)
+      ? [{ label: t('workflow.sidebar.definitions'), icon: GitBranch, path: ROUTES.WORKFLOWS.DEFINITIONS }]
       : []),
     ...(activeModules.products && hasPermission(PERMISSIONS.Products.View)
       ? [{ label: t('nav.products', 'Products'), icon: Package, path: ROUTES.PRODUCTS.LIST }]

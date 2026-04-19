@@ -53,6 +53,9 @@ const ImportExportPage = activeModules.importExport ? lazy(() => import('@/featu
 const ProductsListPage = activeModules.products ? lazy(() => import('@/features/products/pages/ProductsListPage')) : NullPage;
 const ProductCreatePage = activeModules.products ? lazy(() => import('@/features/products/pages/ProductCreatePage')) : NullPage;
 const ProductDetailPage = activeModules.products ? lazy(() => import('@/features/products/pages/ProductDetailPage')) : NullPage;
+const WorkflowInboxPage = activeModules.workflow ? lazy(() => import('@/features/workflow/pages/WorkflowInboxPage')) : NullPage;
+const WorkflowDefinitionsPage = activeModules.workflow ? lazy(() => import('@/features/workflow/pages/WorkflowDefinitionsPage')) : NullPage;
+const WorkflowDefinitionDetailPage = activeModules.workflow ? lazy(() => import('@/features/workflow/pages/WorkflowDefinitionDetailPage')) : NullPage;
 const ChannelsPage = activeModules.communication ? lazy(() => import('@/features/communication/pages/ChannelsPage')) : NullPage;
 const TemplatesPage = activeModules.communication ? lazy(() => import('@/features/communication/pages/TemplatesPage')) : NullPage;
 const TriggerRulesPage = activeModules.communication ? lazy(() => import('@/features/communication/pages/TriggerRulesPage')) : NullPage;
@@ -249,6 +252,23 @@ export const routes: RouteObject[] = [
               element: <PermissionGuard permission={PERMISSIONS.Products.Create} />,
               children: [
                 { path: ROUTES.PRODUCTS.CREATE, element: <ProductCreatePage /> },
+              ],
+            },
+          ] : []),
+
+          // Workflows
+          ...(activeModules.workflow ? [
+            {
+              element: <PermissionGuard permission={PERMISSIONS.Workflows.View} />,
+              children: [
+                { path: ROUTES.WORKFLOWS.INBOX, element: <WorkflowInboxPage /> },
+              ],
+            },
+            {
+              element: <PermissionGuard permission={PERMISSIONS.Workflows.Manage} />,
+              children: [
+                { path: ROUTES.WORKFLOWS.DEFINITIONS, element: <WorkflowDefinitionsPage /> },
+                { path: ROUTES.WORKFLOWS.DEFINITION_DETAIL, element: <WorkflowDefinitionDetailPage /> },
               ],
             },
           ] : []),

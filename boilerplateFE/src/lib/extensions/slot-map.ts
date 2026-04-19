@@ -34,6 +34,12 @@ export interface SlotMap {
     entityId: string;
     tenantId?: string;
   };
+
+  /** Workflow status panel embedded in entity detail pages. */
+  'entity-detail-workflow': {
+    entityType: string;
+    entityId: string;
+  };
 }
 
 export type SlotId = keyof SlotMap;

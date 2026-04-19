@@ -139,7 +139,9 @@
     "triggerRules": "Trigger Rules",
     "integrations": "Integrations",
     "deliveryLog": "Delivery Log",
-    "collapse": "Collapse"
+    "collapse": "Collapse",
+    "taskInbox": "Task Inbox",
+    "workflowDefinitions": "Definitions"
   },
   "header": {
     "logout": "Logout",
@@ -421,7 +423,8 @@
       "tenantCreated": "Tenant Created",
       "invitationAccepted": "Invitation Accepted",
       "loginFromNewDevice": "Login From New Device",
-      "commentMentioned": "Comment Mentions"
+      "commentMentioned": "Comment Mentions",
+      "workflowTaskAssigned": "Workflow Task Assigned"
     },
     "emailRequiresCommunication": "Email notifications are available when the Communication module is enabled"
   },
@@ -1179,6 +1182,64 @@
       "deliveryRate": "Delivery Rate",
       "failedDeliveries": "Failed",
       "viewLog": "View Log"
+    }
+  },
+  "workflow": {
+    "inbox": {
+      "title": "Task Inbox",
+      "empty": "No pending tasks",
+      "emptyDesc": "You have no approval tasks waiting for your action",
+      "approve": "Approve",
+      "reject": "Reject",
+      "return": "Return for Revision",
+      "entity": "Entity",
+      "workflowName": "Workflow",
+      "step": "Step",
+      "assignedDate": "Assigned",
+      "dueDate": "Due Date",
+      "actions": "Actions",
+      "viewAll": "View All Tasks"
+    },
+    "definitions": {
+      "title": "Workflow Definitions",
+      "name": "Name",
+      "entityType": "Entity Type",
+      "steps": "Steps",
+      "source": "Source",
+      "status": "Status",
+      "systemTemplate": "System Template",
+      "customized": "Customized",
+      "clone": "Clone",
+      "edit": "Edit",
+      "view": "View",
+      "deactivate": "Deactivate",
+      "activate": "Activate",
+      "cloneSuccess": "Definition cloned successfully",
+      "updateSuccess": "Definition updated successfully"
+    },
+    "detail": {
+      "title": "Workflow Definition",
+      "version": "Version",
+      "cloneToCustomize": "Clone to Customize",
+      "stateList": "States",
+      "assignee": "Assignee",
+      "hooks": "Hooks"
+    },
+    "approval": {
+      "title": "Workflow Action",
+      "comment": "Comment (optional)",
+      "commentHint": "Your comment will appear in the entity's activity timeline",
+      "success": "Action completed successfully"
+    },
+    "status": {
+      "active": "Active",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "pending": "Pending"
+    },
+    "sidebar": {
+      "taskInbox": "Task Inbox",
+      "definitions": "Definitions"
     }
   }
 }

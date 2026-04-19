@@ -103,6 +103,14 @@ export const ROUTES = {
     getDetail: (id: string) => `/products/${id}`,
   },
 
+  // Workflows
+  WORKFLOWS: {
+    INBOX: '/workflows/inbox',
+    DEFINITIONS: '/workflows/definitions',
+    DEFINITION_DETAIL: '/workflows/definitions/:id',
+    getDefinitionDetail: (id: string) => `/workflows/definitions/${id}`,
+  },
+
   // Billing
   BILLING: '/billing',
   BILLING_PLANS: '/billing/plans',

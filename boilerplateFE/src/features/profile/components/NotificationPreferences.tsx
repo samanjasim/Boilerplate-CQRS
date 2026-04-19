@@ -19,6 +19,7 @@ const notificationTypeLabels: Record<string, string> = {
   InvitationAccepted: 'notifications.types.invitationAccepted',
   LoginFromNewDevice: 'notifications.types.loginFromNewDevice',
   CommentMentioned: 'notifications.types.commentMentioned',
+  WorkflowTaskAssigned: 'notifications.types.workflowTaskAssigned',
 };
 
 export function NotificationPreferences() {

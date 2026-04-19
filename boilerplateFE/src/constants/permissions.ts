@@ -108,6 +108,11 @@ export const PERMISSIONS = {
     Delete: 'Webhooks.Delete',
     ViewPlatform: 'Webhooks.ViewPlatform',
   },
+  Workflows: {
+    View: 'Workflows.View',
+    Manage: 'Workflows.Manage',
+    Execute: 'Workflows.Execute',
+  },
 } as const;
 
 type PermissionMap = typeof PERMISSIONS;

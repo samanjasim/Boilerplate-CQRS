@@ -11,4 +11,5 @@ public static class NotificationType
     public const string LoginFromNewDevice = "LoginFromNewDevice";
     public const string CommentMentioned = "CommentMentioned";
     public const string CommentOnWatchedEntity = "CommentOnWatchedEntity";
+    public const string WorkflowTaskAssigned = "WorkflowTaskAssigned";
 }
