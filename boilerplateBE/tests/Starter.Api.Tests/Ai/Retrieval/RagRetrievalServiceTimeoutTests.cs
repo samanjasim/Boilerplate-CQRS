@@ -77,4 +77,31 @@ public sealed class RagRetrievalServiceTimeoutTests
     }
 
     // NOTE: We do not assert total latency here — CI variance makes that flaky.
+
+    [Fact]
+    public async Task Caller_Cancellation_Propagates_Not_Degraded()
+    {
+        await using var db = CreateDb();
+        // Give the stage a generous budget — we want caller-cancel to win, not stage timeout.
+        var settings = new AiRagSettings { StageTimeoutVectorMs = 60_000 };
+        var svc = new RagRetrievalService(
+            db,
+            new SlowVectorStore(),
+            new FakeKw(),
+            new FakeEmbed(),
+            new TokenCounter(),
+            Options.Create(settings),
+            NullLogger<RagRetrievalService>.Instance);
+
+        var tenantId = Guid.NewGuid();
+        var assistant = AiAssistant.Create(tenantId, "A", null, "p");
+        assistant.SetRagScope(AiRagScope.AllTenantDocuments);
+
+        using var callerCts = new CancellationTokenSource();
+        callerCts.CancelAfter(TimeSpan.FromMilliseconds(50));
+
+        Func<Task> act = () => svc.RetrieveForTurnAsync(assistant, "query", callerCts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
 }

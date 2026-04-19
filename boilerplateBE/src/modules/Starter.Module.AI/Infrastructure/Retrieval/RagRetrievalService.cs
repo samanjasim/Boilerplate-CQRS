@@ -264,17 +264,34 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         {
             return await op(cts.Token);
         }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
+            // Caller cancelled — propagate so the whole chat turn can abort cleanly.
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            // Stage exceeded the per-stage budget — degrade and continue.
             degraded.Add(stageName);
             _logger.LogWarning("RAG stage '{Stage}' timed out after {TimeoutMs}ms", stageName, timeoutMs);
             return null;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (IsTransientStageException(ex))
         {
             degraded.Add(stageName);
             _logger.LogError(ex, "RAG stage '{Stage}' failed", stageName);
             return null;
         }
     }
+
+    // Exceptions we treat as transient dependency failures (I/O or RPC). Programmer
+    // bugs (ArgumentException, ObjectDisposedException, InvalidOperationException,
+    // NullReferenceException, etc.) fall through and fail the turn loudly so they
+    // are caught in development instead of being silently hidden as "degraded".
+    private static bool IsTransientStageException(Exception ex) =>
+        ex is System.Net.Http.HttpRequestException
+           or TimeoutException
+           or System.Data.Common.DbException
+           or Grpc.Core.RpcException
+           or TaskCanceledException;
 }
