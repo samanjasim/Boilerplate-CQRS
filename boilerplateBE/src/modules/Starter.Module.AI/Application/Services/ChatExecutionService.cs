@@ -21,7 +21,7 @@ namespace Starter.Module.AI.Application.Services;
 internal sealed class ChatExecutionService(
     AiDbContext context,
     ICurrentUserService currentUser,
-    AiProviderFactory providerFactory,
+    IAiProviderFactory providerFactory,
     IQuotaChecker quotaChecker,
     IUsageTracker usageTracker,
     IWebhookPublisher webhookPublisher,

@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using FluentAssertions;
 using MediatR;
@@ -7,7 +6,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Moq;
 using Starter.Abstractions.Capabilities;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.DTOs;
@@ -45,9 +43,9 @@ public sealed class ChatExecutionRagInjectionTests
     public async Task RagScope_SelectedDocuments_Injects_Context_And_Citations()
     {
         var fx = new ChatExecutionTestFixture();
-        var chunks = fx.SeedTwoRetrievedChunks();
+        var docId = fx.SeedTwoRetrievedChunks();
         var assistant = fx.SeedAssistantWithRagScope(
-            AiRagScope.SelectedDocuments, docIds: new[] { chunks.DocumentId });
+            AiRagScope.SelectedDocuments, docIds: new[] { docId });
 
         fx.FakeProvider.ScriptedResponse = "The answer references [1] and [2].";
 
@@ -66,9 +64,9 @@ public sealed class ChatExecutionRagInjectionTests
     public async Task Fallback_When_Model_Emits_No_Markers_Populates_Full_Chunk_Set()
     {
         var fx = new ChatExecutionTestFixture();
-        var chunks = fx.SeedTwoRetrievedChunks();
+        var docId = fx.SeedTwoRetrievedChunks();
         var assistant = fx.SeedAssistantWithRagScope(
-            AiRagScope.SelectedDocuments, docIds: new[] { chunks.DocumentId });
+            AiRagScope.SelectedDocuments, docIds: new[] { docId });
 
         fx.FakeProvider.ScriptedResponse = "plain answer with no citation tags";
 
@@ -83,9 +81,9 @@ public sealed class ChatExecutionRagInjectionTests
     public async Task Stream_Emits_Citations_Event_Before_Done()
     {
         var fx = new ChatExecutionTestFixture();
-        var chunks = fx.SeedTwoRetrievedChunks();
+        var docId = fx.SeedTwoRetrievedChunks();
         var assistant = fx.SeedAssistantWithRagScope(
-            AiRagScope.SelectedDocuments, docIds: new[] { chunks.DocumentId });
+            AiRagScope.SelectedDocuments, docIds: new[] { docId });
 
         fx.FakeProvider.ScriptedResponse = "answer references [1]";
 
@@ -129,10 +127,9 @@ internal sealed class ChatExecutionTestFixture
         services.AddSingleton<IWebhookPublisher, StubWebhookPublisher>();
         services.AddSingleton<IAiToolRegistry, StubAiToolRegistry>();
         services.AddSingleton<IRagRetrievalService>(_retrieval);
-        services.AddSingleton<ISender>(new Mock<ISender>().Object);
+        services.AddSingleton<ISender, NullSender>();
 
-        services.AddSingleton<AiProviderFactory>(sp =>
-            new ScriptedProviderFactory(sp, sp.GetRequiredService<IConfiguration>(), FakeProvider));
+        services.AddSingleton<IAiProviderFactory>(new ScriptedProviderFactory(FakeProvider));
 
         services.AddScoped<IChatExecutionService, ChatExecutionService>();
 
@@ -163,7 +160,7 @@ internal sealed class ChatExecutionTestFixture
         return a;
     }
 
-    public SeededChunks SeedTwoRetrievedChunks()
+    public Guid SeedTwoRetrievedChunks()
     {
         var docId = Guid.NewGuid();
         var chunks = new List<RetrievedChunk>
@@ -177,7 +174,7 @@ internal sealed class ChatExecutionTestFixture
         };
 
         _retrieval.Context = new RetrievedContext(chunks, Parents: [], TotalTokens: 20, TruncatedByBudget: false);
-        return new SeededChunks(docId, chunks[0].ChunkId, chunks[1].ChunkId);
+        return docId;
     }
 
     public Task<Starter.Shared.Results.Result<AiChatReplyDto>> RunOneTurnAsync(
@@ -200,19 +197,35 @@ internal sealed class ChatExecutionTestFixture
         await Db.AiMessages.IgnoreQueryFilters().AsNoTracking().SingleAsync(m => m.Id == messageId);
 }
 
-internal sealed record SeededChunks(Guid DocumentId, Guid Chunk1Id, Guid Chunk2Id);
+internal sealed class NullSender : ISender
+{
+    public Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken ct = default) =>
+        throw new NotSupportedException();
+
+    public Task<object?> Send(object request, CancellationToken ct = default) =>
+        throw new NotSupportedException();
+
+    public Task Send<TRequest>(TRequest request, CancellationToken ct = default) where TRequest : IRequest =>
+        throw new NotSupportedException();
+
+    public IAsyncEnumerable<TResponse> CreateStream<TResponse>(IStreamRequest<TResponse> request, CancellationToken ct = default) =>
+        throw new NotSupportedException();
+
+    public IAsyncEnumerable<object?> CreateStream(object request, CancellationToken ct = default) =>
+        throw new NotSupportedException();
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Fakes
 // ─────────────────────────────────────────────────────────────────────────
 
-internal sealed class ScriptedProviderFactory(
-    IServiceProvider serviceProvider,
-    IConfiguration configuration,
-    ScriptedAiProvider provider) : AiProviderFactory(serviceProvider, configuration)
+internal sealed class ScriptedProviderFactory(ScriptedAiProvider provider) : IAiProviderFactory
 {
-    public override IAiProvider Create(AiProviderType providerType) => provider;
-    public override AiProviderType GetDefaultProviderType() => AiProviderType.Anthropic;
+    public IAiProvider Create(AiProviderType providerType) => provider;
+    public AiProviderType GetDefaultProviderType() => AiProviderType.Anthropic;
+    public AiProviderType GetEmbeddingProviderType() => AiProviderType.Anthropic;
+    public IAiProvider CreateDefault() => provider;
+    public IAiProvider CreateForEmbeddings() => provider;
 }
 
 internal sealed class ScriptedAiProvider : IAiProvider

@@ -49,6 +49,7 @@ public sealed class AIModule : IModule
         services.AddScoped<OpenAiProvider>();
         services.AddScoped<OllamaAiProvider>();
         services.AddScoped<AiProviderFactory>();
+        services.AddScoped<IAiProviderFactory>(sp => sp.GetRequiredService<AiProviderFactory>());
         services.AddScoped<IAiService, AiService>();
         services.AddScoped<IUsageMetricCalculator, AiUsageMetricCalculator>();
         services.AddScoped<IChatExecutionService, ChatExecutionService>();

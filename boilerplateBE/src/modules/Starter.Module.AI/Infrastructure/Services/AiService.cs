@@ -7,7 +7,7 @@ using Starter.Module.AI.Infrastructure.Providers;
 namespace Starter.Module.AI.Infrastructure.Services;
 
 internal sealed class AiService(
-    AiProviderFactory providerFactory,
+    IAiProviderFactory providerFactory,
     IConfiguration configuration,
     ILogger<AiService> logger) : IAiService
 {

@@ -10,7 +10,7 @@ using Starter.Module.AI.Infrastructure.Settings;
 namespace Starter.Module.AI.Infrastructure.Ingestion;
 
 internal sealed class EmbeddingService(
-    AiProviderFactory providerFactory,
+    IAiProviderFactory providerFactory,
     AiDbContext context,
     ICurrentUserService currentUser,
     IOptions<AiRagSettings> ragOptions,

@@ -4,11 +4,20 @@ using Starter.Module.AI.Domain.Enums;
 
 namespace Starter.Module.AI.Infrastructure.Providers;
 
-internal class AiProviderFactory(
-    IServiceProvider serviceProvider,
-    IConfiguration configuration)
+internal interface IAiProviderFactory
 {
-    public virtual IAiProvider Create(AiProviderType providerType)
+    IAiProvider Create(AiProviderType providerType);
+    AiProviderType GetDefaultProviderType();
+    AiProviderType GetEmbeddingProviderType();
+    IAiProvider CreateDefault();
+    IAiProvider CreateForEmbeddings();
+}
+
+internal sealed class AiProviderFactory(
+    IServiceProvider serviceProvider,
+    IConfiguration configuration) : IAiProviderFactory
+{
+    public IAiProvider Create(AiProviderType providerType)
     {
         return providerType switch
         {
@@ -19,7 +28,7 @@ internal class AiProviderFactory(
         };
     }
 
-    public virtual AiProviderType GetDefaultProviderType()
+    public AiProviderType GetDefaultProviderType()
     {
         var providerStr = configuration["AI:DefaultProvider"] ?? "Anthropic";
         return Enum.Parse<AiProviderType>(providerStr, ignoreCase: true);
