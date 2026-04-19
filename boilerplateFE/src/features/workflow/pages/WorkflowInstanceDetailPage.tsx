@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { XCircle, Send, Clock, CheckCircle2, AlertCircle, User, Calendar } from 'lucide-react';
+import { XCircle, Send, Clock, CheckCircle2, AlertCircle, User, Calendar, ShieldOff } from 'lucide-react';
+import { AxiosError } from 'axios';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
-import { PageHeader, ConfirmDialog } from '@/components/common';
+import { PageHeader, ConfirmDialog, EmptyState } from '@/components/common';
 import { Slot } from '@/lib/extensions';
 import { useBackNavigation, usePermissions } from '@/hooks';
 import { useAuthStore, selectUser } from '@/stores';
@@ -36,7 +37,7 @@ export default function WorkflowInstanceDetailPage() {
 
   const instance = (location.state as { instance?: WorkflowInstanceSummary })?.instance;
 
-  const { data: history, isLoading: historyLoading } = useWorkflowHistory(instanceId!);
+  const { data: history, isLoading: historyLoading, error: historyError } = useWorkflowHistory(instanceId!);
   const { data: definition } = useWorkflowDefinition(instance?.definitionId ?? '');
   const { mutate: cancelWorkflow, isPending: cancelling } = useCancelWorkflow();
   const { mutate: transitionWorkflow, isPending: transitioning } = useTransitionWorkflow();
@@ -63,6 +64,26 @@ export default function WorkflowInstanceDetailPage() {
     return (
       <div className="flex justify-center py-12">
         <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  // Handle access-denied (403) or not-found (404) from the history endpoint
+  const historyStatusCode = historyError instanceof AxiosError ? historyError.response?.status : undefined;
+  if (!instance && historyError) {
+    const isAccessDenied = historyStatusCode === 403;
+    return (
+      <div className="space-y-6">
+        <PageHeader title={t('workflow.detail.title')} />
+        <Card>
+          <CardContent className="py-6">
+            <EmptyState
+              icon={isAccessDenied ? ShieldOff : XCircle}
+              title={isAccessDenied ? t('workflow.instances.accessDenied') : t('workflow.instances.empty')}
+              description={isAccessDenied ? t('workflow.instances.accessDeniedDesc') : undefined}
+            />
+          </CardContent>
+        </Card>
       </div>
     );
   }

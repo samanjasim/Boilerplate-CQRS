@@ -127,6 +127,23 @@ The following improvements were made after the initial Phase 1 implementation. T
 
 ---
 
+### Entity-level comment access control
+
+**What:** Add an `IEntityAccessChecker` capability that the Comments & Activity module calls before displaying comments or allowing new comments on an entity. The Workflow module would register a checker that validates the user is a workflow participant (initiator or assignee) before showing workflow-related comments. Currently, comments are visible to anyone in the tenant with `Comments.View` permission.
+
+**Why deferred:** The Comments module currently has no per-entity access control — it uses tenant-wide query filters only. Adding entity-level permissions requires a cross-module architectural change: the Comments module must support pluggable access checkers, and each consuming module must register one. The current access model (tenant-scoped + UI gates access via workflow detail page) is acceptable for teams where transparency is valued.
+
+**Pick this up when:** A tenant has compliance requirements that restrict who can see specific workflow discussions (e.g., HR disciplinary workflows, salary-related approvals), OR when the boilerplate targets regulated industries (healthcare, finance) where audit-trail visibility must be role-restricted.
+
+**Starting points:**
+- Define `IEntityAccessChecker : ICapability` in `Starter.Abstractions/Capabilities/` with method `Task<bool> CanAccessAsync(string entityType, Guid entityId, Guid userId, CancellationToken ct)`.
+- Register `NullEntityAccessChecker` (returns true) in `Starter.Infrastructure`.
+- The Comments module's `GetCommentsQueryHandler` and `AddCommentCommandHandler` call `IEntityAccessChecker.CanAccessAsync()` before proceeding.
+- The Workflow module registers a checker that validates the user is a workflow participant.
+- Consider: should the checker be AND-ed (all checkers must approve) or OR-ed (any checker can approve)?
+
+---
+
 ### Workflow analytics
 
 **What:** Aggregate metrics per definition — average cycle time, bottleneck states (steps with the longest median dwell time), approval rate per step, and volume over time. Expose via a read-model query and a dashboard card.

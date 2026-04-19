@@ -1253,7 +1253,9 @@
       "startedAt": "Started",
       "viewDetail": "View",
       "cancelConfirm": "Are you sure you want to cancel this workflow?",
-      "cancelSuccess": "Workflow cancelled"
+      "cancelSuccess": "Workflow cancelled",
+      "accessDenied": "Access Denied",
+      "accessDeniedDesc": "You do not have permission to view this workflow instance. Only the initiator, assigned approvers, or administrators can access it."
     },
     "detail": {
       "title": "Workflow Definition",
