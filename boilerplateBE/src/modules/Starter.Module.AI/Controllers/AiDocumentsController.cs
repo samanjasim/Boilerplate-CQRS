@@ -48,7 +48,7 @@ public sealed class AiDocumentsController(ISender mediator)
     [ProducesResponseType(typeof(ApiResponse<AiDocumentDto>), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Upload(
-        [FromForm] IFormFile file,
+        IFormFile file,
         [FromForm] string? name,
         CancellationToken ct = default)
     {
