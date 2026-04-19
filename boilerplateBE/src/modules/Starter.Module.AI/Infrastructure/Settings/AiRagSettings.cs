@@ -35,7 +35,12 @@ public sealed class AiRagSettings
     public int StageTimeoutVectorMs { get; init; } = 5_000;
     public int StageTimeoutKeywordMs { get; init; } = 3_000;
 
-    // New in Plan 4b-1 — Arabic / FTS language
+    // New in Plan 4b-1 — Arabic / FTS language.
+    // WARNING: This must match the regconfig literal in the `content_tsv` generated
+    // column defined in AiDocumentChunkConfiguration. Changing this at runtime without
+    // a coordinated migration (rewriting the generated column with the new dictionary)
+    // will silently produce zero hits because the query dictionary will not match the
+    // tokens in the index. Safe values today: "simple". Do not change without an ops plan.
     public string FtsLanguage { get; init; } = "simple";
     public bool ApplyArabicNormalization { get; init; } = true;
     public bool NormalizeTaMarbuta { get; init; } = true;

@@ -70,6 +70,8 @@ internal sealed class AiDocumentChunkConfiguration : IEntityTypeConfiguration<Ai
         {
             // 'simple' FTS config: no stemming. Supports pre-normalized Arabic (via NormalizedContent)
             // and English exact-token search. Stemming variants (run → running) are NOT matched.
+            // COUPLED: AiRagSettings.FtsLanguage must equal this literal. Query-time uses that
+            // setting in plainto_tsquery; a mismatch silently produces zero hits.
             builder.Property<NpgsqlTsVector>("ContentTsVector")
                 .HasColumnName("content_tsv")
                 .HasComputedColumnSql(
