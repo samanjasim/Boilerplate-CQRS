@@ -193,6 +193,26 @@ export const queryKeys = {
       detail: (id: string) => ['importExport', 'imports', 'detail', id] as const,
     },
   },
+  workflow: {
+    all: ['workflow'] as const,
+    definitions: {
+      all: ['workflow', 'definitions'] as const,
+      list: (entityType?: string) => ['workflow', 'definitions', 'list', entityType] as const,
+      detail: (id: string) => ['workflow', 'definitions', 'detail', id] as const,
+    },
+    instances: {
+      all: ['workflow', 'instances'] as const,
+      list: (params?: Record<string, unknown>) => ['workflow', 'instances', 'list', params] as const,
+      status: (entityType: string, entityId: string) =>
+        ['workflow', 'instances', 'status', entityType, entityId] as const,
+      history: (instanceId: string) => ['workflow', 'instances', 'history', instanceId] as const,
+    },
+    tasks: {
+      all: ['workflow', 'tasks'] as const,
+      list: (params?: Record<string, unknown>) => ['workflow', 'tasks', 'list', params] as const,
+      count: () => ['workflow', 'tasks', 'count'] as const,
+    },
+  },
   commentsActivity: {
     all: ['commentsActivity'] as const,
     comments: {

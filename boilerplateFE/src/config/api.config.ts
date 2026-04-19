@@ -196,4 +196,16 @@ export const API_ENDPOINTS = {
     WATCHERS: '/CommentsActivity/watchers',
     MENTIONABLE_USERS: '/CommentsActivity/mentionable-users',
   },
+  WORKFLOW: {
+    DEFINITIONS: '/workflow/definitions',
+    DEFINITION_DETAIL: (id: string) => `/workflow/definitions/${id}`,
+    DEFINITION_CLONE: (id: string) => `/workflow/definitions/${id}/clone`,
+    INSTANCES: '/workflow/instances',
+    INSTANCE_STATUS: '/workflow/instances/status',
+    INSTANCE_HISTORY: (id: string) => `/workflow/instances/${id}/history`,
+    INSTANCE_CANCEL: (id: string) => `/workflow/instances/${id}/cancel`,
+    TASKS: '/workflow/tasks',
+    TASKS_COUNT: '/workflow/tasks/count',
+    TASK_EXECUTE: (id: string) => `/workflow/tasks/${id}/execute`,
+  },
 } as const;
