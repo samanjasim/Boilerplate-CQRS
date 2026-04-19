@@ -103,7 +103,7 @@ public sealed class NullWorkflowService(ILogger<NullWorkflowService> logger) : I
     }
 
     public Task<IReadOnlyList<WorkflowInstanceSummary>> GetInstancesAsync(
-        string entityType,
+        string? entityType = null,
         string? state = null,
         Guid? startedByUserId = null,
         string? status = null,

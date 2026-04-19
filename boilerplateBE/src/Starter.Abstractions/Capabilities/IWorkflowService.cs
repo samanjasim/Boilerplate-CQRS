@@ -31,7 +31,7 @@ public interface IWorkflowService : ICapability
     // ── Query: History (AI, Reporting, Audit) ──
     Task<IReadOnlyList<WorkflowStepRecord>> GetHistoryAsync(Guid instanceId,
         CancellationToken ct = default);
-    Task<IReadOnlyList<WorkflowInstanceSummary>> GetInstancesAsync(string entityType,
+    Task<IReadOnlyList<WorkflowInstanceSummary>> GetInstancesAsync(string? entityType = null,
         string? state = null, Guid? startedByUserId = null, string? status = null,
         int page = 1, int pageSize = 20,
         CancellationToken ct = default);

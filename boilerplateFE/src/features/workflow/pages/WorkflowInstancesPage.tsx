@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 import { History, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import {
@@ -15,7 +14,7 @@ import {
 } from '@/components/ui/table';
 import { PageHeader, EmptyState, Pagination } from '@/components/common';
 import { getPersistedPageSize } from '@/components/common/pagination-utils';
-import { useWorkflowInstances } from '../api';
+import { useWorkflowInstances, useWorkflowDefinitions } from '../api';
 import { usePermissions } from '@/hooks';
 import { useAuthStore, selectUser } from '@/stores';
 import { PERMISSIONS } from '@/constants';
@@ -39,6 +38,14 @@ export default function WorkflowInstancesPage() {
   const [myRequestsOnly, setMyRequestsOnly] = useState(!canViewAll);
 
   const startedByUserId = (!canViewAll || myRequestsOnly) ? user?.id : undefined;
+
+  // Fetch definitions to populate the entity type dropdown with real values
+  const { data: definitions } = useWorkflowDefinitions();
+  const entityTypes = [...new Set(
+    (definitions?.data ?? definitions ?? [])
+      .map((d: { entityType: string; displayName: string }) => d.entityType)
+      .filter(Boolean) as string[]
+  )];
 
   const { data, isLoading } = useWorkflowInstances({
     entityType: entityTypeFilter || undefined,
@@ -83,12 +90,20 @@ export default function WorkflowInstancesPage() {
           <Label className="text-xs text-muted-foreground">
             {t('workflow.instances.entityType')}
           </Label>
-          <Input
-            value={entityTypeFilter}
-            onChange={(e) => { setEntityTypeFilter(e.target.value); setPage(1); }}
-            placeholder={t('workflow.instances.entityType')}
-            className="w-[180px]"
-          />
+          <Select
+            value={entityTypeFilter || '_all'}
+            onValueChange={(v) => { setEntityTypeFilter(v === '_all' ? '' : v); setPage(1); }}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">{t('common.all', 'All Types')}</SelectItem>
+              {entityTypes.map((et) => (
+                <SelectItem key={et} value={et}>{et}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {canViewAll && (

@@ -425,13 +425,16 @@ public sealed class WorkflowEngine(
     }
 
     public async Task<IReadOnlyList<WorkflowInstanceSummary>> GetInstancesAsync(
-        string entityType, string? state = null, Guid? startedByUserId = null,
+        string? entityType = null, string? state = null, Guid? startedByUserId = null,
         string? status = null, int page = 1, int pageSize = 20,
         CancellationToken ct = default)
     {
         var query = context.WorkflowInstances
             .Include(i => i.Definition)
-            .Where(i => i.EntityType == entityType);
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(entityType))
+            query = query.Where(i => i.EntityType == entityType);
 
         if (!string.IsNullOrWhiteSpace(state))
             query = query.Where(i => i.CurrentState == state);

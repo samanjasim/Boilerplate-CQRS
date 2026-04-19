@@ -5,7 +5,7 @@ using Starter.Shared.Results;
 namespace Starter.Module.Workflow.Application.Queries.GetWorkflowInstances;
 
 public sealed record GetWorkflowInstancesQuery(
-    string EntityType,
+    string? EntityType = null,
     string? State = null,
     Guid? StartedByUserId = null,
     string? Status = null,

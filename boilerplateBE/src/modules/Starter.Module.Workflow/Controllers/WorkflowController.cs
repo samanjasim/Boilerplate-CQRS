@@ -85,7 +85,7 @@ public sealed class WorkflowController(ISender mediator) : BaseApiController(med
     [Authorize(Policy = WorkflowPermissions.View)]
     [ProducesResponseType(typeof(ApiResponse<List<WorkflowInstanceSummary>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetInstances(
-        [FromQuery] string entityType,
+        [FromQuery] string? entityType,
         [FromQuery] string? state,
         [FromQuery] Guid? startedByUserId,
         [FromQuery] string? status,
