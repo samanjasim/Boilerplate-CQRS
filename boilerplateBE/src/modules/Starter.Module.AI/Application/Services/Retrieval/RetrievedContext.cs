@@ -4,8 +4,9 @@ public sealed record RetrievedContext(
     IReadOnlyList<RetrievedChunk> Children,
     IReadOnlyList<RetrievedChunk> Parents,
     int TotalTokens,
-    bool TruncatedByBudget)
+    bool TruncatedByBudget,
+    IReadOnlyList<string> DegradedStages)
 {
-    public static RetrievedContext Empty { get; } = new([], [], 0, false);
+    public static RetrievedContext Empty { get; } = new([], [], 0, false, []);
     public bool IsEmpty => Children.Count == 0;
 }

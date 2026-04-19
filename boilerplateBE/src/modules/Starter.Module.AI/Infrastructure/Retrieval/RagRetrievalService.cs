@@ -76,7 +76,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         var queryVector = vectors[0];
 
         var retrievalTopK = _settings.RetrievalTopK;
-        var alpha = (decimal)_settings.HybridSearchWeight;
+        var alpha = _settings.VectorWeight;
         var minHybrid = minScore ?? _settings.MinHybridScore;
 
         var vectorHits = await _vectorStore.SearchAsync(tenantId, queryVector, documentFilter, retrievalTopK, ct);
@@ -138,7 +138,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         var (trimmedChildren, trimmedParents, totalTokens, truncated) =
             TrimToBudget(childChunks, parentChunks, _settings.MaxContextTokens);
 
-        return new RetrievedContext(trimmedChildren, trimmedParents, totalTokens, truncated);
+        return new RetrievedContext(trimmedChildren, trimmedParents, totalTokens, truncated, []);
     }
 
     private RetrievedChunk Map(

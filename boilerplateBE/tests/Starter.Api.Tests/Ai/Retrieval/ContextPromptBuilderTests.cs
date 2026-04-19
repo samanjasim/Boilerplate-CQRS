@@ -29,7 +29,8 @@ public sealed class ContextPromptBuilderTests
             },
             Parents: [],
             TotalTokens: 10,
-            TruncatedByBudget: false);
+            TruncatedByBudget: false,
+            DegradedStages: []);
 
         var sp = ContextPromptBuilder.Build("Be helpful.", ctx);
 
@@ -50,7 +51,8 @@ public sealed class ContextPromptBuilderTests
             Children: new List<RetrievedChunk> { MakeChild("child", parentChunkId: parentId) },
             Parents: new List<RetrievedChunk> { MakeParent(parentId, "parent context") },
             TotalTokens: 10,
-            TruncatedByBudget: false);
+            TruncatedByBudget: false,
+            DegradedStages: []);
 
         var sp = ContextPromptBuilder.Build("S", ctx);
 

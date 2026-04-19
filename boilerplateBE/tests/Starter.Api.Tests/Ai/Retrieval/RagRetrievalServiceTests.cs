@@ -45,7 +45,8 @@ public sealed class RagRetrievalServiceTests
         {
             TopK = 5,
             RetrievalTopK = 20,
-            HybridSearchWeight = 0.7,
+            VectorWeight = 1.0m,
+            KeywordWeight = 1.0m,
             MaxContextTokens = 4000,
             IncludeParentContext = true,
             MinHybridScore = 0.0m
@@ -85,6 +86,12 @@ public sealed class RagRetrievalServiceTests
             parentChunkId: parentId);
         db.AiDocumentChunks.Add(chunk);
         return chunk;
+    }
+
+    [Fact]
+    public void RetrievedContext_Empty_HasEmptyDegradedStages()
+    {
+        RetrievedContext.Empty.DegradedStages.Should().NotBeNull().And.BeEmpty();
     }
 
     [Fact]
@@ -179,7 +186,8 @@ public sealed class RagRetrievalServiceTests
         {
             TopK = 5,
             RetrievalTopK = 20,
-            HybridSearchWeight = 0.7,
+            VectorWeight = 1.0m,
+            KeywordWeight = 1.0m,
             MaxContextTokens = 4000,
             IncludeParentContext = true,
             MinHybridScore = 0.0m
