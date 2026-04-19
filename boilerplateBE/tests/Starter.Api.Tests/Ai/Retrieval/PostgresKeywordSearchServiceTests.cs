@@ -1,6 +1,8 @@
 using FluentAssertions;
+using Microsoft.Extensions.Options;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Module.AI.Infrastructure.Retrieval;
+using Starter.Module.AI.Infrastructure.Settings;
 using Xunit;
 
 namespace Starter.Api.Tests.Ai.Retrieval;
@@ -36,7 +38,7 @@ public sealed class PostgresKeywordSearchServiceTests : IClassFixture<AiPostgres
 
         await db.SaveChangesAsync();
 
-        var svc = new PostgresKeywordSearchService(db, _fixture.Logger<PostgresKeywordSearchService>());
+        var svc = new PostgresKeywordSearchService(db, _fixture.Logger<PostgresKeywordSearchService>(), Options.Create(new AiRagSettings()));
 
         var results = await svc.SearchAsync(tenantA, "photosynthesis", null, 10, CancellationToken.None);
 
@@ -63,7 +65,7 @@ public sealed class PostgresKeywordSearchServiceTests : IClassFixture<AiPostgres
 
         await db.SaveChangesAsync();
 
-        var svc = new PostgresKeywordSearchService(db, _fixture.Logger<PostgresKeywordSearchService>());
+        var svc = new PostgresKeywordSearchService(db, _fixture.Logger<PostgresKeywordSearchService>(), Options.Create(new AiRagSettings()));
 
         var results = await svc.SearchAsync(tenant, "photosynthesis", [docX.Id], 10, CancellationToken.None);
 
@@ -75,10 +77,89 @@ public sealed class PostgresKeywordSearchServiceTests : IClassFixture<AiPostgres
     public async Task SearchAsync_EmptyQuery_ReturnsEmpty()
     {
         await using var db = _fixture.CreateDbContext();
-        var svc = new PostgresKeywordSearchService(db, _fixture.Logger<PostgresKeywordSearchService>());
+        var svc = new PostgresKeywordSearchService(db, _fixture.Logger<PostgresKeywordSearchService>(), Options.Create(new AiRagSettings()));
 
         var results = await svc.SearchAsync(Guid.NewGuid(), "   ", null, 10, CancellationToken.None);
 
         results.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Arabic_Query_Matches_Chunk_With_Different_Alef_Spelling()
+    {
+        var tenant = Guid.NewGuid();
+        var uploader = Guid.NewGuid();
+
+        await using var db = _fixture.CreateDbContext();
+
+        var doc = AiDocument.Create(tenant, "Doc AR", "doc-ar.pdf", "ref-ar", "application/pdf", 512, uploader);
+        db.AiDocuments.Add(doc);
+
+        // Chunk body uses أ; query will use ا. After normalization both become ا.
+        var chunk = AiDocumentChunk.Create(doc.Id, "child", "أكاديمي العلوم", 0, 5, Guid.NewGuid());
+        chunk.SetNormalizedContent(Starter.Module.AI.Infrastructure.Retrieval.ArabicTextNormalizer.Normalize(
+            chunk.Content,
+            new Starter.Module.AI.Infrastructure.Retrieval.ArabicNormalizationOptions(true, true)));
+        db.AiDocumentChunks.Add(chunk);
+        await db.SaveChangesAsync();
+
+        var settings = Options.Create(new AiRagSettings());
+        var svc = new PostgresKeywordSearchService(db, _fixture.Logger<PostgresKeywordSearchService>(), settings);
+        var results = await svc.SearchAsync(tenant, "اكاديمي", null, 10, CancellationToken.None);
+
+        results.Should().HaveCount(1);
+        results[0].ChunkId.Should().Be(chunk.QdrantPointId);
+    }
+
+    [Fact]
+    public async Task Arabic_Query_Matches_Through_Diacritics()
+    {
+        var tenant = Guid.NewGuid();
+        var uploader = Guid.NewGuid();
+
+        await using var db = _fixture.CreateDbContext();
+
+        var doc = AiDocument.Create(tenant, "Doc AR2", "doc-ar2.pdf", "ref-ar2", "application/pdf", 512, uploader);
+        db.AiDocuments.Add(doc);
+
+        var chunk = AiDocumentChunk.Create(doc.Id, "child", "مُؤَسَّسَة تعليمية", 0, 5, Guid.NewGuid());
+        chunk.SetNormalizedContent(Starter.Module.AI.Infrastructure.Retrieval.ArabicTextNormalizer.Normalize(
+            chunk.Content,
+            new Starter.Module.AI.Infrastructure.Retrieval.ArabicNormalizationOptions(true, true)));
+        db.AiDocumentChunks.Add(chunk);
+        await db.SaveChangesAsync();
+
+        var settings = Options.Create(new AiRagSettings());
+        var svc = new PostgresKeywordSearchService(db, _fixture.Logger<PostgresKeywordSearchService>(), settings);
+        var results = await svc.SearchAsync(tenant, "مؤسسه", null, 10, CancellationToken.None);
+
+        results.Should().HaveCount(1);
+        results[0].ChunkId.Should().Be(chunk.QdrantPointId);
+    }
+
+    [Fact]
+    public async Task Mixed_Content_Chunk_Keeps_English_Matching()
+    {
+        var tenant = Guid.NewGuid();
+        var uploader = Guid.NewGuid();
+
+        await using var db = _fixture.CreateDbContext();
+
+        var doc = AiDocument.Create(tenant, "Doc Mixed", "mix.pdf", "ref-mix", "application/pdf", 512, uploader);
+        db.AiDocuments.Add(doc);
+
+        var chunk = AiDocumentChunk.Create(doc.Id, "child", "photosynthesis التمثيل الضوئي", 0, 5, Guid.NewGuid());
+        chunk.SetNormalizedContent(Starter.Module.AI.Infrastructure.Retrieval.ArabicTextNormalizer.Normalize(
+            chunk.Content,
+            new Starter.Module.AI.Infrastructure.Retrieval.ArabicNormalizationOptions(true, true)));
+        db.AiDocumentChunks.Add(chunk);
+        await db.SaveChangesAsync();
+
+        var settings = Options.Create(new AiRagSettings());
+        var svc = new PostgresKeywordSearchService(db, _fixture.Logger<PostgresKeywordSearchService>(), settings);
+        var results = await svc.SearchAsync(tenant, "photosynthesis", null, 10, CancellationToken.None);
+
+        results.Should().HaveCount(1);
+        results[0].ChunkId.Should().Be(chunk.QdrantPointId);
     }
 }

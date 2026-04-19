@@ -8,6 +8,7 @@ using Starter.Module.AI.Application.Messages;
 using Starter.Module.AI.Application.Services.Ingestion;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Module.AI.Infrastructure.Persistence;
+using Starter.Module.AI.Infrastructure.Retrieval;
 using Starter.Module.AI.Infrastructure.Settings;
 
 namespace Starter.Module.AI.Infrastructure.Consumers;
@@ -80,6 +81,10 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
             var tenantId = doc.TenantId ?? Guid.Empty;
             await vectorStore.EnsureCollectionAsync(tenantId, embedder.VectorSize, ct);
 
+            var arOpts = new ArabicNormalizationOptions(
+                ragOptions.NormalizeTaMarbuta,
+                ragOptions.NormalizeArabicDigits);
+
             var parentEntities = chunks.Parents.Select(p => AiDocumentChunk.Create(
                 documentId: doc.Id,
                 chunkLevel: "parent",
@@ -90,6 +95,12 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
                 parentChunkId: null,
                 sectionTitle: p.SectionTitle,
                 pageNumber: p.PageNumber)).ToList();
+
+            if (ragOptions.ApplyArabicNormalization)
+            {
+                foreach (var p in parentEntities)
+                    p.SetNormalizedContent(ArabicTextNormalizer.Normalize(p.Content, arOpts));
+            }
 
             db.AiDocumentChunks.AddRange(parentEntities);
             await db.SaveChangesAsync(ct);
@@ -115,6 +126,12 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
                     parentChunkId: parentDbId,
                     sectionTitle: draft.SectionTitle,
                     pageNumber: draft.PageNumber));
+
+                if (ragOptions.ApplyArabicNormalization)
+                {
+                    var last = childEntities[^1];
+                    last.SetNormalizedContent(ArabicTextNormalizer.Normalize(last.Content, arOpts));
+                }
 
                 points.Add(new VectorPoint(
                     Id: pointId,
