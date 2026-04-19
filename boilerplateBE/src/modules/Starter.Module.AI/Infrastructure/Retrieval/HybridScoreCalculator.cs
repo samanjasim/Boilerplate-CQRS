@@ -7,45 +7,50 @@ public sealed record HybridHit(Guid ChunkId, decimal SemanticScore, decimal Keyw
 internal static class HybridScoreCalculator
 {
     public static IReadOnlyList<HybridHit> Combine(
-        IReadOnlyList<VectorSearchHit> semantic,
-        IReadOnlyList<KeywordSearchHit> keyword,
-        decimal alpha,
+        IReadOnlyList<IReadOnlyList<VectorSearchHit>> semanticLists,
+        IReadOnlyList<IReadOnlyList<KeywordSearchHit>> keywordLists,
+        decimal vectorWeight,
+        decimal keywordWeight,
+        int rrfK,
         decimal minScore)
     {
-        var semMap = semantic.ToDictionary(h => h.ChunkId, h => h.Score);
-        var kwMap = keyword.ToDictionary(h => h.ChunkId, h => h.Score);
+        var scores = new Dictionary<Guid, decimal>();
+        var maxSem = new Dictionary<Guid, decimal>();
+        var maxKw = new Dictionary<Guid, decimal>();
 
-        var semNorm = Normalise(semMap);
-        var kwNorm = Normalise(kwMap);
-
-        var allIds = new HashSet<Guid>(semMap.Keys);
-        foreach (var id in kwMap.Keys) allIds.Add(id);
-
-        var merged = allIds
-            .Select(id =>
+        foreach (var list in semanticLists)
+        {
+            for (var rank = 0; rank < list.Count; rank++)
             {
-                var sNorm = semNorm.GetValueOrDefault(id, 0m);
-                var kNorm = kwNorm.GetValueOrDefault(id, 0m);
-                var hybrid = alpha * sNorm + (1m - alpha) * kNorm;
-                var sRaw = semMap.GetValueOrDefault(id, 0m);
-                var kRaw = kwMap.GetValueOrDefault(id, 0m);
-                return new HybridHit(id, sRaw, kRaw, hybrid);
-            })
-            .Where(h => h.HybridScore >= minScore)
+                var hit = list[rank];
+                var contribution = vectorWeight / (rrfK + rank + 1);
+                scores[hit.ChunkId] = scores.GetValueOrDefault(hit.ChunkId) + contribution;
+                if (!maxSem.TryGetValue(hit.ChunkId, out var existing) || hit.Score > existing)
+                    maxSem[hit.ChunkId] = hit.Score;
+            }
+        }
+
+        foreach (var list in keywordLists)
+        {
+            for (var rank = 0; rank < list.Count; rank++)
+            {
+                var hit = list[rank];
+                var contribution = keywordWeight / (rrfK + rank + 1);
+                scores[hit.ChunkId] = scores.GetValueOrDefault(hit.ChunkId) + contribution;
+                if (!maxKw.TryGetValue(hit.ChunkId, out var existing) || hit.Score > existing)
+                    maxKw[hit.ChunkId] = hit.Score;
+            }
+        }
+
+        return scores
+            .Where(kv => kv.Value >= minScore)
+            .Select(kv => new HybridHit(
+                kv.Key,
+                maxSem.GetValueOrDefault(kv.Key),
+                maxKw.GetValueOrDefault(kv.Key),
+                kv.Value))
             .OrderByDescending(h => h.HybridScore)
             .ThenBy(h => h.ChunkId)
             .ToList();
-
-        return merged;
-    }
-
-    private static Dictionary<Guid, decimal> Normalise(Dictionary<Guid, decimal> raw)
-    {
-        if (raw.Count == 0) return new();
-        var min = raw.Values.Min();
-        var max = raw.Values.Max();
-        if (max == min) return raw.ToDictionary(kv => kv.Key, _ => 1.0m);
-        var range = max - min;
-        return raw.ToDictionary(kv => kv.Key, kv => (kv.Value - min) / range);
     }
 }

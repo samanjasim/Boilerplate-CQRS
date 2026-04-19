@@ -76,13 +76,18 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         var queryVector = vectors[0];
 
         var retrievalTopK = _settings.RetrievalTopK;
-        var alpha = _settings.VectorWeight;
         var minHybrid = minScore ?? _settings.MinHybridScore;
 
         var vectorHits = await _vectorStore.SearchAsync(tenantId, queryVector, documentFilter, retrievalTopK, ct);
         var keywordHits = await _keywordSearch.SearchAsync(tenantId, queryText, documentFilter, retrievalTopK, ct);
 
-        var mergedHits = HybridScoreCalculator.Combine(vectorHits, keywordHits, alpha, minHybrid);
+        var mergedHits = HybridScoreCalculator.Combine(
+            [vectorHits],
+            [keywordHits],
+            _settings.VectorWeight,
+            _settings.KeywordWeight,
+            _settings.RrfK,
+            minHybrid);
         var topKHits = mergedHits.Take(topK).ToList();
 
         if (topKHits.Count == 0)

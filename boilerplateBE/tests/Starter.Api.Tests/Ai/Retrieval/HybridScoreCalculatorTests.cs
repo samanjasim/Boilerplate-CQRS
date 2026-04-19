@@ -7,63 +7,141 @@ namespace Starter.Api.Tests.Ai.Retrieval;
 
 public sealed class HybridScoreCalculatorTests
 {
+    private static readonly Guid A = Guid.Parse("00000000-0000-0000-0000-00000000000A");
+    private static readonly Guid B = Guid.Parse("00000000-0000-0000-0000-00000000000B");
+    private static readonly Guid C = Guid.Parse("00000000-0000-0000-0000-00000000000C");
+    private static readonly Guid D = Guid.Parse("00000000-0000-0000-0000-00000000000D");
+
+    private static IReadOnlyList<IReadOnlyList<VectorSearchHit>> Vec(params (Guid id, decimal score)[][] lists)
+        => lists.Select(l => (IReadOnlyList<VectorSearchHit>)l.Select(t => new VectorSearchHit(t.id, t.score)).ToList()).ToList();
+
+    private static IReadOnlyList<IReadOnlyList<KeywordSearchHit>> Kw(params (Guid id, decimal score)[][] lists)
+        => lists.Select(l => (IReadOnlyList<KeywordSearchHit>)l.Select(t => new KeywordSearchHit(t.id, t.score)).ToList()).ToList();
+
     [Fact]
-    public void Combine_Blends_With_Alpha()
+    public void Combine_SingleVector_SingleKeyword_DifferentIds_BothReturned()
     {
-        var semantic = new List<VectorSearchHit>
-        {
-            new(Guid.Parse("00000000-0000-0000-0000-000000000001"), 0.9m),
-            new(Guid.Parse("00000000-0000-0000-0000-000000000002"), 0.1m)
-        };
-        var keyword = new List<KeywordSearchHit>
-        {
-            new(Guid.Parse("00000000-0000-0000-0000-000000000001"), 0.5m),
-            new(Guid.Parse("00000000-0000-0000-0000-000000000003"), 1.5m)
-        };
+        var result = HybridScoreCalculator.Combine(
+            Vec(new[] { (A, 0.9m) }),
+            Kw(new[] { (B, 0.5m) }),
+            vectorWeight: 1m, keywordWeight: 1m, rrfK: 60, minScore: 0m);
 
-        var merged = HybridScoreCalculator.Combine(semantic, keyword, alpha: 0.7m, minScore: 0m);
-
-        merged.Select(m => m.ChunkId).Should().ContainInOrder(
-            Guid.Parse("00000000-0000-0000-0000-000000000001"),
-            Guid.Parse("00000000-0000-0000-0000-000000000003"),
-            Guid.Parse("00000000-0000-0000-0000-000000000002"));
-        merged[0].HybridScore.Should().BeApproximately(0.70m, 0.001m);
-        merged[1].HybridScore.Should().BeApproximately(0.30m, 0.001m);
-        merged[2].HybridScore.Should().BeApproximately(0.00m, 0.001m);
+        result.Should().HaveCount(2);
+        result.Select(h => h.ChunkId).Should().BeEquivalentTo(new[] { A, B });
     }
 
     [Fact]
-    public void Combine_Filters_By_MinScore()
+    public void Combine_SameId_InBothLists_ScoresSum()
     {
-        var semantic = new List<VectorSearchHit> { new(Guid.NewGuid(), 0.2m) };
-        var keyword = new List<KeywordSearchHit>();
+        var result = HybridScoreCalculator.Combine(
+            Vec(new[] { (A, 0.9m), (B, 0.5m) }),
+            Kw(new[] { (A, 0.7m), (B, 0.4m) }),
+            vectorWeight: 1m, keywordWeight: 1m, rrfK: 60, minScore: 0m);
 
-        var merged = HybridScoreCalculator.Combine(semantic, keyword, alpha: 0.7m, minScore: 0.8m);
-
-        merged.Should().BeEmpty();
+        // A appears rank-0 in both lists; B rank-1 in both. A's RRF > B's RRF.
+        result.Should().HaveCount(2);
+        result[0].ChunkId.Should().Be(A);
+        result[1].ChunkId.Should().Be(B);
+        result[0].HybridScore.Should().BeGreaterThan(result[1].HybridScore);
     }
 
     [Fact]
-    public void Combine_Handles_Empty_Inputs()
+    public void Combine_EmptyKeyword_ReturnsVectorListOrdered()
     {
-        var merged = HybridScoreCalculator.Combine(
-            new List<VectorSearchHit>(),
-            new List<KeywordSearchHit>(),
-            alpha: 0.7m,
-            minScore: 0m);
+        var result = HybridScoreCalculator.Combine(
+            Vec(new[] { (A, 0.9m), (B, 0.5m) }),
+            Kw(Array.Empty<(Guid, decimal)>()),
+            vectorWeight: 1m, keywordWeight: 1m, rrfK: 60, minScore: 0m);
 
-        merged.Should().BeEmpty();
+        result.Select(h => h.ChunkId).Should().ContainInOrder(A, B);
     }
 
     [Fact]
-    public void Combine_Single_Hit_On_Each_Side_Normalises_To_One()
+    public void Combine_EmptyVector_ReturnsKeywordListOrdered()
     {
-        var semantic = new List<VectorSearchHit> { new(Guid.Parse("00000000-0000-0000-0000-000000000001"), 0.5m) };
-        var keyword = new List<KeywordSearchHit> { new(Guid.Parse("00000000-0000-0000-0000-000000000001"), 0.5m) };
+        var result = HybridScoreCalculator.Combine(
+            Vec(Array.Empty<(Guid, decimal)>()),
+            Kw(new[] { (B, 0.5m), (A, 0.3m) }),
+            vectorWeight: 1m, keywordWeight: 1m, rrfK: 60, minScore: 0m);
 
-        var merged = HybridScoreCalculator.Combine(semantic, keyword, alpha: 0.7m, minScore: 0m);
+        result.Select(h => h.ChunkId).Should().ContainInOrder(B, A);
+    }
 
-        merged.Should().HaveCount(1);
-        merged[0].HybridScore.Should().BeApproximately(1.0m, 0.001m);
+    [Fact]
+    public void Combine_AllEmpty_ReturnsEmpty()
+    {
+        var result = HybridScoreCalculator.Combine(
+            Vec(Array.Empty<(Guid, decimal)>()),
+            Kw(Array.Empty<(Guid, decimal)>()),
+            vectorWeight: 1m, keywordWeight: 1m, rrfK: 60, minScore: 0m);
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Combine_MultipleVectorLists_RanksAccumulate()
+    {
+        // A is rank-0 in both variant lists; B only in list #1 at rank-1.
+        // A should win because it gets two high contributions.
+        var result = HybridScoreCalculator.Combine(
+            Vec(
+                new[] { (A, 0.9m), (B, 0.8m) },
+                new[] { (A, 0.9m), (C, 0.7m) }),
+            Kw(Array.Empty<(Guid, decimal)>()),
+            vectorWeight: 1m, keywordWeight: 1m, rrfK: 60, minScore: 0m);
+
+        result[0].ChunkId.Should().Be(A);
+    }
+
+    [Fact]
+    public void Combine_MinScoreFilter_DropsLowScores()
+    {
+        // With only one hit, A's RRF = 1/61. Set a min above that.
+        var result = HybridScoreCalculator.Combine(
+            Vec(new[] { (A, 0.9m) }),
+            Kw(Array.Empty<(Guid, decimal)>()),
+            vectorWeight: 1m, keywordWeight: 1m, rrfK: 60, minScore: 1m);
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Combine_TieBreakByChunkId_IsDeterministic()
+    {
+        // A and B both appear at rank-0 in one of two symmetric lists → equal scores → tiebreak on id.
+        var result = HybridScoreCalculator.Combine(
+            Vec(
+                new[] { (A, 0.9m) },
+                new[] { (B, 0.9m) }),
+            Kw(Array.Empty<(Guid, decimal)>()),
+            vectorWeight: 1m, keywordWeight: 1m, rrfK: 60, minScore: 0m);
+
+        result[0].ChunkId.Should().Be(A);  // A < B by Guid ordering
+        result[1].ChunkId.Should().Be(B);
+    }
+
+    [Fact]
+    public void Combine_SemanticScore_ReportsMaxRawAcrossLists()
+    {
+        var result = HybridScoreCalculator.Combine(
+            Vec(
+                new[] { (A, 0.7m) },
+                new[] { (A, 0.95m) }),
+            Kw(Array.Empty<(Guid, decimal)>()),
+            vectorWeight: 1m, keywordWeight: 1m, rrfK: 60, minScore: 0m);
+
+        result[0].SemanticScore.Should().Be(0.95m);
+    }
+
+    [Fact]
+    public void Combine_KeywordWeightZero_VectorOnly()
+    {
+        // B scores higher on keyword; A scores on vector only. With keywordWeight=0, A must win.
+        var result = HybridScoreCalculator.Combine(
+            Vec(new[] { (A, 0.9m) }),
+            Kw(new[] { (B, 0.9m) }),
+            vectorWeight: 1m, keywordWeight: 0m, rrfK: 60, minScore: 0m);
+
+        result[0].ChunkId.Should().Be(A);
     }
 }
