@@ -14,4 +14,7 @@ public static class WellKnownNotificationTypes
 
     /// <summary>A new comment was posted on an entity the user watches.</summary>
     public const string CommentOnWatchedEntity = "CommentOnWatchedEntity";
+
+    /// <summary>A workflow approval task was assigned to the user.</summary>
+    public const string WorkflowTaskAssigned = "WorkflowTaskAssigned";
 }
