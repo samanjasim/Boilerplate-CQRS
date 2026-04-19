@@ -89,7 +89,7 @@ internal sealed class QdrantVectorStore : IVectorStore
                     Field = new FieldCondition
                     {
                         Key = "document_id",
-                        Match = new Match { Text = documentId.ToString() }
+                        Match = new Match { Keyword = documentId.ToString() }
                     }
                 }
             }

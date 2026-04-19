@@ -20,6 +20,12 @@ public sealed class AiRagSettings
     // From Plan 4b
     public int MaxContextTokens { get; init; } = 4000;
     public bool IncludeParentContext { get; init; } = true;
+
+    // RRF-based minimum score gate. Fusion scores are computed as
+    // Σ weight/(RrfK + rank + 1); with default RrfK=60 the top-1 score is ~0.0164,
+    // rank 20 is ~0.0125. Pre-4b-1 min-max values (e.g. 0.3) would reject every
+    // hit under RRF and turn RAG into a silent no-op. Keep at 0.0 unless you have
+    // measured scores for your corpus.
     public decimal MinHybridScore { get; init; } = 0.0m;
 
     // New in Plan 4b-1 — RRF fusion (replaces HybridSearchWeight)
