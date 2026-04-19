@@ -77,7 +77,7 @@ internal sealed class NotifyMentionedUsersOnCommentCreatedHandler(
                 await notificationService.CreateAsync(
                     recipient.Id,
                     recipient.TenantId,
-                    "CommentMentioned",
+                    WellKnownNotificationTypes.CommentMentioned,
                     "You were mentioned in a comment",
                     $"You were mentioned in a comment on {notification.EntityType}.",
                     data,

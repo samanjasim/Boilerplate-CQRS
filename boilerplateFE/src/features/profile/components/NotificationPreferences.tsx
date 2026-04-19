@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bell, Mail, Monitor } from 'lucide-react';
+import { isModuleActive } from '@/config/modules.config';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,6 +18,7 @@ const notificationTypeLabels: Record<string, string> = {
   TenantCreated: 'notifications.types.tenantCreated',
   InvitationAccepted: 'notifications.types.invitationAccepted',
   LoginFromNewDevice: 'notifications.types.loginFromNewDevice',
+  CommentMentioned: 'notifications.types.commentMentioned',
 };
 
 export function NotificationPreferences() {
@@ -82,21 +84,41 @@ export function NotificationPreferences() {
                 {t(notificationTypeLabels[pref.notificationType] ?? pref.notificationType)}
               </span>
               <div className="flex justify-center">
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={pref.emailEnabled}
-                  onClick={() => togglePref(pref.notificationType, 'emailEnabled')}
-                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                    pref.emailEnabled ? 'bg-primary' : 'bg-input'
-                  }`}
-                >
-                  <span
-                    className={`pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform ${
-                      pref.emailEnabled ? 'translate-x-4' : 'translate-x-0'
+                {pref.notificationType === 'CommentMentioned' && !isModuleActive('communication') ? (
+                  <div className="relative group">
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={false}
+                      aria-label={`${t(notificationTypeLabels[pref.notificationType] ?? pref.notificationType)} — ${t('notifications.emailRequiresCommunication')}`}
+                      disabled
+                      title={t('notifications.emailRequiresCommunication')}
+                      className="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border-2 border-transparent bg-input opacity-50 cursor-not-allowed"
+                    >
+                      <span className="pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 translate-x-0" />
+                    </button>
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 text-xs text-popover-foreground bg-popover border rounded-lg shadow-md opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                      {t('notifications.emailRequiresCommunication')}
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={pref.emailEnabled}
+                    aria-label={`${t(notificationTypeLabels[pref.notificationType] ?? pref.notificationType)} — Email`}
+                    onClick={() => togglePref(pref.notificationType, 'emailEnabled')}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                      pref.emailEnabled ? 'bg-primary' : 'bg-input'
                     }`}
-                  />
-                </button>
+                  >
+                    <span
+                      className={`pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform ${
+                        pref.emailEnabled ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                )}
               </div>
               <div className="flex justify-center">
                 <button

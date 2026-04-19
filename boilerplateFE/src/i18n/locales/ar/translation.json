@@ -416,8 +416,10 @@
       "passwordChanged": "تغيير كلمة المرور",
       "tenantCreated": "إنشاء مستأجر",
       "invitationAccepted": "قبول الدعوة",
-      "loginFromNewDevice": "تسجيل دخول من جهاز جديد"
-    }
+      "loginFromNewDevice": "تسجيل دخول من جهاز جديد",
+      "commentMentioned": "الإشارة في التعليقات"
+    },
+    "emailRequiresCommunication": "إشعارات البريد الإلكتروني متاحة عند تفعيل وحدة الاتصال"
   },
   "files": {
     "title": "الملفات",

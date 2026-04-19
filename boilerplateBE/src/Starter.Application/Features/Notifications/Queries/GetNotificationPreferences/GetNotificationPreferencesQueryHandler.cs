@@ -22,6 +22,7 @@ internal sealed class GetNotificationPreferencesQueryHandler(
         NotificationType.TenantCreated,
         NotificationType.InvitationAccepted,
         NotificationType.LoginFromNewDevice,
+        NotificationType.CommentMentioned,
     ];
 
     public async Task<Result<List<NotificationPreferenceDto>>> Handle(
