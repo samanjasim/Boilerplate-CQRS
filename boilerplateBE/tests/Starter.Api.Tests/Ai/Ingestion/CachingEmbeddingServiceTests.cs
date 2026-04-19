@@ -4,6 +4,7 @@ using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Services.Ingestion;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Ingestion;
+using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Settings;
 using Xunit;
 
@@ -48,8 +49,25 @@ public sealed class CachingEmbeddingServiceTests
         public Task<bool> ExistsAsync(string key, CancellationToken ct = default) => Task.FromResult(_store.ContainsKey(key));
     }
 
-    private static CachingEmbeddingService Build(InnerCountingEmbedder inner, ICacheService cache) =>
-        new(inner, cache, Options.Create(new AiRagSettings { EmbeddingCacheTtlSeconds = 60 }));
+    private sealed class StaticEmbeddingModelFactory : IAiProviderFactory
+    {
+        private readonly string _modelId;
+        public StaticEmbeddingModelFactory(string modelId) { _modelId = modelId; }
+        public string GetEmbeddingModelId() => _modelId;
+
+        public IAiProvider Create(AiProviderType providerType) => throw new NotSupportedException();
+        public AiProviderType GetDefaultProviderType() => AiProviderType.OpenAI;
+        public AiProviderType GetEmbeddingProviderType() => AiProviderType.OpenAI;
+        public IAiProvider CreateDefault() => throw new NotSupportedException();
+        public IAiProvider CreateForEmbeddings() => throw new NotSupportedException();
+    }
+
+    private static CachingEmbeddingService Build(
+        InnerCountingEmbedder inner,
+        ICacheService cache,
+        string modelId = "OpenAI:text-embedding-3-small") =>
+        new(inner, cache, new StaticEmbeddingModelFactory(modelId),
+            Options.Create(new AiRagSettings { EmbeddingCacheTtlSeconds = 60 }));
 
     [Fact]
     public async Task Hit_ReturnsCachedVector_WithoutCallingInner()
@@ -105,5 +123,21 @@ public sealed class CachingEmbeddingServiceTests
         _ = await svc2.EmbedAsync(["warmup"], CancellationToken.None);
 
         svc2.VectorSize.Should().Be(4);
+    }
+
+    [Fact]
+    public async Task Model_Change_Busts_Cache_For_Same_Text()
+    {
+        var inner = new InnerCountingEmbedder();
+        var cache = new MemoryCache();
+
+        var svcA = Build(inner, cache, modelId: "OpenAI:text-embedding-3-small");
+        _ = await svcA.EmbedAsync(["hello"], CancellationToken.None);
+
+        var svcB = Build(inner, cache, modelId: "OpenAI:text-embedding-3-large");
+        _ = await svcB.EmbedAsync(["hello"], CancellationToken.None);
+
+        // Different model id → different cache key → inner is invoked twice.
+        inner.CallCount.Should().Be(2);
     }
 }

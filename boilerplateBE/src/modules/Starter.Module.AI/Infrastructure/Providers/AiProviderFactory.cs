@@ -11,6 +11,13 @@ internal interface IAiProviderFactory
     AiProviderType GetEmbeddingProviderType();
     IAiProvider CreateDefault();
     IAiProvider CreateForEmbeddings();
+
+    /// <summary>
+    /// Stable identifier for the embedding model currently in use
+    /// (e.g. "OpenAI:text-embedding-3-small"). Used to namespace caches
+    /// so a model change invalidates previously cached vectors.
+    /// </summary>
+    string GetEmbeddingModelId();
 }
 
 internal sealed class AiProviderFactory(
@@ -45,4 +52,17 @@ internal sealed class AiProviderFactory(
     public IAiProvider CreateDefault() => Create(GetDefaultProviderType());
 
     public IAiProvider CreateForEmbeddings() => Create(GetEmbeddingProviderType());
+
+    public string GetEmbeddingModelId()
+    {
+        var providerType = GetEmbeddingProviderType();
+        var modelName = providerType switch
+        {
+            AiProviderType.OpenAI => configuration["AI:Providers:OpenAI:EmbeddingModel"] ?? "text-embedding-3-small",
+            AiProviderType.Ollama => configuration["AI:Providers:Ollama:EmbeddingModel"] ?? "nomic-embed-text",
+            AiProviderType.Anthropic => configuration["AI:Providers:Anthropic:EmbeddingModel"] ?? "default",
+            _ => "default"
+        };
+        return $"{providerType}:{modelName}";
+    }
 }

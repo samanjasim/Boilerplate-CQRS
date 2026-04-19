@@ -226,6 +226,7 @@ internal sealed class ScriptedProviderFactory(ScriptedAiProvider provider) : IAi
     public AiProviderType GetEmbeddingProviderType() => AiProviderType.Anthropic;
     public IAiProvider CreateDefault() => provider;
     public IAiProvider CreateForEmbeddings() => provider;
+    public string GetEmbeddingModelId() => "Anthropic:test";
 }
 
 internal sealed class ScriptedAiProvider : IAiProvider

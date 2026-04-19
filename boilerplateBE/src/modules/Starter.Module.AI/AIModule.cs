@@ -73,6 +73,7 @@ public sealed class AIModule : IModule
         services.AddScoped<IEmbeddingService>(sp => new Infrastructure.Ingestion.CachingEmbeddingService(
             sp.GetRequiredService<Infrastructure.Ingestion.EmbeddingService>(),
             sp.GetRequiredService<Starter.Application.Common.Interfaces.ICacheService>(),
+            sp.GetRequiredService<Infrastructure.Providers.IAiProviderFactory>(),
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<Infrastructure.Settings.AiRagSettings>>()));
         services.AddScoped<IKeywordSearchService, Infrastructure.Retrieval.PostgresKeywordSearchService>();
         services.AddScoped<IRagRetrievalService, Infrastructure.Retrieval.RagRetrievalService>();
