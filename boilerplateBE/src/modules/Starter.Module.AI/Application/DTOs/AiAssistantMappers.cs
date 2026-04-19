@@ -20,5 +20,6 @@ internal static class AiAssistantMappers
             a.MaxAgentSteps,
             a.IsActive,
             a.CreatedAt,
-            a.ModifiedAt);
+            a.ModifiedAt,
+            a.RagScope);
 }

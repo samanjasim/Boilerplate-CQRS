@@ -17,4 +17,5 @@ public sealed record AiAssistantDto(
     int MaxAgentSteps,
     bool IsActive,
     DateTime CreatedAt,
-    DateTime? ModifiedAt);
+    DateTime? ModifiedAt,
+    AiRagScope RagScope);
