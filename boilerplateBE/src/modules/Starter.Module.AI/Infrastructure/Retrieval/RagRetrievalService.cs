@@ -171,8 +171,8 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         var plannedStrategy = _rerankSelector.Resolve(plannedCtx);
         var poolMultiplier = plannedStrategy switch
         {
-            RerankStrategy.Listwise => _settings.ListwisePoolMultiplier,
-            RerankStrategy.Pointwise => _settings.PointwisePoolMultiplier,
+            RerankStrategy.Listwise => Math.Max(1, _settings.ListwisePoolMultiplier),
+            RerankStrategy.Pointwise => Math.Max(1, _settings.PointwisePoolMultiplier),
             _ => 1
         };
         var poolSize = Math.Max(topK, topK * poolMultiplier);
