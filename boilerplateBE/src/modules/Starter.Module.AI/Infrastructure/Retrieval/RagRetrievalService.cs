@@ -87,12 +87,13 @@ internal sealed class RagRetrievalService : IRagRetrievalService
             "query-rewrite",
             degraded,
             ct);
+        // On rewriter timeout/failure variants is null/empty — fall back to the original query so retrieval continues (degraded stage already recorded above).
         IReadOnlyList<string> effectiveVariants = variants is { Count: > 0 } ? variants : new[] { queryText };
 
         // 2. Embed all variants in one batched call.
         var vectors = await WithTimeoutAsync(
             innerCt => _embeddingService.EmbedAsync(
-                effectiveVariants.ToList(), innerCt, attribution: null, requestType: AiRequestType.QueryEmbedding),
+                effectiveVariants, innerCt, attribution: null, requestType: AiRequestType.QueryEmbedding),
             _settings.StageTimeoutEmbedMs,
             "embed-query",
             degraded,
@@ -103,12 +104,23 @@ internal sealed class RagRetrievalService : IRagRetrievalService
             return new RetrievedContext([], [], 0, false, degraded);
         }
 
+        // Defensive: batched embed contract is 1:1 with inputs, but if a provider
+        // ever returns a mismatched count we truncate both loops to the shared
+        // minimum so vector/keyword indices stay aligned.
+        var variantCount = Math.Min(vectors.Length, effectiveVariants.Count);
+        if (vectors.Length != effectiveVariants.Count)
+        {
+            _logger.LogWarning(
+                "Embedding returned {VectorCount} vectors for {VariantCount} query variants; truncating to {VariantCount2}",
+                vectors.Length, effectiveVariants.Count, variantCount);
+        }
+
         var retrievalTopK = _settings.RetrievalTopK;
         var minHybrid = minScore ?? _settings.MinHybridScore;
 
         // 3. Vector search per variant.
-        var vectorLists = new List<IReadOnlyList<VectorSearchHit>>(vectors.Length);
-        for (var i = 0; i < vectors.Length; i++)
+        var vectorLists = new List<IReadOnlyList<VectorSearchHit>>(variantCount);
+        for (var i = 0; i < variantCount; i++)
         {
             var v = vectors[i];
             var hits = await WithTimeoutAsync(
@@ -121,8 +133,8 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         }
 
         // 4. Keyword search per variant.
-        var keywordLists = new List<IReadOnlyList<KeywordSearchHit>>(effectiveVariants.Count);
-        for (var i = 0; i < effectiveVariants.Count; i++)
+        var keywordLists = new List<IReadOnlyList<KeywordSearchHit>>(variantCount);
+        for (var i = 0; i < variantCount; i++)
         {
             var q = effectiveVariants[i];
             var hits = await WithTimeoutAsync(

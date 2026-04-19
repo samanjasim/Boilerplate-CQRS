@@ -53,12 +53,6 @@ public sealed class RagRetrievalServiceTimeoutTests
             => Task.FromResult(texts.Select(_ => new float[1536]).ToArray());
     }
 
-    private sealed class NoOpQueryRewriter : IQueryRewriter
-    {
-        public Task<IReadOnlyList<string>> RewriteAsync(string q, string? lang, CancellationToken ct)
-            => Task.FromResult<IReadOnlyList<string>>(new[] { q });
-    }
-
     [Fact]
     public async Task VectorSearch_Timeout_ReturnsKeywordOnly_WithVectorStageDegraded()
     {
