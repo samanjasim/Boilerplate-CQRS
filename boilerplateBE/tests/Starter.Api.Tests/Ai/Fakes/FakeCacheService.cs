@@ -1,10 +1,12 @@
+using System.Collections.Concurrent;
 using Starter.Application.Common.Interfaces;
 
 namespace Starter.Api.Tests.Ai.Fakes;
 
 internal sealed class FakeCacheService : ICacheService
 {
-    private readonly Dictionary<string, object?> _store = new();
+    // ConcurrentDictionary so parallel reranker stages can safely read/write.
+    private readonly ConcurrentDictionary<string, object?> _store = new();
 
     public Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
         => Task.FromResult((T?)(_store.TryGetValue(key, out var v) ? v : default));
@@ -17,14 +19,14 @@ internal sealed class FakeCacheService : ICacheService
 
     public Task RemoveAsync(string key, CancellationToken cancellationToken = default)
     {
-        _store.Remove(key);
+        _store.TryRemove(key, out _);
         return Task.CompletedTask;
     }
 
     public Task RemoveByPrefixAsync(string prefix, CancellationToken cancellationToken = default)
     {
         foreach (var k in _store.Keys.Where(k => k.StartsWith(prefix)).ToList())
-            _store.Remove(k);
+            _store.TryRemove(k, out _);
         return Task.CompletedTask;
     }
 

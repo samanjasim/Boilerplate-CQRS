@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Threading;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Providers;
 
@@ -6,17 +8,39 @@ namespace Starter.Api.Tests.Ai.Fakes;
 /// <summary>
 /// Scripted IAiProvider for unit tests. Each enqueued response is returned in order
 /// on successive ChatAsync calls. Calls is incremented for every invocation.
+/// Thread-safe — PointwiseReranker invokes ChatAsync in parallel.
 /// </summary>
 internal sealed class FakeAiProvider : IAiProvider
 {
-    private readonly Queue<Func<IReadOnlyList<AiChatMessage>, AiChatOptions, AiChatCompletion>> _responses = new();
-    public int Calls { get; private set; }
-    public List<(IReadOnlyList<AiChatMessage> Messages, AiChatOptions Options)> CallLog { get; } = new();
+    private readonly ConcurrentQueue<Func<IReadOnlyList<AiChatMessage>, AiChatOptions, AiChatCompletion>> _responses = new();
+    private readonly ConcurrentDictionary<string, AiChatCompletion> _contentMatchers = new();
+    private readonly ConcurrentDictionary<string, Exception> _contentThrowers = new();
+    private int _calls;
+    public int Calls => _calls;
+    public ConcurrentBag<(IReadOnlyList<AiChatMessage> Messages, AiChatOptions Options)> CallLog { get; } = new();
     public Exception? AlwaysFail { get; private set; }
 
     public void EnqueueContent(string content, int inputTokens = 10, int outputTokens = 5)
     {
         _responses.Enqueue((_, _) => new AiChatCompletion(content, null, inputTokens, outputTokens, "stop"));
+    }
+
+    /// <summary>
+    /// Content-aware scripted response: whenever any user message contains <paramref name="whenUserContains"/>,
+    /// this response is returned. Intended for parallel scenarios (e.g. PointwiseReranker) where ordering
+    /// of ChatAsync calls is not deterministic. Content-matched responses are checked BEFORE the queue.
+    /// </summary>
+    public void WhenUserContains(string whenUserContains, string content, int inputTokens = 10, int outputTokens = 5)
+    {
+        _contentMatchers[whenUserContains] = new AiChatCompletion(content, null, inputTokens, outputTokens, "stop");
+    }
+
+    /// <summary>
+    /// Content-aware scripted exception: thrown whenever a user message contains this substring.
+    /// </summary>
+    public void WhenUserContainsThrow(string whenUserContains, Exception ex)
+    {
+        _contentThrowers[whenUserContains] = ex;
     }
 
     public void EnqueueThrow(Exception ex)
@@ -26,7 +50,7 @@ internal sealed class FakeAiProvider : IAiProvider
 
     public void EnqueueAllFail(string reason)
     {
-        _responses.Clear();
+        while (_responses.TryDequeue(out _)) { }
         AlwaysFail = new InvalidOperationException(reason);
     }
 
@@ -35,12 +59,27 @@ internal sealed class FakeAiProvider : IAiProvider
         AiChatOptions options,
         CancellationToken ct = default)
     {
-        Calls++;
+        Interlocked.Increment(ref _calls);
         CallLog.Add((messages, options));
         if (AlwaysFail is not null) throw AlwaysFail;
-        if (_responses.Count == 0)
+
+        if (_contentMatchers.Count > 0 || _contentThrowers.Count > 0)
+        {
+            var user = string.Join(' ', messages.Where(m => m.Role == "user").Select(m => m.Content));
+            foreach (var kvp in _contentThrowers)
+            {
+                if (user.Contains(kvp.Key, StringComparison.Ordinal))
+                    throw kvp.Value;
+            }
+            foreach (var kvp in _contentMatchers)
+            {
+                if (user.Contains(kvp.Key, StringComparison.Ordinal))
+                    return Task.FromResult(kvp.Value);
+            }
+        }
+
+        if (!_responses.TryDequeue(out var factory))
             throw new InvalidOperationException("FakeAiProvider: no scripted response available.");
-        var factory = _responses.Dequeue();
         return Task.FromResult(factory(messages, options));
     }
 
