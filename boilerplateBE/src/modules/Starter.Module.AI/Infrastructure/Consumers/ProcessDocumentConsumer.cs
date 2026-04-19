@@ -89,15 +89,34 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
                             newParents.Add(clonedParent);
                             oldToNewParentId[parent.Id] = clonedParent.Id;
                         }
+
+                        // Persist parents before any remote calls, mirroring the normal path's
+                        // ordering. This prevents the outer catch from flushing half-built clone
+                        // state alongside MarkFailed if a downstream remote call throws.
                         db.AiDocumentChunks.AddRange(newParents);
+                        await db.SaveChangesAsync(ct);
 
                         var cloneTenantId = doc.TenantId ?? Guid.Empty;
                         await vectorStore.EnsureCollectionAsync(cloneTenantId, embedder.VectorSize, ct);
 
-                        var clonePoints = new List<VectorPoint>();
-                        var newChildren = new List<AiDocumentChunk>();
-                        foreach (var child in existingChunks.Where(c => c.ChunkLevel == "child"))
+                        var childrenToClone = existingChunks.Where(c => c.ChunkLevel == "child").ToList();
+                        var childContents = childrenToClone.Select(c => c.Content).ToList();
+
+                        // Batch embed: one API round-trip for all children instead of N.
+                        // Pass attribution so the skip path accounts embedding usage the same
+                        // way the normal ingestion path does.
+                        var cloneAttribution = new EmbedAttribution(
+                            TenantId: context.Message.TenantId,
+                            UserId: context.Message.InitiatingUserId);
+                        var childVectors = childContents.Count > 0
+                            ? await embedder.EmbedAsync(childContents, ct, cloneAttribution)
+                            : Array.Empty<float[]>();
+
+                        var clonePoints = new List<VectorPoint>(childrenToClone.Count);
+                        var newChildren = new List<AiDocumentChunk>(childrenToClone.Count);
+                        for (var i = 0; i < childrenToClone.Count; i++)
                         {
+                            var child = childrenToClone[i];
                             var parentDbId = child.ParentChunkId is Guid pid && oldToNewParentId.TryGetValue(pid, out var np)
                                 ? np
                                 : (Guid?)null;
@@ -116,13 +135,9 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
                                 clonedChild.SetNormalizedContent(child.NormalizedContent);
                             newChildren.Add(clonedChild);
 
-                            var cloneAttribution = new EmbedAttribution(
-                                TenantId: context.Message.TenantId,
-                                UserId: context.Message.InitiatingUserId);
-                            var vec = (await embedder.EmbedAsync(new[] { child.Content }, ct, cloneAttribution)).Single();
                             clonePoints.Add(new VectorPoint(
                                 Id: newPointId,
-                                Vector: vec,
+                                Vector: childVectors[i],
                                 Payload: new VectorPayload(
                                     DocumentId: doc.Id,
                                     DocumentName: doc.Name,
@@ -134,9 +149,9 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
                                     TenantId: cloneTenantId)));
                         }
 
-                        db.AiDocumentChunks.AddRange(newChildren);
                         await vectorStore.UpsertAsync(cloneTenantId, clonePoints, ct);
 
+                        db.AiDocumentChunks.AddRange(newChildren);
                         doc.MarkCompleted(chunkCount: newChildren.Count);
                         await db.SaveChangesAsync(ct);
                         return;

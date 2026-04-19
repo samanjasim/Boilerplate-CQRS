@@ -238,6 +238,17 @@ public sealed class ProcessDocumentConsumerTests
         capturedPoints!.Should().HaveCount(2);
         var expectedPointIds = newChildren.Select(c => c.QdrantPointId).ToHashSet();
         capturedPoints.Select(p => p.Id).Should().BeEquivalentTo(expectedPointIds);
+
+        // (vi) Upserted payloads describe the NEW doc (not the source) and reference
+        // the cloned parent id — not the original source parent id.
+        capturedPoints.Should().AllSatisfy(pt =>
+        {
+            pt.Payload.DocumentId.Should().Be(newDoc.Id);
+            pt.Payload.TenantId.Should().Be(newDoc.TenantId ?? Guid.Empty);
+            pt.Payload.ChunkLevel.Should().Be("child");
+            pt.Payload.ParentChunkId.Should().Be(clonedParentId);
+            pt.Payload.ParentChunkId.Should().NotBe(sourceParent.Id);
+        });
     }
 
     [Fact]
