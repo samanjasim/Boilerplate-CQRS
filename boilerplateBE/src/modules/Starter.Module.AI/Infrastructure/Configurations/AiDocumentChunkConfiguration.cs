@@ -68,6 +68,8 @@ internal sealed class AiDocumentChunkConfiguration : IEntityTypeConfiguration<Ai
 
         if (IsRelationalProvider(builder))
         {
+            // 'simple' FTS config: no stemming. Supports pre-normalized Arabic (via NormalizedContent)
+            // and English exact-token search. Stemming variants (run → running) are NOT matched.
             builder.Property<NpgsqlTsVector>("ContentTsVector")
                 .HasColumnName("content_tsv")
                 .HasComputedColumnSql(

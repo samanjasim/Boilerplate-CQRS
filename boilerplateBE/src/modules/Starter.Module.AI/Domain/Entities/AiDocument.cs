@@ -105,9 +105,20 @@ public sealed class AiDocument : BaseEntity, ITenantEntity
 
     public void SetContentHash(string hash)
     {
-        if (string.IsNullOrWhiteSpace(hash) || hash.Length != 64)
+        if (string.IsNullOrWhiteSpace(hash) || hash.Length != 64 || !IsHex(hash))
             throw new ArgumentException("ContentHash must be a 64-char hex SHA-256 string.", nameof(hash));
         ContentHash = hash.ToLowerInvariant();
         ModifiedAt = DateTime.UtcNow;
+    }
+
+    private static bool IsHex(string value)
+    {
+        foreach (var c in value)
+        {
+            if (c is (>= '0' and <= '9') or (>= 'a' and <= 'f') or (>= 'A' and <= 'F'))
+                continue;
+            return false;
+        }
+        return true;
     }
 }
