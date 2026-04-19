@@ -605,9 +605,12 @@ internal sealed class ChatExecutionService(
         try
         {
             var retrieved = await retrievalService.RetrieveForTurnAsync(assistant, userMessage, ct);
+            var degradedSummary = retrieved.DegradedStages.Count == 0
+                ? "none"
+                : string.Join(",", retrieved.DegradedStages);
             logger.LogInformation(
-                "RAG retrieval for assistant {AssistantId}: children={Children} parents={Parents} tokens={Tokens} truncated={Truncated}",
-                assistant.Id, retrieved.Children.Count, retrieved.Parents.Count, retrieved.TotalTokens, retrieved.TruncatedByBudget);
+                "RAG retrieval for assistant {AssistantId}: children={Children} parents={Parents} tokens={Tokens} truncated={Truncated} degraded={Degraded}",
+                assistant.Id, retrieved.Children.Count, retrieved.Parents.Count, retrieved.TotalTokens, retrieved.TruncatedByBudget, degradedSummary);
             return retrieved;
         }
         catch (Exception ex)

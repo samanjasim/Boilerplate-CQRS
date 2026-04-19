@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Starter.Module.AI.Application.Services.Ingestion;
 using Starter.Module.AI.Application.Services.Retrieval;
@@ -58,7 +59,8 @@ public sealed class RagRetrievalServiceTests
             kw ?? new FakeKeywordSearchService(),
             new FakeEmbeddingService(),
             new TokenCounter(),
-            Options.Create(ragSettings));
+            Options.Create(ragSettings),
+            NullLogger<RagRetrievalService>.Instance);
     }
 
     private static AiDocumentChunk SeedParentChunk(AiDbContext db)

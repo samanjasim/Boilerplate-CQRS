@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Starter.Module.AI.Application.Services.Ingestion;
 using Starter.Module.AI.Application.Services.Retrieval;
@@ -18,6 +19,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
     private readonly IEmbeddingService _embeddingService;
     private readonly TokenCounter _tokenCounter;
     private readonly AiRagSettings _settings;
+    private readonly ILogger<RagRetrievalService> _logger;
 
     public RagRetrievalService(
         AiDbContext db,
@@ -25,7 +27,8 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         IKeywordSearchService keywordSearch,
         IEmbeddingService embeddingService,
         TokenCounter tokenCounter,
-        IOptions<AiRagSettings> settings)
+        IOptions<AiRagSettings> settings,
+        ILogger<RagRetrievalService> logger)
     {
         _db = db;
         _vectorStore = vectorStore;
@@ -33,6 +36,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         _embeddingService = embeddingService;
         _tokenCounter = tokenCounter;
         _settings = settings.Value;
+        _logger = logger;
     }
 
     public async Task<RetrievedContext> RetrieveForTurnAsync(
@@ -71,19 +75,49 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         if (string.IsNullOrWhiteSpace(queryText))
             return RetrievedContext.Empty;
 
-        var vectors = await _embeddingService.EmbedAsync(
-            [queryText], ct, attribution: null, requestType: AiRequestType.QueryEmbedding);
+        var degraded = new List<string>();
+
+        var vectors = await WithTimeoutAsync(
+            innerCt => _embeddingService.EmbedAsync(
+                [queryText], innerCt, attribution: null, requestType: AiRequestType.QueryEmbedding),
+            _settings.StageTimeoutEmbedMs,
+            "embed-query",
+            degraded,
+            ct);
+
+        if (vectors is null || vectors.Length == 0)
+        {
+            // Embed is a hard prerequisite for vector search — if it dropped,
+            // we cannot produce hybrid hits at all. Return empty with the
+            // degraded list so callers (chat telemetry) can see what happened.
+            return new RetrievedContext([], [], 0, false, degraded);
+        }
+
         var queryVector = vectors[0];
 
         var retrievalTopK = _settings.RetrievalTopK;
         var minHybrid = minScore ?? _settings.MinHybridScore;
 
-        var vectorHits = await _vectorStore.SearchAsync(tenantId, queryVector, documentFilter, retrievalTopK, ct);
-        var keywordHits = await _keywordSearch.SearchAsync(tenantId, queryText, documentFilter, retrievalTopK, ct);
+        var vectorHits = await WithTimeoutAsync(
+            innerCt => _vectorStore.SearchAsync(tenantId, queryVector, documentFilter, retrievalTopK, innerCt),
+            _settings.StageTimeoutVectorMs,
+            "vector-search",
+            degraded,
+            ct);
+
+        var keywordHits = await WithTimeoutAsync(
+            innerCt => _keywordSearch.SearchAsync(tenantId, queryText, documentFilter, retrievalTopK, innerCt),
+            _settings.StageTimeoutKeywordMs,
+            "keyword-search",
+            degraded,
+            ct);
+
+        IReadOnlyList<VectorSearchHit> vectorHitsEffective = vectorHits ?? [];
+        IReadOnlyList<KeywordSearchHit> keywordHitsEffective = keywordHits ?? [];
 
         var mergedHits = HybridScoreCalculator.Combine(
-            [vectorHits],
-            [keywordHits],
+            [vectorHitsEffective],
+            [keywordHitsEffective],
             _settings.VectorWeight,
             _settings.KeywordWeight,
             _settings.RrfK,
@@ -91,7 +125,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         var topKHits = mergedHits.Take(topK).ToList();
 
         if (topKHits.Count == 0)
-            return RetrievedContext.Empty;
+            return new RetrievedContext([], [], 0, false, degraded);
 
         // HybridHit.ChunkId carries the qdrant_point_id; chunk rows are looked up by
         // QdrantPointId (not Id) because the Qdrant point uses a distinct guid from
@@ -143,7 +177,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         var (trimmedChildren, trimmedParents, totalTokens, truncated) =
             TrimToBudget(childChunks, parentChunks, _settings.MaxContextTokens);
 
-        return new RetrievedContext(trimmedChildren, trimmedParents, totalTokens, truncated, []);
+        return new RetrievedContext(trimmedChildren, trimmedParents, totalTokens, truncated, degraded);
     }
 
     private RetrievedChunk Map(
@@ -208,5 +242,39 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         }
 
         return (kept, keptParents, usedTokens, truncated);
+    }
+
+    /// <summary>
+    /// Runs an I/O stage under a linked CancellationTokenSource that fires after
+    /// <paramref name="timeoutMs"/>. If the stage throws OperationCanceledException
+    /// due to the timeout (caller's token not cancelled) or any other exception, the
+    /// stage name is appended to <paramref name="degraded"/> and null is returned so
+    /// the pipeline can continue with empty hits for this stage.
+    /// </summary>
+    private async Task<T?> WithTimeoutAsync<T>(
+        Func<CancellationToken, Task<T>> op,
+        int timeoutMs,
+        string stageName,
+        List<string> degraded,
+        CancellationToken ct) where T : class
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(timeoutMs);
+        try
+        {
+            return await op(cts.Token);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            degraded.Add(stageName);
+            _logger.LogWarning("RAG stage '{Stage}' timed out after {TimeoutMs}ms", stageName, timeoutMs);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            degraded.Add(stageName);
+            _logger.LogError(ex, "RAG stage '{Stage}' failed", stageName);
+            return null;
+        }
     }
 }
