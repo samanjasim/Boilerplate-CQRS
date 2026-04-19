@@ -1,7 +1,6 @@
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
 using Starter.Abstractions.Capabilities;
-using Starter.Application.Common.Interfaces;
+using Starter.Abstractions.Readers;
 
 namespace Starter.Module.Workflow.Infrastructure.Services;
 
@@ -9,7 +8,7 @@ namespace Starter.Module.Workflow.Infrastructure.Services;
 /// Built-in assignee resolution strategies shipped with the Workflow module.
 /// Supports: SpecificUser, Role, EntityCreator.
 /// </summary>
-internal sealed class BuiltInAssigneeProvider(IApplicationDbContext db) : IAssigneeResolverProvider
+internal sealed class BuiltInAssigneeProvider(IRoleUserReader roleUserReader) : IAssigneeResolverProvider
 {
     public IReadOnlyList<string> SupportedStrategies => ["SpecificUser", "Role", "EntityCreator"];
 
@@ -62,29 +61,6 @@ internal sealed class BuiltInAssigneeProvider(IApplicationDbContext db) : IAssig
         if (string.IsNullOrWhiteSpace(roleName))
             return [];
 
-        // Find the role by name within this tenant (or system roles)
-        var role = await db.Roles
-            .AsNoTracking()
-            .IgnoreQueryFilters()
-            .Where(r => r.Name == roleName
-                && (r.TenantId == context.TenantId || r.IsSystemRole))
-            .FirstOrDefaultAsync(ct);
-
-        if (role is null)
-            return [];
-
-        // Return all users assigned that role, scoped to the tenant
-        var userIds = await db.UserRoles
-            .AsNoTracking()
-            .IgnoreQueryFilters()
-            .Where(ur => ur.RoleId == role.Id)
-            .Join(db.Users.AsNoTracking().IgnoreQueryFilters()
-                    .Where(u => u.TenantId == context.TenantId),
-                ur => ur.UserId,
-                u => u.Id,
-                (ur, u) => u.Id)
-            .ToListAsync(ct);
-
-        return userIds;
+        return await roleUserReader.GetUserIdsByRoleAsync(roleName, context.TenantId, ct);
     }
 }

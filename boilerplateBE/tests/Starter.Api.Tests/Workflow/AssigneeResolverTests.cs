@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Readers;
-using Starter.Application.Common.Interfaces;
 using Starter.Module.Workflow.Infrastructure.Services;
 using Xunit;
 
@@ -29,7 +28,7 @@ public sealed class AssigneeResolverTests
     {
         var userId = Guid.NewGuid();
         var provider = new BuiltInAssigneeProvider(
-            Mock.Of<IApplicationDbContext>());
+            Mock.Of<IRoleUserReader>());
 
         var result = await provider.ResolveAsync(
             "SpecificUser",
@@ -44,7 +43,7 @@ public sealed class AssigneeResolverTests
     {
         var userId = Guid.NewGuid();
         var provider = new BuiltInAssigneeProvider(
-            Mock.Of<IApplicationDbContext>());
+            Mock.Of<IRoleUserReader>());
 
         // Simulate what JsonSerializer.Deserialize<Dictionary<string,object>> produces
         var json = JsonSerializer.Serialize(new { userId = userId.ToString() });
@@ -60,7 +59,7 @@ public sealed class AssigneeResolverTests
     {
         var initiatorId = Guid.NewGuid();
         var provider = new BuiltInAssigneeProvider(
-            Mock.Of<IApplicationDbContext>());
+            Mock.Of<IRoleUserReader>());
 
         var result = await provider.ResolveAsync(
             "EntityCreator",
@@ -74,7 +73,7 @@ public sealed class AssigneeResolverTests
     public async Task Resolve_UnknownStrategy_ReturnsEmpty()
     {
         var provider = new BuiltInAssigneeProvider(
-            Mock.Of<IApplicationDbContext>());
+            Mock.Of<IRoleUserReader>());
 
         var result = await provider.ResolveAsync(
             "UnknownStrategy",
@@ -92,7 +91,7 @@ public sealed class AssigneeResolverTests
         // Primary strategy "UnknownStrategy" returns empty → fallback "SpecificUser" returns a userId
         var fallbackUserId = Guid.NewGuid();
 
-        var builtIn = new BuiltInAssigneeProvider(Mock.Of<IApplicationDbContext>());
+        var builtIn = new BuiltInAssigneeProvider(Mock.Of<IRoleUserReader>());
         var userReader = Mock.Of<IUserReader>();
         var logger = NullLogger<AssigneeResolverService>.Instance;
 
@@ -123,7 +122,12 @@ public sealed class AssigneeResolverTests
             .Setup(r => r.GetManyAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<UserSummary>());
 
-        var builtIn = new BuiltInAssigneeProvider(Mock.Of<IApplicationDbContext>());
+        var mockRoleUserReader = new Mock<IRoleUserReader>();
+        mockRoleUserReader
+            .Setup(r => r.GetUserIdsByRoleAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<Guid>());
+
+        var builtIn = new BuiltInAssigneeProvider(mockRoleUserReader.Object);
         var logger = NullLogger<AssigneeResolverService>.Instance;
 
         var sut = new AssigneeResolverService(
@@ -161,7 +165,7 @@ public sealed class AssigneeResolverTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { expectedUserId });
 
-        var builtIn = new BuiltInAssigneeProvider(Mock.Of<IApplicationDbContext>());
+        var builtIn = new BuiltInAssigneeProvider(Mock.Of<IRoleUserReader>());
         var logger = NullLogger<AssigneeResolverService>.Instance;
 
         var sut = new AssigneeResolverService(

@@ -29,9 +29,10 @@ import {
 import { cn } from '@/lib/utils';
 import { useUIStore, useAuthStore, selectSidebarCollapsed, selectUser } from '@/stores';
 import { ROUTES } from '@/config';
-import { activeModules } from '@/config/modules.config';
+import { activeModules, isModuleActive } from '@/config/modules.config';
 import { usePermissions, useFeatureFlag } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
+import { usePendingTaskCount } from '@/features/workflow/api';
 
 export function Sidebar() {
   const { t } = useTranslation();
@@ -43,6 +44,11 @@ export function Sidebar() {
   const webhooksFlag = useFeatureFlag('webhooks.enabled');
   const importsFlag = useFeatureFlag('imports.enabled');
   const exportsFlag = useFeatureFlag('exports.enabled');
+
+  const { data: pendingTaskCountData } = usePendingTaskCount(isModuleActive('workflow'));
+  const pendingTaskCount = typeof pendingTaskCountData === 'number'
+    ? pendingTaskCountData
+    : (pendingTaskCountData as { count?: number })?.count ?? 0;
 
   const tenantLogoUrl = user?.tenantLogoUrl;
   const tenantName = user?.tenantName;
@@ -75,9 +81,9 @@ export function Sidebar() {
       ? [{ label: t('nav.apiKeys'), icon: KeyRound, path: ROUTES.API_KEYS.LIST }]
       : []),
     ...(activeModules.workflow && hasPermission(PERMISSIONS.Workflows.View)
-      ? [{ label: t('workflow.sidebar.taskInbox'), icon: ClipboardCheck, path: ROUTES.WORKFLOWS.INBOX }]
+      ? [{ label: t('workflow.sidebar.taskInbox'), icon: ClipboardCheck, path: ROUTES.WORKFLOWS.INBOX, badge: pendingTaskCount > 0 ? pendingTaskCount : undefined }]
       : []),
-    ...(activeModules.workflow && hasPermission(PERMISSIONS.Workflows.Manage)
+    ...(activeModules.workflow && hasPermission(PERMISSIONS.Workflows.ManageDefinitions)
       ? [{ label: t('workflow.sidebar.definitions'), icon: GitBranch, path: ROUTES.WORKFLOWS.DEFINITIONS }]
       : []),
     ...(activeModules.products && hasPermission(PERMISSIONS.Products.View)
@@ -171,7 +177,12 @@ export function Sidebar() {
                 }
               >
                 <item.icon className="h-[18px] w-[18px] shrink-0" />
-                {!isCollapsed && <span>{item.label}</span>}
+                {!isCollapsed && <span className="flex-1">{item.label}</span>}
+                {!isCollapsed && 'badge' in item && item.badge != null && (
+                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
+                    {(item.badge as number) > 99 ? '99+' : item.badge}
+                  </span>
+                )}
               </NavLink>
             </li>
           ))}

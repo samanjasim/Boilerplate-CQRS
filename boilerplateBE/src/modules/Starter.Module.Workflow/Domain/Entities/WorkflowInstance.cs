@@ -54,7 +54,8 @@ public sealed class WorkflowInstance : AggregateRoot, ITenantEntity
         Guid entityId,
         string initialState,
         Guid startedByUserId,
-        string? contextJson)
+        string? contextJson,
+        string definitionName)
     {
         var instance = new WorkflowInstance(
             Guid.NewGuid(),
@@ -70,7 +71,7 @@ public sealed class WorkflowInstance : AggregateRoot, ITenantEntity
             instance.Id,
             instance.EntityType,
             instance.EntityId,
-            string.Empty,
+            definitionName,
             startedByUserId,
             tenantId));
 

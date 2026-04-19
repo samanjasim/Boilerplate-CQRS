@@ -67,7 +67,8 @@ public sealed class WorkflowEngine(
             entityId,
             initialState.Name,
             initiatorUserId,
-            contextJson: null);
+            contextJson: null,
+            definitionName: definition.DisplayName);
 
         context.WorkflowInstances.Add(instance);
 
@@ -86,6 +87,11 @@ public sealed class WorkflowEngine(
         else if (initialState.Type.Equals("SystemAction", StringComparison.OrdinalIgnoreCase))
         {
             await AutoTransitionAsync(instance, definition, states, initialState, initiatorUserId, ct);
+        }
+        // If the initial state is a ConditionalGate, evaluate and auto-transition
+        else if (initialState.Type.Equals("ConditionalGate", StringComparison.OrdinalIgnoreCase))
+        {
+            await HandleConditionalGateAsync(instance, definition, states, initialState, initiatorUserId, ct);
         }
 
         await context.SaveChangesAsync(ct);
@@ -125,7 +131,7 @@ public sealed class WorkflowEngine(
             instanceId,
             instance.CurrentState,
             instance.CurrentState,
-            StepType.HumanTask,
+            StepType.SystemAction,
             "cancel",
             actorUserId,
             reason,
@@ -283,25 +289,10 @@ public sealed class WorkflowEngine(
             await hookExecutor.ExecuteAsync(toStateConfig.OnEnter, enterHookCtx, ct);
         }
 
-        // If the new state is Terminal, complete the instance
-        if (toStateConfig is not null
-            && toStateConfig.Type.Equals("Terminal", StringComparison.OrdinalIgnoreCase))
+        // Handle state type of the new state
+        if (toStateConfig is not null)
         {
-            instance.Complete();
-        }
-        // If the new state is HumanTask, create a new ApprovalTask
-        else if (toStateConfig is not null
-            && toStateConfig.Type.Equals("HumanTask", StringComparison.OrdinalIgnoreCase))
-        {
-            await CreateApprovalTaskAsync(instance, toStateConfig, definition,
-                instance.StartedByUserId, ct);
-        }
-        // If SystemAction, auto-transition
-        else if (toStateConfig is not null
-            && toStateConfig.Type.Equals("SystemAction", StringComparison.OrdinalIgnoreCase))
-        {
-            await AutoTransitionAsync(instance, definition, states, toStateConfig,
-                actorUserId, ct);
+            await HandleNewStateAsync(instance, definition, states, toStateConfig, actorUserId, ct);
         }
 
         await context.SaveChangesAsync(ct);
@@ -596,7 +587,9 @@ public sealed class WorkflowEngine(
             assigneeUserId,
             assigneeRole,
             assigneeStrategyJson,
-            dueDate: null);
+            dueDate: null,
+            entityType: instance.EntityType,
+            entityId: instance.EntityId);
 
         context.ApprovalTasks.Add(approvalTask);
     }
@@ -670,17 +663,119 @@ public sealed class WorkflowEngine(
                 assigneeUserId: null, assigneeRole: null);
             await hookExecutor.ExecuteAsync(toStateConfig.OnEnter, enterHookCtx, ct);
 
-            // If the new state is Terminal, complete
-            if (toStateConfig.Type.Equals("Terminal", StringComparison.OrdinalIgnoreCase))
+            await HandleNewStateAsync(instance, definition, states, toStateConfig, actorUserId, ct);
+        }
+    }
+
+    /// <summary>
+    /// Handles a ConditionalGate state: evaluates outgoing transitions against
+    /// the instance context and auto-transitions to the matching target state.
+    /// Supports chaining (e.g. ConditionalGate -> SystemAction -> HumanTask).
+    /// </summary>
+    private async Task HandleConditionalGateAsync(
+        WorkflowInstance instance,
+        WorkflowDefinition definition,
+        List<WorkflowStateConfig> states,
+        WorkflowStateConfig stateConfig,
+        Guid actorUserId,
+        CancellationToken ct)
+    {
+        var instanceContext = string.IsNullOrWhiteSpace(instance.ContextJson)
+            ? null
+            : JsonSerializer.Deserialize<Dictionary<string, object>>(instance.ContextJson, JsonOpts);
+
+        var transitions = DeserializeTransitions(definition.TransitionsJson);
+        var fromState = instance.CurrentState;
+        var matchingTransitions = transitions.Where(t => t.From == fromState).ToList();
+
+        // Evaluate conditional transitions first
+        string? targetState = null;
+        foreach (var t in matchingTransitions.Where(t => t.Condition is not null))
+        {
+            if (conditionEvaluator.Evaluate(t.Condition!, instanceContext))
             {
-                instance.Complete();
+                targetState = t.To;
+                break;
             }
-            // If HumanTask, create approval task
-            else if (toStateConfig.Type.Equals("HumanTask", StringComparison.OrdinalIgnoreCase))
-            {
-                await CreateApprovalTaskAsync(instance, toStateConfig, definition,
-                    instance.StartedByUserId, ct);
-            }
+        }
+
+        // Fall back to default (non-conditional) transition
+        targetState ??= matchingTransitions.FirstOrDefault(t => t.Condition is null)?.To;
+
+        if (targetState is null)
+        {
+            logger.LogWarning(
+                "ConditionalGate '{State}' in instance {InstanceId} has no valid transition — stalling.",
+                fromState, instance.Id);
+            return;
+        }
+
+        // Execute onExit hooks for the gate state
+        var exitHookCtx = BuildHookContext(instance, definition.Name, fromState,
+            previousState: null, action: "auto-branch", actorUserId: actorUserId,
+            assigneeUserId: null, assigneeRole: null);
+        await hookExecutor.ExecuteAsync(stateConfig.OnExit, exitHookCtx, ct);
+
+        // Create step record
+        var step = WorkflowStep.Create(
+            instance.Id,
+            fromState,
+            targetState,
+            StepType.ConditionalGate,
+            "auto-branch",
+            actorUserId: null,
+            comment: null,
+            metadataJson: null);
+
+        context.WorkflowSteps.Add(step);
+
+        // Transition
+        instance.TransitionTo(targetState, "auto-branch", actorUserId);
+
+        // Execute onEnter hooks for the new state
+        var toStateConfig = states.FirstOrDefault(s => s.Name == targetState);
+        if (toStateConfig is not null)
+        {
+            var enterHookCtx = BuildHookContext(instance, definition.Name, targetState,
+                previousState: fromState, action: "auto-branch", actorUserId: actorUserId,
+                assigneeUserId: null, assigneeRole: null);
+            await hookExecutor.ExecuteAsync(toStateConfig.OnEnter, enterHookCtx, ct);
+
+            await HandleNewStateAsync(instance, definition, states, toStateConfig, actorUserId, ct);
+        }
+    }
+
+    /// <summary>
+    /// After transitioning to a new state, handles the state type:
+    /// Terminal -> complete instance, HumanTask -> create approval task,
+    /// SystemAction -> auto-transition, ConditionalGate -> evaluate and branch.
+    /// </summary>
+    private async Task HandleNewStateAsync(
+        WorkflowInstance instance,
+        WorkflowDefinition definition,
+        List<WorkflowStateConfig> states,
+        WorkflowStateConfig toStateConfig,
+        Guid actorUserId,
+        CancellationToken ct)
+    {
+        if (toStateConfig.Type.Equals("Terminal", StringComparison.OrdinalIgnoreCase))
+        {
+            instance.Complete();
+        }
+        else if (toStateConfig.Type.Equals("HumanTask", StringComparison.OrdinalIgnoreCase))
+        {
+            await CreateApprovalTaskAsync(instance, toStateConfig, definition,
+                instance.StartedByUserId, ct);
+        }
+        else if (toStateConfig.Type.Equals("SystemAction", StringComparison.OrdinalIgnoreCase))
+        {
+            await AutoTransitionAsync(instance, definition, states, toStateConfig,
+                actorUserId, ct);
+        }
+        else if (toStateConfig.Type.Equals("ConditionalGate", StringComparison.OrdinalIgnoreCase))
+        {
+            await HandleConditionalGateAsync(instance, definition, states, toStateConfig,
+                actorUserId, ct);
         }
     }
 

@@ -20,7 +20,7 @@ export function WorkflowDashboardWidget() {
     <Card className="hover-lift">
       <CardContent className="py-6">
         <div className="flex items-center gap-4">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <ClipboardCheck className="h-6 w-6" />
           </div>
           <div className="flex-1 min-w-0">

@@ -1215,7 +1215,8 @@
       "deactivate": "Deactivate",
       "activate": "Activate",
       "cloneSuccess": "Definition cloned successfully",
-      "updateSuccess": "Definition updated successfully"
+      "updateSuccess": "Definition updated successfully",
+      "emptyDesc": "No workflow definitions found"
     },
     "detail": {
       "title": "Workflow Definition",

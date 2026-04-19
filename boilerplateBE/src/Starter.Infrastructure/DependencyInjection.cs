@@ -71,6 +71,7 @@ public static class DependencyInjection
         services.AddScoped<IUserReader, UserReader>();
         services.AddScoped<IRoleReader, RoleReader>();
         services.AddScoped<IFileReader, FileReader>();
+        services.AddScoped<IRoleUserReader, RoleUserReader>();
         services.AddScoped<INotificationPreferenceReader, NotificationPreferenceReaderService>();
 
         // Null Object fallbacks — lifetimes match the real module implementations

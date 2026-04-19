@@ -30,7 +30,7 @@ export default function WorkflowDefinitionsPage() {
         <EmptyState
           icon={GitBranch}
           title={t('workflow.definitions.title')}
-          description={t('workflow.inbox.emptyDesc')}
+          description={t('workflow.definitions.emptyDesc')}
         />
       ) : (
         <Table>

@@ -50,7 +50,9 @@ public sealed class ApprovalTask : AggregateRoot, ITenantEntity
         Guid? assigneeUserId,
         string? assigneeRole,
         string? assigneeStrategyJson,
-        DateTime? dueDate)
+        DateTime? dueDate,
+        string entityType,
+        Guid entityId)
     {
         var task = new ApprovalTask(
             Guid.NewGuid(),
@@ -62,15 +64,14 @@ public sealed class ApprovalTask : AggregateRoot, ITenantEntity
             assigneeStrategyJson,
             dueDate);
 
-        // Event needs EntityType/EntityId from the instance — handler will enrich
         task.RaiseDomainEvent(new ApprovalTaskAssignedEvent(
             task.Id,
             instanceId,
             assigneeUserId,
             assigneeRole,
             stepName,
-            string.Empty,
-            Guid.Empty,
+            entityType,
+            entityId,
             tenantId));
 
         return task;
@@ -78,6 +79,9 @@ public sealed class ApprovalTask : AggregateRoot, ITenantEntity
 
     public void Complete(string action, string? comment, Guid userId)
     {
+        if (Status != TaskStatus.Pending)
+            throw new InvalidOperationException($"Cannot complete task '{Id}' — status is '{Status}', expected 'Pending'.");
+
         Action = action;
         Comment = comment;
         Status = TaskStatus.Completed;
@@ -95,6 +99,9 @@ public sealed class ApprovalTask : AggregateRoot, ITenantEntity
 
     public void Cancel()
     {
+        if (Status != TaskStatus.Pending)
+            throw new InvalidOperationException($"Cannot cancel task '{Id}' — status is '{Status}', expected 'Pending'.");
+
         Status = TaskStatus.Cancelled;
         ModifiedAt = DateTime.UtcNow;
     }

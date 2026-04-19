@@ -62,10 +62,11 @@ export function usePendingTasks(params?: { page?: number; pageSize?: number }) {
   });
 }
 
-export function usePendingTaskCount() {
+export function usePendingTaskCount(enabled = true) {
   return useQuery({
     queryKey: queryKeys.workflow.tasks.count(),
     queryFn: () => workflowApi.getPendingTaskCount(),
+    enabled,
   });
 }
 

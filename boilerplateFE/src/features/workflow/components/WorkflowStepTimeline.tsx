@@ -20,14 +20,14 @@ function getStepStatus(stateName: string, currentState: string, states: Workflow
 }
 
 const dotStyles: Record<StepStatus, string> = {
-  completed: 'bg-green-500',
-  current: 'bg-orange-500',
+  completed: 'bg-emerald-500 dark:bg-emerald-400',
+  current: 'bg-primary',
   future: 'bg-muted-foreground/30',
 };
 
 const lineStyles: Record<StepStatus, string> = {
-  completed: 'bg-green-500',
-  current: 'bg-orange-500',
+  completed: 'bg-emerald-500 dark:bg-emerald-400',
+  current: 'bg-primary',
   future: 'bg-border',
 };
 
@@ -82,7 +82,7 @@ export function WorkflowStepTimeline({ instanceId, currentState, states }: Workf
                 </div>
               )}
               {status === 'current' && !record && (
-                <p className="text-xs text-orange-600 mt-0.5">{t('workflow.status.pending')}</p>
+                <p className="text-xs text-primary mt-0.5">{t('workflow.status.pending')}</p>
               )}
             </div>
           </div>

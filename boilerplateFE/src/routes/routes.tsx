@@ -265,7 +265,7 @@ export const routes: RouteObject[] = [
               ],
             },
             {
-              element: <PermissionGuard permission={PERMISSIONS.Workflows.Manage} />,
+              element: <PermissionGuard permission={PERMISSIONS.Workflows.ManageDefinitions} />,
               children: [
                 { path: ROUTES.WORKFLOWS.DEFINITIONS, element: <WorkflowDefinitionsPage /> },
                 { path: ROUTES.WORKFLOWS.DEFINITION_DETAIL, element: <WorkflowDefinitionDetailPage /> },

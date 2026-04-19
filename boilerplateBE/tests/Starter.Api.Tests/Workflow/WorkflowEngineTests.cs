@@ -6,7 +6,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Readers;
-using Starter.Application.Common.Interfaces;
 using Starter.Module.Workflow.Domain.Entities;
 using Starter.Module.Workflow.Domain.Enums;
 using Starter.Module.Workflow.Infrastructure.Persistence;
@@ -39,7 +38,7 @@ public sealed class WorkflowEngineTests : IDisposable
         var conditionEvaluator = new ConditionEvaluator();
 
         var builtInProvider = new BuiltInAssigneeProvider(
-            Mock.Of<IApplicationDbContext>());
+            Mock.Of<IRoleUserReader>());
 
         // Create a custom provider that resolves "SpecificUser" to our approver
         var assigneeResolver = new AssigneeResolverService(
@@ -229,7 +228,7 @@ public sealed class WorkflowEngineTests : IDisposable
 
         var approvalTask = ApprovalTask.Create(
             _tenantId, instanceId, "PendingApproval",
-            _approverUserId, null, null, null);
+            _approverUserId, null, null, null, "Order", entityId);
         _db.ApprovalTasks.Add(approvalTask);
         await _db.SaveChangesAsync();
 
@@ -259,7 +258,7 @@ public sealed class WorkflowEngineTests : IDisposable
 
         var approvalTask = ApprovalTask.Create(
             _tenantId, instanceId, "PendingApproval",
-            _approverUserId, null, null, null);
+            _approverUserId, null, null, null, "Order", entityId);
         _db.ApprovalTasks.Add(approvalTask);
         await _db.SaveChangesAsync();
 
@@ -288,7 +287,7 @@ public sealed class WorkflowEngineTests : IDisposable
 
         var approvalTask = ApprovalTask.Create(
             _tenantId, instanceId, "PendingApproval",
-            _approverUserId, null, null, null);
+            _approverUserId, null, null, null, "Order", entityId);
         _db.ApprovalTasks.Add(approvalTask);
         await _db.SaveChangesAsync();
 
@@ -315,7 +314,7 @@ public sealed class WorkflowEngineTests : IDisposable
 
         var approvalTask = ApprovalTask.Create(
             _tenantId, instanceId, "PendingApproval",
-            _approverUserId, null, null, null);
+            _approverUserId, null, null, null, "Order", entityId);
         _db.ApprovalTasks.Add(approvalTask);
         await _db.SaveChangesAsync();
 
@@ -343,7 +342,7 @@ public sealed class WorkflowEngineTests : IDisposable
 
         var approvalTask = ApprovalTask.Create(
             _tenantId, instanceId, "PendingApproval",
-            _approverUserId, null, null, null);
+            _approverUserId, null, null, null, "Order", entityId);
         _db.ApprovalTasks.Add(approvalTask);
         await _db.SaveChangesAsync();
 
@@ -378,7 +377,7 @@ public sealed class WorkflowEngineTests : IDisposable
 
         var approvalTask = ApprovalTask.Create(
             _tenantId, instanceId, "PendingApproval",
-            _approverUserId, null, null, null);
+            _approverUserId, null, null, null, "Order", entityId);
         _db.ApprovalTasks.Add(approvalTask);
         await _db.SaveChangesAsync();
 
@@ -432,14 +431,14 @@ public sealed class WorkflowEngineTests : IDisposable
 
         var approvalTask = ApprovalTask.Create(
             _tenantId, instanceId, "PendingApproval",
-            _approverUserId, null, null, null);
+            _approverUserId, null, null, null, "Order", entityId);
         _db.ApprovalTasks.Add(approvalTask);
 
         // Create a pending task for a different user
         var otherUserId = Guid.NewGuid();
         var otherTask = ApprovalTask.Create(
             _tenantId, instanceId, "PendingApproval",
-            otherUserId, null, null, null);
+            otherUserId, null, null, null, "Order", entityId);
         _db.ApprovalTasks.Add(otherTask);
         await _db.SaveChangesAsync();
 

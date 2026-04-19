@@ -110,8 +110,11 @@ export const PERMISSIONS = {
   },
   Workflows: {
     View: 'Workflows.View',
-    Manage: 'Workflows.Manage',
-    Execute: 'Workflows.Execute',
+    ManageDefinitions: 'Workflows.ManageDefinitions',
+    Start: 'Workflows.Start',
+    ActOnTask: 'Workflows.ActOnTask',
+    Cancel: 'Workflows.Cancel',
+    ViewAllTasks: 'Workflows.ViewAllTasks',
   },
 } as const;
 

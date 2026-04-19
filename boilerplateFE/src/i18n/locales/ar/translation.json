@@ -1171,7 +1171,8 @@
       "deactivate": "تعطيل",
       "activate": "تفعيل",
       "cloneSuccess": "تم نسخ التعريف بنجاح",
-      "updateSuccess": "تم تحديث التعريف بنجاح"
+      "updateSuccess": "تم تحديث التعريف بنجاح",
+      "emptyDesc": "لا توجد تعريفات لسير العمل"
     },
     "detail": {
       "title": "تعريف سير العمل",
