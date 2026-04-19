@@ -1,3 +1,5 @@
+using Starter.Module.AI.Application.Services.Retrieval;
+
 namespace Starter.Module.AI.Infrastructure.Settings;
 
 public sealed class AiRagSettings
@@ -11,7 +13,6 @@ public sealed class AiRagSettings
     public int TopK { get; init; } = 5;
     public int RetrievalTopK { get; init; } = 20;
     public bool EnableQueryExpansion { get; init; } = false;  // 4b-2
-    public bool EnableReranking { get; init; } = false;       // 4b-2
     public int EmbedBatchSize { get; init; } = 32;
     public long MaxUploadBytes { get; init; } = 25 * 1024 * 1024;
     public double OcrFallbackMinCharsPerPage { get; init; } = 40;
@@ -51,4 +52,32 @@ public sealed class AiRagSettings
     public bool ApplyArabicNormalization { get; init; } = true;
     public bool NormalizeTaMarbuta { get; init; } = true;
     public bool NormalizeArabicDigits { get; init; } = true;
+
+    // ---- New in Plan 4b-2 — Query rewriter ----
+    public int QueryRewriteMaxVariants { get; init; } = 3;
+    public int QueryRewriteCacheTtlSeconds { get; init; } = 1800;
+    public int StageTimeoutQueryRewriteMs { get; init; } = 4_000;
+    public string? RewriterModel { get; init; } = null;
+
+    // ---- New in Plan 4b-2 — Reranker (hybrid) ----
+    // Replaces the legacy EnableReranking bool (which was a no-op in 4b-1).
+    // Mapping when migrating appsettings: true → Auto, false → Off.
+    public RerankStrategy RerankStrategy { get; init; } = RerankStrategy.Auto;
+    public int ListwisePoolMultiplier { get; init; } = 3;
+    public int PointwisePoolMultiplier { get; init; } = 2;
+    public int PointwiseMaxParallelism { get; init; } = 5;
+    public decimal MinPointwiseScore { get; init; } = 0.3m;
+    public double PointwiseMaxFailureRatio { get; init; } = 0.25;
+    public int RerankCacheTtlSeconds { get; init; } = 1800;
+    public string? RerankerModel { get; init; } = null;
+    public int StageTimeoutRerankMs { get; init; } = 8_000;
+
+    // ---- New in Plan 4b-2 — Question classifier ----
+    public int QuestionCacheTtlSeconds { get; init; } = 1800;
+    public int StageTimeoutClassifyMs { get; init; } = 2_000;
+    public string? ClassifierModel { get; init; } = null;
+
+    // ---- New in Plan 4b-2 — Neighbor expansion ----
+    public int NeighborWindowSize { get; init; } = 0;
+    public int StageTimeoutNeighborMs { get; init; } = 3_000;
 }
