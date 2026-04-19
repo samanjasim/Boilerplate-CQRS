@@ -19,17 +19,12 @@ import { useWorkflowInstances } from '../api';
 import { usePermissions } from '@/hooks';
 import { useAuthStore, selectUser } from '@/stores';
 import { PERMISSIONS } from '@/constants';
+import { STATUS_BADGE_VARIANT } from '@/constants/status';
 import { ROUTES } from '@/config';
 import { formatDate } from '@/utils/format';
 import type { WorkflowInstanceSummary } from '@/types/workflow.types';
 
 const STATUS_FILTERS = ['All', 'Active', 'Completed', 'Cancelled'] as const;
-
-const statusBadgeVariant: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  Active: 'default',
-  Completed: 'secondary',
-  Cancelled: 'destructive',
-};
 
 export default function WorkflowInstancesPage() {
   const { t } = useTranslation();
@@ -149,7 +144,7 @@ export default function WorkflowInstancesPage() {
                     <Badge variant="outline">{instance.currentState}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={statusBadgeVariant[instance.status] ?? 'outline'}>
+                    <Badge variant={STATUS_BADGE_VARIANT[instance.status] ?? 'outline'}>
                       {t(`workflow.status.${instance.status.toLowerCase()}`)}
                     </Badge>
                   </TableCell>

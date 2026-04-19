@@ -341,17 +341,38 @@ public sealed class WorkflowEngine(
             .OrderByDescending(t => t.CreatedAt)
             .ToListAsync(ct);
 
-        return tasks.Select(t => new PendingTaskSummary(
-            t.Id,
-            t.InstanceId,
-            t.Instance.Definition.Name,
-            t.Instance.EntityType,
-            t.Instance.EntityId,
-            t.StepName,
-            t.AssigneeRole,
-            t.CreatedAt,
-            t.DueDate))
-            .ToList();
+        return tasks.Select(t =>
+        {
+            // Derive available actions from the definition's transitions for
+            // the instance's current state (manual transitions only).
+            List<string>? availableActions = null;
+            try
+            {
+                var transitions = DeserializeTransitions(t.Instance.Definition.TransitionsJson);
+                availableActions = transitions
+                    .Where(tr => tr.From == t.Instance.CurrentState
+                        && tr.Type.Equals("Manual", StringComparison.OrdinalIgnoreCase))
+                    .Select(tr => tr.Trigger)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+            }
+            catch
+            {
+                // Swallow deserialization errors — fall back to null
+            }
+
+            return new PendingTaskSummary(
+                t.Id,
+                t.InstanceId,
+                t.Instance.Definition.Name,
+                t.Instance.EntityType,
+                t.Instance.EntityId,
+                t.StepName,
+                t.AssigneeRole,
+                t.CreatedAt,
+                t.DueDate,
+                availableActions);
+        }).ToList();
     }
 
     public async Task<int> GetPendingTaskCountAsync(
@@ -428,6 +449,20 @@ public sealed class WorkflowEngine(
             .Take(pageSize)
             .ToListAsync(ct);
 
+        // Resolve display names for all unique initiators in one batch
+        var initiatorIds = instances
+            .Select(i => i.StartedByUserId)
+            .Distinct()
+            .ToList();
+
+        var userLookup = new Dictionary<Guid, string>();
+        if (initiatorIds.Count > 0)
+        {
+            var users = await userReader.GetManyAsync(initiatorIds, ct);
+            foreach (var u in users)
+                userLookup[u.Id] = u.DisplayName;
+        }
+
         return instances.Select(i => new WorkflowInstanceSummary(
             i.Id,
             i.DefinitionId,
@@ -437,7 +472,9 @@ public sealed class WorkflowEngine(
             i.CurrentState,
             i.Status.ToString(),
             i.StartedAt,
-            i.CompletedAt))
+            i.CompletedAt,
+            i.StartedByUserId,
+            userLookup.TryGetValue(i.StartedByUserId, out var name) ? name : null))
             .ToList();
     }
 

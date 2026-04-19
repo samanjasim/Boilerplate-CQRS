@@ -105,7 +105,7 @@ export default function WorkflowInboxPage() {
           definitionName={selectedTask.definitionName}
           entityType={selectedTask.entityType}
           entityId={selectedTask.entityId}
-          actions={['Approve', 'Reject', 'ReturnForRevision']}
+          actions={selectedTask.availableActions ?? ['Approve', 'Reject', 'ReturnForRevision']}
           open={!!selectedTask}
           onOpenChange={(open) => { if (!open) setSelectedTask(null); }}
         />

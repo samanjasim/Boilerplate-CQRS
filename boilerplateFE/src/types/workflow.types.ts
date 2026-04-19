@@ -77,6 +77,7 @@ export interface PendingTaskSummary {
   assigneeRole: string | null;
   createdAt: string;
   dueDate: string | null;
+  availableActions: string[] | null;
 }
 
 export interface WorkflowStepRecord {
@@ -101,8 +102,8 @@ export interface WorkflowInstanceSummary {
   status: string;
   startedAt: string;
   completedAt: string | null;
-  startedByUserId?: string;
-  startedByDisplayName?: string;
+  startedByUserId: string | null;
+  startedByDisplayName: string | null;
 }
 
 // Request types

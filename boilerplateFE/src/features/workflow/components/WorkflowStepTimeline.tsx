@@ -20,13 +20,13 @@ function getStepStatus(stateName: string, currentState: string, states: Workflow
 }
 
 const dotStyles: Record<StepStatus, string> = {
-  completed: 'bg-emerald-500 dark:bg-emerald-400',
+  completed: 'bg-foreground/50',
   current: 'bg-primary',
   future: 'bg-muted-foreground/30',
 };
 
 const lineStyles: Record<StepStatus, string> = {
-  completed: 'bg-emerald-500 dark:bg-emerald-400',
+  completed: 'bg-foreground/50',
   current: 'bg-primary',
   future: 'bg-border',
 };

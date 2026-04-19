@@ -10,6 +10,7 @@ import { PageHeader, ConfirmDialog } from '@/components/common';
 import { Slot } from '@/lib/extensions';
 import { useBackNavigation, usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
+import { STATUS_BADGE_VARIANT } from '@/constants/status';
 import { ROUTES } from '@/config';
 import { formatDateTime } from '@/utils/format';
 import {
@@ -21,12 +22,6 @@ import {
 import { WorkflowStepTimeline } from '../components/WorkflowStepTimeline';
 import { ApprovalDialog } from '../components/ApprovalDialog';
 import type { WorkflowInstanceSummary, PendingTaskSummary } from '@/types/workflow.types';
-
-const statusBadgeVariant: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  Active: 'default',
-  Completed: 'secondary',
-  Cancelled: 'destructive',
-};
 
 export default function WorkflowInstanceDetailPage() {
   const { t } = useTranslation();
@@ -118,7 +113,7 @@ export default function WorkflowInstanceDetailPage() {
               {instance.entityId.substring(0, 8)}...
             </span>
             <Badge variant="outline">{instance.currentState}</Badge>
-            <Badge variant={statusBadgeVariant[instance.status] ?? 'outline'}>
+            <Badge variant={STATUS_BADGE_VARIANT[instance.status] ?? 'outline'}>
               {t(`workflow.status.${instance.status.toLowerCase()}`)}
             </Badge>
           </div>
@@ -254,7 +249,7 @@ export default function WorkflowInstanceDetailPage() {
           definitionName={instance.definitionName}
           entityType={instance.entityType}
           entityId={instance.entityId}
-          actions={['Approve', 'Reject', 'ReturnForRevision']}
+          actions={selectedTask.availableActions ?? ['Approve', 'Reject', 'ReturnForRevision']}
           open={!!selectedTask}
           onOpenChange={(open) => { if (!open) setSelectedTask(null); }}
         />

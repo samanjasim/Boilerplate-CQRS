@@ -4,6 +4,7 @@ import { GitBranch } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { STATUS_BADGE_VARIANT } from '@/constants/status';
 import { useWorkflowStatus, useWorkflowDefinition, usePendingTasks } from '../api';
 import { WorkflowStepTimeline } from './WorkflowStepTimeline';
 import { ApprovalDialog } from './ApprovalDialog';
@@ -13,12 +14,6 @@ interface WorkflowStatusPanelProps {
   entityType: string;
   entityId: string;
 }
-
-const STATUS_VARIANTS: Record<string, 'default' | 'secondary' | 'outline'> = {
-  Active: 'default',
-  Completed: 'secondary',
-  Cancelled: 'outline',
-};
 
 export function WorkflowStatusPanel({ entityType, entityId }: WorkflowStatusPanelProps) {
   const { t } = useTranslation();
@@ -47,7 +42,7 @@ export function WorkflowStatusPanel({ entityType, entityId }: WorkflowStatusPane
         </div>
 
         <div className="flex items-center gap-2 mb-4">
-          <Badge variant={STATUS_VARIANTS[status.status] ?? 'secondary'}>
+          <Badge variant={STATUS_BADGE_VARIANT[status.status] ?? 'secondary'}>
             {String(t(`workflow.status.${status.status.toLowerCase()}`, { defaultValue: status.status }))}
           </Badge>
           <span className="text-sm text-muted-foreground">{status.currentState}</span>
@@ -83,7 +78,7 @@ export function WorkflowStatusPanel({ entityType, entityId }: WorkflowStatusPane
             definitionName={selectedTask.definitionName}
             entityType={selectedTask.entityType}
             entityId={selectedTask.entityId}
-            actions={['Approve', 'Reject', 'ReturnForRevision']}
+            actions={selectedTask.availableActions ?? ['Approve', 'Reject', 'ReturnForRevision']}
             open={!!selectedTask}
             onOpenChange={(open) => { if (!open) setSelectedTask(null); }}
           />
