@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
 using Starter.Module.AI.Application.Services.Ingestion;
+using Starter.Module.AI.Application.Services.Retrieval;
 using Starter.Module.AI.Infrastructure.Settings;
 
 namespace Starter.Module.AI.Infrastructure.Ingestion;
@@ -100,5 +101,59 @@ internal sealed class QdrantVectorStore : IVectorStore
     {
         var name = CollectionName(tenantId);
         await _client.DeleteCollectionAsync(name, cancellationToken: ct);
+    }
+
+    public async Task<IReadOnlyList<VectorSearchHit>> SearchAsync(
+        Guid tenantId,
+        float[] queryVector,
+        IReadOnlyCollection<Guid>? documentFilter,
+        int limit,
+        CancellationToken ct)
+    {
+        var name = CollectionName(tenantId);
+
+        var filter = new Filter
+        {
+            Must =
+            {
+                new Condition
+                {
+                    Field = new FieldCondition
+                    {
+                        Key = "chunk_level",
+                        Match = new Match { Keyword = "child" }
+                    }
+                }
+            }
+        };
+
+        if (documentFilter is { Count: > 0 })
+        {
+            var keywords = new RepeatedStrings();
+            foreach (var d in documentFilter)
+                keywords.Strings.Add(d.ToString());
+
+            filter.Must.Add(new Condition
+            {
+                Field = new FieldCondition
+                {
+                    Key = "document_id",
+                    Match = new Match { Keywords = keywords }
+                }
+            });
+        }
+
+        var results = await _client.SearchAsync(
+            collectionName: name,
+            vector: queryVector,
+            filter: filter,
+            limit: (ulong)limit,
+            cancellationToken: ct);
+
+        return results
+            .Select(hit => new VectorSearchHit(
+                ChunkId: Guid.Parse(hit.Id.Uuid),
+                Score: (decimal)hit.Score))
+            .ToList();
     }
 }
