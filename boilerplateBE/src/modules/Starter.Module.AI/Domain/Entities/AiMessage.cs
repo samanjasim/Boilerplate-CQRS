@@ -1,10 +1,13 @@
 using Starter.Domain.Common;
+using Starter.Module.AI.Application.DTOs;
 using Starter.Module.AI.Domain.Enums;
 
 namespace Starter.Module.AI.Domain.Entities;
 
 public sealed class AiMessage : BaseEntity
 {
+    private List<AiMessageCitation> _citations = new();
+
     public Guid ConversationId { get; private set; }
     public MessageRole Role { get; private set; }
     public string? Content { get; private set; }
@@ -13,6 +16,12 @@ public sealed class AiMessage : BaseEntity
     public int InputTokens { get; private set; }
     public int OutputTokens { get; private set; }
     public int Order { get; private set; }
+
+    public IReadOnlyList<AiMessageCitation> Citations
+    {
+        get => _citations;
+        private set => _citations = value?.ToList() ?? new();
+    }
 
     private AiMessage() { }
 
@@ -73,6 +82,20 @@ public sealed class AiMessage : BaseEntity
             inputTokens,
             outputTokens,
             order);
+    }
+
+    public static AiMessage CreateAssistantMessageWithCitations(
+        Guid conversationId,
+        string? content,
+        int order,
+        IReadOnlyList<AiMessageCitation> citations,
+        int inputTokens = 0,
+        int outputTokens = 0,
+        string? toolCalls = null)
+    {
+        var msg = CreateAssistantMessage(conversationId, content, order, inputTokens, outputTokens, toolCalls);
+        msg._citations = citations?.ToList() ?? new();
+        return msg;
     }
 
     public static AiMessage CreateToolResultMessage(
