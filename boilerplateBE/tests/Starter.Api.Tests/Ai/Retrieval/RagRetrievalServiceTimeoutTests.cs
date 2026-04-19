@@ -9,6 +9,7 @@ using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Ingestion;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Retrieval;
+using Starter.Module.AI.Infrastructure.Retrieval.Reranking;
 using Starter.Module.AI.Infrastructure.Settings;
 using Xunit;
 
@@ -64,6 +65,8 @@ public sealed class RagRetrievalServiceTimeoutTests
             new FakeKw(),
             new FakeEmbed(),
             new NoOpQueryRewriter(),
+            new NoOpReranker(),
+            new RerankStrategySelector(settings),
             new TokenCounter(),
             Options.Create(settings),
             NullLogger<RagRetrievalService>.Instance);
@@ -91,6 +94,8 @@ public sealed class RagRetrievalServiceTimeoutTests
             new FakeKw(),
             new FakeEmbed(),
             new NoOpQueryRewriter(),
+            new NoOpReranker(),
+            new RerankStrategySelector(settings),
             new TokenCounter(),
             Options.Create(settings),
             NullLogger<RagRetrievalService>.Instance);

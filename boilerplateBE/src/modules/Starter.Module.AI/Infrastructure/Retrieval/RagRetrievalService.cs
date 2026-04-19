@@ -7,6 +7,7 @@ using Starter.Module.AI.Domain.Entities;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Ingestion;
 using Starter.Module.AI.Infrastructure.Persistence;
+using Starter.Module.AI.Infrastructure.Retrieval.Reranking;
 using Starter.Module.AI.Infrastructure.Settings;
 
 namespace Starter.Module.AI.Infrastructure.Retrieval;
@@ -18,6 +19,8 @@ internal sealed class RagRetrievalService : IRagRetrievalService
     private readonly IKeywordSearchService _keywordSearch;
     private readonly IEmbeddingService _embeddingService;
     private readonly IQueryRewriter _queryRewriter;
+    private readonly IReranker _reranker;
+    private readonly RerankStrategySelector _rerankSelector;
     private readonly TokenCounter _tokenCounter;
     private readonly AiRagSettings _settings;
     private readonly ILogger<RagRetrievalService> _logger;
@@ -28,6 +31,8 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         IKeywordSearchService keywordSearch,
         IEmbeddingService embeddingService,
         IQueryRewriter queryRewriter,
+        IReranker reranker,
+        RerankStrategySelector rerankSelector,
         TokenCounter tokenCounter,
         IOptions<AiRagSettings> settings,
         ILogger<RagRetrievalService> logger)
@@ -37,6 +42,8 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         _keywordSearch = keywordSearch;
         _embeddingService = embeddingService;
         _queryRewriter = queryRewriter;
+        _reranker = reranker;
+        _rerankSelector = rerankSelector;
         _tokenCounter = tokenCounter;
         _settings = settings.Value;
         _logger = logger;
@@ -154,19 +161,94 @@ internal sealed class RagRetrievalService : IRagRetrievalService
             _settings.KeywordWeight,
             _settings.RrfK,
             minHybrid);
-        var topKHits = mergedHits.Take(topK).ToList();
 
-        if (topKHits.Count == 0)
+        // 6. Rerank. Resolve the strategy up front so we can size the candidate pool
+        // larger than topK — the reranker reorders within this pool, then we trim.
+        // Task 17 will populate QuestionType once the classifier runs earlier in the
+        // pipeline; for now we pass a null-question context so the selector's default
+        // applies (Listwise when RerankStrategy=Auto).
+        var plannedCtx = new RerankContext(QuestionType: null, StrategyOverride: null);
+        var plannedStrategy = _rerankSelector.Resolve(plannedCtx);
+        var poolMultiplier = plannedStrategy switch
+        {
+            RerankStrategy.Listwise => _settings.ListwisePoolMultiplier,
+            RerankStrategy.Pointwise => _settings.PointwisePoolMultiplier,
+            _ => 1
+        };
+        var poolSize = Math.Max(topK, topK * poolMultiplier);
+        var pool = mergedHits.Take(poolSize).ToList();
+
+        if (pool.Count == 0)
             return new RetrievedContext([], [], 0, false, degraded);
 
         // HybridHit.ChunkId carries the qdrant_point_id; chunk rows are looked up by
         // QdrantPointId (not Id) because the Qdrant point uses a distinct guid from
-        // the ai_document_chunks primary key.
-        var childIds = topKHits.Select(h => h.ChunkId).ToList();
-        var children = await _db.AiDocumentChunks
+        // the ai_document_chunks primary key. We load chunk rows for the full pool so
+        // the reranker can see content — reusing this map after rerank avoids a
+        // second DB roundtrip.
+        var poolPointIds = pool.Select(h => h.ChunkId).ToList();
+        var poolChunkEntities = await _db.AiDocumentChunks
             .AsNoTracking()
-            .Where(c => childIds.Contains(c.QdrantPointId))
+            .Where(c => poolPointIds.Contains(c.QdrantPointId))
             .ToListAsync(ct);
+        var chunkByPointId = poolChunkEntities.ToDictionary(c => c.QdrantPointId);
+
+        // Reranker contract: for every hit in the input list there must be a matching
+        // chunk in candidateChunks (it builds a dictionary keyed by QdrantPointId and
+        // throws on missing). Eventual consistency between Qdrant and the DB can leave
+        // orphan point ids — drop those from the pool before reranking.
+        var alignedPool = new List<HybridHit>(pool.Count);
+        var alignedChunks = new List<AiDocumentChunk>(pool.Count);
+        foreach (var hit in pool)
+        {
+            if (chunkByPointId.TryGetValue(hit.ChunkId, out var chunk))
+            {
+                alignedPool.Add(hit);
+                alignedChunks.Add(chunk);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "Pool hit {PointId} has no matching chunk row; skipping", hit.ChunkId);
+            }
+        }
+
+        if (alignedPool.Count == 0)
+            return new RetrievedContext([], [], 0, false, degraded);
+
+        // 7. Rerank the aligned pool. On timeout/failure fall back to RRF order.
+        var rerankResult = await WithTimeoutAsync(
+            innerCt => _reranker.RerankAsync(queryText, alignedPool, alignedChunks, plannedCtx, innerCt),
+            _settings.StageTimeoutRerankMs,
+            "rerank",
+            degraded,
+            ct);
+
+        IReadOnlyList<HybridHit> rerankedHits = rerankResult?.Ordered ?? alignedPool;
+
+        if (rerankResult is not null)
+        {
+            _logger.LogInformation(
+                "RAG rerank: Requested={RerankStrategyRequested} Used={RerankStrategyUsed} Latency={RerankLatencyMs}ms TokensIn={RerankTokensIn} TokensOut={RerankTokensOut} CacheHits={RerankCacheHits} Unused={RerankUnusedRatio:P0}",
+                rerankResult.StrategyRequested,
+                rerankResult.StrategyUsed,
+                rerankResult.LatencyMs,
+                rerankResult.TokensIn,
+                rerankResult.TokensOut,
+                rerankResult.CacheHits,
+                rerankResult.UnusedRatio);
+        }
+
+        var topKHits = rerankedHits.Take(topK).ToList();
+
+        if (topKHits.Count == 0)
+            return new RetrievedContext([], [], 0, false, degraded);
+
+        // chunkByPointId already covers the full pool, so we can look up children
+        // directly rather than issue another DB query.
+        var children = topKHits
+            .Select(h => chunkByPointId[h.ChunkId])
+            .ToList();
 
         var scoreMap = topKHits.ToDictionary(h => h.ChunkId, h => h);
 

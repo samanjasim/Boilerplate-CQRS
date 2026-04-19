@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Starter.Api.Tests.Ai.Fakes;
 using Starter.Module.AI.Application.Services.Ingestion;
 using Starter.Module.AI.Application.Services.Retrieval;
 using Starter.Module.AI.Domain.Entities;
@@ -9,6 +10,7 @@ using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Ingestion;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Retrieval;
+using Starter.Module.AI.Infrastructure.Retrieval.Reranking;
 using Starter.Module.AI.Infrastructure.Settings;
 using Xunit;
 
@@ -40,7 +42,8 @@ public sealed class RagRetrievalServiceTests
         AiDbContext db,
         FakeVectorStore? vs = null,
         FakeKeywordSearchService? kw = null,
-        AiRagSettings? settings = null)
+        AiRagSettings? settings = null,
+        IReranker? reranker = null)
     {
         var ragSettings = settings ?? new AiRagSettings
         {
@@ -59,6 +62,8 @@ public sealed class RagRetrievalServiceTests
             kw ?? new FakeKeywordSearchService(),
             new FakeEmbeddingService(),
             new NoOpQueryRewriter(),
+            reranker ?? new NoOpReranker(),
+            new RerankStrategySelector(ragSettings),
             new TokenCounter(),
             Options.Create(ragSettings),
             NullLogger<RagRetrievalService>.Instance);
@@ -164,6 +169,78 @@ public sealed class RagRetrievalServiceTests
         var ctx = await svc.RetrieveForTurnAsync(assistant, "query", CancellationToken.None);
 
         ctx.IsEmpty.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Retrieve_reranker_reorders_fused_candidates()
+    {
+        await using var db = CreateDb();
+
+        // Seed 4 pool candidates (no parents — this test is about child ordering).
+        var documentId = Guid.NewGuid();
+        var chunks = new List<AiDocumentChunk>();
+        for (var i = 0; i < 4; i++)
+        {
+            var chunk = AiDocumentChunk.Create(
+                documentId: documentId,
+                chunkLevel: "child",
+                content: $"excerpt body {i}",
+                chunkIndex: i,
+                tokenCount: 5,
+                qdrantPointId: Guid.NewGuid());
+            db.AiDocumentChunks.Add(chunk);
+            chunks.Add(chunk);
+        }
+        await db.SaveChangesAsync();
+
+        // RRF order = [chunk0, chunk1, chunk2, chunk3] (by descending vector score).
+        var fakeVs = new FakeVectorStore
+        {
+            HitsToReturn =
+            [
+                new VectorSearchHit(chunks[0].QdrantPointId, 0.9m),
+                new VectorSearchHit(chunks[1].QdrantPointId, 0.8m),
+                new VectorSearchHit(chunks[2].QdrantPointId, 0.7m),
+                new VectorSearchHit(chunks[3].QdrantPointId, 0.6m),
+            ]
+        };
+
+        var settings = new AiRagSettings
+        {
+            TopK = 2,
+            RetrievalTopK = 20,
+            VectorWeight = 1.0m,
+            KeywordWeight = 1.0m,
+            MaxContextTokens = 4000,
+            IncludeParentContext = false,
+            MinHybridScore = 0.0m,
+            RerankStrategy = RerankStrategy.Listwise,
+            ListwisePoolMultiplier = 2, // pool size = max(2, 2*2) = 4
+        };
+
+        // Reranker reorders to [1, 0, 2, 3]; trim to topK=2 → [chunk1, chunk0].
+        var provider = new FakeAiProvider();
+        provider.EnqueueContent("[1, 0, 2, 3]");
+        var cache = new FakeCacheService();
+        var factory = new FakeAiProviderFactory(provider);
+        var opts = Options.Create(settings);
+        var listwise = new ListwiseReranker(factory, cache, opts, NullLogger<ListwiseReranker>.Instance);
+        var pointwise = new PointwiseReranker(factory, cache, opts, NullLogger<PointwiseReranker>.Instance);
+        var selector = new RerankStrategySelector(settings);
+        var reranker = new Reranker(selector, listwise, pointwise, opts, NullLogger<Reranker>.Instance);
+
+        var svc = BuildService(db, vs: fakeVs, settings: settings, reranker: reranker);
+
+        var tenantId = Guid.NewGuid();
+        var assistant = AiAssistant.Create(tenantId, "A", null, "p");
+        assistant.SetRagScope(AiRagScope.AllTenantDocuments);
+
+        var ctx = await svc.RetrieveForTurnAsync(assistant, "query", CancellationToken.None);
+
+        ctx.Children.Should().HaveCount(2);
+        ctx.Children[0].ChunkId.Should().Be(chunks[1].Id);
+        ctx.Children[1].ChunkId.Should().Be(chunks[0].Id);
+        provider.Calls.Should().Be(1);
     }
 
     [Fact]
