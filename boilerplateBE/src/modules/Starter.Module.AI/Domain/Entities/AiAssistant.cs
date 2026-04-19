@@ -1,5 +1,7 @@
 using Starter.Domain.Common;
+using Starter.Domain.Exceptions;
 using Starter.Module.AI.Domain.Enums;
+using Starter.Module.AI.Domain.Errors;
 
 namespace Starter.Module.AI.Domain.Entities;
 
@@ -34,6 +36,7 @@ public sealed class AiAssistant : AggregateRoot, ITenantEntity
     public AssistantExecutionMode ExecutionMode { get; private set; }
     public int MaxAgentSteps { get; private set; } = 10;
     public bool IsActive { get; private set; }
+    public AiRagScope RagScope { get; private set; } = AiRagScope.None;
 
     private AiAssistant() { }
 
@@ -129,6 +132,17 @@ public sealed class AiAssistant : AggregateRoot, ITenantEntity
         _knowledgeBaseDocIds = documentIds?.Where(id => id != Guid.Empty)
             .Distinct()
             .ToList() ?? new();
+        ModifiedAt = DateTime.UtcNow;
+    }
+
+    public void SetRagScope(AiRagScope scope)
+    {
+        if (scope == AiRagScope.SelectedDocuments && _knowledgeBaseDocIds.Count == 0)
+            throw new DomainException(
+                AiErrors.RagScopeRequiresDocuments.Description,
+                AiErrors.RagScopeRequiresDocuments.Code);
+
+        RagScope = scope;
         ModifiedAt = DateTime.UtcNow;
     }
 
