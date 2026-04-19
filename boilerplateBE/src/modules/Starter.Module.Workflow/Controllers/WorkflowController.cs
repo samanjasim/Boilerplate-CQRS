@@ -87,12 +87,14 @@ public sealed class WorkflowController(ISender mediator) : BaseApiController(med
     public async Task<IActionResult> GetInstances(
         [FromQuery] string entityType,
         [FromQuery] string? state,
+        [FromQuery] Guid? startedByUserId,
+        [FromQuery] string? status,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
     {
         var result = await Mediator.Send(
-            new GetWorkflowInstancesQuery(entityType, state, page, pageSize), ct);
+            new GetWorkflowInstancesQuery(entityType, state, startedByUserId, status, page, pageSize), ct);
         return HandleResult(result);
     }
 

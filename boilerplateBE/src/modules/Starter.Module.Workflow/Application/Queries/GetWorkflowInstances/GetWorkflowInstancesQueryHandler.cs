@@ -11,7 +11,8 @@ internal sealed class GetWorkflowInstancesQueryHandler(
         GetWorkflowInstancesQuery request, CancellationToken cancellationToken)
     {
         var instances = await workflowService.GetInstancesAsync(
-            request.EntityType, request.State, request.Page, request.PageSize, cancellationToken);
+            request.EntityType, request.State, request.StartedByUserId, request.Status,
+            request.Page, request.PageSize, cancellationToken);
 
         return Result.Success(instances.ToList());
     }

@@ -78,47 +78,11 @@ public sealed class WorkflowEngine(
             assigneeUserId: null, assigneeRole: null);
         await hookExecutor.ExecuteAsync(initialState.OnEnter, hookCtx, ct);
 
-        // If the initial state is a HumanTask, create an ApprovalTask
-        if (initialState.Type.Equals("HumanTask", StringComparison.OrdinalIgnoreCase))
-        {
-            await CreateApprovalTaskAsync(instance, initialState, definition, initiatorUserId, ct);
-        }
-        // If the initial state is a SystemAction, auto-transition
-        else if (initialState.Type.Equals("SystemAction", StringComparison.OrdinalIgnoreCase))
-        {
-            await AutoTransitionAsync(instance, definition, states, initialState, initiatorUserId, ct);
-        }
-        // If the initial state is a ConditionalGate, evaluate and auto-transition
-        else if (initialState.Type.Equals("ConditionalGate", StringComparison.OrdinalIgnoreCase))
-        {
-            await HandleConditionalGateAsync(instance, definition, states, initialState, initiatorUserId, ct);
-        }
-        // If the initial state is "Initial" type, auto-transition to the first available next state
-        // (starting a workflow = submitting it — the Draft state is a notation, not a stop point)
-        else if (initialState.Type.Equals("Initial", StringComparison.OrdinalIgnoreCase))
-        {
-            var transitions = JsonSerializer.Deserialize<List<WorkflowTransitionConfig>>(definition.TransitionsJson)!;
-            var firstTransition = transitions.FirstOrDefault(t =>
-                t.From.Equals(initialState.Name, StringComparison.OrdinalIgnoreCase));
-
-            if (firstTransition is not null)
-            {
-                var step = WorkflowStep.Create(
-                    instance.Id, initialState.Name, firstTransition.To,
-                    StepType.SystemAction, firstTransition.Trigger, initiatorUserId, null, null);
-                context.WorkflowSteps.Add(step);
-
-                instance.TransitionTo(firstTransition.To, firstTransition.Trigger, initiatorUserId);
-
-                var nextState = states.FirstOrDefault(s =>
-                    s.Name.Equals(firstTransition.To, StringComparison.OrdinalIgnoreCase));
-
-                if (nextState is not null)
-                {
-                    await HandleNewStateAsync(instance, definition, states, nextState, initiatorUserId, ct);
-                }
-            }
-        }
+        // Delegate to HandleNewStateAsync with isStarting=true so that
+        // Initial-type states auto-transition on first start (but not on
+        // return-for-revision via ExecuteTask).
+        await HandleNewStateAsync(instance, definition, states, initialState,
+            initiatorUserId, ct, isStarting: true);
 
         await context.SaveChangesAsync(ct);
 
@@ -440,7 +404,8 @@ public sealed class WorkflowEngine(
     }
 
     public async Task<IReadOnlyList<WorkflowInstanceSummary>> GetInstancesAsync(
-        string entityType, string? state = null, int page = 1, int pageSize = 20,
+        string entityType, string? state = null, Guid? startedByUserId = null,
+        string? status = null, int page = 1, int pageSize = 20,
         CancellationToken ct = default)
     {
         var query = context.WorkflowInstances
@@ -449,6 +414,13 @@ public sealed class WorkflowEngine(
 
         if (!string.IsNullOrWhiteSpace(state))
             query = query.Where(i => i.CurrentState == state);
+
+        if (startedByUserId.HasValue)
+            query = query.Where(i => i.StartedByUserId == startedByUserId.Value);
+
+        if (!string.IsNullOrWhiteSpace(status)
+            && Enum.TryParse<InstanceStatus>(status, ignoreCase: true, out var parsedStatus))
+            query = query.Where(i => i.Status == parsedStatus);
 
         var instances = await query
             .OrderByDescending(i => i.StartedAt)
@@ -775,6 +747,9 @@ public sealed class WorkflowEngine(
     /// After transitioning to a new state, handles the state type:
     /// Terminal -> complete instance, HumanTask -> create approval task,
     /// SystemAction -> auto-transition, ConditionalGate -> evaluate and branch.
+    /// Initial states only auto-transition when <paramref name="isStarting"/> is true
+    /// (i.e. during StartAsync). After ExecuteTask transitions (e.g. ReturnForRevision),
+    /// the requester holds at the Initial state to make changes before resubmitting.
     /// </summary>
     private async Task HandleNewStateAsync(
         WorkflowInstance instance,
@@ -782,7 +757,8 @@ public sealed class WorkflowEngine(
         List<WorkflowStateConfig> states,
         WorkflowStateConfig toStateConfig,
         Guid actorUserId,
-        CancellationToken ct)
+        CancellationToken ct,
+        bool isStarting = false)
     {
         if (toStateConfig.Type.Equals("Terminal", StringComparison.OrdinalIgnoreCase))
         {
@@ -802,6 +778,34 @@ public sealed class WorkflowEngine(
         {
             await HandleConditionalGateAsync(instance, definition, states, toStateConfig,
                 actorUserId, ct);
+        }
+        else if (toStateConfig.Type.Equals("Initial", StringComparison.OrdinalIgnoreCase) && isStarting)
+        {
+            // Auto-transition from Initial states only during StartAsync.
+            // When returned via ExecuteTask (e.g. ReturnForRevision), the requester
+            // holds at Draft and must explicitly resubmit.
+            var transitions = DeserializeTransitions(definition.TransitionsJson);
+            var firstTransition = transitions.FirstOrDefault(t =>
+                t.From.Equals(toStateConfig.Name, StringComparison.OrdinalIgnoreCase));
+
+            if (firstTransition is not null)
+            {
+                var step = WorkflowStep.Create(
+                    instance.Id, toStateConfig.Name, firstTransition.To,
+                    StepType.SystemAction, firstTransition.Trigger, actorUserId, null, null);
+                context.WorkflowSteps.Add(step);
+
+                instance.TransitionTo(firstTransition.To, firstTransition.Trigger, actorUserId);
+
+                var nextState = states.FirstOrDefault(s =>
+                    s.Name.Equals(firstTransition.To, StringComparison.OrdinalIgnoreCase));
+
+                if (nextState is not null)
+                {
+                    await HandleNewStateAsync(instance, definition, states, nextState,
+                        actorUserId, ct, isStarting: false);
+                }
+            }
         }
     }
 

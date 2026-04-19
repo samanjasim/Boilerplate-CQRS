@@ -105,6 +105,8 @@ public sealed class NullWorkflowService(ILogger<NullWorkflowService> logger) : I
     public Task<IReadOnlyList<WorkflowInstanceSummary>> GetInstancesAsync(
         string entityType,
         string? state = null,
+        Guid? startedByUserId = null,
+        string? status = null,
         int page = 1,
         int pageSize = 20,
         CancellationToken ct = default)
