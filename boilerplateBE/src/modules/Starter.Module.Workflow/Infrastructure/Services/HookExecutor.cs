@@ -9,7 +9,7 @@ namespace Starter.Module.Workflow.Infrastructure.Services;
 /// <summary>
 /// Carries all data a hook might need when executing on-enter/on-exit side effects.
 /// </summary>
-internal sealed record HookContext(
+public sealed record HookContext(
     Guid InstanceId,
     string EntityType,
     Guid EntityId,
@@ -28,7 +28,7 @@ internal sealed record HookContext(
 /// Supports hook types: "notify", "activity", "webhook", "inAppNotify".
 /// All failures are caught and logged — a failing hook never aborts the workflow.
 /// </summary>
-internal sealed class HookExecutor(
+public sealed class HookExecutor(
     IMessageDispatcher messageDispatcher,
     IActivityService activityService,
     IWebhookPublisher webhookPublisher,

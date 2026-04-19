@@ -9,7 +9,7 @@ namespace Starter.Module.Workflow.Infrastructure.Services;
 /// instances. Tries the primary strategy, falls back to the configured fallback strategy,
 /// and ultimately falls back to tenant admins if all else fails.
 /// </summary>
-internal sealed class AssigneeResolverService(
+public sealed class AssigneeResolverService(
     IEnumerable<IAssigneeResolverProvider> providers,
     IUserReader userReader,
     ILogger<AssigneeResolverService> logger)
