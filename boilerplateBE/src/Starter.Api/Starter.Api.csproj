@@ -41,6 +41,7 @@
     <ProjectReference Include="..\modules\Starter.Module.Communication\Starter.Module.Communication.csproj" />
     <ProjectReference Include="..\Starter.Infrastructure.Identity\Starter.Infrastructure.Identity.csproj" />
     <ProjectReference Include="..\modules\Starter.Module.CommentsActivity\Starter.Module.CommentsActivity.csproj" />
+    <ProjectReference Include="..\modules\Starter.Module.Workflow\Starter.Module.Workflow.csproj" />
   </ItemGroup>
 
 </Project>
