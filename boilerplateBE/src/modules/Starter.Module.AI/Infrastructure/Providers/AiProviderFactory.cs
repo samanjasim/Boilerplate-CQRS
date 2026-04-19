@@ -18,6 +18,13 @@ internal interface IAiProviderFactory
     /// so a model change invalidates previously cached vectors.
     /// </summary>
     string GetEmbeddingModelId();
+
+    /// <summary>
+    /// Stable identifier for the default chat model currently in use
+    /// (e.g. "OpenAI:gpt-4o-mini"). Used by reranker, rewriter, and classifier
+    /// handlers that need a chat model separate from the embedding model.
+    /// </summary>
+    string GetDefaultChatModelId();
 }
 
 internal sealed class AiProviderFactory(
@@ -61,6 +68,19 @@ internal sealed class AiProviderFactory(
             AiProviderType.OpenAI => configuration["AI:Providers:OpenAI:EmbeddingModel"] ?? "text-embedding-3-small",
             AiProviderType.Ollama => configuration["AI:Providers:Ollama:EmbeddingModel"] ?? "nomic-embed-text",
             AiProviderType.Anthropic => configuration["AI:Providers:Anthropic:EmbeddingModel"] ?? "default",
+            _ => "default"
+        };
+        return $"{providerType}:{modelName}";
+    }
+
+    public string GetDefaultChatModelId()
+    {
+        var providerType = GetDefaultProviderType();
+        var modelName = providerType switch
+        {
+            AiProviderType.OpenAI => configuration["AI:Providers:OpenAI:ChatModel"] ?? "gpt-4o-mini",
+            AiProviderType.Ollama => configuration["AI:Providers:Ollama:ChatModel"] ?? "llama3",
+            AiProviderType.Anthropic => configuration["AI:Providers:Anthropic:ChatModel"] ?? "claude-3-5-haiku-20241022",
             _ => "default"
         };
         return $"{providerType}:{modelName}";

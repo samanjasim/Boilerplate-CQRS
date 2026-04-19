@@ -60,6 +60,7 @@ public sealed class CachingEmbeddingServiceTests
         public AiProviderType GetEmbeddingProviderType() => AiProviderType.OpenAI;
         public IAiProvider CreateDefault() => throw new NotSupportedException();
         public IAiProvider CreateForEmbeddings() => throw new NotSupportedException();
+        public string GetDefaultChatModelId() => "OpenAI:gpt-4o-mini";
     }
 
     private static CachingEmbeddingService Build(

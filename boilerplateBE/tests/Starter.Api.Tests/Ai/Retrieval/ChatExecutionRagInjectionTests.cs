@@ -227,6 +227,7 @@ internal sealed class ScriptedProviderFactory(ScriptedAiProvider provider) : IAi
     public IAiProvider CreateDefault() => provider;
     public IAiProvider CreateForEmbeddings() => provider;
     public string GetEmbeddingModelId() => "Anthropic:test";
+    public string GetDefaultChatModelId() => "Anthropic:claude-3-5-haiku-20241022";
 }
 
 internal sealed class ScriptedAiProvider : IAiProvider
