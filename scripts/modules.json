@@ -51,5 +51,14 @@
     "configKey": "communication",
     "required": false,
     "description": "Multi-channel messaging: email (SMTP), Slack, Telegram, Discord, Teams; templates, trigger rules, delivery log. Implements IMessageDispatcher, ICommunicationEventNotifier, ITemplateRegistrar; null fallbacks are silent no-ops. Frontend slot: dashboard-cards. No mobile counterpart."
+  },
+  "workflow": {
+    "displayName": "Workflow & Approvals",
+    "backendModule": "Starter.Module.Workflow",
+    "frontendFeature": "workflow",
+    "testsFolder": "Workflow",
+    "configKey": "workflow",
+    "required": false,
+    "description": "Configurable state-machine workflows with approval chains, task inbox, and process automation. Implements IWorkflowService; null fallback returns empty results. Frontend: inbox page, admin definitions, entity status panel slot."
   }
 }
