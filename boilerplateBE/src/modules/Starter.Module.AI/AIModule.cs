@@ -88,6 +88,7 @@ public sealed class AIModule : IModule
         yield return (AiPermissions.ViewUsage, "View AI usage statistics", "AI");
         yield return (AiPermissions.RunAgentTasks, "Execute AI agent tasks", "AI");
         yield return (AiPermissions.ManageSettings, "Manage AI module settings", "AI");
+        yield return (AiPermissions.SearchKnowledgeBase, "Search knowledge base content directly", "AI");
     }
 
     public IEnumerable<(string Role, string[] Permissions)> GetDefaultRolePermissions()
@@ -102,7 +103,8 @@ public sealed class AIModule : IModule
             AiPermissions.ManageTriggers,
             AiPermissions.ViewUsage,
             AiPermissions.RunAgentTasks,
-            AiPermissions.ManageSettings
+            AiPermissions.ManageSettings,
+            AiPermissions.SearchKnowledgeBase
         ]);
 
         yield return ("Admin", [
@@ -114,7 +116,8 @@ public sealed class AIModule : IModule
             AiPermissions.ManageTools,
             AiPermissions.ManageTriggers,
             AiPermissions.ViewUsage,
-            AiPermissions.RunAgentTasks
+            AiPermissions.RunAgentTasks,
+            AiPermissions.SearchKnowledgeBase
         ]);
 
         yield return ("User", [

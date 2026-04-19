@@ -88,6 +88,9 @@ export const PERMISSIONS = {
     Delete: 'Webhooks.Delete',
     ViewPlatform: 'Webhooks.ViewPlatform',
   },
+  Ai: {
+    SearchKnowledgeBase: 'Ai.SearchKnowledgeBase',
+  },
 } as const;
 
 type PermissionMap = typeof PERMISSIONS;
