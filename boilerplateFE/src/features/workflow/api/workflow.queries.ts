@@ -47,11 +47,10 @@ export function useWorkflowHistory(instanceId: string) {
   });
 }
 
-export function useWorkflowInstances(params: { entityType: string; state?: string; page?: number; pageSize?: number }) {
+export function useWorkflowInstances(params: { entityType?: string; state?: string; status?: string; startedByUserId?: string; page?: number; pageSize?: number }) {
   return useQuery({
     queryKey: queryKeys.workflow.instances.list(params as Record<string, unknown>),
     queryFn: () => workflowApi.getInstances(params),
-    enabled: !!params.entityType,
   });
 }
 

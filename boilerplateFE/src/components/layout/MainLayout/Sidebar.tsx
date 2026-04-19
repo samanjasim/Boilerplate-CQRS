@@ -24,6 +24,7 @@ import {
   Link2,
   ScrollText,
   ClipboardCheck,
+  History,
   GitBranch,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -82,6 +83,9 @@ export function Sidebar() {
       : []),
     ...(activeModules.workflow && hasPermission(PERMISSIONS.Workflows.View)
       ? [{ label: t('workflow.sidebar.taskInbox'), icon: ClipboardCheck, path: ROUTES.WORKFLOWS.INBOX, badge: pendingTaskCount > 0 ? pendingTaskCount : undefined }]
+      : []),
+    ...(activeModules.workflow && hasPermission(PERMISSIONS.Workflows.View)
+      ? [{ label: t('workflow.sidebar.history'), icon: History, path: ROUTES.WORKFLOWS.INSTANCES }]
       : []),
     ...(activeModules.workflow && hasPermission(PERMISSIONS.Workflows.ManageDefinitions)
       ? [{ label: t('workflow.sidebar.definitions'), icon: GitBranch, path: ROUTES.WORKFLOWS.DEFINITIONS }]

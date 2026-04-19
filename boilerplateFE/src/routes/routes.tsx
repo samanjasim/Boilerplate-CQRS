@@ -54,6 +54,8 @@ const ProductsListPage = activeModules.products ? lazy(() => import('@/features/
 const ProductCreatePage = activeModules.products ? lazy(() => import('@/features/products/pages/ProductCreatePage')) : NullPage;
 const ProductDetailPage = activeModules.products ? lazy(() => import('@/features/products/pages/ProductDetailPage')) : NullPage;
 const WorkflowInboxPage = activeModules.workflow ? lazy(() => import('@/features/workflow/pages/WorkflowInboxPage')) : NullPage;
+const WorkflowInstancesPage = activeModules.workflow ? lazy(() => import('@/features/workflow/pages/WorkflowInstancesPage')) : NullPage;
+const WorkflowInstanceDetailPage = activeModules.workflow ? lazy(() => import('@/features/workflow/pages/WorkflowInstanceDetailPage')) : NullPage;
 const WorkflowDefinitionsPage = activeModules.workflow ? lazy(() => import('@/features/workflow/pages/WorkflowDefinitionsPage')) : NullPage;
 const WorkflowDefinitionDetailPage = activeModules.workflow ? lazy(() => import('@/features/workflow/pages/WorkflowDefinitionDetailPage')) : NullPage;
 const ChannelsPage = activeModules.communication ? lazy(() => import('@/features/communication/pages/ChannelsPage')) : NullPage;
@@ -262,6 +264,8 @@ export const routes: RouteObject[] = [
               element: <PermissionGuard permission={PERMISSIONS.Workflows.View} />,
               children: [
                 { path: ROUTES.WORKFLOWS.INBOX, element: <WorkflowInboxPage /> },
+                { path: ROUTES.WORKFLOWS.INSTANCES, element: <WorkflowInstancesPage /> },
+                { path: ROUTES.WORKFLOWS.INSTANCE_DETAIL, element: <WorkflowInstanceDetailPage /> },
               ],
             },
             {

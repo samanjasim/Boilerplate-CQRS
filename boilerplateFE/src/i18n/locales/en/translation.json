@@ -1218,14 +1218,6 @@
       "updateSuccess": "Definition updated successfully",
       "emptyDesc": "No workflow definitions found"
     },
-    "detail": {
-      "title": "Workflow Definition",
-      "version": "Version",
-      "cloneToCustomize": "Clone to Customize",
-      "stateList": "States",
-      "assignee": "Assignee",
-      "hooks": "Hooks"
-    },
     "approval": {
       "title": "Workflow Action",
       "comment": "Comment (optional)",
@@ -1240,7 +1232,37 @@
     },
     "sidebar": {
       "taskInbox": "Task Inbox",
+      "history": "Workflow History",
       "definitions": "Definitions"
+    },
+    "instances": {
+      "title": "Workflow History",
+      "myRequests": "My Requests",
+      "myRequestsOnly": "My Requests Only",
+      "empty": "No workflow instances found",
+      "emptyDesc": "No workflows match your current filters",
+      "definitionName": "Workflow",
+      "entityType": "Entity Type",
+      "entityId": "Entity",
+      "currentState": "Current State",
+      "status": "Status",
+      "startedBy": "Started By",
+      "startedAt": "Started",
+      "viewDetail": "View",
+      "cancelConfirm": "Are you sure you want to cancel this workflow?",
+      "cancelSuccess": "Workflow cancelled"
+    },
+    "detail": {
+      "title": "Workflow Definition",
+      "version": "Version",
+      "cloneToCustomize": "Clone to Customize",
+      "stateList": "States",
+      "assignee": "Assignee",
+      "hooks": "Hooks",
+      "cancelWorkflow": "Cancel Workflow",
+      "stepHistory": "Step History",
+      "comments": "Comments & Activity",
+      "pendingAction": "Action Required"
     }
   }
 }

@@ -1174,14 +1174,6 @@
       "updateSuccess": "تم تحديث التعريف بنجاح",
       "emptyDesc": "لا توجد تعريفات لسير العمل"
     },
-    "detail": {
-      "title": "تعريف سير العمل",
-      "version": "الإصدار",
-      "cloneToCustomize": "نسخ للتخصيص",
-      "stateList": "الحالات",
-      "assignee": "المسؤول",
-      "hooks": "الخطافات"
-    },
     "approval": {
       "title": "إجراء سير العمل",
       "comment": "تعليق (اختياري)",
@@ -1196,7 +1188,37 @@
     },
     "sidebar": {
       "taskInbox": "صندوق المهام",
+      "history": "سجل سير العمل",
       "definitions": "التعريفات"
+    },
+    "instances": {
+      "title": "سجل سير العمل",
+      "myRequests": "طلباتي",
+      "myRequestsOnly": "طلباتي فقط",
+      "empty": "لا توجد نسخ سير عمل",
+      "emptyDesc": "لا توجد نتائج تطابق الفلاتر الحالية",
+      "definitionName": "سير العمل",
+      "entityType": "نوع الكيان",
+      "entityId": "الكيان",
+      "currentState": "الحالة الحالية",
+      "status": "الحالة",
+      "startedBy": "بدأ بواسطة",
+      "startedAt": "تاريخ البدء",
+      "viewDetail": "عرض",
+      "cancelConfirm": "هل أنت متأكد من إلغاء سير العمل هذا؟",
+      "cancelSuccess": "تم إلغاء سير العمل"
+    },
+    "detail": {
+      "title": "تعريف سير العمل",
+      "version": "الإصدار",
+      "cloneToCustomize": "نسخ للتخصيص",
+      "stateList": "الحالات",
+      "assignee": "المسؤول",
+      "hooks": "الخطافات",
+      "cancelWorkflow": "إلغاء سير العمل",
+      "stepHistory": "سجل الخطوات",
+      "comments": "التعليقات والنشاط",
+      "pendingAction": "إجراء مطلوب"
     }
   }
 }

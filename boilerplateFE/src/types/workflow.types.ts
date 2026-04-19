@@ -101,6 +101,8 @@ export interface WorkflowInstanceSummary {
   status: string;
   startedAt: string;
   completedAt: string | null;
+  startedByUserId?: string;
+  startedByDisplayName?: string;
 }
 
 // Request types

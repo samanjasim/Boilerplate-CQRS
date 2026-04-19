@@ -20,7 +20,7 @@ export const workflowApi = {
   startWorkflow: (data: StartWorkflowRequest) =>
     apiClient.post(API_ENDPOINTS.WORKFLOW.INSTANCES, data).then((r) => r.data),
 
-  getInstances: (params: { entityType: string; state?: string; page?: number; pageSize?: number }) =>
+  getInstances: (params: { entityType?: string; state?: string; status?: string; startedByUserId?: string; page?: number; pageSize?: number }) =>
     apiClient.get(API_ENDPOINTS.WORKFLOW.INSTANCES, { params }).then((r) => r.data),
 
   getStatus: (entityType: string, entityId: string) =>
