@@ -114,9 +114,9 @@ public enum QuestionType
 {
     Greeting,
     Definition,
-    Factoid,
+    Listing,
     Reasoning,
-    Listing
+    Other
 }
 ```
 
@@ -129,28 +129,29 @@ Replace the line `public bool EnableReranking { get; init; } = false;       // 4
     public int QueryRewriteMaxVariants { get; init; } = 3;
     public int QueryRewriteCacheTtlSeconds { get; init; } = 1800;
     public int StageTimeoutQueryRewriteMs { get; init; } = 4_000;
+    public string? RewriterModel { get; init; } = null;
 
     // ---- New in Plan 4b-2 — Reranker (hybrid) ----
     // Replaces the legacy EnableReranking bool (which was a no-op in 4b-1).
     // Mapping when migrating appsettings: true → Auto, false → Off.
     public RerankStrategy RerankStrategy { get; init; } = RerankStrategy.Auto;
-    public int ListwiseRerankPoolMultiplier { get; init; } = 3;
-    public int PointwiseRerankPoolMultiplier { get; init; } = 2;
+    public int ListwisePoolMultiplier { get; init; } = 3;
+    public int PointwisePoolMultiplier { get; init; } = 2;
     public int PointwiseMaxParallelism { get; init; } = 5;
     public decimal MinPointwiseScore { get; init; } = 0.3m;
-    public decimal PointwiseMaxFailureRatio { get; init; } = 0.25m;
+    public double PointwiseMaxFailureRatio { get; init; } = 0.25;
     public int RerankCacheTtlSeconds { get; init; } = 1800;
     public string? RerankerModel { get; init; } = null;
     public int StageTimeoutRerankMs { get; init; } = 8_000;
 
     // ---- New in Plan 4b-2 — Question classifier ----
-    public bool EnableQuestionClassification { get; init; } = false;
-    public int QuestionClassifierCacheTtlSeconds { get; init; } = 1800;
+    public int QuestionCacheTtlSeconds { get; init; } = 1800;
     public int StageTimeoutClassifyMs { get; init; } = 2_000;
+    public string? ClassifierModel { get; init; } = null;
 
     // ---- New in Plan 4b-2 — Neighbor expansion ----
-    public int NeighborWindow { get; init; } = 0;
-    public decimal NeighborScoreWeight { get; init; } = 0.5m;
+    public int NeighborWindowSize { get; init; } = 0;
+    public int StageTimeoutNeighborMs { get; init; } = 3_000;
 ```
 
 Also add the `using` at the top of the file (after the existing `namespace` line is fine but keep the convention — put it before `namespace`):
@@ -3745,23 +3746,24 @@ Add under `AI:Rag`:
   "AI": {
     "Rag": {
       "EnableQueryExpansion": true,
-      "QueryExpansionMaxVariants": 3,
-      "QueryRewriteCacheTtlSeconds": 3600,
+      "QueryRewriteMaxVariants": 3,
+      "QueryRewriteCacheTtlSeconds": 1800,
+      "StageTimeoutQueryRewriteMs": 4000,
       "RewriterModel": null,
 
       "RerankStrategy": "Listwise",
       "RerankerModel": null,
       "ListwisePoolMultiplier": 3,
       "PointwisePoolMultiplier": 2,
-      "PointwiseMaxParallelism": 4,
-      "PointwiseMinScore": 0.3,
+      "PointwiseMaxParallelism": 5,
+      "MinPointwiseScore": 0.3,
       "PointwiseMaxFailureRatio": 0.25,
-      "RerankCacheTtlSeconds": 3600,
+      "RerankCacheTtlSeconds": 1800,
       "StageTimeoutRerankMs": 8000,
 
       "ClassifierModel": null,
-      "QuestionCacheTtlSeconds": 3600,
-      "StageTimeoutClassifyMs": 3000,
+      "QuestionCacheTtlSeconds": 1800,
+      "StageTimeoutClassifyMs": 2000,
 
       "NeighborWindowSize": 1,
       "StageTimeoutNeighborMs": 3000
@@ -3786,7 +3788,7 @@ Create or append `boilerplateBE/src/modules/Starter.Module.AI/docs/plan-4b-2-upg
 ## New settings
 | Setting | Default | Purpose |
 | --- | --- | --- |
-| `QueryExpansionMaxVariants` | 3 | Max rewrite variants fed to retrieval |
+| `QueryRewriteMaxVariants` | 3 | Max rewrite variants fed to retrieval |
 | `ListwisePoolMultiplier` | 3 | Rerank pool size = TopK × multiplier |
 | `PointwisePoolMultiplier` | 2 | Same, for pointwise strategy |
 | `PointwiseMinScore` | 0.3 | Scores below this are dropped |
