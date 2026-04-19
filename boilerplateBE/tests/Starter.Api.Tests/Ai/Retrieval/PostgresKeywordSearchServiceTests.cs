@@ -41,7 +41,7 @@ public sealed class PostgresKeywordSearchServiceTests : IClassFixture<AiPostgres
         var results = await svc.SearchAsync(tenantA, "photosynthesis", null, 10, CancellationToken.None);
 
         results.Should().HaveCount(1);
-        results[0].ChunkId.Should().Be(chunkA1.Id);
+        results[0].ChunkId.Should().Be(chunkA1.QdrantPointId);
         results[0].Score.Should().BeGreaterThan(0);
     }
 
@@ -68,7 +68,7 @@ public sealed class PostgresKeywordSearchServiceTests : IClassFixture<AiPostgres
         var results = await svc.SearchAsync(tenant, "photosynthesis", [docX.Id], 10, CancellationToken.None);
 
         results.Should().HaveCount(1);
-        results[0].ChunkId.Should().Be(chunkX.Id);
+        results[0].ChunkId.Should().Be(chunkX.QdrantPointId);
     }
 
     [Fact]

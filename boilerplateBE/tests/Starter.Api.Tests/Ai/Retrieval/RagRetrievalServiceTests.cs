@@ -170,8 +170,8 @@ public sealed class RagRetrievalServiceTests
         {
             HitsToReturn =
             [
-                new VectorSearchHit(childA.Id, 0.9m),
-                new VectorSearchHit(childB.Id, 0.8m)
+                new VectorSearchHit(childA.QdrantPointId, 0.9m),
+                new VectorSearchHit(childB.QdrantPointId, 0.8m)
             ]
         };
 

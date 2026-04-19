@@ -44,7 +44,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
             throw new InvalidOperationException(
                 "Caller must ensure RagScope != None before invoking retrieval.");
 
-        var tenantId = assistant.TenantId!.Value;
+        var tenantId = assistant.TenantId ?? Guid.Empty;
         IReadOnlyCollection<Guid>? docFilter = assistant.RagScope == AiRagScope.SelectedDocuments
             ? assistant.KnowledgeBaseDocIds.ToList()
             : null;
@@ -88,10 +88,13 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         if (topKHits.Count == 0)
             return RetrievedContext.Empty;
 
+        // HybridHit.ChunkId carries the qdrant_point_id; chunk rows are looked up by
+        // QdrantPointId (not Id) because the Qdrant point uses a distinct guid from
+        // the ai_document_chunks primary key.
         var childIds = topKHits.Select(h => h.ChunkId).ToList();
         var children = await _db.AiDocumentChunks
             .AsNoTracking()
-            .Where(c => childIds.Contains(c.Id))
+            .Where(c => childIds.Contains(c.QdrantPointId))
             .ToListAsync(ct);
 
         var scoreMap = topKHits.ToDictionary(h => h.ChunkId, h => h);
@@ -125,7 +128,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
             .ToDictionaryAsync(d => d.Id, d => d.Name, ct);
 
         var childChunks = children
-            .Select(c => Map(c, scoreMap.GetValueOrDefault(c.Id), docNames))
+            .Select(c => Map(c, scoreMap.GetValueOrDefault(c.QdrantPointId), docNames))
             .ToList();
 
         var parentChunks = parentEntities
