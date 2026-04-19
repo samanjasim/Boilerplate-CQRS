@@ -69,7 +69,11 @@ public sealed class AIModule : IModule
         services.AddScoped<IDocumentTextExtractorRegistry, Infrastructure.Ingestion.DocumentTextExtractorRegistry>();
         services.AddSingleton<IDocumentChunker, Infrastructure.Ingestion.HierarchicalDocumentChunker>();
         services.AddSingleton<IVectorStore, Infrastructure.Ingestion.QdrantVectorStore>();
-        services.AddScoped<IEmbeddingService, Infrastructure.Ingestion.EmbeddingService>();
+        services.AddScoped<Infrastructure.Ingestion.EmbeddingService>();
+        services.AddScoped<IEmbeddingService>(sp => new Infrastructure.Ingestion.CachingEmbeddingService(
+            sp.GetRequiredService<Infrastructure.Ingestion.EmbeddingService>(),
+            sp.GetRequiredService<Starter.Application.Common.Interfaces.ICacheService>(),
+            sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<Infrastructure.Settings.AiRagSettings>>()));
         services.AddScoped<IKeywordSearchService, Infrastructure.Retrieval.PostgresKeywordSearchService>();
         services.AddScoped<IRagRetrievalService, Infrastructure.Retrieval.RagRetrievalService>();
 
