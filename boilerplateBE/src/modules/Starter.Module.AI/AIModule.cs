@@ -76,6 +76,7 @@ public sealed class AIModule : IModule
             sp.GetRequiredService<Infrastructure.Providers.IAiProviderFactory>(),
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<Infrastructure.Settings.AiRagSettings>>()));
         services.AddScoped<IKeywordSearchService, Infrastructure.Retrieval.PostgresKeywordSearchService>();
+        services.AddScoped<IQueryRewriter, Infrastructure.Retrieval.QueryRewriting.QueryRewriter>();
         services.AddScoped<IRagRetrievalService, Infrastructure.Retrieval.RagRetrievalService>();
 
         services.AddSingleton<IAiToolRegistry, AiToolRegistryService>();

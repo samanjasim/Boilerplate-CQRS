@@ -36,6 +36,12 @@ public sealed class RagRetrievalServiceTests
         return new AiDbContext(options, currentUserService: null);
     }
 
+    private sealed class NoOpQueryRewriter : IQueryRewriter
+    {
+        public Task<IReadOnlyList<string>> RewriteAsync(string q, string? lang, CancellationToken ct)
+            => Task.FromResult<IReadOnlyList<string>>(new[] { q });
+    }
+
     private static RagRetrievalService BuildService(
         AiDbContext db,
         FakeVectorStore? vs = null,
@@ -58,6 +64,7 @@ public sealed class RagRetrievalServiceTests
             vs ?? new FakeVectorStore(),
             kw ?? new FakeKeywordSearchService(),
             new FakeEmbeddingService(),
+            new NoOpQueryRewriter(),
             new TokenCounter(),
             Options.Create(ragSettings),
             NullLogger<RagRetrievalService>.Instance);

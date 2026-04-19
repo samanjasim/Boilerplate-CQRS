@@ -53,6 +53,12 @@ public sealed class RagRetrievalServiceTimeoutTests
             => Task.FromResult(texts.Select(_ => new float[1536]).ToArray());
     }
 
+    private sealed class NoOpQueryRewriter : IQueryRewriter
+    {
+        public Task<IReadOnlyList<string>> RewriteAsync(string q, string? lang, CancellationToken ct)
+            => Task.FromResult<IReadOnlyList<string>>(new[] { q });
+    }
+
     [Fact]
     public async Task VectorSearch_Timeout_ReturnsKeywordOnly_WithVectorStageDegraded()
     {
@@ -63,6 +69,7 @@ public sealed class RagRetrievalServiceTimeoutTests
             new SlowVectorStore(),
             new FakeKw(),
             new FakeEmbed(),
+            new NoOpQueryRewriter(),
             new TokenCounter(),
             Options.Create(settings),
             NullLogger<RagRetrievalService>.Instance);
@@ -73,7 +80,7 @@ public sealed class RagRetrievalServiceTimeoutTests
 
         var ctx = await svc.RetrieveForTurnAsync(assistant, "query", CancellationToken.None);
 
-        ctx.DegradedStages.Should().Contain("vector-search");
+        ctx.DegradedStages.Should().Contain("vector-search[0]");
     }
 
     // NOTE: We do not assert total latency here — CI variance makes that flaky.
@@ -89,6 +96,7 @@ public sealed class RagRetrievalServiceTimeoutTests
             new SlowVectorStore(),
             new FakeKw(),
             new FakeEmbed(),
+            new NoOpQueryRewriter(),
             new TokenCounter(),
             Options.Create(settings),
             NullLogger<RagRetrievalService>.Instance);

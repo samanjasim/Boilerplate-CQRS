@@ -17,6 +17,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
     private readonly IVectorStore _vectorStore;
     private readonly IKeywordSearchService _keywordSearch;
     private readonly IEmbeddingService _embeddingService;
+    private readonly IQueryRewriter _queryRewriter;
     private readonly TokenCounter _tokenCounter;
     private readonly AiRagSettings _settings;
     private readonly ILogger<RagRetrievalService> _logger;
@@ -26,6 +27,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         IVectorStore vectorStore,
         IKeywordSearchService keywordSearch,
         IEmbeddingService embeddingService,
+        IQueryRewriter queryRewriter,
         TokenCounter tokenCounter,
         IOptions<AiRagSettings> settings,
         ILogger<RagRetrievalService> logger)
@@ -34,6 +36,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         _vectorStore = vectorStore;
         _keywordSearch = keywordSearch;
         _embeddingService = embeddingService;
+        _queryRewriter = queryRewriter;
         _tokenCounter = tokenCounter;
         _settings = settings.Value;
         _logger = logger;
@@ -77,9 +80,19 @@ internal sealed class RagRetrievalService : IRagRetrievalService
 
         var degraded = new List<string>();
 
+        // 1. Query rewrite (original + variants). Never throws.
+        var variants = await WithTimeoutAsync(
+            innerCt => _queryRewriter.RewriteAsync(queryText, language: null, innerCt),
+            _settings.StageTimeoutQueryRewriteMs,
+            "query-rewrite",
+            degraded,
+            ct);
+        IReadOnlyList<string> effectiveVariants = variants is { Count: > 0 } ? variants : new[] { queryText };
+
+        // 2. Embed all variants in one batched call.
         var vectors = await WithTimeoutAsync(
             innerCt => _embeddingService.EmbedAsync(
-                [queryText], innerCt, attribution: null, requestType: AiRequestType.QueryEmbedding),
+                effectiveVariants.ToList(), innerCt, attribution: null, requestType: AiRequestType.QueryEmbedding),
             _settings.StageTimeoutEmbedMs,
             "embed-query",
             degraded,
@@ -87,37 +100,44 @@ internal sealed class RagRetrievalService : IRagRetrievalService
 
         if (vectors is null || vectors.Length == 0)
         {
-            // Embed is a hard prerequisite for vector search — if it dropped,
-            // we cannot produce hybrid hits at all. Return empty with the
-            // degraded list so callers (chat telemetry) can see what happened.
             return new RetrievedContext([], [], 0, false, degraded);
         }
-
-        var queryVector = vectors[0];
 
         var retrievalTopK = _settings.RetrievalTopK;
         var minHybrid = minScore ?? _settings.MinHybridScore;
 
-        var vectorHits = await WithTimeoutAsync(
-            innerCt => _vectorStore.SearchAsync(tenantId, queryVector, documentFilter, retrievalTopK, innerCt),
-            _settings.StageTimeoutVectorMs,
-            "vector-search",
-            degraded,
-            ct);
+        // 3. Vector search per variant.
+        var vectorLists = new List<IReadOnlyList<VectorSearchHit>>(vectors.Length);
+        for (var i = 0; i < vectors.Length; i++)
+        {
+            var v = vectors[i];
+            var hits = await WithTimeoutAsync(
+                innerCt => _vectorStore.SearchAsync(tenantId, v, documentFilter, retrievalTopK, innerCt),
+                _settings.StageTimeoutVectorMs,
+                $"vector-search[{i}]",
+                degraded,
+                ct);
+            vectorLists.Add(hits ?? (IReadOnlyList<VectorSearchHit>)Array.Empty<VectorSearchHit>());
+        }
 
-        var keywordHits = await WithTimeoutAsync(
-            innerCt => _keywordSearch.SearchAsync(tenantId, queryText, documentFilter, retrievalTopK, innerCt),
-            _settings.StageTimeoutKeywordMs,
-            "keyword-search",
-            degraded,
-            ct);
+        // 4. Keyword search per variant.
+        var keywordLists = new List<IReadOnlyList<KeywordSearchHit>>(effectiveVariants.Count);
+        for (var i = 0; i < effectiveVariants.Count; i++)
+        {
+            var q = effectiveVariants[i];
+            var hits = await WithTimeoutAsync(
+                innerCt => _keywordSearch.SearchAsync(tenantId, q, documentFilter, retrievalTopK, innerCt),
+                _settings.StageTimeoutKeywordMs,
+                $"keyword-search[{i}]",
+                degraded,
+                ct);
+            keywordLists.Add(hits ?? (IReadOnlyList<KeywordSearchHit>)Array.Empty<KeywordSearchHit>());
+        }
 
-        IReadOnlyList<VectorSearchHit> vectorHitsEffective = vectorHits ?? [];
-        IReadOnlyList<KeywordSearchHit> keywordHitsEffective = keywordHits ?? [];
-
+        // 5. RRF multi-list fuse.
         var mergedHits = HybridScoreCalculator.Combine(
-            [vectorHitsEffective],
-            [keywordHitsEffective],
+            vectorLists,
+            keywordLists,
             _settings.VectorWeight,
             _settings.KeywordWeight,
             _settings.RrfK,
