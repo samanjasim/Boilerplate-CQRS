@@ -24,7 +24,8 @@ internal sealed class EmbeddingService(
     public async Task<float[][]> EmbedAsync(
         IReadOnlyList<string> texts,
         CancellationToken ct,
-        EmbedAttribution? attribution = null)
+        EmbedAttribution? attribution = null,
+        AiRequestType requestType = AiRequestType.Embedding)
     {
         if (texts.Count == 0) return Array.Empty<float[]>();
 
@@ -59,7 +60,7 @@ internal sealed class EmbeddingService(
                 inputTokens: totalTokens,
                 outputTokens: 0,
                 estimatedCost: 0m,
-                requestType: AiRequestType.Embedding);
+                requestType: requestType);
             context.AiUsageLogs.Add(log);
             await context.SaveChangesAsync(ct);
         }
