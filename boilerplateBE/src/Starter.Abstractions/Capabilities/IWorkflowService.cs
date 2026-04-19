@@ -18,6 +18,14 @@ public interface IWorkflowService : ICapability
     Task<bool> ExecuteTaskAsync(Guid taskId, string action, string? comment,
         Guid actorUserId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Manually trigger a named transition on an active workflow instance.
+    /// Only allowed when the current state is "Initial" type and the caller
+    /// is the workflow initiator. Used for resubmitting after return-for-revision.
+    /// </summary>
+    Task<bool> TransitionAsync(Guid instanceId, string trigger, Guid actorUserId,
+        CancellationToken ct = default);
+
     // ── Query: Status ──
     Task<WorkflowStatusSummary?> GetStatusAsync(string entityType, Guid entityId,
         CancellationToken ct = default);

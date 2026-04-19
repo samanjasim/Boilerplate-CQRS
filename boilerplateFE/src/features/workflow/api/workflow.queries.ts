@@ -113,6 +113,20 @@ export function useCancelWorkflow() {
   });
 }
 
+export function useTransitionWorkflow() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ instanceId, trigger }: { instanceId: string; trigger: string }) =>
+      workflowApi.transitionWorkflow(instanceId, trigger),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.workflow.instances.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.workflow.tasks.all });
+      toast.success(i18n.t('workflow.resubmitSuccess', 'Workflow resubmitted'));
+    },
+    onError: handleMutationError,
+  });
+}
+
 export function useCloneDefinition() {
   const queryClient = useQueryClient();
   return useMutation({

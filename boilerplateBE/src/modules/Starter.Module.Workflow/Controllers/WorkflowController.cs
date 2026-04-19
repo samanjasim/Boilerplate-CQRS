@@ -8,6 +8,7 @@ using Starter.Module.Workflow.Application.Commands.CancelWorkflow;
 using Starter.Module.Workflow.Application.Commands.CloneDefinition;
 using Starter.Module.Workflow.Application.Commands.ExecuteTask;
 using Starter.Module.Workflow.Application.Commands.StartWorkflow;
+using Starter.Module.Workflow.Application.Commands.TransitionWorkflow;
 using Starter.Module.Workflow.Application.Commands.UpdateDefinition;
 using Starter.Module.Workflow.Application.Queries.GetPendingTaskCount;
 using Starter.Module.Workflow.Application.Queries.GetPendingTasks;
@@ -130,6 +131,18 @@ public sealed class WorkflowController(ISender mediator) : BaseApiController(med
         return HandleResult(result);
     }
 
+    [HttpPost("instances/{instanceId:guid}/transition")]
+    [Authorize(Policy = WorkflowPermissions.Start)]
+    [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> TransitionWorkflow(
+        Guid instanceId, [FromBody] TransitionWorkflowRequest request, CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(
+            new TransitionWorkflowCommand(instanceId, request.Trigger), ct);
+        return HandleResult(result);
+    }
+
     // ── Tasks ────────────────────────────────────────────────────────────────
 
     [HttpGet("tasks")]
@@ -169,3 +182,5 @@ public sealed class WorkflowController(ISender mediator) : BaseApiController(med
 public sealed record CancelWorkflowRequest(string? Reason);
 
 public sealed record ExecuteTaskRequest(string Action, string? Comment);
+
+public sealed record TransitionWorkflowRequest(string Trigger);

@@ -1265,7 +1265,12 @@
       "cancelWorkflow": "Cancel Workflow",
       "stepHistory": "Step History",
       "comments": "Comments & Activity",
-      "pendingAction": "Action Required"
-    }
+      "pendingAction": "Action Required",
+      "resubmit": "Resubmit",
+      "completedAt": "Completed",
+      "returnedForRevision": "Returned for Revision",
+      "returnedForRevisionDesc": "This workflow was returned for revision. Review and resubmit when ready."
+    },
+    "resubmitSuccess": "Workflow resubmitted"
   }
 }

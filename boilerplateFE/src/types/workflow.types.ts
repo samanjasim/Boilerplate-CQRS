@@ -66,6 +66,7 @@ export interface WorkflowStatusSummary {
   startedAt: string;
   startedByUserId: string;
   entityDisplayName: string | null;
+  canResubmit: boolean;
 }
 
 export interface PendingTaskSummary {
@@ -107,6 +108,7 @@ export interface WorkflowInstanceSummary {
   startedByUserId: string | null;
   startedByDisplayName: string | null;
   entityDisplayName: string | null;
+  canResubmit: boolean;
 }
 
 // Request types

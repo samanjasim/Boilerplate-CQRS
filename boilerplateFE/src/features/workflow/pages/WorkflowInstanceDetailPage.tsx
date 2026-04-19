@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { XCircle } from 'lucide-react';
+import { XCircle, Send, Clock, CheckCircle2, AlertCircle, User, Calendar } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { PageHeader, ConfirmDialog } from '@/components/common';
 import { Slot } from '@/lib/extensions';
 import { useBackNavigation, usePermissions } from '@/hooks';
+import { useAuthStore, selectUser } from '@/stores';
 import { PERMISSIONS } from '@/constants';
 import { STATUS_BADGE_VARIANT } from '@/constants/status';
 import { ROUTES } from '@/config';
@@ -18,6 +19,7 @@ import {
   useWorkflowDefinition,
   useCancelWorkflow,
   usePendingTasks,
+  useTransitionWorkflow,
 } from '../api';
 import { WorkflowStepTimeline } from '../components/WorkflowStepTimeline';
 import { ApprovalDialog } from '../components/ApprovalDialog';
@@ -28,6 +30,7 @@ export default function WorkflowInstanceDetailPage() {
   const { id: instanceId } = useParams<{ id: string }>();
   const location = useLocation();
   const { hasPermission } = usePermissions();
+  const user = useAuthStore(selectUser);
 
   useBackNavigation(ROUTES.WORKFLOWS.INSTANCES, t('workflow.instances.title'));
 
@@ -36,6 +39,7 @@ export default function WorkflowInstanceDetailPage() {
   const { data: history, isLoading: historyLoading } = useWorkflowHistory(instanceId!);
   const { data: definition } = useWorkflowDefinition(instance?.definitionId ?? '');
   const { mutate: cancelWorkflow, isPending: cancelling } = useCancelWorkflow();
+  const { mutate: transitionWorkflow, isPending: transitioning } = useTransitionWorkflow();
   const { data: tasksData } = usePendingTasks();
 
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -48,6 +52,12 @@ export default function WorkflowInstanceDetailPage() {
   const myTask = pendingTasks.find(
     (task) => task.instanceId === instanceId,
   );
+
+  // Check if the current user can resubmit
+  const canResubmit =
+    instance?.canResubmit &&
+    instance?.status === 'Active' &&
+    instance?.startedByUserId === user?.id;
 
   if (!instance && historyLoading) {
     return (
@@ -80,34 +90,59 @@ export default function WorkflowInstanceDetailPage() {
   }
 
   const isActive = instance.status === 'Active';
+  const isCompleted = instance.status === 'Completed';
+  const isCancelled = instance.status === 'Cancelled';
 
   function handleCancel() {
     cancelWorkflow({ instanceId: instanceId! });
     setShowCancelDialog(false);
   }
 
+  function handleResubmit() {
+    transitionWorkflow({ instanceId: instanceId!, trigger: 'Submit' });
+  }
+
+  const statusIcon = isCompleted
+    ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+    : isCancelled
+      ? <XCircle className="h-4 w-4 text-destructive" />
+      : <Clock className="h-4 w-4 text-primary" />;
+
   return (
     <div className="space-y-6">
       <PageHeader
         title={instance.definitionName}
         actions={
-          canCancel && isActive ? (
-            <Button
-              variant="outline"
-              onClick={() => setShowCancelDialog(true)}
-              disabled={cancelling}
-            >
-              <XCircle className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
-              {t('workflow.detail.cancelWorkflow')}
-            </Button>
-          ) : undefined
+          <div className="flex items-center gap-2">
+            {canResubmit && (
+              <Button
+                variant="default"
+                onClick={handleResubmit}
+                disabled={transitioning}
+              >
+                <Send className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+                {t('workflow.detail.resubmit')}
+              </Button>
+            )}
+            {canCancel && isActive && (
+              <Button
+                variant="outline"
+                onClick={() => setShowCancelDialog(true)}
+                disabled={cancelling}
+              >
+                <XCircle className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+                {t('workflow.detail.cancelWorkflow')}
+              </Button>
+            )}
+          </div>
         }
       />
 
-      {/* Instance info */}
+      {/* Instance summary */}
       <Card>
         <CardContent className="py-5">
           <div className="flex flex-wrap items-center gap-3">
+            {statusIcon}
             <Badge variant="secondary">{instance.entityType}</Badge>
             <span className="text-sm text-foreground font-medium">
               {instance.entityDisplayName ?? instance.entityId.substring(0, 8) + '...'}
@@ -117,16 +152,45 @@ export default function WorkflowInstanceDetailPage() {
               {t(`workflow.status.${instance.status.toLowerCase()}`)}
             </Badge>
           </div>
-          <p className="mt-3 text-sm text-muted-foreground">
-            {t('workflow.instances.startedAt')}: {formatDateTime(instance.startedAt)}
-          </p>
-          {instance.startedByDisplayName && (
-            <p className="text-sm text-muted-foreground">
-              {t('workflow.instances.startedBy')}: {instance.startedByDisplayName}
+          <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1">
+            <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+              <Calendar className="h-3.5 w-3.5" />
+              {t('workflow.instances.startedAt')}: {formatDateTime(instance.startedAt)}
             </p>
-          )}
+            {instance.startedByDisplayName && (
+              <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                <User className="h-3.5 w-3.5" />
+                {t('workflow.instances.startedBy')}: {instance.startedByDisplayName}
+              </p>
+            )}
+            {instance.completedAt && (
+              <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                {t('workflow.detail.completedAt')}: {formatDateTime(instance.completedAt)}
+              </p>
+            )}
+          </div>
         </CardContent>
       </Card>
+
+      {/* Resubmit notice */}
+      {canResubmit && (
+        <Card>
+          <CardContent className="py-5">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">
+                  {t('workflow.detail.returnedForRevision')}
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {t('workflow.detail.returnedForRevisionDesc')}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Pending action */}
       {myTask && (

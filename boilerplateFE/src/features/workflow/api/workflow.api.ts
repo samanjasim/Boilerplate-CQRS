@@ -32,6 +32,9 @@ export const workflowApi = {
   cancelWorkflow: (instanceId: string, reason?: string) =>
     apiClient.post(API_ENDPOINTS.WORKFLOW.INSTANCE_CANCEL(instanceId), { reason }).then((r) => r.data),
 
+  transitionWorkflow: (instanceId: string, trigger: string) =>
+    apiClient.post(API_ENDPOINTS.WORKFLOW.INSTANCE_TRANSITION(instanceId), { trigger }).then((r) => r.data),
+
   // Tasks
   getPendingTasks: (params?: { page?: number; pageSize?: number }) =>
     apiClient.get(API_ENDPOINTS.WORKFLOW.TASKS, { params }).then((r) => r.data),

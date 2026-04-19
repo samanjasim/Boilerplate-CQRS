@@ -50,6 +50,18 @@ public sealed class NullWorkflowService(ILogger<NullWorkflowService> logger) : I
         return Task.FromResult(false);
     }
 
+    public Task<bool> TransitionAsync(
+        Guid instanceId,
+        string trigger,
+        Guid actorUserId,
+        CancellationToken ct = default)
+    {
+        logger.LogDebug(
+            "Workflow transition skipped — Workflow module not installed (instanceId: {InstanceId}, trigger: {Trigger})",
+            instanceId, trigger);
+        return Task.FromResult(false);
+    }
+
     public Task<WorkflowStatusSummary?> GetStatusAsync(
         string entityType,
         Guid entityId,

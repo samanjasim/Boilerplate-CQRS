@@ -204,6 +204,7 @@ export const API_ENDPOINTS = {
     INSTANCE_STATUS: '/workflow/instances/status',
     INSTANCE_HISTORY: (id: string) => `/workflow/instances/${id}/history`,
     INSTANCE_CANCEL: (id: string) => `/workflow/instances/${id}/cancel`,
+    INSTANCE_TRANSITION: (id: string) => `/workflow/instances/${id}/transition`,
     TASKS: '/workflow/tasks',
     TASKS_COUNT: '/workflow/tasks/count',
     TASK_EXECUTE: (id: string) => `/workflow/tasks/${id}/execute`,

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { History, Eye } from 'lucide-react';
+import { History, Eye, Send } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/table';
 import { PageHeader, EmptyState, Pagination } from '@/components/common';
 import { getPersistedPageSize } from '@/components/common/pagination-utils';
-import { useWorkflowInstances, useWorkflowDefinitions } from '../api';
+import { useWorkflowInstances, useWorkflowDefinitions, useTransitionWorkflow } from '../api';
 import { usePermissions } from '@/hooks';
 import { useAuthStore, selectUser } from '@/stores';
 import { PERMISSIONS } from '@/constants';
@@ -36,6 +36,8 @@ export default function WorkflowInstancesPage() {
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [entityTypeFilter, setEntityTypeFilter] = useState('');
   const [myRequestsOnly, setMyRequestsOnly] = useState(!canViewAll);
+
+  const { mutate: transitionWorkflow, isPending: transitioning } = useTransitionWorkflow();
 
   const startedByUserId = (!canViewAll || myRequestsOnly) ? user?.id : undefined;
 
@@ -168,19 +170,32 @@ export default function WorkflowInstancesPage() {
                     {formatDate(instance.startedAt)}
                   </TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      asChild
-                    >
-                      <Link
-                        to={ROUTES.WORKFLOWS.getInstanceDetail(instance.instanceId)}
-                        state={{ instance }}
+                    <div className="flex items-center gap-1">
+                      {instance.canResubmit && instance.startedByUserId === user?.id && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={transitioning}
+                          onClick={() => transitionWorkflow({ instanceId: instance.instanceId, trigger: 'Submit' })}
+                        >
+                          <Send className="h-3.5 w-3.5 ltr:mr-1 rtl:ml-1" />
+                          {t('workflow.detail.resubmit')}
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        asChild
                       >
-                        <Eye className="h-4 w-4 ltr:mr-1 rtl:ml-1" />
-                        {t('workflow.instances.viewDetail')}
-                      </Link>
-                    </Button>
+                        <Link
+                          to={ROUTES.WORKFLOWS.getInstanceDetail(instance.instanceId)}
+                          state={{ instance }}
+                        >
+                          <Eye className="h-4 w-4 ltr:mr-1 rtl:ml-1" />
+                          {t('workflow.instances.viewDetail')}
+                        </Link>
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

@@ -137,6 +137,77 @@ public sealed class WorkflowEngine(
             instanceId, reason);
     }
 
+    // ── Transition (resubmit from Initial state) ──────────────────────────
+
+    public async Task<bool> TransitionAsync(
+        Guid instanceId, string trigger, Guid actorUserId, CancellationToken ct = default)
+    {
+        var instance = await context.WorkflowInstances
+            .Include(i => i.Definition)
+            .FirstOrDefaultAsync(i => i.Id == instanceId, ct);
+
+        if (instance is null || instance.Status != InstanceStatus.Active) return false;
+
+        // Only the initiator can transition from Initial states
+        if (instance.StartedByUserId != actorUserId) return false;
+
+        var states = DeserializeStates(instance.Definition.StatesJson);
+        var currentState = states.FirstOrDefault(s => s.Name == instance.CurrentState);
+        if (currentState is null || !currentState.Type.Equals("Initial", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var transitions = DeserializeTransitions(instance.Definition.TransitionsJson);
+        var transition = transitions.FirstOrDefault(t =>
+            t.From == instance.CurrentState && t.Trigger == trigger);
+        if (transition is null) return false;
+
+        var fromState = instance.CurrentState;
+        var toState = transition.To;
+        var toStateConfig = states.FirstOrDefault(s => s.Name == toState);
+
+        // Execute onExit hooks for the current state
+        var exitHookCtx = BuildHookContext(instance, instance.Definition.Name, fromState,
+            previousState: null, action: trigger, actorUserId: actorUserId,
+            assigneeUserId: null, assigneeRole: null);
+        await hookExecutor.ExecuteAsync(currentState.OnExit, exitHookCtx, ct);
+
+        // Create step record
+        var step = WorkflowStep.Create(
+            instance.Id,
+            fromState,
+            toState,
+            StepType.HumanTask,
+            trigger,
+            actorUserId,
+            comment: null,
+            metadataJson: null);
+        context.WorkflowSteps.Add(step);
+
+        // Transition the instance
+        instance.TransitionTo(toState, trigger, actorUserId);
+
+        // Execute onEnter hooks for the new state
+        if (toStateConfig is not null)
+        {
+            var enterHookCtx = BuildHookContext(instance, instance.Definition.Name, toState,
+                previousState: fromState, action: trigger, actorUserId: actorUserId,
+                assigneeUserId: null, assigneeRole: null);
+            await hookExecutor.ExecuteAsync(toStateConfig.OnEnter, enterHookCtx, ct);
+
+            // Handle the new state (HumanTask creates task, SystemAction auto-transitions, etc.)
+            await HandleNewStateAsync(instance, instance.Definition, states, toStateConfig,
+                actorUserId, ct);
+        }
+
+        await context.SaveChangesAsync(ct);
+
+        logger.LogInformation(
+            "TransitionAsync: instance {InstanceId} transitioned from '{From}' to '{To}' via '{Trigger}' by user {Actor}.",
+            instance.Id, fromState, toState, trigger, actorUserId);
+
+        return true;
+    }
+
     // ── Task Actions ─────────────────────────────────────────────────────────
 
     public async Task<bool> ExecuteTaskAsync(
@@ -310,6 +381,19 @@ public sealed class WorkflowEngine(
 
         if (instance is null) return null;
 
+        var canResubmit = false;
+        if (instance.Status == InstanceStatus.Active)
+        {
+            try
+            {
+                var states = DeserializeStates(instance.Definition.StatesJson);
+                var currentSt = states.FirstOrDefault(s => s.Name == instance.CurrentState);
+                canResubmit = currentSt is not null
+                    && currentSt.Type.Equals("Initial", StringComparison.OrdinalIgnoreCase);
+            }
+            catch { /* swallow deserialization errors */ }
+        }
+
         return new WorkflowStatusSummary(
             instance.Id,
             instance.DefinitionId,
@@ -318,7 +402,8 @@ public sealed class WorkflowEngine(
             instance.Status.ToString(),
             instance.StartedAt,
             instance.StartedByUserId,
-            instance.EntityDisplayName);
+            instance.EntityDisplayName,
+            canResubmit);
     }
 
     public async Task<bool> IsInStateAsync(
@@ -470,20 +555,36 @@ public sealed class WorkflowEngine(
                 userLookup[u.Id] = u.DisplayName;
         }
 
-        return instances.Select(i => new WorkflowInstanceSummary(
-            i.Id,
-            i.DefinitionId,
-            i.Definition.Name,
-            i.EntityType,
-            i.EntityId,
-            i.CurrentState,
-            i.Status.ToString(),
-            i.StartedAt,
-            i.CompletedAt,
-            i.StartedByUserId,
-            userLookup.TryGetValue(i.StartedByUserId, out var name) ? name : null,
-            i.EntityDisplayName))
-            .ToList();
+        return instances.Select(i =>
+        {
+            var canResubmit = false;
+            if (i.Status == InstanceStatus.Active)
+            {
+                try
+                {
+                    var sts = DeserializeStates(i.Definition.StatesJson);
+                    var curSt = sts.FirstOrDefault(s => s.Name == i.CurrentState);
+                    canResubmit = curSt is not null
+                        && curSt.Type.Equals("Initial", StringComparison.OrdinalIgnoreCase);
+                }
+                catch { /* swallow */ }
+            }
+
+            return new WorkflowInstanceSummary(
+                i.Id,
+                i.DefinitionId,
+                i.Definition.Name,
+                i.EntityType,
+                i.EntityId,
+                i.CurrentState,
+                i.Status.ToString(),
+                i.StartedAt,
+                i.CompletedAt,
+                i.StartedByUserId,
+                userLookup.TryGetValue(i.StartedByUserId, out var name) ? name : null,
+                i.EntityDisplayName,
+                canResubmit);
+        }).ToList();
     }
 
     // ── Query: Definitions ───────────────────────────────────────────────────

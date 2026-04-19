@@ -3,7 +3,8 @@ namespace Starter.Abstractions.Capabilities;
 public sealed record WorkflowStatusSummary(
     Guid InstanceId, Guid DefinitionId, string DefinitionName,
     string CurrentState, string Status, DateTime StartedAt, Guid StartedByUserId,
-    string? EntityDisplayName = null);
+    string? EntityDisplayName = null,
+    bool CanResubmit = false);
 
 public sealed record PendingTaskSummary(
     Guid TaskId, Guid InstanceId, string DefinitionName,
@@ -22,7 +23,8 @@ public sealed record WorkflowInstanceSummary(
     string EntityType, Guid EntityId, string CurrentState,
     string Status, DateTime StartedAt, DateTime? CompletedAt,
     Guid? StartedByUserId = null, string? StartedByDisplayName = null,
-    string? EntityDisplayName = null);
+    string? EntityDisplayName = null,
+    bool CanResubmit = false);
 
 public sealed record WorkflowDefinitionSummary(
     Guid Id, string Name, string EntityType, int StepCount,

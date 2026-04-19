@@ -1221,7 +1221,12 @@
       "cancelWorkflow": "إلغاء سير العمل",
       "stepHistory": "سجل الخطوات",
       "comments": "التعليقات والنشاط",
-      "pendingAction": "إجراء مطلوب"
-    }
+      "pendingAction": "إجراء مطلوب",
+      "resubmit": "إعادة الإرسال",
+      "completedAt": "اكتمل",
+      "returnedForRevision": "تم الإرجاع للمراجعة",
+      "returnedForRevisionDesc": "تم إرجاع سير العمل هذا للمراجعة. راجع وأعد الإرسال عندما تكون جاهزاً."
+    },
+    "resubmitSuccess": "تم إعادة إرسال سير العمل"
   }
 }
