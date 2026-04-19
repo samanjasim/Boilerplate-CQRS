@@ -23,6 +23,7 @@ public sealed class ArabicTextNormalizerTests
         ArabicTextNormalizer.Normalize("أحمد", DefaultOpts).Should().Be("احمد");
         ArabicTextNormalizer.Normalize("إيمان", DefaultOpts).Should().Be("ايمان");
         ArabicTextNormalizer.Normalize("آمنة", DefaultOpts).Should().Be("امنه");
+        ArabicTextNormalizer.Normalize("ٱلرحمن", DefaultOpts).Should().Be("الرحمن"); // U+0671 alef wasla
     }
 
     [Fact]
@@ -51,6 +52,22 @@ public sealed class ArabicTextNormalizerTests
     }
 
     [Fact]
+    public void StripsQuranicAnnotationMarks()
+    {
+        // U+06D6 (ARABIC SMALL HIGH LIGATURE SAD WITH LAM WITH ALEF MAKSURA) and
+        // U+06E9 (ARABIC PLACE OF SAJDAH) — both in the annotation range.
+        ArabicTextNormalizer.Normalize("مرحبا\u06D6\u06E9", DefaultOpts).Should().Be("مرحبا");
+    }
+
+    [Fact]
+    public void StripsArabicExtendedACombiningMarks()
+    {
+        // U+08D3 is the first combining mark in Extended-A (ARABIC SMALL LOW WAW).
+        // U+08E3 is a vowel sign (TURNED DAMMA BELOW).
+        ArabicTextNormalizer.Normalize("سلام\u08D3\u08E3", DefaultOpts).Should().Be("سلام");
+    }
+
+    [Fact]
     public void LeavesAsciiUnchanged()
     {
         ArabicTextNormalizer.Normalize("Hello World 2024", DefaultOpts).Should().Be("Hello World 2024");
@@ -66,6 +83,7 @@ public sealed class ArabicTextNormalizerTests
     public void NormalizesArabicIndicDigits_WhenEnabled()
     {
         ArabicTextNormalizer.Normalize("سنة ٢٠٢٥", DefaultOpts).Should().Be("سنه 2025");
+        ArabicTextNormalizer.Normalize("۲۰۲۵", DefaultOpts).Should().Be("2025"); // Extended Arabic-Indic (Persian/Urdu)
     }
 
     [Fact]

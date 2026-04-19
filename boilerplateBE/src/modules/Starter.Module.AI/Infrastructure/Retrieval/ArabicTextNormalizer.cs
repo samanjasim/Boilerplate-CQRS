@@ -59,7 +59,9 @@ public static class ArabicTextNormalizer
     }
 
     private static bool IsArabicDiacritic(char ch) =>
-        ch is >= '\u064B' and <= '\u065F'   // harakat + tanween + shadda + sukun + quranic marks
-        || ch == '\u0670'                    // superscript alef
-        || ch is >= '\u0610' and <= '\u061A';
+        ch is >= '\u064B' and <= '\u065F'      // harakat + tanween + shadda + sukun + quranic marks
+        || ch == '\u0670'                       // superscript alef
+        || ch is >= '\u0610' and <= '\u061A'    // Islamic honorific marks
+        || ch is >= '\u06D6' and <= '\u06ED'    // Quranic annotation marks in Arabic block
+        || ch is >= '\u08D3' and <= '\u08FF';   // Arabic Extended-A combining marks
 }
