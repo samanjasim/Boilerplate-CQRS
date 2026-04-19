@@ -45,4 +45,6 @@ public static class AiErrors
     public static readonly Error RagScopeRequiresDocuments =
         Error.Validation("Ai.RagScopeRequiresDocuments",
             "RagScope SelectedDocuments requires at least one knowledge base document id.");
+    public static readonly Error SearchRequiresTenant =
+        Error.Validation("Ai.SearchRequiresTenant", "Knowledge base search requires a tenant context.");
 }

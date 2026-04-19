@@ -10,14 +10,16 @@ namespace Starter.Api.Tests.Ai.Retrieval;
 
 public sealed class SearchKnowledgeBaseQueryHandlerTests
 {
+    private static readonly AiRagSettings DefaultSettings = new() { TopK = 5, RetrievalTopK = 20 };
+
     [Fact]
     public async Task Returns_Items_Mapped_From_RetrievedContext()
     {
-        var tenantId = Guid.NewGuid();
-        var retrieval = new FakeRetrievalService();
-        var currentUser = new FakeCurrentUser(tenantId);
-        var opts = Options.Create(new AiRagSettings { TopK = 5, RetrievalTopK = 20 });
-        var handler = new SearchKnowledgeBaseQueryHandler(retrieval, currentUser, opts);
+        var child = new RetrievedChunk(
+            Guid.NewGuid(), Guid.NewGuid(), "Doc", "content", null, null,
+            "child", 0.9m, 0.3m, 0.7m, null);
+        var retrieval = new FakeRetrievalService(new RetrievedContext([child], [], 10, false));
+        var handler = BuildHandler(retrieval, Guid.NewGuid());
 
         var result = await handler.Handle(
             new SearchKnowledgeBaseQuery("q", null, 5, null, true),
@@ -32,48 +34,50 @@ public sealed class SearchKnowledgeBaseQueryHandlerTests
     [Fact]
     public async Task Parent_Item_Has_Null_Scores()
     {
-        var tenantId = Guid.NewGuid();
-        var retrieval = new FakeRetrievalServiceWithParent();
-        var currentUser = new FakeCurrentUser(tenantId);
-        var opts = Options.Create(new AiRagSettings { TopK = 5, RetrievalTopK = 20 });
-        var handler = new SearchKnowledgeBaseQueryHandler(retrieval, currentUser, opts);
+        var parentId = Guid.NewGuid();
+        var docId = Guid.NewGuid();
+        var child = new RetrievedChunk(
+            Guid.NewGuid(), docId, "Doc", "child-content", null, null,
+            "child", 0.9m, 0.3m, 0.7m, parentId);
+        var parent = new RetrievedChunk(
+            parentId, docId, "Doc", "parent-content", null, null,
+            "parent", 0m, 0m, 0m, null);
+        var retrieval = new FakeRetrievalService(new RetrievedContext([child], [parent], 20, false));
+        var handler = BuildHandler(retrieval, Guid.NewGuid());
 
         var result = await handler.Handle(
             new SearchKnowledgeBaseQuery("q", null, 5, null, true),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        var parent = result.Value!.Items.Single(i => i.ChunkLevel == "parent");
-        parent.HybridScore.Should().BeNull();
-        parent.SemanticScore.Should().BeNull();
-        parent.KeywordScore.Should().BeNull();
+        var parentItem = result.Value!.Items.Single(i => i.ChunkLevel == "parent");
+        parentItem.HybridScore.Should().BeNull();
+        parentItem.SemanticScore.Should().BeNull();
+        parentItem.KeywordScore.Should().BeNull();
     }
-}
 
-internal sealed class FakeRetrievalService : IRagRetrievalService
-{
-    public Task<RetrievedContext> RetrieveForTurnAsync(
-        Starter.Module.AI.Domain.Entities.AiAssistant a,
-        string q,
-        CancellationToken ct) => throw new NotSupportedException();
-
-    public Task<RetrievedContext> RetrieveForQueryAsync(
-        Guid tenantId,
-        string q,
-        IReadOnlyCollection<Guid>? f,
-        int k,
-        decimal? m,
-        bool p,
-        CancellationToken ct)
+    [Fact]
+    public async Task Returns_Failure_When_Tenant_Is_Null()
     {
         var child = new RetrievedChunk(
             Guid.NewGuid(), Guid.NewGuid(), "Doc", "content", null, null,
             "child", 0.9m, 0.3m, 0.7m, null);
-        return Task.FromResult(new RetrievedContext([child], [], 10, false));
+        var retrieval = new FakeRetrievalService(new RetrievedContext([child], [], 10, false));
+        var handler = BuildHandler(retrieval, tenantId: null);
+
+        var result = await handler.Handle(
+            new SearchKnowledgeBaseQuery("q", null, 5, null, true),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Code.Should().Be("Ai.SearchRequiresTenant");
     }
+
+    private static SearchKnowledgeBaseQueryHandler BuildHandler(IRagRetrievalService retrieval, Guid? tenantId) =>
+        new(retrieval, new FakeCurrentUser(tenantId), Options.Create(DefaultSettings));
 }
 
-internal sealed class FakeRetrievalServiceWithParent : IRagRetrievalService
+internal sealed class FakeRetrievalService(RetrievedContext context) : IRagRetrievalService
 {
     public Task<RetrievedContext> RetrieveForTurnAsync(
         Starter.Module.AI.Domain.Entities.AiAssistant a,
@@ -87,24 +91,14 @@ internal sealed class FakeRetrievalServiceWithParent : IRagRetrievalService
         int k,
         decimal? m,
         bool p,
-        CancellationToken ct)
-    {
-        var parentId = Guid.NewGuid();
-        var child = new RetrievedChunk(
-            Guid.NewGuid(), Guid.NewGuid(), "Doc", "child-content", null, null,
-            "child", 0.9m, 0.3m, 0.7m, parentId);
-        var parent = new RetrievedChunk(
-            parentId, child.DocumentId, "Doc", "parent-content", null, null,
-            "parent", 0m, 0m, 0m, null);
-        return Task.FromResult(new RetrievedContext([child], [parent], 20, false));
-    }
+        CancellationToken ct) => Task.FromResult(context);
 }
 
 internal sealed class FakeCurrentUser : ICurrentUserService
 {
     public FakeCurrentUser(Guid? tenant) => TenantId = tenant;
     public Guid? TenantId { get; }
-    public Guid? UserId => Guid.NewGuid();
+    public Guid? UserId { get; } = Guid.NewGuid();
     public string? Email => null;
     public bool IsAuthenticated => true;
     public IEnumerable<string> Roles => [];

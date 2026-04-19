@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.Extensions.Options;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Services.Retrieval;
+using Starter.Module.AI.Domain.Errors;
 using Starter.Module.AI.Infrastructure.Settings;
 using Starter.Shared.Results;
 
@@ -19,8 +20,8 @@ internal sealed class SearchKnowledgeBaseQueryHandler(
         SearchKnowledgeBaseQuery request,
         CancellationToken cancellationToken)
     {
-        var tenantId = currentUser.TenantId
-            ?? throw new InvalidOperationException("Search requires a tenant scope.");
+        if (currentUser.TenantId is not Guid tenantId)
+            return Result.Failure<SearchKnowledgeBaseResultDto>(AiErrors.SearchRequiresTenant);
 
         var topK = request.TopK ?? _settings.TopK;
 
@@ -33,14 +34,19 @@ internal sealed class SearchKnowledgeBaseQueryHandler(
             request.IncludeParents,
             cancellationToken);
 
-        var items = new List<SearchKnowledgeBaseResultItemDto>();
+        var parentMap = request.IncludeParents
+            ? ctx.Parents.ToDictionary(p => p.ChunkId)
+            : new Dictionary<Guid, RetrievedChunk>();
+
+        var items = new List<SearchKnowledgeBaseResultItemDto>(ctx.Children.Count * 2);
         foreach (var c in ctx.Children)
         {
             items.Add(Map(c));
-            if (request.IncludeParents && c.ParentChunkId.HasValue)
+            if (request.IncludeParents
+                && c.ParentChunkId is Guid pid
+                && parentMap.TryGetValue(pid, out var parent))
             {
-                var parent = ctx.Parents.FirstOrDefault(p => p.ChunkId == c.ParentChunkId);
-                if (parent is not null) items.Add(Map(parent));
+                items.Add(Map(parent));
             }
         }
 
