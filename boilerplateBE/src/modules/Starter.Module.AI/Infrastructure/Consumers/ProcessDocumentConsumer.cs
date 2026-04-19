@@ -7,6 +7,7 @@ using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Messages;
 using Starter.Module.AI.Application.Services.Ingestion;
 using Starter.Module.AI.Domain.Entities;
+using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Retrieval;
 using Starter.Module.AI.Infrastructure.Settings;
@@ -44,6 +45,104 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
         {
             doc.MarkProcessing();
             await db.SaveChangesAsync(ct);
+
+            if (!string.IsNullOrEmpty(doc.ContentHash))
+            {
+                var match = await db.AiDocuments
+                    .IgnoreQueryFilters()
+                    .Where(d => d.Id != doc.Id
+                             && d.ContentHash == doc.ContentHash
+                             && (d.TenantId == doc.TenantId || (d.TenantId == null && doc.TenantId == null))
+                             && d.EmbeddingStatus == EmbeddingStatus.Completed)
+                    .OrderByDescending(d => d.ProcessedAt)
+                    .FirstOrDefaultAsync(ct);
+
+                if (match is not null)
+                {
+                    var existingChunks = await db.AiDocumentChunks
+                        .AsNoTracking()
+                        .Where(c => c.DocumentId == match.Id)
+                        .ToListAsync(ct);
+
+                    if (existingChunks.Count > 0)
+                    {
+                        logger.LogInformation(
+                            "Document {Id} matches fingerprint of {MatchId}; cloning {Count} chunks and skipping embedding.",
+                            doc.Id, match.Id, existingChunks.Count);
+
+                        var oldToNewParentId = new Dictionary<Guid, Guid>();
+                        var newParents = new List<AiDocumentChunk>();
+                        foreach (var parent in existingChunks.Where(c => c.ChunkLevel == "parent"))
+                        {
+                            var clonedParent = AiDocumentChunk.Create(
+                                documentId: doc.Id,
+                                chunkLevel: "parent",
+                                content: parent.Content,
+                                chunkIndex: parent.ChunkIndex,
+                                tokenCount: parent.TokenCount,
+                                qdrantPointId: Guid.NewGuid(),
+                                parentChunkId: null,
+                                sectionTitle: parent.SectionTitle,
+                                pageNumber: parent.PageNumber);
+                            if (!string.IsNullOrEmpty(parent.NormalizedContent))
+                                clonedParent.SetNormalizedContent(parent.NormalizedContent);
+                            newParents.Add(clonedParent);
+                            oldToNewParentId[parent.Id] = clonedParent.Id;
+                        }
+                        db.AiDocumentChunks.AddRange(newParents);
+
+                        var cloneTenantId = doc.TenantId ?? Guid.Empty;
+                        await vectorStore.EnsureCollectionAsync(cloneTenantId, embedder.VectorSize, ct);
+
+                        var clonePoints = new List<VectorPoint>();
+                        var newChildren = new List<AiDocumentChunk>();
+                        foreach (var child in existingChunks.Where(c => c.ChunkLevel == "child"))
+                        {
+                            var parentDbId = child.ParentChunkId is Guid pid && oldToNewParentId.TryGetValue(pid, out var np)
+                                ? np
+                                : (Guid?)null;
+                            var newPointId = Guid.NewGuid();
+                            var clonedChild = AiDocumentChunk.Create(
+                                documentId: doc.Id,
+                                chunkLevel: "child",
+                                content: child.Content,
+                                chunkIndex: child.ChunkIndex,
+                                tokenCount: child.TokenCount,
+                                qdrantPointId: newPointId,
+                                parentChunkId: parentDbId,
+                                sectionTitle: child.SectionTitle,
+                                pageNumber: child.PageNumber);
+                            if (!string.IsNullOrEmpty(child.NormalizedContent))
+                                clonedChild.SetNormalizedContent(child.NormalizedContent);
+                            newChildren.Add(clonedChild);
+
+                            var cloneAttribution = new EmbedAttribution(
+                                TenantId: context.Message.TenantId,
+                                UserId: context.Message.InitiatingUserId);
+                            var vec = (await embedder.EmbedAsync(new[] { child.Content }, ct, cloneAttribution)).Single();
+                            clonePoints.Add(new VectorPoint(
+                                Id: newPointId,
+                                Vector: vec,
+                                Payload: new VectorPayload(
+                                    DocumentId: doc.Id,
+                                    DocumentName: doc.Name,
+                                    ChunkLevel: "child",
+                                    ChunkIndex: child.ChunkIndex,
+                                    SectionTitle: child.SectionTitle,
+                                    PageNumber: child.PageNumber,
+                                    ParentChunkId: parentDbId,
+                                    TenantId: cloneTenantId)));
+                        }
+
+                        db.AiDocumentChunks.AddRange(newChildren);
+                        await vectorStore.UpsertAsync(cloneTenantId, clonePoints, ct);
+
+                        doc.MarkCompleted(chunkCount: newChildren.Count);
+                        await db.SaveChangesAsync(ct);
+                        return;
+                    }
+                }
+            }
 
             var extractor = extractors.Resolve(doc.ContentType)
                 ?? throw new InvalidOperationException(

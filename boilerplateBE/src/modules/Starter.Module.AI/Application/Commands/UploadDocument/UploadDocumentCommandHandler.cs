@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using MassTransit;
 using MediatR;
 using Starter.Application.Common.Interfaces;
@@ -29,6 +30,13 @@ internal sealed class UploadDocumentCommandHandler(
         await using (var s = file.OpenReadStream())
             await storage.UploadAsync(s, key, file.ContentType, ct);
 
+        string contentHash;
+        await using (var hashStream = file.OpenReadStream())
+        {
+            var hashBytes = await SHA256.HashDataAsync(hashStream, ct);
+            contentHash = Convert.ToHexString(hashBytes).ToLowerInvariant();
+        }
+
         var doc = AiDocument.Create(
             tenantId: currentUser.TenantId,
             name: string.IsNullOrWhiteSpace(request.Name) ? safeName : request.Name!,
@@ -37,6 +45,7 @@ internal sealed class UploadDocumentCommandHandler(
             contentType: file.ContentType,
             sizeBytes: file.Length,
             uploadedByUserId: userId);
+        doc.SetContentHash(contentHash);
 
         db.AiDocuments.Add(doc);
         await db.SaveChangesAsync(ct);

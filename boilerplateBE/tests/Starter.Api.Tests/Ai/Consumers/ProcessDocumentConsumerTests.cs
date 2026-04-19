@@ -126,6 +126,155 @@ public sealed class ProcessDocumentConsumerTests
     }
 
     [Fact]
+    public async Task Fingerprint_Match_Clones_Chunks_And_Skips_Extraction()
+    {
+        var harness = new ConsumerHarness();
+        var tenantId = Guid.NewGuid();
+        const string hash = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+        // Seed source (completed) doc + chunks
+        var source = harness.SeedDocument("source.txt", "text/plain", tenantId);
+        source.SetContentHash(hash);
+        source.MarkCompleted(chunkCount: 2);
+        await harness.Db.SaveChangesAsync();
+
+        var sourceParent = AiDocumentChunk.Create(
+            documentId: source.Id,
+            chunkLevel: "parent",
+            content: "parent content",
+            chunkIndex: 0,
+            tokenCount: 8,
+            qdrantPointId: Guid.NewGuid(),
+            parentChunkId: null,
+            sectionTitle: "section-1",
+            pageNumber: 1);
+
+        var sourceChild1 = AiDocumentChunk.Create(
+            documentId: source.Id,
+            chunkLevel: "child",
+            content: "child one content",
+            chunkIndex: 0,
+            tokenCount: 4,
+            qdrantPointId: Guid.NewGuid(),
+            parentChunkId: sourceParent.Id,
+            sectionTitle: "section-1",
+            pageNumber: 1);
+
+        var sourceChild2 = AiDocumentChunk.Create(
+            documentId: source.Id,
+            chunkLevel: "child",
+            content: "child two content",
+            chunkIndex: 1,
+            tokenCount: 4,
+            qdrantPointId: Guid.NewGuid(),
+            parentChunkId: sourceParent.Id,
+            sectionTitle: "section-1",
+            pageNumber: 1);
+
+        harness.Db.AiDocumentChunks.AddRange(sourceParent, sourceChild1, sourceChild2);
+        await harness.Db.SaveChangesAsync();
+
+        // Seed new Pending doc with same hash + tenant
+        var newDoc = harness.SeedDocument("same.txt", "text/plain", tenantId);
+        newDoc.SetContentHash(hash);
+        await harness.Db.SaveChangesAsync();
+
+        harness.Embedder
+            .Setup(e => e.EmbedAsync(
+                It.IsAny<IReadOnlyList<string>>(),
+                It.IsAny<CancellationToken>(),
+                It.IsAny<EmbedAttribution?>(),
+                It.IsAny<Starter.Module.AI.Domain.Enums.AiRequestType>()))
+            .ReturnsAsync((IReadOnlyList<string> texts, CancellationToken _, EmbedAttribution? _, Starter.Module.AI.Domain.Enums.AiRequestType _) =>
+                texts.Select(_ => new[] { 0.42f, 0.43f }).ToArray());
+        harness.Embedder.SetupGet(e => e.VectorSize).Returns(2);
+
+        IReadOnlyList<VectorPoint>? capturedPoints = null;
+        harness.VectorStore
+            .Setup(v => v.UpsertAsync(It.IsAny<Guid>(), It.IsAny<IReadOnlyList<VectorPoint>>(), It.IsAny<CancellationToken>()))
+            .Callback((Guid _, IReadOnlyList<VectorPoint> p, CancellationToken _) => capturedPoints = p)
+            .Returns(Task.CompletedTask);
+
+        await harness.Consume(new ProcessDocumentMessage(newDoc.Id, newDoc.TenantId, Guid.NewGuid()));
+
+        // (i) extractor never called
+        harness.Extractor.Verify(
+            e => e.ExtractAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+
+        // (ii) new doc Completed with ChunkCount=2
+        var saved = await harness.Db.AiDocuments.IgnoreQueryFilters().AsNoTracking().SingleAsync(d => d.Id == newDoc.Id);
+        saved.EmbeddingStatus.Should().Be(EmbeddingStatus.Completed);
+        saved.ChunkCount.Should().Be(2);
+
+        // (iii) new-doc chunks exist with same content, different Ids/QdrantPointIds
+        var newChunks = await harness.Db.AiDocumentChunks
+            .AsNoTracking()
+            .Where(c => c.DocumentId == newDoc.Id)
+            .ToListAsync();
+        newChunks.Should().HaveCount(3);
+
+        var newParents = newChunks.Where(c => c.ChunkLevel == "parent").ToList();
+        var newChildren = newChunks.Where(c => c.ChunkLevel == "child").OrderBy(c => c.ChunkIndex).ToList();
+        newParents.Should().HaveCount(1);
+        newChildren.Should().HaveCount(2);
+
+        newParents[0].Content.Should().Be(sourceParent.Content);
+        newParents[0].Id.Should().NotBe(sourceParent.Id);
+        newParents[0].QdrantPointId.Should().NotBe(sourceParent.QdrantPointId);
+
+        newChildren[0].Content.Should().Be(sourceChild1.Content);
+        newChildren[1].Content.Should().Be(sourceChild2.Content);
+        newChildren.Select(c => c.Id).Should().NotContain(new[] { sourceChild1.Id, sourceChild2.Id });
+        newChildren.Select(c => c.QdrantPointId).Should().NotContain(new[] { sourceChild1.QdrantPointId, sourceChild2.QdrantPointId });
+
+        // (iv) child ParentChunkId points at cloned parent, not original
+        var clonedParentId = newParents[0].Id;
+        newChildren.Should().AllSatisfy(c => c.ParentChunkId.Should().Be(clonedParentId));
+        newChildren.Should().AllSatisfy(c => c.ParentChunkId.Should().NotBe(sourceParent.Id));
+
+        // (v) VectorStore.UpsertAsync was called with the new point ids
+        capturedPoints.Should().NotBeNull();
+        capturedPoints!.Should().HaveCount(2);
+        var expectedPointIds = newChildren.Select(c => c.QdrantPointId).ToHashSet();
+        capturedPoints.Select(p => p.Id).Should().BeEquivalentTo(expectedPointIds);
+    }
+
+    [Fact]
+    public async Task Fingerprint_Match_But_No_Chunks_Falls_Back_To_Processing()
+    {
+        var harness = new ConsumerHarness();
+        var tenantId = Guid.NewGuid();
+        const string hash = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+
+        // Source doc Completed but no chunks
+        var source = harness.SeedDocument("empty-source.txt", "text/plain", tenantId);
+        source.SetContentHash(hash);
+        source.MarkCompleted(chunkCount: 0);
+        await harness.Db.SaveChangesAsync();
+
+        var newDoc = harness.SeedDocument("empty-target.txt", "text/plain", tenantId);
+        newDoc.SetContentHash(hash);
+        await harness.Db.SaveChangesAsync();
+
+        harness.Extractor
+            .Setup(e => e.ExtractAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ExtractedDocument(new[] { new ExtractedPage(1, "hello world") }, UsedOcr: false));
+        harness.Chunker
+            .Setup(c => c.Chunk(It.IsAny<ExtractedDocument>(), It.IsAny<ChunkingOptions>()))
+            .Returns(new HierarchicalChunks(
+                Parents: Array.Empty<ChunkDraft>(),
+                Children: Array.Empty<ChunkDraft>()));
+
+        await harness.Consume(new ProcessDocumentMessage(newDoc.Id, newDoc.TenantId, Guid.NewGuid()));
+
+        // Extractor WAS called — fell back to normal path
+        harness.Extractor.Verify(
+            e => e.ExtractAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
     public async Task Passes_Tenant_And_User_Attribution_From_Message_To_Embedder()
     {
         var harness = new ConsumerHarness();
@@ -190,10 +339,10 @@ public sealed class ProcessDocumentConsumerTests
                 .ReturnsAsync((string _, CancellationToken _) => new MemoryStream(new byte[] { 1, 2, 3 }));
         }
 
-        public AiDocument SeedDocument(string fileName, string contentType)
+        public AiDocument SeedDocument(string fileName, string contentType, Guid? tenantId = null)
         {
             var doc = AiDocument.Create(
-                tenantId: Guid.NewGuid(),
+                tenantId: tenantId ?? Guid.NewGuid(),
                 name: fileName,
                 fileName: fileName,
                 fileRef: $"ai/documents/{Guid.NewGuid():N}/{fileName}",
