@@ -16,6 +16,7 @@ public sealed class NullWorkflowService(ILogger<NullWorkflowService> logger) : I
         string definitionName,
         Guid initiatorUserId,
         Guid? tenantId,
+        string? entityDisplayName = null,
         CancellationToken ct = default)
     {
         logger.LogDebug(

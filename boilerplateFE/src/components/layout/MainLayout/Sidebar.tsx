@@ -49,7 +49,8 @@ export function Sidebar() {
   const { data: pendingTaskCountData } = usePendingTaskCount(isModuleActive('workflow'));
   const pendingTaskCount = typeof pendingTaskCountData === 'number'
     ? pendingTaskCountData
-    : (pendingTaskCountData as { count?: number })?.count ?? 0;
+    : (pendingTaskCountData as { data?: number; count?: number })?.data
+      ?? (pendingTaskCountData as { count?: number })?.count ?? 0;
 
   const tenantLogoUrl = user?.tenantLogoUrl;
   const tenantName = user?.tenantName;

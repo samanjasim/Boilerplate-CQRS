@@ -109,8 +109,8 @@ export default function WorkflowInstanceDetailPage() {
         <CardContent className="py-5">
           <div className="flex flex-wrap items-center gap-3">
             <Badge variant="secondary">{instance.entityType}</Badge>
-            <span className="text-sm text-muted-foreground">
-              {instance.entityId.substring(0, 8)}...
+            <span className="text-sm text-foreground font-medium">
+              {instance.entityDisplayName ?? instance.entityId.substring(0, 8) + '...'}
             </span>
             <Badge variant="outline">{instance.currentState}</Badge>
             <Badge variant={STATUS_BADGE_VARIANT[instance.status] ?? 'outline'}>

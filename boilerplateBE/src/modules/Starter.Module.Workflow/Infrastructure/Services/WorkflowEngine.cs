@@ -32,7 +32,8 @@ public sealed class WorkflowEngine(
 
     public async Task<Guid> StartAsync(
         string entityType, Guid entityId, string definitionName,
-        Guid initiatorUserId, Guid? tenantId, CancellationToken ct = default)
+        Guid initiatorUserId, Guid? tenantId, string? entityDisplayName = null,
+        CancellationToken ct = default)
     {
         var definition = await context.WorkflowDefinitions
             .FirstOrDefaultAsync(d =>
@@ -68,7 +69,8 @@ public sealed class WorkflowEngine(
             initialState.Name,
             initiatorUserId,
             contextJson: null,
-            definitionName: definition.DisplayName);
+            definitionName: definition.DisplayName,
+            entityDisplayName: entityDisplayName);
 
         context.WorkflowInstances.Add(instance);
 
@@ -315,7 +317,8 @@ public sealed class WorkflowEngine(
             instance.CurrentState,
             instance.Status.ToString(),
             instance.StartedAt,
-            instance.StartedByUserId);
+            instance.StartedByUserId,
+            instance.EntityDisplayName);
     }
 
     public async Task<bool> IsInStateAsync(
@@ -371,7 +374,8 @@ public sealed class WorkflowEngine(
                 t.AssigneeRole,
                 t.CreatedAt,
                 t.DueDate,
-                availableActions);
+                availableActions,
+                t.Instance.EntityDisplayName);
         }).ToList();
     }
 
@@ -477,7 +481,8 @@ public sealed class WorkflowEngine(
             i.StartedAt,
             i.CompletedAt,
             i.StartedByUserId,
-            userLookup.TryGetValue(i.StartedByUserId, out var name) ? name : null))
+            userLookup.TryGetValue(i.StartedByUserId, out var name) ? name : null,
+            i.EntityDisplayName))
             .ToList();
     }
 

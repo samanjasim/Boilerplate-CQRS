@@ -17,6 +17,7 @@ internal sealed class StartWorkflowCommandHandler(
             request.DefinitionName,
             currentUser.UserId!.Value,
             currentUser.TenantId,
+            request.EntityDisplayName,
             cancellationToken);
 
         if (instanceId == Guid.Empty)

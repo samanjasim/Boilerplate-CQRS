@@ -43,7 +43,7 @@ export default function WorkflowInboxPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t('workflow.inbox.entity')}</TableHead>
+                <TableHead>{t('workflow.inbox.request')}</TableHead>
                 <TableHead>{t('workflow.inbox.workflowName')}</TableHead>
                 <TableHead>{t('workflow.inbox.step')}</TableHead>
                 <TableHead>{t('workflow.inbox.assignedDate')}</TableHead>
@@ -57,8 +57,8 @@ export default function WorkflowInboxPage() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary">{task.entityType}</Badge>
-                      <span className="text-sm text-muted-foreground truncate max-w-[120px]">
-                        {task.entityId.substring(0, 8)}...
+                      <span className="text-sm text-foreground truncate max-w-[200px]">
+                        {task.entityDisplayName ?? task.entityId.substring(0, 8) + '...'}
                       </span>
                     </div>
                   </TableCell>

@@ -135,9 +135,8 @@ export default function WorkflowInstancesPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>{t('workflow.instances.definitionName')}</TableHead>
-                <TableHead>{t('workflow.instances.entityType')}</TableHead>
-                <TableHead>{t('workflow.instances.entityId')}</TableHead>
-                <TableHead>{t('workflow.instances.currentState')}</TableHead>
+                <TableHead>{t('workflow.instances.request')}</TableHead>
+                <TableHead>{t('workflow.instances.type')}</TableHead>
                 <TableHead>{t('workflow.instances.status')}</TableHead>
                 <TableHead>{t('workflow.instances.startedAt')}</TableHead>
                 <TableHead>{t('workflow.instances.viewDetail')}</TableHead>
@@ -150,18 +149,20 @@ export default function WorkflowInstancesPage() {
                     {instance.definitionName}
                   </TableCell>
                   <TableCell>
+                    <span className="text-sm text-foreground">
+                      {instance.entityDisplayName ?? instance.entityId.substring(0, 8) + '...'}
+                    </span>
+                  </TableCell>
+                  <TableCell>
                     <Badge variant="secondary">{instance.entityType}</Badge>
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {instance.entityId.substring(0, 8)}...
-                  </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{instance.currentState}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={STATUS_BADGE_VARIANT[instance.status] ?? 'outline'}>
-                      {t(`workflow.status.${instance.status.toLowerCase()}`)}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">{instance.currentState}</Badge>
+                      <Badge variant={STATUS_BADGE_VARIANT[instance.status] ?? 'outline'}>
+                        {t(`workflow.status.${instance.status.toLowerCase()}`)}
+                      </Badge>
+                    </div>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {formatDate(instance.startedAt)}

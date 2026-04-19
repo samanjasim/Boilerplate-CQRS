@@ -66,6 +66,10 @@ public sealed class WorkflowInstanceConfiguration : IEntityTypeConfiguration<Wor
             .HasColumnName("context_json")
             .HasColumnType("text");
 
+        builder.Property(i => i.EntityDisplayName)
+            .HasColumnName("entity_display_name")
+            .HasMaxLength(500);
+
         builder.Property(i => i.CreatedAt)
             .HasColumnName("created_at")
             .IsRequired();

@@ -19,6 +19,7 @@ public sealed class WorkflowInstance : AggregateRoot, ITenantEntity
     public Guid? CancelledByUserId { get; private set; }
     public string? CancellationReason { get; private set; }
     public string? ContextJson { get; private set; }
+    public string? EntityDisplayName { get; private set; }
 
     public WorkflowDefinition Definition { get; private set; } = default!;
     public ICollection<WorkflowStep> Steps { get; private set; } = [];
@@ -34,7 +35,8 @@ public sealed class WorkflowInstance : AggregateRoot, ITenantEntity
         Guid entityId,
         string initialState,
         Guid startedByUserId,
-        string? contextJson) : base(id)
+        string? contextJson,
+        string? entityDisplayName) : base(id)
     {
         TenantId = tenantId;
         DefinitionId = definitionId;
@@ -45,6 +47,7 @@ public sealed class WorkflowInstance : AggregateRoot, ITenantEntity
         StartedByUserId = startedByUserId;
         StartedAt = DateTime.UtcNow;
         ContextJson = contextJson;
+        EntityDisplayName = entityDisplayName;
     }
 
     public static WorkflowInstance Create(
@@ -55,7 +58,8 @@ public sealed class WorkflowInstance : AggregateRoot, ITenantEntity
         string initialState,
         Guid startedByUserId,
         string? contextJson,
-        string definitionName)
+        string definitionName,
+        string? entityDisplayName = null)
     {
         var instance = new WorkflowInstance(
             Guid.NewGuid(),
@@ -65,7 +69,8 @@ public sealed class WorkflowInstance : AggregateRoot, ITenantEntity
             entityId,
             initialState.Trim(),
             startedByUserId,
-            contextJson);
+            contextJson,
+            entityDisplayName?.Trim());
 
         instance.RaiseDomainEvent(new WorkflowStartedEvent(
             instance.Id,

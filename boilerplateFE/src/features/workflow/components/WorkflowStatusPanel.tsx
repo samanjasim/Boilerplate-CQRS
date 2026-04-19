@@ -41,6 +41,10 @@ export function WorkflowStatusPanel({ entityType, entityId }: WorkflowStatusPane
           </h3>
         </div>
 
+        {status.entityDisplayName && (
+          <p className="text-sm text-muted-foreground mb-3">{status.entityDisplayName}</p>
+        )}
+
         <div className="flex items-center gap-2 mb-4">
           <Badge variant={STATUS_BADGE_VARIANT[status.status] ?? 'secondary'}>
             {String(t(`workflow.status.${status.status.toLowerCase()}`, { defaultValue: status.status }))}

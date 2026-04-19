@@ -65,6 +65,7 @@ export interface WorkflowStatusSummary {
   status: string;
   startedAt: string;
   startedByUserId: string;
+  entityDisplayName: string | null;
 }
 
 export interface PendingTaskSummary {
@@ -78,6 +79,7 @@ export interface PendingTaskSummary {
   createdAt: string;
   dueDate: string | null;
   availableActions: string[] | null;
+  entityDisplayName: string | null;
 }
 
 export interface WorkflowStepRecord {
@@ -104,6 +106,7 @@ export interface WorkflowInstanceSummary {
   completedAt: string | null;
   startedByUserId: string | null;
   startedByDisplayName: string | null;
+  entityDisplayName: string | null;
 }
 
 // Request types
@@ -112,6 +115,7 @@ export interface StartWorkflowRequest {
   entityId: string;
   definitionName: string;
   context?: Record<string, unknown>;
+  entityDisplayName?: string;
 }
 
 export interface ExecuteTaskRequest {

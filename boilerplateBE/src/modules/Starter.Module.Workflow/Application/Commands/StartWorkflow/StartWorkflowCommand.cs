@@ -7,4 +7,5 @@ public sealed record StartWorkflowCommand(
     string EntityType,
     Guid EntityId,
     string DefinitionName,
-    Dictionary<string, object>? Context = null) : IRequest<Result<Guid>>;
+    Dictionary<string, object>? Context = null,
+    string? EntityDisplayName = null) : IRequest<Result<Guid>>;

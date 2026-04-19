@@ -9,7 +9,8 @@ public interface IWorkflowService : ICapability
 {
     // ── Lifecycle ──
     Task<Guid> StartAsync(string entityType, Guid entityId, string definitionName,
-        Guid initiatorUserId, Guid? tenantId, CancellationToken ct = default);
+        Guid initiatorUserId, Guid? tenantId, string? entityDisplayName = null,
+        CancellationToken ct = default);
     Task CancelAsync(Guid instanceId, string? reason, Guid actorUserId,
         CancellationToken ct = default);
 

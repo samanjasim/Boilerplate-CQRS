@@ -2,13 +2,15 @@ namespace Starter.Abstractions.Capabilities;
 
 public sealed record WorkflowStatusSummary(
     Guid InstanceId, Guid DefinitionId, string DefinitionName,
-    string CurrentState, string Status, DateTime StartedAt, Guid StartedByUserId);
+    string CurrentState, string Status, DateTime StartedAt, Guid StartedByUserId,
+    string? EntityDisplayName = null);
 
 public sealed record PendingTaskSummary(
     Guid TaskId, Guid InstanceId, string DefinitionName,
     string EntityType, Guid EntityId, string StepName,
     string? AssigneeRole, DateTime CreatedAt, DateTime? DueDate,
-    List<string>? AvailableActions = null);
+    List<string>? AvailableActions = null,
+    string? EntityDisplayName = null);
 
 public sealed record WorkflowStepRecord(
     string FromState, string ToState, string StepType, string Action,
@@ -19,7 +21,8 @@ public sealed record WorkflowInstanceSummary(
     Guid InstanceId, Guid DefinitionId, string DefinitionName,
     string EntityType, Guid EntityId, string CurrentState,
     string Status, DateTime StartedAt, DateTime? CompletedAt,
-    Guid? StartedByUserId = null, string? StartedByDisplayName = null);
+    Guid? StartedByUserId = null, string? StartedByDisplayName = null,
+    string? EntityDisplayName = null);
 
 public sealed record WorkflowDefinitionSummary(
     Guid Id, string Name, string EntityType, int StepCount,
