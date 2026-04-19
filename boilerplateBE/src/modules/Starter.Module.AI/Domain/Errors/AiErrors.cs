@@ -38,4 +38,11 @@ public static class AiErrors
     public static Error ToolExecutionFailed(string toolName, string detail) => Error.Failure(
         "Ai.ToolExecutionFailed",
         $"Tool '{toolName}' execution failed: {detail}");
+    public static readonly Error SearchQueryRequired =
+        Error.Validation("Ai.SearchQueryRequired", "Search query is required.");
+    public static Error SearchTopKOutOfRange(int max) =>
+        Error.Validation("Ai.SearchTopKOutOfRange", $"topK must be between 1 and {max}.");
+    public static readonly Error RagScopeRequiresDocuments =
+        Error.Validation("Ai.RagScopeRequiresDocuments",
+            "RagScope SelectedDocuments requires at least one knowledge base document id.");
 }
