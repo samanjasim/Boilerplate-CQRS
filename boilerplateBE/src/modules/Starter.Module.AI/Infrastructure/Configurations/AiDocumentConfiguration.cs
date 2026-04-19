@@ -78,7 +78,13 @@ internal sealed class AiDocumentConfiguration : IEntityTypeConfiguration<AiDocum
         builder.Property(e => e.ModifiedAt)
             .HasColumnName("modified_at");
 
+        builder.Property(e => e.ContentHash)
+            .HasColumnName("content_hash")
+            .HasMaxLength(64);
+
         builder.HasIndex(e => e.TenantId);
         builder.HasIndex(e => e.EmbeddingStatus);
+        builder.HasIndex(e => new { e.TenantId, e.ContentHash })
+            .HasDatabaseName("ix_ai_documents_tenant_content_hash");
     }
 }

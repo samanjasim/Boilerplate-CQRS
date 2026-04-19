@@ -39,6 +39,14 @@ public sealed class AiDocumentChunk : BaseEntity
         QdrantPointId = qdrantPointId;
     }
 
+    public string? NormalizedContent { get; private set; }
+
+    public void SetNormalizedContent(string normalized)
+    {
+        NormalizedContent = normalized ?? string.Empty;
+        ModifiedAt = DateTime.UtcNow;
+    }
+
     public static AiDocumentChunk Create(
         Guid documentId,
         string chunkLevel,

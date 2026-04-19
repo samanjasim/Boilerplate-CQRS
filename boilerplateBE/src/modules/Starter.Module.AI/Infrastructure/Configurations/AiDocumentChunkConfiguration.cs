@@ -58,6 +58,9 @@ internal sealed class AiDocumentChunkConfiguration : IEntityTypeConfiguration<Ai
         builder.Property(e => e.ModifiedAt)
             .HasColumnName("modified_at");
 
+        builder.Property(e => e.NormalizedContent)
+            .HasColumnName("normalized_content");
+
         builder.HasIndex(e => e.DocumentId);
         builder.HasIndex(e => e.ParentChunkId);
         builder.HasIndex(e => e.QdrantPointId)
@@ -67,7 +70,9 @@ internal sealed class AiDocumentChunkConfiguration : IEntityTypeConfiguration<Ai
         {
             builder.Property<NpgsqlTsVector>("ContentTsVector")
                 .HasColumnName("content_tsv")
-                .HasComputedColumnSql("to_tsvector('english', content)", stored: true);
+                .HasComputedColumnSql(
+                    "to_tsvector('simple', coalesce(normalized_content, content))",
+                    stored: true);
 
             builder.HasIndex("ContentTsVector")
                 .HasDatabaseName("ix_ai_document_chunks_content_tsv")

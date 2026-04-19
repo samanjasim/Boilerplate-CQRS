@@ -28,14 +28,15 @@ internal sealed class PostgresKeywordSearchService : IKeywordSearchService
 
         // ChunkId returned here is the qdrant_point_id so it joins the same ID space
         // the vector store emits — the hybrid merge is keyed on qdrant_point_id.
+        // content_tsv is generated with 'simple' config so queries must use 'simple' too.
         var sql = @"
             SELECT c.qdrant_point_id AS ""ChunkId"",
-                   ts_rank_cd(c.content_tsv, plainto_tsquery('english', {0}))::numeric AS ""Score""
+                   ts_rank_cd(c.content_tsv, plainto_tsquery('simple', {0}))::numeric AS ""Score""
             FROM ai_document_chunks c
             INNER JOIN ai_documents d ON d.id = c.document_id
             WHERE (d.tenant_id = {1} OR (d.tenant_id IS NULL AND {1} = '00000000-0000-0000-0000-000000000000'::uuid))
               AND c.chunk_level = 'child'
-              AND c.content_tsv @@ plainto_tsquery('english', {0})
+              AND c.content_tsv @@ plainto_tsquery('simple', {0})
         ";
 
         var parameters = new List<object> { queryText, tenantId };

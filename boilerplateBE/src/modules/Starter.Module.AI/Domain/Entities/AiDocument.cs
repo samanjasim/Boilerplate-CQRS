@@ -100,4 +100,14 @@ public sealed class AiDocument : BaseEntity, ITenantEntity
         ErrorMessage = null;
         ModifiedAt = DateTime.UtcNow;
     }
+
+    public string? ContentHash { get; private set; }
+
+    public void SetContentHash(string hash)
+    {
+        if (string.IsNullOrWhiteSpace(hash) || hash.Length != 64)
+            throw new ArgumentException("ContentHash must be a 64-char hex SHA-256 string.", nameof(hash));
+        ContentHash = hash.ToLowerInvariant();
+        ModifiedAt = DateTime.UtcNow;
+    }
 }
