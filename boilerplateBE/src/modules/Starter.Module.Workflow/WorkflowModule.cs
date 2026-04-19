@@ -240,5 +240,142 @@ public sealed class WorkflowModule : IModule
             displayName: "Workflow Task Assigned",
             description: "Fires when an approval task is assigned to a user",
             ct: cancellationToken);
+
+        // ── Seed workflow definition templates ──
+        var workflowService = scope.ServiceProvider.GetRequiredService<IWorkflowService>();
+
+        // 1. General Approval — the most common pattern: submit → manager review → approved/rejected
+        await workflowService.SeedTemplateAsync(
+            name: "general-approval",
+            entityType: "General",
+            config: new WorkflowTemplateConfig(
+                DisplayName: "General Approval",
+                Description: "A simple approval workflow: submit for review, approve or reject. Clone and customize for any entity type.",
+                States:
+                [
+                    new("Draft", "Draft", "Initial"),
+                    new("PendingReview", "Pending Review", "HumanTask",
+                        Assignee: new("Role", new() { ["roleName"] = "Admin" }),
+                        Actions: ["Approve", "Reject", "ReturnForRevision"],
+                        OnEnter:
+                        [
+                            new("notify", Template: "workflow.task-assigned", To: "assignee"),
+                            new("inAppNotify", To: "assignee"),
+                            new("activity", Action: "workflow_transition"),
+                        ]),
+                    new("Approved", "Approved", "Terminal",
+                        OnEnter:
+                        [
+                            new("notify", Template: "workflow.request-approved", To: "initiator"),
+                            new("inAppNotify", To: "initiator"),
+                            new("activity", Action: "workflow_transition"),
+                        ]),
+                    new("Rejected", "Rejected", "Terminal",
+                        OnEnter:
+                        [
+                            new("notify", Template: "workflow.request-rejected", To: "initiator"),
+                            new("inAppNotify", To: "initiator"),
+                            new("activity", Action: "workflow_transition"),
+                        ]),
+                ],
+                Transitions:
+                [
+                    new("Draft", "PendingReview", "Submit"),
+                    new("PendingReview", "Approved", "Approve"),
+                    new("PendingReview", "Rejected", "Reject"),
+                    new("PendingReview", "Draft", "ReturnForRevision"),
+                ]),
+            ct: cancellationToken);
+
+        // 2. Two-Level Approval — submit → manager → director → approved/rejected
+        await workflowService.SeedTemplateAsync(
+            name: "two-level-approval",
+            entityType: "General",
+            config: new WorkflowTemplateConfig(
+                DisplayName: "Two-Level Approval",
+                Description: "Two-step approval chain: first-level reviewer, then second-level approver. Clone and assign specific users or roles per level.",
+                States:
+                [
+                    new("Draft", "Draft", "Initial"),
+                    new("PendingFirstReview", "Pending First Review", "HumanTask",
+                        Assignee: new("Role", new() { ["roleName"] = "Admin" }),
+                        Actions: ["Approve", "Reject", "ReturnForRevision"],
+                        OnEnter:
+                        [
+                            new("notify", Template: "workflow.task-assigned", To: "assignee"),
+                            new("inAppNotify", To: "assignee"),
+                            new("activity", Action: "workflow_transition"),
+                        ]),
+                    new("PendingFinalApproval", "Pending Final Approval", "HumanTask",
+                        Assignee: new("Role", new() { ["roleName"] = "Admin" },
+                            Fallback: new("Role", new() { ["roleName"] = "SuperAdmin" })),
+                        Actions: ["Approve", "Reject"],
+                        OnEnter:
+                        [
+                            new("notify", Template: "workflow.task-assigned", To: "assignee"),
+                            new("inAppNotify", To: "assignee"),
+                            new("activity", Action: "workflow_transition"),
+                        ]),
+                    new("Approved", "Approved", "Terminal",
+                        OnEnter:
+                        [
+                            new("notify", Template: "workflow.request-approved", To: "initiator"),
+                            new("inAppNotify", To: "initiator"),
+                            new("activity", Action: "workflow_transition"),
+                            new("webhook", Event: "workflow.completed"),
+                        ]),
+                    new("Rejected", "Rejected", "Terminal",
+                        OnEnter:
+                        [
+                            new("notify", Template: "workflow.request-rejected", To: "initiator"),
+                            new("inAppNotify", To: "initiator"),
+                            new("activity", Action: "workflow_transition"),
+                        ]),
+                ],
+                Transitions:
+                [
+                    new("Draft", "PendingFirstReview", "Submit"),
+                    new("PendingFirstReview", "PendingFinalApproval", "Approve"),
+                    new("PendingFirstReview", "Rejected", "Reject"),
+                    new("PendingFirstReview", "Draft", "ReturnForRevision"),
+                    new("PendingFinalApproval", "Approved", "Approve"),
+                    new("PendingFinalApproval", "Rejected", "Reject"),
+                ]),
+            ct: cancellationToken);
+
+        // 3. Document Review — draft → review → revision loop or publish
+        await workflowService.SeedTemplateAsync(
+            name: "document-review",
+            entityType: "Document",
+            config: new WorkflowTemplateConfig(
+                DisplayName: "Document Review",
+                Description: "Review workflow for documents and content: submit for review, approve to publish or return for revision.",
+                States:
+                [
+                    new("Draft", "Draft", "Initial"),
+                    new("InReview", "In Review", "HumanTask",
+                        Assignee: new("Role", new() { ["roleName"] = "Admin" }),
+                        Actions: ["Publish", "RequestChanges"],
+                        OnEnter:
+                        [
+                            new("notify", Template: "workflow.task-assigned", To: "assignee"),
+                            new("inAppNotify", To: "assignee"),
+                            new("activity", Action: "workflow_transition"),
+                        ]),
+                    new("Published", "Published", "Terminal",
+                        OnEnter:
+                        [
+                            new("notify", Template: "workflow.request-approved", To: "initiator"),
+                            new("activity", Action: "workflow_transition"),
+                            new("webhook", Event: "workflow.completed"),
+                        ]),
+                ],
+                Transitions:
+                [
+                    new("Draft", "InReview", "Submit"),
+                    new("InReview", "Published", "Publish"),
+                    new("InReview", "Draft", "RequestChanges"),
+                ]),
+            ct: cancellationToken);
     }
 }
