@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using NpgsqlTypes;
 using Starter.Module.AI.Domain.Entities;
 
 namespace Starter.Module.AI.Infrastructure.Configurations;
@@ -61,5 +62,13 @@ internal sealed class AiDocumentChunkConfiguration : IEntityTypeConfiguration<Ai
         builder.HasIndex(e => e.ParentChunkId);
         builder.HasIndex(e => e.QdrantPointId)
             .IsUnique();
+
+        builder.Property<NpgsqlTsVector>("ContentTsVector")
+            .HasColumnName("content_tsv")
+            .HasComputedColumnSql("to_tsvector('english', content)", stored: true);
+
+        builder.HasIndex("ContentTsVector")
+            .HasDatabaseName("ix_ai_document_chunks_content_tsv")
+            .HasMethod("GIN");
     }
 }
