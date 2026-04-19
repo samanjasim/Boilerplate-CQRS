@@ -328,8 +328,8 @@ public sealed class WorkflowEngine(
             try
             {
                 await commentService.AddCommentAsync(
-                    instance.EntityType,
-                    instance.EntityId,
+                    "WorkflowInstance",
+                    instance.Id,
                     instance.TenantId,
                     actorUserId,
                     comment,
@@ -966,8 +966,8 @@ public sealed class WorkflowEngine(
         string? assigneeRole)
         => new(
             InstanceId: instance.Id,
-            EntityType: instance.EntityType,
-            EntityId: instance.EntityId,
+            EntityType: "WorkflowInstance",
+            EntityId: instance.Id,
             TenantId: instance.TenantId,
             InitiatorUserId: instance.StartedByUserId,
             CurrentState: currentState,

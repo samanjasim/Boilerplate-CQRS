@@ -299,20 +299,15 @@ export default function WorkflowInstanceDetailPage() {
         )}
       </section>
 
-      {/* Workflow status slot */}
-      <Slot
-        id="entity-detail-workflow"
-        props={{ entityType: instance.entityType, entityId: instance.entityId }}
-      />
-
-      {/* Comments & Activity slot */}
+      {/* Comments & Activity — uses WorkflowInstance as the entity type
+           so all approval comments + activity entries appear on this page */}
       <section className="space-y-3">
         <h2 className="text-base font-semibold text-foreground">
           {t('workflow.detail.comments')}
         </h2>
         <Slot
           id="entity-detail-timeline"
-          props={{ entityType: instance.entityType, entityId: instance.entityId }}
+          props={{ entityType: 'WorkflowInstance', entityId: instance.instanceId }}
         />
       </section>
 

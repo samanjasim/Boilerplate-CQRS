@@ -44,6 +44,14 @@ public sealed class WorkflowModule : IModule
         services.AddScoped<IAssigneeResolverProvider, BuiltInAssigneeProvider>();
         services.AddScoped<HookExecutor>();
 
+        // Register WorkflowInstance as a commentable entity so the Comments &
+        // Activity module accepts comments on workflow instances. This makes the
+        // workflow detail page a collaboration hub with unified timeline.
+        services.AddCommentableEntity("WorkflowInstance", builder =>
+        {
+            builder.CustomActivityTypes = ["workflow_transition"];
+        });
+
         services.AddHealthChecks()
             .AddDbContextCheck<WorkflowDbContext>(
                 name: "workflow-db",
