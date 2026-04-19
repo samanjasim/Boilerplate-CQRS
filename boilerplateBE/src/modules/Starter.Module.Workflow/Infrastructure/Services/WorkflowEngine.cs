@@ -93,6 +93,32 @@ public sealed class WorkflowEngine(
         {
             await HandleConditionalGateAsync(instance, definition, states, initialState, initiatorUserId, ct);
         }
+        // If the initial state is "Initial" type, auto-transition to the first available next state
+        // (starting a workflow = submitting it — the Draft state is a notation, not a stop point)
+        else if (initialState.Type.Equals("Initial", StringComparison.OrdinalIgnoreCase))
+        {
+            var transitions = JsonSerializer.Deserialize<List<WorkflowTransitionConfig>>(definition.TransitionsJson)!;
+            var firstTransition = transitions.FirstOrDefault(t =>
+                t.From.Equals(initialState.Name, StringComparison.OrdinalIgnoreCase));
+
+            if (firstTransition is not null)
+            {
+                var step = WorkflowStep.Create(
+                    instance.Id, initialState.Name, firstTransition.To,
+                    StepType.SystemAction, firstTransition.Trigger, initiatorUserId, null, null);
+                context.WorkflowSteps.Add(step);
+
+                instance.TransitionTo(firstTransition.To, firstTransition.Trigger, initiatorUserId);
+
+                var nextState = states.FirstOrDefault(s =>
+                    s.Name.Equals(firstTransition.To, StringComparison.OrdinalIgnoreCase));
+
+                if (nextState is not null)
+                {
+                    await HandleNewStateAsync(instance, definition, states, nextState, initiatorUserId, ct);
+                }
+            }
+        }
 
         await context.SaveChangesAsync(ct);
 

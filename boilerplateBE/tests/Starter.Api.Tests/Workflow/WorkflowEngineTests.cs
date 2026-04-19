@@ -134,7 +134,8 @@ public sealed class WorkflowEngineTests : IDisposable
             .FirstOrDefaultAsync(i => i.Id == instanceId);
 
         instance.Should().NotBeNull();
-        instance!.CurrentState.Should().Be("Draft");
+        // Initial state auto-transitions from Draft to PendingApproval
+        instance!.CurrentState.Should().Be("PendingApproval");
         instance.Status.Should().Be(InstanceStatus.Active);
         instance.DefinitionId.Should().Be(def.Id);
     }
@@ -407,7 +408,8 @@ public sealed class WorkflowEngineTests : IDisposable
 
         status.Should().NotBeNull();
         status!.InstanceId.Should().Be(instanceId);
-        status.CurrentState.Should().Be("Draft");
+        // Initial state auto-transitions from Draft → PendingApproval
+        status.CurrentState.Should().Be("PendingApproval");
         status.Status.Should().Be("Active");
         status.DefinitionName.Should().Be("TestApproval");
     }
@@ -420,21 +422,12 @@ public sealed class WorkflowEngineTests : IDisposable
         await SeedThreeStateDefinitionAsync();
         var entityId = Guid.NewGuid();
 
+        // Start workflow — auto-transitions from Draft to PendingApproval,
+        // creating an approval task for the Admin role (resolved to _approverUserId)
         var instanceId = await _sut.StartAsync(
             "Order", entityId, "TestApproval", _initiatorId, _tenantId);
 
-        // Create a pending task for the approver
-        var instance = await _db.WorkflowInstances
-            .Include(i => i.Definition)
-            .FirstAsync(i => i.Id == instanceId);
-        instance.TransitionTo("PendingApproval", "submit", _initiatorId);
-
-        var approvalTask = ApprovalTask.Create(
-            _tenantId, instanceId, "PendingApproval",
-            _approverUserId, null, null, null, "Order", entityId);
-        _db.ApprovalTasks.Add(approvalTask);
-
-        // Create a pending task for a different user
+        // Also create a pending task for a different user on the same instance
         var otherUserId = Guid.NewGuid();
         var otherTask = ApprovalTask.Create(
             _tenantId, instanceId, "PendingApproval",
@@ -444,8 +437,8 @@ public sealed class WorkflowEngineTests : IDisposable
 
         var pending = await _sut.GetPendingTasksAsync(_approverUserId);
 
+        // Should only see the auto-created task for the approver, not the other user's task
         pending.Should().HaveCount(1);
-        pending[0].TaskId.Should().Be(approvalTask.Id);
     }
 
     // ── 12. SeedTemplateAsync — creates definition ───────────────────────────
