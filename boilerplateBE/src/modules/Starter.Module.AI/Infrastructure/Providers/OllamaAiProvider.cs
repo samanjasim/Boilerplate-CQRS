@@ -28,6 +28,12 @@ internal sealed class OllamaAiProvider(
 
     private string ResolveChatModel(string model)
     {
+        // Callers may pass the provider-prefixed identifier from IAiProviderFactory.GetDefaultChatModelId()
+        // (e.g. "Ollama:llama3"). That shape is a cache key, not a wire model name —
+        // strip the prefix before sending to the Ollama API.
+        if (!string.IsNullOrWhiteSpace(model) && model.StartsWith("Ollama:", StringComparison.OrdinalIgnoreCase))
+            model = model["Ollama:".Length..];
+
         if (!string.IsNullOrWhiteSpace(model) && model != DefaultChatModel)
             return model;
         return configuration["AI:Providers:Ollama:DefaultModel"] ?? DefaultChatModel;

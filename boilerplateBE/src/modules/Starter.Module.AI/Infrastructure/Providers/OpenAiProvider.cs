@@ -31,6 +31,12 @@ internal sealed class OpenAiProvider(
 
     private string ResolveChatModel(string model)
     {
+        // Callers may pass the provider-prefixed identifier from IAiProviderFactory.GetDefaultChatModelId()
+        // (e.g. "OpenAI:gpt-4o-mini"). That shape is a cache key, not a wire model name —
+        // strip the prefix before sending to the OpenAI SDK.
+        if (!string.IsNullOrWhiteSpace(model) && model.StartsWith("OpenAI:", StringComparison.OrdinalIgnoreCase))
+            model = model["OpenAI:".Length..];
+
         if (!string.IsNullOrWhiteSpace(model) && model != DefaultChatModel)
             return model;
         return configuration["AI:Providers:OpenAI:DefaultModel"] ?? DefaultChatModel;

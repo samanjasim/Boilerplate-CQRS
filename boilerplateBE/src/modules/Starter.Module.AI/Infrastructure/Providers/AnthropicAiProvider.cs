@@ -28,6 +28,12 @@ internal sealed class AnthropicAiProvider(
 
     private string ResolveModel(string model)
     {
+        // Callers may pass the provider-prefixed identifier from IAiProviderFactory.GetDefaultChatModelId()
+        // (e.g. "Anthropic:claude-3-5-haiku-20241022"). That shape is a cache key, not a wire model name —
+        // strip the prefix before sending to the Anthropic SDK.
+        if (!string.IsNullOrWhiteSpace(model) && model.StartsWith("Anthropic:", StringComparison.OrdinalIgnoreCase))
+            model = model["Anthropic:".Length..];
+
         if (!string.IsNullOrWhiteSpace(model) && model != DefaultModel)
             return model;
         return configuration["AI:Providers:Anthropic:DefaultModel"] ?? DefaultModel;

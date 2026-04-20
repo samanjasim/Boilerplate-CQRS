@@ -80,7 +80,7 @@ internal sealed class AiProviderFactory(
         {
             AiProviderType.OpenAI => configuration["AI:Providers:OpenAI:ChatModel"] ?? "gpt-4o-mini",
             AiProviderType.Ollama => configuration["AI:Providers:Ollama:ChatModel"] ?? "llama3",
-            AiProviderType.Anthropic => configuration["AI:Providers:Anthropic:ChatModel"] ?? "claude-3-5-haiku-20241022",
+            AiProviderType.Anthropic => configuration["AI:Providers:Anthropic:ChatModel"] ?? "claude-sonnet-4-20250514",
             _ => "default"
         };
         return $"{providerType}:{modelName}";
