@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Inbox, Users, X } from 'lucide-react';
+import { Inbox, Users, X, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -10,17 +10,23 @@ import {
 import { PageHeader, EmptyState, Pagination } from '@/components/common';
 import { getPersistedPageSize } from '@/components/common/pagination-utils';
 import { usePendingTasks, useActiveDelegation, useCancelDelegation } from '../api';
+import { usePermissions } from '@/hooks';
+import { PERMISSIONS } from '@/constants';
 import { ApprovalDialog } from '../components/ApprovalDialog';
 import { DelegationDialog } from '../components/DelegationDialog';
+import { NewRequestDialog } from '../components/NewRequestDialog';
 import { formatDate } from '@/utils/format';
 import type { PendingTaskSummary } from '@/types/workflow.types';
 
 export default function WorkflowInboxPage() {
   const { t } = useTranslation();
+  const { hasPermission } = usePermissions();
+  const canStart = hasPermission(PERMISSIONS.Workflows.Start);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(getPersistedPageSize);
   const [selectedTask, setSelectedTask] = useState<PendingTaskSummary | null>(null);
   const [delegationOpen, setDelegationOpen] = useState(false);
+  const [newRequestOpen, setNewRequestOpen] = useState(false);
 
   const { data, isLoading } = usePendingTasks({ page, pageSize });
   const { data: activeDelegation } = useActiveDelegation();
@@ -36,10 +42,18 @@ export default function WorkflowInboxPage() {
       <PageHeader
         title={t('workflow.inbox.title')}
         actions={
-          <Button variant="outline" onClick={() => setDelegationOpen(true)}>
-            <Users className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
-            {t('workflow.delegation.title')}
-          </Button>
+          <div className="flex items-center gap-2">
+            {canStart && (
+              <Button onClick={() => setNewRequestOpen(true)}>
+                <Plus className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+                {t('workflow.newRequest.title')}
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => setDelegationOpen(true)}>
+              <Users className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+              {t('workflow.delegation.title')}
+            </Button>
+          </div>
         }
       />
 
@@ -162,6 +176,8 @@ export default function WorkflowInboxPage() {
         open={delegationOpen}
         onOpenChange={setDelegationOpen}
       />
+
+      <NewRequestDialog open={newRequestOpen} onOpenChange={setNewRequestOpen} />
     </div>
   );
 }

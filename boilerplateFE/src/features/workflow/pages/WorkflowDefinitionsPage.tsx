@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GitBranch } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -7,16 +8,35 @@ import { Spinner } from '@/components/ui/spinner';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { PageHeader, EmptyState } from '@/components/common';
+import { PageHeader, EmptyState, Pagination } from '@/components/common';
+import { getPersistedPageSize } from '@/components/common/pagination-utils';
 import { useWorkflowDefinitions, useCloneDefinition } from '../api';
 import type { WorkflowDefinitionSummary } from '@/types/workflow.types';
 
 export default function WorkflowDefinitionsPage() {
   const { t } = useTranslation();
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(getPersistedPageSize);
   const { data, isLoading } = useWorkflowDefinitions();
   const { mutate: cloneDefinition, isPending: cloning } = useCloneDefinition();
 
-  const definitions: WorkflowDefinitionSummary[] = Array.isArray(data) ? data : data?.data ?? [];
+  const allDefinitions: WorkflowDefinitionSummary[] = Array.isArray(data) ? data : data?.data ?? [];
+
+  // Client-side pagination since the definitions endpoint returns all records
+  const totalCount = allDefinitions.length;
+  const totalPages = Math.ceil(totalCount / pageSize) || 1;
+  const startIndex = (page - 1) * pageSize;
+  const definitions = allDefinitions.slice(startIndex, startIndex + pageSize);
+  const pagination = totalCount > 0
+    ? {
+        pageNumber: page,
+        pageSize,
+        totalCount,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      }
+    : null;
 
   return (
     <div className="space-y-6">
@@ -33,68 +53,78 @@ export default function WorkflowDefinitionsPage() {
           description={t('workflow.definitions.emptyDesc')}
         />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t('workflow.definitions.name')}</TableHead>
-              <TableHead>{t('workflow.definitions.entityType')}</TableHead>
-              <TableHead>{t('workflow.definitions.steps')}</TableHead>
-              <TableHead>{t('workflow.definitions.source')}</TableHead>
-              <TableHead>{t('workflow.definitions.status')}</TableHead>
-              <TableHead>{t('workflow.inbox.actions')}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {definitions.map((def) => (
-              <TableRow key={def.id}>
-                <TableCell className="font-medium text-foreground">
-                  <Link
-                    to={`/workflows/definitions/${def.id}`}
-                    className="hover:underline"
-                  >
-                    {def.name}
-                  </Link>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="secondary">{def.entityType}</Badge>
-                </TableCell>
-                <TableCell className="text-muted-foreground">{def.stepCount}</TableCell>
-                <TableCell>
-                  <Badge variant={def.isTemplate ? 'outline' : 'default'}>
-                    {def.isTemplate
-                      ? t('workflow.definitions.systemTemplate')
-                      : t('workflow.definitions.customized')}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={def.isActive ? 'default' : 'secondary'}>
-                    {def.isActive ? t('workflow.definitions.activate') : t('workflow.definitions.deactivate')}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    {def.isTemplate ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => cloneDefinition(def.id)}
-                        disabled={cloning}
-                      >
-                        {t('workflow.definitions.clone')}
-                      </Button>
-                    ) : (
-                      <Button size="sm" variant="outline" asChild>
-                        <Link to={`/workflows/definitions/${def.id}`}>
-                          {t('workflow.definitions.edit')}
-                        </Link>
-                      </Button>
-                    )}
-                  </div>
-                </TableCell>
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('workflow.definitions.name')}</TableHead>
+                <TableHead>{t('workflow.definitions.entityType')}</TableHead>
+                <TableHead>{t('workflow.definitions.steps')}</TableHead>
+                <TableHead>{t('workflow.definitions.source')}</TableHead>
+                <TableHead>{t('workflow.definitions.status')}</TableHead>
+                <TableHead>{t('workflow.inbox.actions')}</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {definitions.map((def) => (
+                <TableRow key={def.id}>
+                  <TableCell className="font-medium text-foreground">
+                    <Link
+                      to={`/workflows/definitions/${def.id}`}
+                      className="hover:underline"
+                    >
+                      {def.name}
+                    </Link>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{def.entityType}</Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{def.stepCount}</TableCell>
+                  <TableCell>
+                    <Badge variant={def.isTemplate ? 'outline' : 'default'}>
+                      {def.isTemplate
+                        ? t('workflow.definitions.systemTemplate')
+                        : t('workflow.definitions.customized')}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={def.isActive ? 'default' : 'secondary'}>
+                      {def.isActive ? t('workflow.definitions.activate') : t('workflow.definitions.deactivate')}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      {def.isTemplate ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => cloneDefinition(def.id)}
+                          disabled={cloning}
+                        >
+                          {t('workflow.definitions.clone')}
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="outline" asChild>
+                          <Link to={`/workflows/definitions/${def.id}`}>
+                            {t('workflow.definitions.edit')}
+                          </Link>
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          {pagination && (
+            <Pagination
+              pagination={pagination}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+            />
+          )}
+        </>
       )}
     </div>
   );

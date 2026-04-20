@@ -1302,6 +1302,16 @@
       "required": "Required",
       "submittedData": "Submitted Data",
       "selectPlaceholder": "Select..."
+    },
+    "newRequest": {
+      "title": "New Request",
+      "description": "Start a new workflow request",
+      "workflowType": "Workflow Type",
+      "selectWorkflow": "Select a workflow...",
+      "requestName": "Request Name",
+      "requestNamePlaceholder": "e.g., Q3 Budget Increase — Engineering Dept",
+      "submit": "Submit Request",
+      "success": "Request submitted successfully"
     }
   }
 }

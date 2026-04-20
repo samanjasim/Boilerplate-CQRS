@@ -264,10 +264,11 @@ Usernames are the email local-part (e.g. `acme.admin`). Admin users have the `Ad
 
 ### Components & Patterns
 
-- **Use shared components** — `Pagination`, `PageHeader`, `EmptyState`, `UserAvatar`, `ConfirmDialog`, `ExportButton` from `@/components/common`.
+- **MANDATORY: Use shared components** — `Pagination`, `PageHeader`, `EmptyState`, `UserAvatar`, `ConfirmDialog`, `ExportButton` from `@/components/common`. **NEVER create custom versions** of these. Every list page with a `<Table>` MUST include `<Pagination>` from the shared component. Every page MUST use `<PageHeader>`. Every empty data state MUST use `<EmptyState>`.
+- **MANDATORY: No component duplication** — Before creating any new component, check if a shared component or pattern already exists in `@/components/common`, `@/components/ui`, `@/constants`, or `@/hooks`. Duplicate components are a code smell and must be avoided. When multiple features need the same UI pattern, extract it to `@/components/common`.
 - **Back navigation** — use `useBackNavigation(path, label)` hook in detail/edit pages. It renders in the header bar automatically and clears on unmount.
 - **Page size persistence** — use `getPersistedPageSize()` from `@/components/common/Pagination` as the initial state for paginated lists. The `Pagination` component persists changes to localStorage.
-- **Status badges** — use `STATUS_BADGE_VARIANT` from `@/constants/status` for mapping entity status to badge variants.
+- **Status badges** — use `STATUS_BADGE_VARIANT` from `@/constants/status` for mapping entity status to badge variants. Do NOT define local status-to-variant mappings in page components.
 - **Tables** — the `Table` component includes its own `rounded-2xl bg-card shadow-card` container. Do NOT wrap it in an extra `<Card>`.
 - **Empty states** — always use `<EmptyState>` component with an icon, title, and optional description/action.
 

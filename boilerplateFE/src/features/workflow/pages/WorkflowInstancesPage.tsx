@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { History, Eye, Send } from 'lucide-react';
+import { History, Eye, Send, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -15,6 +15,7 @@ import {
 import { PageHeader, EmptyState, Pagination } from '@/components/common';
 import { getPersistedPageSize } from '@/components/common/pagination-utils';
 import { useWorkflowInstances, useWorkflowDefinitions, useTransitionWorkflow } from '../api';
+import { NewRequestDialog } from '../components/NewRequestDialog';
 import { usePermissions } from '@/hooks';
 import { useAuthStore, selectUser } from '@/stores';
 import { PERMISSIONS } from '@/constants';
@@ -30,8 +31,10 @@ export default function WorkflowInstancesPage() {
   const { hasPermission } = usePermissions();
   const user = useAuthStore(selectUser);
   const canViewAll = hasPermission(PERMISSIONS.Workflows.ViewAllTasks);
+  const canStart = hasPermission(PERMISSIONS.Workflows.Start);
 
   const [page, setPage] = useState(1);
+  const [newRequestOpen, setNewRequestOpen] = useState(false);
   const [pageSize, setPageSize] = useState(getPersistedPageSize);
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [entityTypeFilter, setEntityTypeFilter] = useState('');
@@ -66,7 +69,17 @@ export default function WorkflowInstancesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={title} />
+      <PageHeader
+        title={title}
+        actions={
+          canStart ? (
+            <Button onClick={() => setNewRequestOpen(true)}>
+              <Plus className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+              {t('workflow.newRequest.title')}
+            </Button>
+          ) : undefined
+        }
+      />
 
       {/* Filters */}
       <div className="flex flex-wrap items-end gap-4">
@@ -211,6 +224,7 @@ export default function WorkflowInstancesPage() {
           )}
         </>
       )}
+      <NewRequestDialog open={newRequestOpen} onOpenChange={setNewRequestOpen} />
     </div>
   );
 }
