@@ -173,7 +173,7 @@ internal sealed class ChatExecutionTestFixture
                 SemanticScore: 0.85m, KeywordScore: 0.4m, HybridScore: 0.75m, ParentChunkId: null, ChunkIndex: 1),
         };
 
-        _retrieval.Context = new RetrievedContext(chunks, Parents: [], TotalTokens: 20, TruncatedByBudget: false, DegradedStages: [], Siblings: []);
+        _retrieval.Context = new RetrievedContext(chunks, Parents: [], TotalTokens: 20, TruncatedByBudget: false, DegradedStages: [], Siblings: [], FusedCandidates: 0, DetectedLanguage: "unknown");
         return docId;
     }
 

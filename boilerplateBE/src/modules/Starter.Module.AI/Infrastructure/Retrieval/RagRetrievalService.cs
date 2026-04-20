@@ -94,6 +94,11 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         if (string.IsNullOrWhiteSpace(queryText))
             return RetrievedContext.Empty;
 
+        var scopeTag = documentFilter is { Count: > 0 } ? "SelectedDocuments" : "AllTenantDocuments";
+        AiRagMetrics.RetrievalRequests.Add(
+            1, new KeyValuePair<string, object?>("rag.scope", scopeTag));
+        var detectedLang = RagLanguageDetector.Detect(queryText);
+
         using var activity = RagActivitySource.Source.StartActivity("rag.retrieve", ActivityKind.Internal);
         activity?.SetTag(RagTracingTags.RetrieveTopK, topK);
 
@@ -153,7 +158,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         if (questionType == QuestionType.Greeting)
         {
             _logger.LogInformation("RAG short-circuit: greeting");
-            return new RetrievedContext([], [], 0, false, degraded, []);
+            return new RetrievedContext([], [], 0, false, degraded, [], 0, detectedLang);
         }
 
         // 1. Query rewrite (original + variants). Never throws.
@@ -178,7 +183,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
 
         if (vectors is null || vectors.Length == 0)
         {
-            return new RetrievedContext([], [], 0, false, degraded, []);
+            return new RetrievedContext([], [], 0, false, degraded, [], 0, detectedLang);
         }
 
         // Defensive: batched embed contract is 1:1 with inputs, but if a provider
@@ -221,6 +226,9 @@ internal sealed class RagRetrievalService : IRagRetrievalService
                 degraded,
                 ct);
             keywordLists.Add(hits ?? (IReadOnlyList<KeywordSearchHit>)Array.Empty<KeywordSearchHit>());
+            AiRagMetrics.KeywordHits.Record(
+                (long)(hits?.Count ?? 0),
+                new KeyValuePair<string, object?>("rag.lang", detectedLang));
         }
 
         // 5. RRF multi-list fuse.
@@ -231,6 +239,8 @@ internal sealed class RagRetrievalService : IRagRetrievalService
             _settings.KeywordWeight,
             _settings.RrfK,
             minHybrid);
+        AiRagMetrics.FusionCandidates.Record(mergedHits.Count);
+        int fusedCandidatesCount = mergedHits.Count;
 
         // 6. Rerank. Resolve the strategy up front so we can size the candidate pool
         // larger than topK — the reranker reorders within this pool, then we trim.
@@ -248,7 +258,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         activity?.SetTag(RagTracingTags.RetrieveVariantsUsed, variantCount);
 
         if (pool.Count == 0)
-            return new RetrievedContext([], [], 0, false, degraded, []);
+            return new RetrievedContext([], [], 0, false, degraded, [], 0, detectedLang);
 
         // HybridHit.ChunkId carries the qdrant_point_id; chunk rows are looked up by
         // QdrantPointId (not Id) because the Qdrant point uses a distinct guid from
@@ -283,7 +293,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         }
 
         if (alignedPool.Count == 0)
-            return new RetrievedContext([], [], 0, false, degraded, []);
+            return new RetrievedContext([], [], 0, false, degraded, [], 0, detectedLang);
 
         // 7. Rerank the aligned pool. On timeout/failure fall back to RRF order.
         var rerankResult = await WithTimeoutAsync(
@@ -318,7 +328,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         var topKHits = rerankedHits.Take(topK).ToList();
 
         if (topKHits.Count == 0)
-            return new RetrievedContext([], [], 0, false, degraded, []);
+            return new RetrievedContext([], [], 0, false, degraded, [], 0, detectedLang);
 
         // chunkByPointId already covers the full pool, so we can look up children
         // directly rather than issue another DB query.
@@ -386,7 +396,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         activity?.SetTag(RagTracingTags.RetrieveTruncated, truncated);
         activity?.SetTag(RagTracingTags.RetrieveDegradedStages, string.Join(",", degraded));
 
-        return new RetrievedContext(trimmedChildren, trimmedParents, usedTokens, truncated, degraded, siblings);
+        return new RetrievedContext(trimmedChildren, trimmedParents, usedTokens, truncated, degraded, siblings, fusedCandidatesCount, detectedLang);
     }
 
     private RetrievedChunk Map(

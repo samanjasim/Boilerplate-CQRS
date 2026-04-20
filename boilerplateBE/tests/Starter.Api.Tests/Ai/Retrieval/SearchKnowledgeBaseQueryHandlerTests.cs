@@ -18,7 +18,7 @@ public sealed class SearchKnowledgeBaseQueryHandlerTests
         var child = new RetrievedChunk(
             Guid.NewGuid(), Guid.NewGuid(), "Doc", "content", null, null,
             "child", 0.9m, 0.3m, 0.7m, null, 0);
-        var retrieval = new FakeRetrievalService(new RetrievedContext([child], [], 10, false, [], []));
+        var retrieval = new FakeRetrievalService(new RetrievedContext([child], [], 10, false, [], [], 0, "unknown"));
         var handler = BuildHandler(retrieval, Guid.NewGuid());
 
         var result = await handler.Handle(
@@ -42,7 +42,7 @@ public sealed class SearchKnowledgeBaseQueryHandlerTests
         var parent = new RetrievedChunk(
             parentId, docId, "Doc", "parent-content", null, null,
             "parent", 0m, 0m, 0m, null, 0);
-        var retrieval = new FakeRetrievalService(new RetrievedContext([child], [parent], 20, false, [], []));
+        var retrieval = new FakeRetrievalService(new RetrievedContext([child], [parent], 20, false, [], [], 0, "unknown"));
         var handler = BuildHandler(retrieval, Guid.NewGuid());
 
         var result = await handler.Handle(
@@ -66,7 +66,7 @@ public sealed class SearchKnowledgeBaseQueryHandlerTests
         var sibling = new RetrievedChunk(
             Guid.NewGuid(), docId, "Doc", "sibling", null, 1,
             "child", 0m, 0m, 0.35m, null, 1);
-        var retrieval = new FakeRetrievalService(new RetrievedContext([child], [], 15, false, [], [sibling]));
+        var retrieval = new FakeRetrievalService(new RetrievedContext([child], [], 15, false, [], [sibling], 0, "unknown"));
         var handler = BuildHandler(retrieval, Guid.NewGuid());
 
         var result = await handler.Handle(
@@ -86,7 +86,7 @@ public sealed class SearchKnowledgeBaseQueryHandlerTests
         var child = new RetrievedChunk(
             Guid.NewGuid(), Guid.NewGuid(), "Doc", "content", null, null,
             "child", 0.9m, 0.3m, 0.7m, null, 0);
-        var retrieval = new FakeRetrievalService(new RetrievedContext([child], [], 10, false, [], []));
+        var retrieval = new FakeRetrievalService(new RetrievedContext([child], [], 10, false, [], [], 0, "unknown"));
         var handler = BuildHandler(retrieval, tenantId: null);
 
         var result = await handler.Handle(

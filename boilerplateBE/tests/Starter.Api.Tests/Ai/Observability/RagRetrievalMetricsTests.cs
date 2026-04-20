@@ -129,4 +129,113 @@ public class RagRetrievalMetricsTests
             .ToList();
         durations.Should().HaveCount(1);
     }
+
+    [Fact]
+    public async Task Retrieval_emits_requests_counter_tagged_by_scope()
+    {
+        using var listener = new TestMeterListener(AiRagMetrics.MeterName);
+
+        var options = new DbContextOptionsBuilder<AiDbContext>()
+            .UseInMemoryDatabase($"rag-requests-scope-{Guid.NewGuid():N}").Options;
+        await using var db = new AiDbContext(options, currentUserService: null);
+
+        var settings = new AiRagSettings();
+        var svc = new RagRetrievalService(
+            db,
+            new FakeVectorStore(),
+            new FakeKeywordSearchService(),
+            new Fakes.FakeEmbeddingService(),
+            new NoOpQueryRewriter(),
+            new NoOpQuestionClassifier(),
+            new NoOpReranker(),
+            new RerankStrategySelector(settings),
+            new NoOpNeighborExpander(),
+            new TokenCounter(),
+            Options.Create(settings),
+            NullLogger<RagRetrievalService>.Instance);
+
+        var tenantId = Guid.NewGuid();
+        var assistant = AiAssistant.Create(tenantId, "A", null, "p");
+        assistant.SetRagScope(AiRagScope.AllTenantDocuments);
+
+        _ = await svc.RetrieveForTurnAsync(assistant, "centrifugal pumps move fluid through impeller rotation", CancellationToken.None);
+
+        listener.Snapshot()
+            .Should().Contain(m =>
+                m.InstrumentName == "rag.retrieval.requests"
+                && (string?)m.Tags["rag.scope"] == "AllTenantDocuments"
+                && m.Value == 1);
+    }
+
+    [Fact]
+    public async Task Retrieval_records_fusion_candidates_histogram_even_when_zero()
+    {
+        // With all no-op fakes, vector + keyword return empty, so fusion count is 0.
+        // The histogram MUST still be recorded — assertion is that the instrument fires.
+        using var listener = new TestMeterListener(AiRagMetrics.MeterName);
+
+        var options = new DbContextOptionsBuilder<AiDbContext>()
+            .UseInMemoryDatabase($"rag-fusion-{Guid.NewGuid():N}").Options;
+        await using var db = new AiDbContext(options, currentUserService: null);
+
+        var settings = new AiRagSettings();
+        var svc = new RagRetrievalService(
+            db,
+            new FakeVectorStore(),
+            new FakeKeywordSearchService(),
+            new Fakes.FakeEmbeddingService(),
+            new NoOpQueryRewriter(),
+            new NoOpQuestionClassifier(),
+            new NoOpReranker(),
+            new RerankStrategySelector(settings),
+            new NoOpNeighborExpander(),
+            new TokenCounter(),
+            Options.Create(settings),
+            NullLogger<RagRetrievalService>.Instance);
+
+        var tenantId = Guid.NewGuid();
+        var assistant = AiAssistant.Create(tenantId, "A", null, "p");
+        assistant.SetRagScope(AiRagScope.AllTenantDocuments);
+
+        _ = await svc.RetrieveForTurnAsync(assistant, "centrifugal pumps move fluid through impeller rotation", CancellationToken.None);
+
+        listener.Snapshot()
+            .Should().Contain(m => m.InstrumentName == "rag.fusion.candidates");
+    }
+
+    [Fact]
+    public async Task Retrieval_records_keyword_hits_tagged_by_detected_language()
+    {
+        using var listener = new TestMeterListener(AiRagMetrics.MeterName);
+
+        var options = new DbContextOptionsBuilder<AiDbContext>()
+            .UseInMemoryDatabase($"rag-keyword-lang-{Guid.NewGuid():N}").Options;
+        await using var db = new AiDbContext(options, currentUserService: null);
+
+        var settings = new AiRagSettings();
+        var svc = new RagRetrievalService(
+            db,
+            new FakeVectorStore(),
+            new FakeKeywordSearchService(),
+            new Fakes.FakeEmbeddingService(),
+            new NoOpQueryRewriter(),
+            new NoOpQuestionClassifier(),
+            new NoOpReranker(),
+            new RerankStrategySelector(settings),
+            new NoOpNeighborExpander(),
+            new TokenCounter(),
+            Options.Create(settings),
+            NullLogger<RagRetrievalService>.Instance);
+
+        var tenantId = Guid.NewGuid();
+        var assistant = AiAssistant.Create(tenantId, "A", null, "p");
+        assistant.SetRagScope(AiRagScope.AllTenantDocuments);
+
+        _ = await svc.RetrieveForTurnAsync(assistant, "ما هي المضخة الطاردة المركزية وكيف تعمل", CancellationToken.None);
+
+        listener.Snapshot()
+            .Should().Contain(m =>
+                m.InstrumentName == "rag.keyword.hits"
+                && (string?)m.Tags["rag.lang"] == "ar");
+    }
 }

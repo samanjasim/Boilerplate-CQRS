@@ -32,7 +32,9 @@ public sealed class ContextPromptBuilderTests
             TotalTokens: 10,
             TruncatedByBudget: false,
             DegradedStages: [],
-            Siblings: []);
+            Siblings: [],
+            FusedCandidates: 0,
+            DetectedLanguage: "unknown");
 
         var sp = ContextPromptBuilder.Build("Be helpful.", ctx);
 
@@ -55,7 +57,9 @@ public sealed class ContextPromptBuilderTests
             TotalTokens: 10,
             TruncatedByBudget: false,
             DegradedStages: [],
-            Siblings: []);
+            Siblings: [],
+            FusedCandidates: 0,
+            DetectedLanguage: "unknown");
 
         var sp = ContextPromptBuilder.Build("S", ctx);
 
@@ -79,7 +83,9 @@ public sealed class ContextPromptBuilderTests
             {
                 new(Guid.NewGuid(), sibDocId, "doc-x", "sibA", "SibSec", 3, "child", 0, 0, 0, null, 4),
                 new(Guid.NewGuid(), sibDocId, "doc-x", "sibB", null, null, "child", 0, 0, 0, null, 6)
-            });
+            },
+            FusedCandidates: 0,
+            DetectedLanguage: "unknown");
 
         var output = ContextPromptBuilder.Build("Sys", ctx);
 
@@ -97,7 +103,7 @@ public sealed class ContextPromptBuilderTests
     [Fact]
     public void Code_chunk_is_wrapped_in_triple_backticks()
     {
-        var ctx = new RetrievedContext([MakeTyped("x = 1", ChunkType.Code)], [], 10, false, [], []);
+        var ctx = new RetrievedContext([MakeTyped("x = 1", ChunkType.Code)], [], 10, false, [], [], 0, "unknown");
         var prompt = ContextPromptBuilder.Build("sys", ctx);
         prompt.Should().Contain("```\nx = 1\n```");
     }
@@ -105,7 +111,7 @@ public sealed class ContextPromptBuilderTests
     [Fact]
     public void Math_chunk_is_wrapped_in_dollar_dollar()
     {
-        var ctx = new RetrievedContext([MakeTyped("a = b + c", ChunkType.Math)], [], 10, false, [], []);
+        var ctx = new RetrievedContext([MakeTyped("a = b + c", ChunkType.Math)], [], 10, false, [], [], 0, "unknown");
         var prompt = ContextPromptBuilder.Build("sys", ctx);
         prompt.Should().Contain("$$\na = b + c\n$$");
     }
@@ -113,7 +119,7 @@ public sealed class ContextPromptBuilderTests
     [Fact]
     public void Body_chunk_is_unwrapped()
     {
-        var ctx = new RetrievedContext([MakeTyped("hello", ChunkType.Body)], [], 10, false, [], []);
+        var ctx = new RetrievedContext([MakeTyped("hello", ChunkType.Body)], [], 10, false, [], [], 0, "unknown");
         var prompt = ContextPromptBuilder.Build("sys", ctx);
         prompt.Should().Contain("hello").And.NotContain("```hello");
     }

@@ -35,7 +35,9 @@ public class RetrievedContextShapeTests
             TotalTokens: 0,
             TruncatedByBudget: false,
             DegradedStages: [],
-            Siblings: []);
+            Siblings: [],
+            FusedCandidates: 0,
+            DetectedLanguage: "unknown");
 
         ctx.Siblings.Should().NotBeNull().And.BeEmpty();
     }

@@ -56,7 +56,7 @@ public class StructuralChunkingPipelineTests
             ChunkIndex: c.Index,
             ChunkType: c.ChunkType)).ToList();
 
-        var prompt = ContextPromptBuilder.Build("sys", new RetrievedContext(retrieved, [], 100, false, [], []));
+        var prompt = ContextPromptBuilder.Build("sys", new RetrievedContext(retrieved, [], 100, false, [], [], 0, "unknown"));
 
         prompt.Should().Contain("```\nx = 1\n```");
         prompt.Should().Contain("$$\nE = mc^2\n$$");
