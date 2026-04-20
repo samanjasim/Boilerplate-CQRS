@@ -6,9 +6,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { useSearchUsers } from '@/features/users/api';
 import { useCreateDelegation } from '../api';
@@ -22,26 +19,44 @@ export function DelegationDialog({ open, onOpenChange }: DelegationDialogProps) 
   const { t } = useTranslation();
   const [toUserId, setToUserId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const { mutate: createDelegation, isPending } = useCreateDelegation();
 
   const deferredSearch = useDeferredValue(searchTerm);
   const { data: usersData, isLoading: usersLoading } = useSearchUsers(
-    { searchTerm: deferredSearch, pageSize: 20, status: 'Active' },
-    { enabled: open },
+    { searchTerm: deferredSearch, pageSize: 10, status: 'Active' },
+    { enabled: open && searchTerm.length > 0 },
   );
 
   const users = usersData?.data ?? [];
 
+  const handleSelectUser = (userId: string, displayName: string) => {
+    setToUserId(userId);
+    setSearchTerm(displayName);
+    setShowDropdown(false);
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setToUserId('');
+    setShowDropdown(value.length > 0);
+  };
+
   const handleConfirm = () => {
     if (!toUserId || !startDate || !endDate) return;
+    // Convert date inputs (YYYY-MM-DD) to ISO datetime strings
     createDelegation(
-      { toUserId, startDate, endDate },
+      {
+        toUserId,
+        startDate: new Date(startDate + 'T00:00:00').toISOString(),
+        endDate: new Date(endDate + 'T23:59:59').toISOString(),
+      },
       {
         onSuccess: () => {
           setToUserId('');
-          setSearchTerm('');
+              setSearchTerm('');
           setStartDate('');
           setEndDate('');
           onOpenChange(false);
@@ -50,10 +65,19 @@ export function DelegationDialog({ open, onOpenChange }: DelegationDialogProps) 
     );
   };
 
-  const selectedUser = users.find((u) => u.id === toUserId);
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      setToUserId('');
+      setSearchTerm('');
+      setStartDate('');
+      setEndDate('');
+      setShowDropdown(false);
+    }
+    onOpenChange(isOpen);
+  };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{t('workflow.delegation.title')}</DialogTitle>
@@ -63,45 +87,61 @@ export function DelegationDialog({ open, onOpenChange }: DelegationDialogProps) 
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Single autocomplete field */}
           <div className="space-y-1.5">
-            <Label htmlFor="delegation-user">{t('workflow.delegation.delegateTo')}</Label>
-            <Input
-              id="delegation-user-search"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder={t('workflow.delegation.searchPlaceholder', 'Search users by name or email...')}
-              className="mb-2"
-            />
-            {usersLoading ? (
-              <div className="flex justify-center py-3">
-                <Spinner size="sm" />
-              </div>
-            ) : (
-              <Select value={toUserId} onValueChange={setToUserId}>
-                <SelectTrigger id="delegation-user">
-                  <SelectValue placeholder={t('workflow.delegation.selectUser', 'Select a user')}>
-                    {selectedUser
-                      ? `${selectedUser.firstName} ${selectedUser.lastName} (${selectedUser.email})`
-                      : undefined}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {users.length === 0 ? (
-                    <div className="px-3 py-2 text-sm text-muted-foreground">
-                      {t('workflow.delegation.noUsersFound', 'No users found')}
+            <Label>{t('workflow.delegation.delegateTo')}</Label>
+            <div className="relative">
+              <Input
+                value={searchTerm}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                onFocus={() => searchTerm.length > 0 && setShowDropdown(true)}
+                placeholder={t('workflow.delegation.searchPlaceholder', 'Type a name or email to search...')}
+                autoComplete="off"
+              />
+              {toUserId && (
+                <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-primary">✓</span>
+              )}
+
+              {/* Dropdown results */}
+              {showDropdown && (
+                <div className="absolute z-50 mt-1 w-full rounded-lg border bg-popover shadow-lg max-h-48 overflow-y-auto">
+                  {usersLoading ? (
+                    <div className="flex justify-center py-3">
+                      <Spinner size="sm" />
+                    </div>
+                  ) : users.length === 0 ? (
+                    <div className="px-3 py-3 text-sm text-muted-foreground text-center">
+                      {searchTerm.length < 2
+                        ? t('workflow.delegation.typeToSearch', 'Type at least 2 characters to search')
+                        : t('workflow.delegation.noUsersFound', 'No users found')}
                     </div>
                   ) : (
-                    users.map((user) => (
-                      <SelectItem key={user.id} value={user.id}>
-                        {user.firstName} {user.lastName} ({user.email})
-                      </SelectItem>
-                    ))
+                    users.map((user) => {
+                      const displayName = `${user.firstName} ${user.lastName}`;
+                      return (
+                        <button
+                          key={user.id}
+                          type="button"
+                          className="w-full text-start px-3 py-2.5 text-sm hover:bg-muted/50 transition-colors flex items-center justify-between"
+                          onClick={() => handleSelectUser(user.id, displayName)}
+                        >
+                          <div>
+                            <span className="font-medium text-foreground">{displayName}</span>
+                            <span className="text-muted-foreground ms-2">{user.email}</span>
+                          </div>
+                          {user.id === toUserId && (
+                            <span className="text-primary text-xs">✓</span>
+                          )}
+                        </button>
+                      );
+                    })
                   )}
-                </SelectContent>
-              </Select>
-            )}
+                </div>
+              )}
+            </div>
           </div>
 
+          {/* Date range */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="delegation-start">{t('workflow.delegation.startDate')}</Label>
@@ -129,7 +169,7 @@ export function DelegationDialog({ open, onOpenChange }: DelegationDialogProps) 
             onClick={handleConfirm}
             disabled={isPending || !toUserId || !startDate || !endDate}
           >
-            {t('workflow.delegation.confirm')}
+            {isPending ? t('common.saving') : t('workflow.delegation.confirm')}
           </Button>
         </DialogFooter>
       </DialogContent>
