@@ -63,6 +63,7 @@ internal sealed class ListwiseReranker
                 if (completion.Content is null || !JsonArrayExtractor.TryExtractInts(completion.Content, out var parsed))
                 {
                     _logger.LogWarning("ListwiseReranker: output did not contain a JSON int array");
+                    EmitReordered(candidates, candidates);
                     return Fallback(candidates, sw);
                 }
                 indices = parsed;
@@ -73,11 +74,13 @@ internal sealed class ListwiseReranker
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogWarning(ex, "ListwiseReranker: provider call failed; falling back to RRF order");
+                EmitReordered(candidates, candidates);
                 return Fallback(candidates, sw);
             }
         }
 
         var ordered = ApplyIndices(candidates, indices);
+        EmitReordered(candidates, ordered);
         return new RerankResult(
             Ordered: ordered,
             StrategyRequested: RerankStrategy.Listwise,
@@ -89,6 +92,15 @@ internal sealed class ListwiseReranker
             TokensIn: tokensIn,
             TokensOut: tokensOut,
             UnusedRatio: 0.0);
+    }
+
+    private static void EmitReordered(
+        IReadOnlyList<HybridHit> input,
+        IReadOnlyList<HybridHit> output)
+    {
+        var changed = !input.Select(c => c.ChunkId).SequenceEqual(output.Select(c => c.ChunkId));
+        AiRagMetrics.RerankReordered.Add(
+            1, new KeyValuePair<string, object?>("rag.changed", changed));
     }
 
     private (List<AiChatMessage> messages, AiChatOptions opts) BuildPrompt(

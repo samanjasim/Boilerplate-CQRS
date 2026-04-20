@@ -125,6 +125,7 @@ internal sealed class PointwiseReranker
             _logger.LogWarning(
                 "PointwiseReranker: failure ratio {Ratio:F2} exceeded {Threshold:F2}; falling back to RRF order",
                 failureRatio, _settings.PointwiseMaxFailureRatio);
+            EmitReordered(candidates, candidates);
             return new RerankResult(
                 Ordered: candidates,
                 StrategyRequested: RerankStrategy.Pointwise,
@@ -149,6 +150,7 @@ internal sealed class PointwiseReranker
             ? 0.0
             : 1.0 - ((double)ordered.Count / candidates.Count);
 
+        EmitReordered(candidates, ordered);
         return new RerankResult(
             Ordered: ordered,
             StrategyRequested: RerankStrategy.Pointwise,
@@ -160,6 +162,15 @@ internal sealed class PointwiseReranker
             TokensIn: tokensIn,
             TokensOut: tokensOut,
             UnusedRatio: unusedRatio);
+    }
+
+    private static void EmitReordered(
+        IReadOnlyList<HybridHit> input,
+        IReadOnlyList<HybridHit> output)
+    {
+        var changed = !input.Select(c => c.ChunkId).SequenceEqual(output.Select(c => c.ChunkId));
+        AiRagMetrics.RerankReordered.Add(
+            1, new KeyValuePair<string, object?>("rag.changed", changed));
     }
 
     private (List<AiChatMessage> messages, AiChatOptions opts) BuildPrompt(

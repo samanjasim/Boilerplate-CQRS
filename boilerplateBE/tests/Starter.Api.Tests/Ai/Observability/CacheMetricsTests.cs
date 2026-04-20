@@ -186,6 +186,87 @@ public class CacheMetricsTests
         rows.Count(m => (bool?)m.Tags["rag.hit"] == false).Should().Be(3);
     }
 
+    [Fact]
+    public async Task Listwise_reranker_records_reordered_true_when_order_changes()
+    {
+        using var listener = new TestMeterListener(AiRagMetrics.MeterName);
+
+        var cache = new Starter.Api.Tests.Ai.Fakes.FakeCacheService();
+        var provider = new Starter.Api.Tests.Ai.Fakes.FakeAiProvider();
+        // 3 candidates in input order [0,1,2]; LLM returns order [2,0,1] -> reordered=true.
+        provider.EnqueueContent("[2,0,1]");
+        var factory = new Starter.Api.Tests.Ai.Fakes.FakeAiProviderFactory(provider);
+        var settings = Microsoft.Extensions.Options.Options.Create(new AiRagSettings { RerankCacheTtlSeconds = 60 });
+
+        var sut = new Starter.Module.AI.Infrastructure.Retrieval.Reranking.ListwiseReranker(
+            factory, cache, settings,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Starter.Module.AI.Infrastructure.Retrieval.Reranking.ListwiseReranker>.Instance);
+
+        var (candidates, chunks) = BuildRerankInputs(count: 3);
+        await sut.RerankAsync("q", candidates, chunks, CancellationToken.None);
+
+        var rows = listener.Snapshot()
+            .Where(m => m.InstrumentName == "rag.rerank.reordered").ToList();
+        rows.Should().ContainSingle(m => (bool?)m.Tags["rag.changed"] == true);
+    }
+
+    [Fact]
+    public async Task Listwise_reranker_records_reordered_false_when_order_preserved()
+    {
+        using var listener = new TestMeterListener(AiRagMetrics.MeterName);
+
+        var cache = new Starter.Api.Tests.Ai.Fakes.FakeCacheService();
+        var provider = new Starter.Api.Tests.Ai.Fakes.FakeAiProvider();
+        // Same order as input -> reordered=false.
+        provider.EnqueueContent("[0,1,2]");
+        var factory = new Starter.Api.Tests.Ai.Fakes.FakeAiProviderFactory(provider);
+        var settings = Microsoft.Extensions.Options.Options.Create(new AiRagSettings { RerankCacheTtlSeconds = 60 });
+
+        var sut = new Starter.Module.AI.Infrastructure.Retrieval.Reranking.ListwiseReranker(
+            factory, cache, settings,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Starter.Module.AI.Infrastructure.Retrieval.Reranking.ListwiseReranker>.Instance);
+
+        var (candidates, chunks) = BuildRerankInputs(count: 3);
+        await sut.RerankAsync("q", candidates, chunks, CancellationToken.None);
+
+        var rows = listener.Snapshot()
+            .Where(m => m.InstrumentName == "rag.rerank.reordered").ToList();
+        rows.Should().ContainSingle(m => (bool?)m.Tags["rag.changed"] == false);
+    }
+
+    [Fact]
+    public async Task Pointwise_reranker_records_reordered_true_when_scores_reorder()
+    {
+        using var listener = new TestMeterListener(AiRagMetrics.MeterName);
+
+        var cache = new Starter.Api.Tests.Ai.Fakes.FakeCacheService();
+        var provider = new Starter.Api.Tests.Ai.Fakes.FakeAiProvider();
+        // 3 candidates; score them so the order is reversed: idx 0 gets 0.1, idx 1 gets 0.5, idx 2 gets 0.9.
+        // Pointwise sorts descending -> [2,1,0], different from input [0,1,2] -> reordered=true.
+        provider.EnqueueContent("{\"score\":0.1}");
+        provider.EnqueueContent("{\"score\":0.5}");
+        provider.EnqueueContent("{\"score\":0.9}");
+        var factory = new Starter.Api.Tests.Ai.Fakes.FakeAiProviderFactory(provider);
+        var settings = Microsoft.Extensions.Options.Options.Create(new AiRagSettings
+        {
+            RerankCacheTtlSeconds = 60,
+            PointwiseMaxParallelism = 1,
+            PointwiseMaxFailureRatio = 1.0,
+            MinPointwiseScore = 0.0m,
+        });
+
+        var sut = new Starter.Module.AI.Infrastructure.Retrieval.Reranking.PointwiseReranker(
+            factory, cache, settings,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Starter.Module.AI.Infrastructure.Retrieval.Reranking.PointwiseReranker>.Instance);
+
+        var (candidates, chunks) = BuildRerankInputs(count: 3);
+        await sut.RerankAsync("q", candidates, chunks, CancellationToken.None);
+
+        var rows = listener.Snapshot()
+            .Where(m => m.InstrumentName == "rag.rerank.reordered").ToList();
+        rows.Should().ContainSingle(m => (bool?)m.Tags["rag.changed"] == true);
+    }
+
     private static (List<HybridHit> candidates, List<AiDocumentChunk> chunks) BuildRerankInputs(int count)
     {
         var candidates = new List<HybridHit>(count);
