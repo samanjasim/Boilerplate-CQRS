@@ -11,6 +11,7 @@ using Starter.Module.AI.Application.Services.Retrieval;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Domain.Errors;
+using Starter.Module.AI.Infrastructure.Observability;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Retrieval;
@@ -605,6 +606,17 @@ internal sealed class ChatExecutionService(
         try
         {
             var retrieved = await retrievalService.RetrieveForTurnAsync(assistant, userMessage, ct);
+            AiRagMetrics.ContextTokens.Record(retrieved.TotalTokens);
+            if (retrieved.TruncatedByBudget)
+            {
+                AiRagMetrics.ContextTruncated.Add(
+                    1, new KeyValuePair<string, object?>("rag.reason", "budget"));
+            }
+            foreach (var stage in retrieved.DegradedStages)
+            {
+                AiRagMetrics.DegradedStages.Add(
+                    1, new KeyValuePair<string, object?>("rag.stage", stage));
+            }
             var degradedSummary = retrieved.DegradedStages.Count == 0
                 ? "none"
                 : string.Join(",", retrieved.DegradedStages);

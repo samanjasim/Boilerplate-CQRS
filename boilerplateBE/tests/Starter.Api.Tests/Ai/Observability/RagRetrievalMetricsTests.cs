@@ -238,4 +238,77 @@ public class RagRetrievalMetricsTests
                 m.InstrumentName == "rag.keyword.hits"
                 && (string?)m.Tags["rag.lang"] == "ar");
     }
+
+    [Fact]
+    public async Task Chat_turn_records_context_tokens_histogram()
+    {
+        using var listener = new TestMeterListener(AiRagMetrics.MeterName);
+
+        var fx = new Starter.Api.Tests.Ai.Retrieval.ChatExecutionTestFixture();
+        var docId = fx.SeedTwoRetrievedChunks(); // populates fake with 2 chunks, TotalTokens=20
+        var assistant = fx.SeedAssistantWithRagScope(
+            Starter.Module.AI.Domain.Enums.AiRagScope.SelectedDocuments, docIds: new[] { docId });
+
+        fx.FakeProvider.ScriptedResponse = "reply";
+
+        var reply = await fx.RunOneTurnAsync(assistant, userMessage: "q");
+        reply.IsSuccess.Should().BeTrue();
+
+        listener.Snapshot()
+            .Should().Contain(m =>
+                m.InstrumentName == "rag.context.tokens" && m.Value > 0);
+    }
+
+    [Fact]
+    public async Task Chat_turn_records_context_truncated_counter_with_budget_reason()
+    {
+        using var listener = new TestMeterListener(AiRagMetrics.MeterName);
+
+        var fx = new Starter.Api.Tests.Ai.Retrieval.ChatExecutionTestFixture();
+        var docId = fx.SeedTwoRetrievedChunks();
+        // Overwrite the fixture's context with a truncated version.
+        fx.OverrideRetrievalContext(
+            children: fx.CurrentRetrievalContext.Children,
+            truncated: true,
+            degradedStages: Array.Empty<string>());
+
+        var assistant = fx.SeedAssistantWithRagScope(
+            Starter.Module.AI.Domain.Enums.AiRagScope.SelectedDocuments, docIds: new[] { docId });
+
+        fx.FakeProvider.ScriptedResponse = "reply";
+
+        await fx.RunOneTurnAsync(assistant, userMessage: "q");
+
+        listener.Snapshot()
+            .Should().Contain(m =>
+                m.InstrumentName == "rag.context.truncated"
+                && (string?)m.Tags["rag.reason"] == "budget"
+                && m.Value == 1);
+    }
+
+    [Fact]
+    public async Task Chat_turn_records_degraded_stages_counter_per_stage()
+    {
+        using var listener = new TestMeterListener(AiRagMetrics.MeterName);
+
+        var fx = new Starter.Api.Tests.Ai.Retrieval.ChatExecutionTestFixture();
+        var docId = fx.SeedTwoRetrievedChunks();
+        fx.OverrideRetrievalContext(
+            children: fx.CurrentRetrievalContext.Children,
+            truncated: false,
+            degradedStages: new[] { "rerank", "embed" });
+
+        var assistant = fx.SeedAssistantWithRagScope(
+            Starter.Module.AI.Domain.Enums.AiRagScope.SelectedDocuments, docIds: new[] { docId });
+
+        fx.FakeProvider.ScriptedResponse = "reply";
+
+        await fx.RunOneTurnAsync(assistant, userMessage: "q");
+
+        var rows = listener.Snapshot()
+            .Where(m => m.InstrumentName == "rag.degraded.stages")
+            .ToList();
+        rows.Should().ContainSingle(m => (string?)m.Tags["rag.stage"] == "rerank");
+        rows.Should().ContainSingle(m => (string?)m.Tags["rag.stage"] == "embed");
+    }
 }

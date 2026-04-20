@@ -177,6 +177,24 @@ internal sealed class ChatExecutionTestFixture
         return docId;
     }
 
+    public RetrievedContext CurrentRetrievalContext => _retrieval.Context;
+
+    public void OverrideRetrievalContext(
+        IReadOnlyList<RetrievedChunk> children,
+        bool truncated,
+        IReadOnlyList<string> degradedStages)
+    {
+        _retrieval.Context = new RetrievedContext(
+            Children: children,
+            Parents: [],
+            TotalTokens: children.Sum(c => Math.Max(1, c.Content.Length / 4)),
+            TruncatedByBudget: truncated,
+            DegradedStages: degradedStages,
+            Siblings: [],
+            FusedCandidates: 0,
+            DetectedLanguage: "unknown");
+    }
+
     public Task<Starter.Shared.Results.Result<AiChatReplyDto>> RunOneTurnAsync(
         AiAssistant assistant, string userMessage) =>
         _chat.ExecuteAsync(conversationId: null, assistantId: assistant.Id, userMessage, CancellationToken.None);
