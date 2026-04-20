@@ -64,6 +64,35 @@ public sealed class ContextPromptBuilderTests
         sp.Should().NotContain("[2]");
     }
 
+    [Fact]
+    public void Siblings_Rendered_Under_Nearby_Context_Separator()
+    {
+        var sibDocId = Guid.NewGuid();
+        var ctx = new RetrievedContext(
+            Children: new List<RetrievedChunk> { MakeChild("childAnchor") },
+            Parents: [],
+            TotalTokens: 10,
+            TruncatedByBudget: false,
+            DegradedStages: [],
+            Siblings: new List<RetrievedChunk>
+            {
+                new(Guid.NewGuid(), sibDocId, "doc-x", "sibA", "SibSec", 3, "child", 0, 0, 0, null, 4),
+                new(Guid.NewGuid(), sibDocId, "doc-x", "sibB", null, null, "child", 0, 0, 0, null, 6)
+            });
+
+        var output = ContextPromptBuilder.Build("Sys", ctx);
+
+        output.Should().Contain("--- Nearby context ---");
+        output.Should().Contain("sibA");
+        output.Should().Contain("sibB");
+        output.Should().Contain("[Document: \"doc-x\"");
+        // Siblings must not be numbered as citation targets
+        output.IndexOf("sibA").Should().BeGreaterThan(output.IndexOf("--- Nearby context ---"));
+        output.IndexOf("sibB").Should().BeGreaterThan(output.IndexOf("--- Nearby context ---"));
+        // [2] would indicate siblings were numbered — they must not be
+        output.Should().NotContain("[2]");
+    }
+
     private static RetrievedChunk MakeChild(string content, Guid? parentChunkId = null) => new(
         Guid.NewGuid(), Guid.NewGuid(), "Doc", content, "Section", 1,
         "child", 0.9m, 0.4m, 0.7m, parentChunkId, 0);

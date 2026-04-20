@@ -68,6 +68,7 @@ public sealed class RagRetrievalServiceTimeoutTests
             new NoOpQuestionClassifier(),
             new NoOpReranker(),
             new RerankStrategySelector(settings),
+            new NoOpNeighborExpander(),
             new TokenCounter(),
             Options.Create(settings),
             NullLogger<RagRetrievalService>.Instance);
@@ -98,6 +99,7 @@ public sealed class RagRetrievalServiceTimeoutTests
             new NoOpQuestionClassifier(),
             new NoOpReranker(),
             new RerankStrategySelector(settings),
+            new NoOpNeighborExpander(),
             new TokenCounter(),
             Options.Create(settings),
             NullLogger<RagRetrievalService>.Instance);

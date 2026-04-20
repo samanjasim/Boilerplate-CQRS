@@ -16,6 +16,45 @@ using Xunit;
 
 namespace Starter.Api.Tests.Ai.Retrieval;
 
+internal sealed class FakeNeighborExpander : INeighborExpander
+{
+    public Guid CapturedTenantId { get; private set; }
+    public int CapturedAnchorCount { get; private set; }
+    public int CapturedWindowSize { get; private set; }
+    public bool WasCalled { get; private set; }
+    private readonly IReadOnlyList<RetrievedChunk> _returns;
+
+    public FakeNeighborExpander(IReadOnlyList<RetrievedChunk> returns) => _returns = returns;
+
+    public Task<IReadOnlyList<RetrievedChunk>> ExpandAsync(
+        Guid tenantId,
+        IReadOnlyList<RetrievedChunk> anchors,
+        int windowSize,
+        CancellationToken ct)
+    {
+        WasCalled = true;
+        CapturedTenantId = tenantId;
+        CapturedAnchorCount = anchors.Count;
+        CapturedWindowSize = windowSize;
+        return Task.FromResult(_returns);
+    }
+}
+
+internal sealed class ThrowingNeighborExpander : INeighborExpander
+{
+    public bool WasCalled { get; private set; }
+
+    public Task<IReadOnlyList<RetrievedChunk>> ExpandAsync(
+        Guid tenantId,
+        IReadOnlyList<RetrievedChunk> anchors,
+        int windowSize,
+        CancellationToken ct)
+    {
+        WasCalled = true;
+        throw new InvalidOperationException("NeighborExpander should not have been called");
+    }
+}
+
 internal sealed class FakeQuestionClassifier : IQuestionClassifier
 {
     private readonly QuestionType? _type;
@@ -80,7 +119,8 @@ public sealed class RagRetrievalServiceTests
         FakeKeywordSearchService? kw = null,
         AiRagSettings? settings = null,
         IReranker? reranker = null,
-        IQuestionClassifier? classifier = null)
+        IQuestionClassifier? classifier = null,
+        INeighborExpander? neighborExpander = null)
     {
         var ragSettings = settings ?? new AiRagSettings
         {
@@ -102,6 +142,7 @@ public sealed class RagRetrievalServiceTests
             classifier ?? new NoOpQuestionClassifier(),
             reranker ?? new NoOpReranker(),
             new RerankStrategySelector(ragSettings),
+            neighborExpander ?? new NoOpNeighborExpander(),
             new TokenCounter(),
             Options.Create(ragSettings),
             NullLogger<RagRetrievalService>.Instance);
@@ -386,5 +427,108 @@ public sealed class RagRetrievalServiceTests
 
         reranker.CapturedContext.Should().NotBeNull();
         reranker.CapturedContext!.QuestionType.Should().Be(QuestionType.Reasoning);
+    }
+
+    [Fact]
+    public async Task Retrieve_populates_Siblings_when_neighbor_window_positive()
+    {
+        await using var db = CreateDb();
+
+        var documentId = Guid.NewGuid();
+        var chunk = AiDocumentChunk.Create(
+            documentId: documentId,
+            chunkLevel: "child",
+            content: "anchor chunk content",
+            chunkIndex: 5,
+            tokenCount: 5,
+            qdrantPointId: Guid.NewGuid());
+        db.AiDocumentChunks.Add(chunk);
+        await db.SaveChangesAsync();
+
+        var fakeVs = new FakeVectorStore
+        {
+            HitsToReturn = [new VectorSearchHit(chunk.QdrantPointId, 0.9m)]
+        };
+
+        var sibling1 = new RetrievedChunk(Guid.NewGuid(), documentId, "doc-x", "sib content A", null, null, "child", 0, 0, 0, null, 4);
+        var sibling2 = new RetrievedChunk(Guid.NewGuid(), documentId, "doc-x", "sib content B", null, null, "child", 0, 0, 0, null, 6);
+        var fakeExpander = new FakeNeighborExpander([sibling1, sibling2]);
+
+        var settings = new AiRagSettings
+        {
+            TopK = 5,
+            RetrievalTopK = 20,
+            VectorWeight = 1.0m,
+            KeywordWeight = 1.0m,
+            MaxContextTokens = 4000,
+            IncludeParentContext = false,
+            MinHybridScore = 0.0m,
+            NeighborWindowSize = 2
+        };
+
+        var svc = BuildService(db, vs: fakeVs, settings: settings, neighborExpander: fakeExpander);
+
+        var ctx = await svc.RetrieveForQueryAsync(
+            tenantId: Guid.NewGuid(),
+            queryText: "test query",
+            documentFilter: null,
+            topK: 5,
+            minScore: null,
+            includeParents: false,
+            ct: CancellationToken.None);
+
+        ctx.Siblings.Should().HaveCount(2);
+        fakeExpander.WasCalled.Should().BeTrue();
+        fakeExpander.CapturedAnchorCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Retrieve_skips_neighbor_expansion_when_window_zero()
+    {
+        await using var db = CreateDb();
+
+        var documentId = Guid.NewGuid();
+        var chunk = AiDocumentChunk.Create(
+            documentId: documentId,
+            chunkLevel: "child",
+            content: "anchor chunk content",
+            chunkIndex: 5,
+            tokenCount: 5,
+            qdrantPointId: Guid.NewGuid());
+        db.AiDocumentChunks.Add(chunk);
+        await db.SaveChangesAsync();
+
+        var fakeVs = new FakeVectorStore
+        {
+            HitsToReturn = [new VectorSearchHit(chunk.QdrantPointId, 0.9m)]
+        };
+
+        var throwingExpander = new ThrowingNeighborExpander();
+
+        var settings = new AiRagSettings
+        {
+            TopK = 5,
+            RetrievalTopK = 20,
+            VectorWeight = 1.0m,
+            KeywordWeight = 1.0m,
+            MaxContextTokens = 4000,
+            IncludeParentContext = false,
+            MinHybridScore = 0.0m,
+            NeighborWindowSize = 0
+        };
+
+        var svc = BuildService(db, vs: fakeVs, settings: settings, neighborExpander: throwingExpander);
+
+        var ctx = await svc.RetrieveForQueryAsync(
+            tenantId: Guid.NewGuid(),
+            queryText: "test query",
+            documentFilter: null,
+            topK: 5,
+            minScore: null,
+            includeParents: false,
+            ct: CancellationToken.None);
+
+        ctx.Siblings.Should().BeEmpty();
+        throwingExpander.WasCalled.Should().BeFalse();
     }
 }

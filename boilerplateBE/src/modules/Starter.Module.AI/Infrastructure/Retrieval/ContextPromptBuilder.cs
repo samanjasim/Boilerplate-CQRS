@@ -39,6 +39,22 @@ internal static class ContextPromptBuilder
                 sb.AppendLine();
             }
 
+            if (context.Siblings.Count > 0)
+            {
+                sb.AppendLine("--- Nearby context ---");
+                foreach (var sibling in context.Siblings)
+                {
+                    sb.Append("[Document: \"").Append(sibling.DocumentName).Append('"');
+                    if (!string.IsNullOrWhiteSpace(sibling.SectionTitle))
+                        sb.Append(" · Section: \"").Append(sibling.SectionTitle).Append('"');
+                    if (sibling.PageNumber.HasValue)
+                        sb.Append(" · Page ").Append(sibling.PageNumber);
+                    sb.Append(']').AppendLine();
+                    sb.AppendLine(sibling.Content);
+                    sb.AppendLine();
+                }
+            }
+
             sb.AppendLine("</context>");
             sb.AppendLine();
         }

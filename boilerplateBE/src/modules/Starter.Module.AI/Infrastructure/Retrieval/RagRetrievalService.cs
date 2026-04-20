@@ -22,6 +22,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
     private readonly IQuestionClassifier _classifier;
     private readonly IReranker _reranker;
     private readonly RerankStrategySelector _rerankSelector;
+    private readonly INeighborExpander _neighborExpander;
     private readonly TokenCounter _tokenCounter;
     private readonly AiRagSettings _settings;
     private readonly ILogger<RagRetrievalService> _logger;
@@ -35,6 +36,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         IQuestionClassifier classifier,
         IReranker reranker,
         RerankStrategySelector rerankSelector,
+        INeighborExpander neighborExpander,
         TokenCounter tokenCounter,
         IOptions<AiRagSettings> settings,
         ILogger<RagRetrievalService> logger)
@@ -47,6 +49,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         _classifier = classifier;
         _reranker = reranker;
         _rerankSelector = rerankSelector;
+        _neighborExpander = neighborExpander;
         _tokenCounter = tokenCounter;
         _settings = settings.Value;
         _logger = logger;
@@ -330,7 +333,19 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         var (trimmedChildren, trimmedParents, totalTokens, truncated) =
             TrimToBudget(childChunks, parentChunks, _settings.MaxContextTokens);
 
-        return new RetrievedContext(trimmedChildren, trimmedParents, totalTokens, truncated, degraded, []);
+        IReadOnlyList<RetrievedChunk> siblings = Array.Empty<RetrievedChunk>();
+        if (_settings.NeighborWindowSize > 0 && trimmedChildren.Count > 0)
+        {
+            var expanded = await WithTimeoutAsync(
+                innerCt => _neighborExpander.ExpandAsync(tenantId, trimmedChildren, _settings.NeighborWindowSize, innerCt),
+                _settings.StageTimeoutNeighborMs,
+                "neighbor-expand",
+                degraded,
+                ct);
+            if (expanded is not null) siblings = expanded;
+        }
+
+        return new RetrievedContext(trimmedChildren, trimmedParents, totalTokens, truncated, degraded, siblings);
     }
 
     private RetrievedChunk Map(

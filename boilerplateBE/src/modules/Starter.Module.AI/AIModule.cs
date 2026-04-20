@@ -13,6 +13,7 @@ using Starter.Module.AI.Infrastructure.Ingestion;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Services;
+using Starter.Module.AI.Infrastructure.Retrieval;
 using Starter.Module.AI.Infrastructure.Retrieval.Classification;
 using Starter.Module.AI.Infrastructure.Settings;
 
@@ -85,6 +86,7 @@ public sealed class AIModule : IModule
         services.AddScoped<Infrastructure.Retrieval.Reranking.PointwiseReranker>();
         services.AddScoped<IReranker, Infrastructure.Retrieval.Reranking.Reranker>();
         services.AddScoped<IQuestionClassifier, QuestionClassifier>();
+        services.AddScoped<INeighborExpander, NeighborExpander>();
         services.AddScoped<IRagRetrievalService, Infrastructure.Retrieval.RagRetrievalService>();
 
         services.AddSingleton<IAiToolRegistry, AiToolRegistryService>();
