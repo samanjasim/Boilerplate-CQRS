@@ -464,5 +464,99 @@ public sealed class WorkflowModule : IModule
                     new("InReview", "Draft", "RequestChanges"),
                 ]),
             ct: cancellationToken);
+
+        // 4. Expense Approval with Dynamic Forms + SLA — demonstrates formFields and SLA tracking
+        await workflowService.SeedTemplateAsync(
+            name: "expense-approval",
+            entityType: "Expense",
+            config: new WorkflowTemplateConfig(
+                DisplayName: "Expense Approval with Review Form",
+                Description: "Approval with structured form data collection. Reviewer must fill in approved amount and reason. SLA: reminder after 4h, escalation after 8h.",
+                States:
+                [
+                    new("Draft", "Draft", "Initial"),
+                    new("ManagerReview", "Manager Review", "HumanTask",
+                        Assignee: new("Role", new() { ["roleName"] = "Admin" }),
+                        Actions: ["Approve", "Reject", "ReturnForRevision"],
+                        FormFields:
+                        [
+                            new("approvedAmount", "Approved Amount ($)", "number", Required: true, Min: 0, Max: 100000),
+                            new("category", "Expense Category", "select", Required: true,
+                                Options: [new("travel", "Travel"), new("equipment", "Equipment"), new("software", "Software"), new("other", "Other")]),
+                            new("notes", "Review Notes", "textarea", Required: false, MaxLength: 500, Placeholder: "Any additional notes about this expense..."),
+                            new("confirmed", "I confirm this expense complies with company policy", "checkbox", Required: true),
+                        ],
+                        Sla: new(ReminderAfterHours: 4, EscalateAfterHours: 8),
+                        OnEnter:
+                        [
+                            new("notify", Template: "workflow.task-assigned", To: "assignee"),
+                            new("inAppNotify", To: "assignee"),
+                            new("activity", Action: "workflow_transition"),
+                        ]),
+                    new("Approved", "Approved", "Terminal",
+                        OnEnter:
+                        [
+                            new("notify", Template: "workflow.request-approved", To: "initiator"),
+                            new("activity", Action: "workflow_transition"),
+                        ]),
+                    new("Rejected", "Rejected", "Terminal",
+                        OnEnter:
+                        [
+                            new("notify", Template: "workflow.request-rejected", To: "initiator"),
+                            new("activity", Action: "workflow_transition"),
+                        ]),
+                ],
+                Transitions:
+                [
+                    new("Draft", "ManagerReview", "Submit"),
+                    new("ManagerReview", "Approved", "Approve"),
+                    new("ManagerReview", "Rejected", "Reject"),
+                    new("ManagerReview", "Draft", "ReturnForRevision"),
+                ]),
+            ct: cancellationToken);
+
+        // 5. Board Resolution with Parallel Approval — demonstrates AllOf parallel + compound conditions
+        await workflowService.SeedTemplateAsync(
+            name: "board-resolution",
+            entityType: "Resolution",
+            config: new WorkflowTemplateConfig(
+                DisplayName: "Board Resolution (Parallel Approval)",
+                Description: "Requires approval from multiple board members simultaneously (AllOf). All must approve for the resolution to pass.",
+                States:
+                [
+                    new("Draft", "Draft", "Initial"),
+                    new("BoardVote", "Board Vote", "HumanTask",
+                        Parallel: new("AllOf",
+                        [
+                            new("Role", new() { ["roleName"] = "Admin" }),
+                        ]),
+                        Actions: ["Approve", "Reject"],
+                        OnEnter:
+                        [
+                            new("notify", Template: "workflow.task-assigned", To: "assignee"),
+                            new("inAppNotify", To: "assignee"),
+                            new("activity", Action: "workflow_transition"),
+                        ]),
+                    new("Passed", "Resolution Passed", "Terminal",
+                        OnEnter:
+                        [
+                            new("notify", Template: "workflow.request-approved", To: "initiator"),
+                            new("activity", Action: "workflow_transition"),
+                            new("webhook", Event: "workflow.completed"),
+                        ]),
+                    new("Failed", "Resolution Failed", "Terminal",
+                        OnEnter:
+                        [
+                            new("notify", Template: "workflow.request-rejected", To: "initiator"),
+                            new("activity", Action: "workflow_transition"),
+                        ]),
+                ],
+                Transitions:
+                [
+                    new("Draft", "BoardVote", "Submit"),
+                    new("BoardVote", "Passed", "Approve"),
+                    new("BoardVote", "Failed", "Reject"),
+                ]),
+            ct: cancellationToken);
     }
 }
