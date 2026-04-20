@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Services.Ingestion;
 using Starter.Module.AI.Domain.Enums;
+using Starter.Module.AI.Infrastructure.Observability;
 using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Settings;
 
@@ -46,9 +47,17 @@ internal sealed class CachingEmbeddingService : IEmbeddingService
         var cached = await _cache.GetAsync<float[]>(key, ct);
         if (cached is not null && cached.Length > 0)
         {
+            AiRagMetrics.CacheRequests.Add(
+                1,
+                new KeyValuePair<string, object?>("rag.cache", "embed"),
+                new KeyValuePair<string, object?>("rag.hit", true));
             if (_vectorSize < 0) _vectorSize = cached.Length;
             return [cached];
         }
+        AiRagMetrics.CacheRequests.Add(
+            1,
+            new KeyValuePair<string, object?>("rag.cache", "embed"),
+            new KeyValuePair<string, object?>("rag.hit", false));
 
         var result = await _inner.EmbedAsync(texts, ct, attribution, requestType);
         if (result.Length == 1 && result[0].Length > 0 && _settings.EmbeddingCacheTtlSeconds > 0)
