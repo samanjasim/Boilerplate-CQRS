@@ -60,6 +60,18 @@ public sealed class ApprovalTaskConfiguration : IEntityTypeConfiguration<Approva
         builder.Property(t => t.CompletedByUserId)
             .HasColumnName("completed_by_user_id");
 
+        builder.Property(t => t.GroupId)
+            .HasColumnName("group_id");
+
+        builder.Property(t => t.ReminderSentAt)
+            .HasColumnName("reminder_sent_at");
+
+        builder.Property(t => t.EscalatedAt)
+            .HasColumnName("escalated_at");
+
+        builder.Property(t => t.OriginalAssigneeUserId)
+            .HasColumnName("original_assignee_user_id");
+
         builder.Property(t => t.CreatedAt)
             .HasColumnName("created_at")
             .IsRequired();
@@ -82,5 +94,6 @@ public sealed class ApprovalTaskConfiguration : IEntityTypeConfiguration<Approva
         builder.HasIndex(t => new { t.AssigneeUserId, t.Status });
         builder.HasIndex(t => new { t.InstanceId, t.Status });
         builder.HasIndex(t => new { t.TenantId, t.Status });
+        builder.HasIndex(t => t.GroupId);
     }
 }

@@ -29,6 +29,7 @@ public sealed class WorkflowDbContext : DbContext, IModuleDbContext
     public DbSet<WorkflowInstance> WorkflowInstances => Set<WorkflowInstance>();
     public DbSet<WorkflowStep> WorkflowSteps => Set<WorkflowStep>();
     public DbSet<ApprovalTask> ApprovalTasks => Set<ApprovalTask>();
+    public DbSet<DelegationRule> DelegationRules => Set<DelegationRule>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -44,5 +45,8 @@ public sealed class WorkflowDbContext : DbContext, IModuleDbContext
 
         modelBuilder.Entity<ApprovalTask>().HasQueryFilter(t =>
             CurrentTenantId == null || t.TenantId == CurrentTenantId);
+
+        modelBuilder.Entity<DelegationRule>().HasQueryFilter(r =>
+            CurrentTenantId == null || r.TenantId == CurrentTenantId);
     }
 }

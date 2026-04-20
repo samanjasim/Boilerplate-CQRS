@@ -43,6 +43,7 @@ public sealed class WorkflowModule : IModule
         services.AddScoped<AssigneeResolverService>();
         services.AddScoped<IAssigneeResolverProvider, BuiltInAssigneeProvider>();
         services.AddScoped<HookExecutor>();
+        services.AddSingleton<IFormDataValidator, FormDataValidator>();
 
         // Register WorkflowInstance as a commentable entity so the Comments &
         // Activity module accepts comments on workflow instances. This makes the

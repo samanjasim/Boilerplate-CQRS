@@ -130,4 +130,10 @@ public sealed class WorkflowInstance : AggregateRoot, ITenantEntity
             userId,
             TenantId));
     }
+
+    public void UpdateContext(string contextJson)
+    {
+        ContextJson = contextJson;
+        ModifiedAt = DateTime.UtcNow;
+    }
 }

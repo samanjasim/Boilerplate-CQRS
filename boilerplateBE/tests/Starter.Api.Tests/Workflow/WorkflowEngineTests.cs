@@ -62,6 +62,7 @@ public sealed class WorkflowEngineTests : IDisposable
             hookExecutor,
             _commentService.Object,
             _userReader.Object,
+            new FormDataValidator(),
             NullLogger<WorkflowEngine>.Instance);
     }
 

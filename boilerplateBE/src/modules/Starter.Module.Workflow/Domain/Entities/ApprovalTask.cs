@@ -18,6 +18,10 @@ public sealed class ApprovalTask : AggregateRoot, ITenantEntity
     public DateTime? DueDate { get; private set; }
     public DateTime? CompletedAt { get; private set; }
     public Guid? CompletedByUserId { get; private set; }
+    public Guid? GroupId { get; private set; }
+    public DateTime? ReminderSentAt { get; private set; }
+    public DateTime? EscalatedAt { get; private set; }
+    public Guid? OriginalAssigneeUserId { get; private set; }
 
     public uint RowVersion { get; private set; }
 
@@ -33,7 +37,9 @@ public sealed class ApprovalTask : AggregateRoot, ITenantEntity
         Guid? assigneeUserId,
         string? assigneeRole,
         string? assigneeStrategyJson,
-        DateTime? dueDate) : base(id)
+        DateTime? dueDate,
+        Guid? groupId,
+        Guid? originalAssigneeUserId) : base(id)
     {
         TenantId = tenantId;
         InstanceId = instanceId;
@@ -43,6 +49,8 @@ public sealed class ApprovalTask : AggregateRoot, ITenantEntity
         AssigneeStrategyJson = assigneeStrategyJson;
         Status = TaskStatus.Pending;
         DueDate = dueDate;
+        GroupId = groupId;
+        OriginalAssigneeUserId = originalAssigneeUserId;
     }
 
     public static ApprovalTask Create(
@@ -54,7 +62,9 @@ public sealed class ApprovalTask : AggregateRoot, ITenantEntity
         string? assigneeStrategyJson,
         DateTime? dueDate,
         string entityType,
-        Guid entityId)
+        Guid entityId,
+        Guid? groupId = null,
+        Guid? originalAssigneeUserId = null)
     {
         var task = new ApprovalTask(
             Guid.NewGuid(),
@@ -64,7 +74,9 @@ public sealed class ApprovalTask : AggregateRoot, ITenantEntity
             assigneeUserId,
             assigneeRole,
             assigneeStrategyJson,
-            dueDate);
+            dueDate,
+            groupId,
+            originalAssigneeUserId);
 
         task.RaiseDomainEvent(new ApprovalTaskAssignedEvent(
             task.Id,
@@ -105,6 +117,18 @@ public sealed class ApprovalTask : AggregateRoot, ITenantEntity
             throw new InvalidOperationException($"Cannot cancel task '{Id}' — status is '{Status}', expected 'Pending'.");
 
         Status = TaskStatus.Cancelled;
+        ModifiedAt = DateTime.UtcNow;
+    }
+
+    public void MarkReminderSent()
+    {
+        ReminderSentAt = DateTime.UtcNow;
+        ModifiedAt = DateTime.UtcNow;
+    }
+
+    public void MarkEscalated()
+    {
+        EscalatedAt = DateTime.UtcNow;
         ModifiedAt = DateTime.UtcNow;
     }
 }

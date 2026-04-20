@@ -21,6 +21,7 @@ public sealed class WorkflowEngine(
     HookExecutor hookExecutor,
     ICommentService commentService,
     IUserReader userReader,
+    IFormDataValidator formDataValidator,
     ILogger<WorkflowEngine> logger) : IWorkflowService
 {
     private static readonly JsonSerializerOptions JsonOpts = new()
@@ -335,6 +336,19 @@ public sealed class WorkflowEngine(
         var fromStateConfig = states.FirstOrDefault(s => s.Name == fromState);
         var toStateConfig = states.FirstOrDefault(s => s.Name == toState);
 
+        // Validate form data if the current state has form fields defined
+        if (fromStateConfig?.FormFields is { Count: > 0 })
+        {
+            var validationErrors = formDataValidator.Validate(fromStateConfig.FormFields, formData);
+            if (validationErrors.Count > 0)
+            {
+                logger.LogWarning(
+                    "Form data validation failed for task {TaskId}: {Errors}",
+                    taskId, string.Join(", ", validationErrors.Select(e => $"{e.FieldName}: {e.Message}")));
+                return false;
+            }
+        }
+
         // Execute onExit hooks for the old state
         if (fromStateConfig is not null)
         {
@@ -350,6 +364,9 @@ public sealed class WorkflowEngine(
         // Complete the task
         task.Complete(action, comment, actorUserId);
 
+        // Serialize form data into step metadata for history
+        var metadataJson = formData is not null ? JsonSerializer.Serialize(formData, JsonOpts) : null;
+
         // Create a WorkflowStep record
         var step = WorkflowStep.Create(
             instance.Id,
@@ -359,9 +376,22 @@ public sealed class WorkflowEngine(
             action,
             actorUserId,
             comment,
-            metadataJson: null);
+            metadataJson);
 
         context.WorkflowSteps.Add(step);
+
+        // Merge form data into instance context so downstream conditions can reference it
+        if (formData is not null)
+        {
+            var existingContext = instance.ContextJson is not null
+                ? JsonSerializer.Deserialize<Dictionary<string, object>>(instance.ContextJson, JsonOpts) ?? new()
+                : new Dictionary<string, object>();
+
+            foreach (var (key, value) in formData)
+                existingContext[key] = value;
+
+            instance.UpdateContext(JsonSerializer.Serialize(existingContext, JsonOpts));
+        }
 
         // Save the comment via ICommentService if provided
         if (!string.IsNullOrWhiteSpace(comment))
@@ -483,6 +513,7 @@ public sealed class WorkflowEngine(
             // Derive available actions from the definition's transitions for
             // the instance's current state (manual transitions only).
             List<string>? availableActions = null;
+            List<FormFieldDefinition>? formFields = null;
             try
             {
                 var transitions = DeserializeTransitions(t.Instance.Definition.TransitionsJson);
@@ -492,6 +523,10 @@ public sealed class WorkflowEngine(
                     .Select(tr => tr.Trigger)
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList();
+
+                var states = DeserializeStates(t.Instance.Definition.StatesJson);
+                var stateConfig = states.FirstOrDefault(s => s.Name == t.Instance.CurrentState);
+                formFields = stateConfig?.FormFields is { Count: > 0 } ? stateConfig.FormFields : null;
             }
             catch
             {
@@ -509,7 +544,9 @@ public sealed class WorkflowEngine(
                 t.CreatedAt,
                 t.DueDate,
                 availableActions,
-                t.Instance.EntityDisplayName);
+                t.Instance.EntityDisplayName,
+                FormFields: formFields,
+                GroupId: t.GroupId);
         }).ToList();
     }
 

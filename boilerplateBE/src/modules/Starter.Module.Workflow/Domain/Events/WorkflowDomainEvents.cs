@@ -49,3 +49,13 @@ public sealed record ApprovalTaskCompletedEvent(
     Guid ActorUserId,
     string? Comment,
     Guid? TenantId) : DomainEventBase;
+
+public sealed record WorkflowTaskEscalatedEvent(
+    Guid TaskId,
+    Guid InstanceId,
+    Guid OriginalAssigneeUserId,
+    Guid NewAssigneeUserId,
+    string StepName,
+    string EntityType,
+    Guid EntityId,
+    Guid? TenantId) : DomainEventBase;
