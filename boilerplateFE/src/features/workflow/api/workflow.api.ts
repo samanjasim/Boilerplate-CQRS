@@ -1,6 +1,6 @@
 import { apiClient } from '@/lib/axios';
 import { API_ENDPOINTS } from '@/config/api.config';
-import type { StartWorkflowRequest, ExecuteTaskRequest, UpdateDefinitionRequest } from '@/types/workflow.types';
+import type { StartWorkflowRequest, ExecuteTaskRequest, UpdateDefinitionRequest, CreateDelegationRequest } from '@/types/workflow.types';
 
 export const workflowApi = {
   // Definitions
@@ -44,4 +44,17 @@ export const workflowApi = {
 
   executeTask: (taskId: string, data: ExecuteTaskRequest) =>
     apiClient.post(API_ENDPOINTS.WORKFLOW.TASK_EXECUTE(taskId), data).then((r) => r.data),
+
+  // Delegations
+  getDelegations: () =>
+    apiClient.get(API_ENDPOINTS.WORKFLOW.DELEGATIONS).then((r) => r.data),
+
+  getActiveDelegation: () =>
+    apiClient.get(API_ENDPOINTS.WORKFLOW.DELEGATION_ACTIVE).then((r) => r.data),
+
+  createDelegation: (data: CreateDelegationRequest) =>
+    apiClient.post(API_ENDPOINTS.WORKFLOW.DELEGATIONS, data).then((r) => r.data),
+
+  cancelDelegation: (id: string) =>
+    apiClient.delete(API_ENDPOINTS.WORKFLOW.DELEGATION_CANCEL(id)).then((r) => r.data),
 };

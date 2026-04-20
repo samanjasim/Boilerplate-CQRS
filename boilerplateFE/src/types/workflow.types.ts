@@ -81,6 +81,14 @@ export interface PendingTaskSummary {
   dueDate: string | null;
   availableActions: string[] | null;
   entityDisplayName: string | null;
+  formFields?: FormFieldDefinition[] | null;
+  groupId?: string | null;
+  parallelTotal?: number | null;
+  parallelCompleted?: number | null;
+  isOverdue?: boolean;
+  hoursOverdue?: number | null;
+  isDelegated?: boolean;
+  delegatedFromDisplayName?: string | null;
 }
 
 export interface WorkflowStepRecord {
@@ -93,6 +101,7 @@ export interface WorkflowStepRecord {
   comment: string | null;
   timestamp: string;
   metadata: Record<string, unknown> | null;
+  formData?: Record<string, unknown> | null;
 }
 
 export interface WorkflowInstanceSummary {
@@ -111,6 +120,41 @@ export interface WorkflowInstanceSummary {
   canResubmit: boolean;
 }
 
+// Form field types
+export interface FormFieldDefinition {
+  name: string;
+  label: string;
+  type: 'text' | 'textarea' | 'number' | 'date' | 'select' | 'checkbox';
+  required?: boolean;
+  options?: SelectOption[];
+  min?: number;
+  max?: number;
+  maxLength?: number;
+  placeholder?: string;
+  description?: string;
+}
+
+export interface SelectOption {
+  value: string;
+  label: string;
+}
+
+// Delegation types
+export interface DelegationRule {
+  id: string;
+  toUserId: string;
+  toDisplayName?: string;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+}
+
+export interface CreateDelegationRequest {
+  toUserId: string;
+  startDate: string;
+  endDate: string;
+}
+
 // Request types
 export interface StartWorkflowRequest {
   entityType: string;
@@ -123,6 +167,7 @@ export interface StartWorkflowRequest {
 export interface ExecuteTaskRequest {
   action: string;
   comment?: string;
+  formData?: Record<string, unknown>;
 }
 
 export interface UpdateDefinitionRequest {

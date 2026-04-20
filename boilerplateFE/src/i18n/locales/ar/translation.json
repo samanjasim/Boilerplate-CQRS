@@ -1229,6 +1229,35 @@
       "returnedForRevision": "تم الإرجاع للمراجعة",
       "returnedForRevisionDesc": "تم إرجاع سير العمل هذا للمراجعة. راجع وأعد الإرسال عندما تكون جاهزاً."
     },
-    "resubmitSuccess": "تم إعادة إرسال سير العمل"
+    "resubmitSuccess": "تم إعادة إرسال سير العمل",
+    "delegation": {
+      "title": "تفويض مهامي",
+      "description": "فوّض مهامك المعلقة إلى مستخدم آخر لفترة محددة.",
+      "delegateTo": "تفويض إلى",
+      "userPlaceholder": "أدخل معرّف المستخدم",
+      "startDate": "تاريخ البدء",
+      "endDate": "تاريخ الانتهاء",
+      "confirm": "إنشاء التفويض",
+      "cancel": "إلغاء التفويض",
+      "banner": "مهامك مفوّضة إلى {{name}} حتى {{date}}",
+      "badgeFrom": "مفوّض من {{name}}",
+      "badgeTo": "مفوّض إلى {{name}}",
+      "success": "تم إنشاء التفويض بنجاح",
+      "cancelled": "تم إلغاء التفويض"
+    },
+    "sla": {
+      "overdue": "متأخر",
+      "overdueHours": "متأخر بـ {{hours}} ساعة",
+      "reminderSent": "تم إرسال التذكير"
+    },
+    "parallel": {
+      "progress": "{{completed}} من {{total}} تمت الموافقة",
+      "waiting": "بانتظار {{remaining}} إضافية"
+    },
+    "forms": {
+      "required": "مطلوب",
+      "submittedData": "البيانات المرسلة",
+      "selectPlaceholder": "اختر..."
+    }
   }
 }

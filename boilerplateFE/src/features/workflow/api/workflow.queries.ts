@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { queryKeys } from '@/lib/query/keys';
 import { workflowApi } from './workflow.api';
-import type { StartWorkflowRequest, ExecuteTaskRequest, UpdateDefinitionRequest } from '@/types/workflow.types';
+import type { StartWorkflowRequest, ExecuteTaskRequest, UpdateDefinitionRequest, CreateDelegationRequest } from '@/types/workflow.types';
 import { toast } from 'sonner';
 import i18n from '@/i18n';
 
@@ -134,6 +134,48 @@ export function useCloneDefinition() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.workflow.definitions.all });
       toast.success(i18n.t('workflow.definitionCloned', 'Workflow definition cloned'));
+    },
+    onError: handleMutationError,
+  });
+}
+
+// ── Delegation Queries ────────────────────────────────────────────────────
+
+export function useDelegations() {
+  return useQuery({
+    queryKey: queryKeys.workflow.delegations.list(),
+    queryFn: () => workflowApi.getDelegations(),
+  });
+}
+
+export function useActiveDelegation() {
+  return useQuery({
+    queryKey: queryKeys.workflow.delegations.active(),
+    queryFn: () => workflowApi.getActiveDelegation(),
+  });
+}
+
+export function useCreateDelegation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateDelegationRequest) => workflowApi.createDelegation(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.workflow.delegations.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.workflow.tasks.all });
+      toast.success(i18n.t('workflow.delegation.success'));
+    },
+    onError: handleMutationError,
+  });
+}
+
+export function useCancelDelegation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => workflowApi.cancelDelegation(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.workflow.delegations.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.workflow.tasks.all });
+      toast.success(i18n.t('workflow.delegation.cancelled'));
     },
     onError: handleMutationError,
   });

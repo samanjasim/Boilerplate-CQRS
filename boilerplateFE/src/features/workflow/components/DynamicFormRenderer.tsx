@@ -1,0 +1,118 @@
+import { useTranslation } from 'react-i18next';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import type { FormFieldDefinition } from '@/types/workflow.types';
+
+interface DynamicFormRendererProps {
+  fields: FormFieldDefinition[];
+  values: Record<string, unknown>;
+  onChange: (name: string, value: unknown) => void;
+  errors?: Record<string, string>;
+}
+
+export function DynamicFormRenderer({ fields, values, onChange, errors }: DynamicFormRendererProps) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="space-y-4">
+      {fields.map((field) => (
+        <div key={field.name} className="space-y-1.5">
+          {field.type !== 'checkbox' && (
+            <Label htmlFor={`form-field-${field.name}`} className="text-sm font-medium text-foreground">
+              {field.label}
+              {field.required && <span className="text-destructive ms-0.5">*</span>}
+            </Label>
+          )}
+
+          {field.type === 'text' && (
+            <Input
+              id={`form-field-${field.name}`}
+              value={(values[field.name] as string) ?? ''}
+              onChange={(e) => onChange(field.name, e.target.value)}
+              placeholder={field.placeholder}
+              maxLength={field.maxLength}
+            />
+          )}
+
+          {field.type === 'textarea' && (
+            <Textarea
+              id={`form-field-${field.name}`}
+              value={(values[field.name] as string) ?? ''}
+              onChange={(e) => onChange(field.name, e.target.value)}
+              placeholder={field.placeholder}
+              maxLength={field.maxLength}
+              rows={3}
+            />
+          )}
+
+          {field.type === 'number' && (
+            <Input
+              id={`form-field-${field.name}`}
+              type="number"
+              value={(values[field.name] as number) ?? ''}
+              onChange={(e) => onChange(field.name, e.target.value ? Number(e.target.value) : '')}
+              placeholder={field.placeholder}
+              min={field.min}
+              max={field.max}
+            />
+          )}
+
+          {field.type === 'date' && (
+            <Input
+              id={`form-field-${field.name}`}
+              type="date"
+              value={(values[field.name] as string) ?? ''}
+              onChange={(e) => onChange(field.name, e.target.value)}
+            />
+          )}
+
+          {field.type === 'select' && (
+            <Select
+              value={(values[field.name] as string) ?? ''}
+              onValueChange={(val) => onChange(field.name, val)}
+            >
+              <SelectTrigger id={`form-field-${field.name}`}>
+                <SelectValue placeholder={field.placeholder ?? t('workflow.forms.selectPlaceholder', 'Select...')} />
+              </SelectTrigger>
+              <SelectContent>
+                {field.options?.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {field.type === 'checkbox' && (
+            <div className="flex items-center gap-2">
+              <input
+                id={`form-field-${field.name}`}
+                type="checkbox"
+                checked={!!values[field.name]}
+                onChange={(e) => onChange(field.name, e.target.checked)}
+                className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+              />
+              <Label htmlFor={`form-field-${field.name}`} className="text-sm font-medium text-foreground">
+                {field.label}
+                {field.required && <span className="text-destructive ms-0.5">*</span>}
+              </Label>
+            </div>
+          )}
+
+          {field.description && (
+            <p className="text-xs text-muted-foreground">{field.description}</p>
+          )}
+
+          {errors?.[field.name] && (
+            <p className="text-xs text-destructive">{errors[field.name]}</p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}

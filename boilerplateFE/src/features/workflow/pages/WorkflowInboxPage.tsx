@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Inbox } from 'lucide-react';
+import { Inbox, Users, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -9,8 +9,9 @@ import {
 } from '@/components/ui/table';
 import { PageHeader, EmptyState, Pagination } from '@/components/common';
 import { getPersistedPageSize } from '@/components/common/pagination-utils';
-import { usePendingTasks } from '../api';
+import { usePendingTasks, useActiveDelegation, useCancelDelegation } from '../api';
 import { ApprovalDialog } from '../components/ApprovalDialog';
+import { DelegationDialog } from '../components/DelegationDialog';
 import { formatDate } from '@/utils/format';
 import type { PendingTaskSummary } from '@/types/workflow.types';
 
@@ -19,14 +20,49 @@ export default function WorkflowInboxPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(getPersistedPageSize);
   const [selectedTask, setSelectedTask] = useState<PendingTaskSummary | null>(null);
+  const [delegationOpen, setDelegationOpen] = useState(false);
 
   const { data, isLoading } = usePendingTasks({ page, pageSize });
+  const { data: activeDelegation } = useActiveDelegation();
+  const { mutate: cancelDelegation, isPending: cancellingDelegation } = useCancelDelegation();
+
   const tasks: PendingTaskSummary[] = data?.data ?? [];
   const pagination = data?.pagination;
+  const delegation = activeDelegation?.data ?? activeDelegation;
+  const hasDelegation = delegation && delegation.isActive;
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t('workflow.inbox.title')} />
+      <PageHeader
+        title={t('workflow.inbox.title')}
+        actions={
+          <Button variant="outline" onClick={() => setDelegationOpen(true)}>
+            <Users className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+            {t('workflow.delegation.title')}
+          </Button>
+        }
+      />
+
+      {/* Active delegation banner */}
+      {hasDelegation && (
+        <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/30">
+          <p className="text-sm text-amber-800 dark:text-amber-200">
+            {t('workflow.delegation.banner', {
+              name: delegation.toDisplayName ?? delegation.toUserId,
+              date: formatDate(delegation.endDate),
+            })}
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => cancelDelegation(delegation.id)}
+            disabled={cancellingDelegation}
+          >
+            <X className="h-4 w-4 ltr:mr-1 rtl:ml-1" />
+            {t('workflow.delegation.cancel')}
+          </Button>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex justify-center py-12">
@@ -55,11 +91,21 @@ export default function WorkflowInboxPage() {
               {tasks.map((task) => (
                 <TableRow key={task.taskId}>
                   <TableCell>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Badge variant="secondary">{task.entityType}</Badge>
                       <span className="text-sm text-foreground truncate max-w-[200px]">
                         {task.entityDisplayName ?? task.entityId.substring(0, 8) + '...'}
                       </span>
+                      {task.isOverdue && (
+                        <Badge variant="destructive">
+                          {t('workflow.sla.overdueHours', { hours: task.hoursOverdue ?? 0 })}
+                        </Badge>
+                      )}
+                      {task.isDelegated && (
+                        <Badge variant="secondary">
+                          {t('workflow.delegation.badgeFrom', { name: task.delegatedFromDisplayName })}
+                        </Badge>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell className="text-foreground">{task.definitionName}</TableCell>
@@ -68,7 +114,7 @@ export default function WorkflowInboxPage() {
                     {formatDate(task.createdAt)}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {task.dueDate ? formatDate(task.dueDate) : '—'}
+                    {task.dueDate ? formatDate(task.dueDate) : '\u2014'}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -106,10 +152,16 @@ export default function WorkflowInboxPage() {
           entityType={selectedTask.entityType}
           entityId={selectedTask.entityId}
           actions={selectedTask.availableActions ?? ['Approve', 'Reject', 'ReturnForRevision']}
+          formFields={selectedTask.formFields}
           open={!!selectedTask}
           onOpenChange={(open) => { if (!open) setSelectedTask(null); }}
         />
       )}
+
+      <DelegationDialog
+        open={delegationOpen}
+        onOpenChange={setDelegationOpen}
+      />
     </div>
   );
 }

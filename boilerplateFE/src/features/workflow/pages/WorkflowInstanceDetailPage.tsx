@@ -268,10 +268,10 @@ export default function WorkflowInstanceDetailPage() {
               {Array.isArray(history) || history?.data ? (
                 <div className="space-y-2">
                   {(Array.isArray(history) ? history : history.data).map(
-                    (record: { toState: string; action: string; actorDisplayName?: string; timestamp: string; comment?: string }, idx: number) => (
+                    (record: { toState: string; action: string; actorDisplayName?: string; timestamp: string; comment?: string; formData?: Record<string, unknown> | null }, idx: number) => (
                       <div key={idx} className="flex items-start gap-3">
                         <div className="h-2.5 w-2.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <p className="text-sm text-foreground">
                             {record.toState} -- {record.action}
                           </p>
@@ -285,6 +285,23 @@ export default function WorkflowInstanceDetailPage() {
                             <p className="text-xs text-muted-foreground italic mt-0.5">
                               &ldquo;{record.comment}&rdquo;
                             </p>
+                          )}
+                          {record.formData && typeof record.formData === 'object' && Object.keys(record.formData).length > 0 && (
+                            <div className="mt-2 rounded-lg border border-border bg-muted/30 p-2">
+                              <p className="text-xs font-medium text-muted-foreground mb-1">
+                                {t('workflow.forms.submittedData')}
+                              </p>
+                              <div className="space-y-0.5">
+                                {Object.entries(record.formData)
+                                  .filter(([, v]) => v !== null && v !== undefined && v !== '')
+                                  .map(([key, value]) => (
+                                    <div key={key} className="flex items-baseline gap-2 text-xs">
+                                      <span className="text-muted-foreground font-medium shrink-0">{key}:</span>
+                                      <span className="text-foreground">{String(value)}</span>
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -330,6 +347,7 @@ export default function WorkflowInstanceDetailPage() {
           entityType={instance.entityType}
           entityId={instance.entityId}
           actions={selectedTask.availableActions ?? ['Approve', 'Reject', 'ReturnForRevision']}
+          formFields={selectedTask.formFields}
           open={!!selectedTask}
           onOpenChange={(open) => { if (!open) setSelectedTask(null); }}
         />

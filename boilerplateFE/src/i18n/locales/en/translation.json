@@ -1273,6 +1273,35 @@
       "returnedForRevision": "Returned for Revision",
       "returnedForRevisionDesc": "This workflow was returned for revision. Review and resubmit when ready."
     },
-    "resubmitSuccess": "Workflow resubmitted"
+    "resubmitSuccess": "Workflow resubmitted",
+    "delegation": {
+      "title": "Delegate My Tasks",
+      "description": "Delegate your pending tasks to another user for a specific period.",
+      "delegateTo": "Delegate To",
+      "userPlaceholder": "Enter user ID",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "confirm": "Create Delegation",
+      "cancel": "Cancel Delegation",
+      "banner": "Your tasks are delegated to {{name}} until {{date}}",
+      "badgeFrom": "Delegated from {{name}}",
+      "badgeTo": "Delegated to {{name}}",
+      "success": "Delegation created successfully",
+      "cancelled": "Delegation cancelled"
+    },
+    "sla": {
+      "overdue": "Overdue",
+      "overdueHours": "Overdue by {{hours}}h",
+      "reminderSent": "Reminder sent"
+    },
+    "parallel": {
+      "progress": "{{completed}} of {{total}} approved",
+      "waiting": "Waiting for {{remaining}} more"
+    },
+    "forms": {
+      "required": "Required",
+      "submittedData": "Submitted Data",
+      "selectPlaceholder": "Select..."
+    }
   }
 }

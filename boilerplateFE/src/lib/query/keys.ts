@@ -212,6 +212,11 @@ export const queryKeys = {
       list: (params?: Record<string, unknown>) => ['workflow', 'tasks', 'list', params] as const,
       count: () => ['workflow', 'tasks', 'count'] as const,
     },
+    delegations: {
+      all: ['workflow', 'delegations'] as const,
+      list: () => ['workflow', 'delegations', 'list'] as const,
+      active: () => ['workflow', 'delegations', 'active'] as const,
+    },
   },
   commentsActivity: {
     all: ['commentsActivity'] as const,

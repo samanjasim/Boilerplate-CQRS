@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useExecuteTask } from '../api';
+import { DynamicFormRenderer } from './DynamicFormRenderer';
+import type { FormFieldDefinition } from '@/types/workflow.types';
 
 interface ApprovalDialogProps {
   taskId: string;
@@ -14,6 +16,7 @@ interface ApprovalDialogProps {
   entityType: string;
   entityId: string;
   actions: string[];
+  formFields?: FormFieldDefinition[] | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -36,19 +39,62 @@ export function ApprovalDialog({
   entityType,
   entityId,
   actions,
+  formFields,
   open,
   onOpenChange,
 }: ApprovalDialogProps) {
   const { t } = useTranslation();
   const [comment, setComment] = useState('');
+  const [formData, setFormData] = useState<Record<string, unknown>>({});
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const { mutate: executeTask, isPending } = useExecuteTask();
 
+  const hasFormFields = formFields && formFields.length > 0;
+
+  const handleFormChange = (name: string, value: unknown) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    // Clear error on change
+    if (formErrors[name]) {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    }
+  };
+
+  const validateForm = (): boolean => {
+    if (!hasFormFields) return true;
+    const errors: Record<string, string> = {};
+    for (const field of formFields) {
+      if (field.required) {
+        const value = formData[field.name];
+        if (value === undefined || value === null || value === '') {
+          errors[field.name] = t('workflow.forms.required');
+        }
+      }
+    }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleAction = (action: string) => {
+    if (!validateForm()) return;
+
     executeTask(
-      { taskId, data: { action, comment: comment || undefined } },
+      {
+        taskId,
+        data: {
+          action,
+          comment: comment || undefined,
+          ...(hasFormFields ? { formData } : {}),
+        },
+      },
       {
         onSuccess: () => {
           setComment('');
+          setFormData({});
+          setFormErrors({});
           onOpenChange(false);
         },
       },
@@ -72,6 +118,15 @@ export function ApprovalDialog({
               {entityId.substring(0, 8)}...
             </span>
           </div>
+
+          {hasFormFields && (
+            <DynamicFormRenderer
+              fields={formFields}
+              values={formData}
+              onChange={handleFormChange}
+              errors={formErrors}
+            />
+          )}
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">
