@@ -87,4 +87,30 @@ public class MarkdownBlockTokenizerTests
         var blocks = Tokenize(md);
         blocks.Should().ContainSingle().Which.Type.Should().Be(BlockType.Code);
     }
+
+    [Fact]
+    public void Dollar_dollar_math_block_is_atomic()
+    {
+        var md = "$$\na = b + c\n$$\n";
+        var blocks = Tokenize(md);
+        blocks.Should().ContainSingle().Which.Type.Should().Be(BlockType.Math);
+        blocks.Single().Text.Should().Be("a = b + c");
+    }
+
+    [Fact]
+    public void Begin_equation_math_block_is_atomic()
+    {
+        var md = "\\begin{equation}\nE = mc^2\n\\end{equation}\n";
+        var blocks = Tokenize(md);
+        blocks.Single().Type.Should().Be(BlockType.Math);
+    }
+
+    [Fact]
+    public void Adjacent_math_blocks_separated_only_by_whitespace_merge()
+    {
+        var md = "$$\na = 1\n$$\n\n$$\nb = 2\n$$\n";
+        var blocks = Tokenize(md);
+        blocks.Should().ContainSingle().Which.Type.Should().Be(BlockType.Math);
+        blocks.Single().Text.Should().Contain("a = 1").And.Contain("b = 2");
+    }
 }
