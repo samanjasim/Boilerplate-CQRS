@@ -595,12 +595,37 @@ public sealed class WorkflowEngine(
                 delegationNameLookup[u.Id] = u.DisplayName;
         }
 
+        // Pre-load parallel group sibling counts to avoid N+1 queries
+        var groupIds = tasks
+            .Where(t => t.GroupId.HasValue)
+            .Select(t => t.GroupId!.Value)
+            .Distinct()
+            .ToList();
+
+        var groupCounts = new Dictionary<Guid, (int Total, int Completed)>();
+        if (groupIds.Count > 0)
+        {
+            var siblingTasks = await context.ApprovalTasks
+                .Where(t => t.GroupId.HasValue && groupIds.Contains(t.GroupId.Value))
+                .Select(t => new { t.GroupId, t.Status })
+                .ToListAsync(ct);
+
+            foreach (var group in siblingTasks.GroupBy(t => t.GroupId!.Value))
+            {
+                groupCounts[group.Key] = (
+                    group.Count(),
+                    group.Count(t => t.Status == Domain.Enums.TaskStatus.Completed));
+            }
+        }
+
         return tasks.Select(t =>
         {
             // Derive available actions from the definition's transitions for
             // the instance's current state (manual transitions only).
             List<string>? availableActions = null;
             List<FormFieldDefinition>? formFields = null;
+            bool isOverdue = false;
+            int? hoursOverdue = null;
             try
             {
                 var transitions = DeserializeTransitions(t.Instance.Definition.TransitionsJson);
@@ -614,6 +639,17 @@ public sealed class WorkflowEngine(
                 var states = DeserializeStates(t.Instance.Definition.StatesJson);
                 var stateConfig = states.FirstOrDefault(s => s.Name == t.Instance.CurrentState);
                 formFields = stateConfig?.FormFields is { Count: > 0 } ? stateConfig.FormFields : null;
+
+                // Compute overdue status from SLA config
+                if (stateConfig?.Sla?.ReminderAfterHours.HasValue == true)
+                {
+                    var hours = (int)(DateTime.UtcNow - t.CreatedAt).TotalHours;
+                    if (hours >= stateConfig.Sla.ReminderAfterHours.Value)
+                    {
+                        isOverdue = true;
+                        hoursOverdue = hours - stateConfig.Sla.ReminderAfterHours.Value;
+                    }
+                }
             }
             catch
             {
@@ -624,6 +660,15 @@ public sealed class WorkflowEngine(
             string? delegatedFromDisplayName = null;
             if (isDelegated && delegationNameLookup.TryGetValue(t.OriginalAssigneeUserId!.Value, out var name))
                 delegatedFromDisplayName = name;
+
+            // Parallel group progress
+            int? parallelTotal = null;
+            int? parallelCompleted = null;
+            if (t.GroupId.HasValue && groupCounts.TryGetValue(t.GroupId.Value, out var counts))
+            {
+                parallelTotal = counts.Total;
+                parallelCompleted = counts.Completed;
+            }
 
             return new PendingTaskSummary(
                 t.Id,
@@ -639,6 +684,10 @@ public sealed class WorkflowEngine(
                 t.Instance.EntityDisplayName,
                 FormFields: formFields,
                 GroupId: t.GroupId,
+                ParallelTotal: parallelTotal,
+                ParallelCompleted: parallelCompleted,
+                IsOverdue: isOverdue,
+                HoursOverdue: hoursOverdue,
                 IsDelegated: isDelegated,
                 DelegatedFromDisplayName: delegatedFromDisplayName);
         }).ToList();
@@ -677,20 +726,25 @@ public sealed class WorkflowEngine(
                 userLookup[u.Id] = u.DisplayName;
         }
 
-        return steps.Select(s => new WorkflowStepRecord(
-            s.FromState,
-            s.ToState,
-            s.StepType.ToString(),
-            s.Action,
-            s.ActorUserId,
-            s.ActorUserId.HasValue && userLookup.TryGetValue(s.ActorUserId.Value, out var name)
-                ? name : null,
-            s.Comment,
-            s.Timestamp,
-            s.MetadataJson is not null
+        return steps.Select(s =>
+        {
+            var metadata = s.MetadataJson is not null
                 ? JsonSerializer.Deserialize<Dictionary<string, object>>(s.MetadataJson, JsonOpts)
-                : null))
-            .ToList();
+                : null;
+
+            return new WorkflowStepRecord(
+                s.FromState,
+                s.ToState,
+                s.StepType.ToString(),
+                s.Action,
+                s.ActorUserId,
+                s.ActorUserId.HasValue && userLookup.TryGetValue(s.ActorUserId.Value, out var name)
+                    ? name : null,
+                s.Comment,
+                s.Timestamp,
+                metadata,
+                FormData: metadata);
+        }).ToList();
     }
 
     public async Task<IReadOnlyList<WorkflowInstanceSummary>> GetInstancesAsync(

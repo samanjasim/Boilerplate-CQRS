@@ -179,7 +179,7 @@ public sealed class WorkflowController(ISender mediator) : BaseApiController(med
         Guid taskId, [FromBody] ExecuteTaskRequest request, CancellationToken ct = default)
     {
         var result = await Mediator.Send(
-            new ExecuteTaskCommand(taskId, request.Action, request.Comment), ct);
+            new ExecuteTaskCommand(taskId, request.Action, request.Comment, request.FormData), ct);
         return HandleResult(result);
     }
 
@@ -228,7 +228,7 @@ public sealed class WorkflowController(ISender mediator) : BaseApiController(med
 
 public sealed record CancelWorkflowRequest(string? Reason);
 
-public sealed record ExecuteTaskRequest(string Action, string? Comment);
+public sealed record ExecuteTaskRequest(string Action, string? Comment, Dictionary<string, object>? FormData = null);
 
 public sealed record TransitionWorkflowRequest(string Trigger);
 

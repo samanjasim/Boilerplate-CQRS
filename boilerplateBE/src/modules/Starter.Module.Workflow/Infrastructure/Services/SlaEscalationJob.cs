@@ -55,44 +55,55 @@ public sealed class SlaEscalationJob(
 
         var now = DateTime.UtcNow;
 
-        // Load pending tasks with their instances and definitions
+        // Only load tasks old enough to potentially need reminders/escalation.
+        // Any SLA shorter than 1 hour would be unusual, so use 1h as a safe cutoff.
+        var cutoff = now.AddHours(-1);
+
         var pendingTasks = await dbContext.ApprovalTasks
             .IgnoreQueryFilters()
             .Include(t => t.Instance)
                 .ThenInclude(i => i.Definition)
-            .Where(t => t.Status == TaskStatus.Pending)
+            .Where(t => t.Status == TaskStatus.Pending && t.CreatedAt <= cutoff)
             .ToListAsync(ct);
 
         foreach (var task in pendingTasks)
         {
-            var states = JsonSerializer.Deserialize<List<WorkflowStateConfig>>(
-                task.Instance.Definition.StatesJson, JsonOpts);
-            var stateConfig = states?.FirstOrDefault(s => s.Name == task.StepName);
-            if (stateConfig?.Sla is null) continue;
-
-            var hoursElapsed = (now - task.CreatedAt).TotalHours;
-
-            // Reminder
-            if (stateConfig.Sla.ReminderAfterHours.HasValue
-                && hoursElapsed >= stateConfig.Sla.ReminderAfterHours.Value
-                && task.ReminderSentAt is null)
+            try
             {
-                await SendReminderAsync(task, messageDispatcher, userReader, config, ct);
-                task.MarkReminderSent();
+                var states = JsonSerializer.Deserialize<List<WorkflowStateConfig>>(
+                    task.Instance.Definition.StatesJson, JsonOpts);
+                var stateConfig = states?.FirstOrDefault(s => s.Name == task.StepName);
+                if (stateConfig?.Sla is null) continue;
+
+                var hoursElapsed = (now - task.CreatedAt).TotalHours;
+
+                // Reminder
+                if (stateConfig.Sla.ReminderAfterHours.HasValue
+                    && hoursElapsed >= stateConfig.Sla.ReminderAfterHours.Value
+                    && task.ReminderSentAt is null)
+                {
+                    await SendReminderAsync(task, messageDispatcher, userReader, config, ct);
+                    task.MarkReminderSent();
+                }
+
+                // Escalation
+                if (stateConfig.Sla.EscalateAfterHours.HasValue
+                    && hoursElapsed >= stateConfig.Sla.EscalateAfterHours.Value
+                    && task.EscalatedAt is null)
+                {
+                    await EscalateTaskAsync(task, stateConfig, dbContext, assigneeResolver,
+                        messageDispatcher, userReader, config, ct);
+                    task.MarkEscalated();
+                }
+
+                // Save after each task to avoid losing progress if a later task fails
+                await dbContext.SaveChangesAsync(ct);
             }
-
-            // Escalation
-            if (stateConfig.Sla.EscalateAfterHours.HasValue
-                && hoursElapsed >= stateConfig.Sla.EscalateAfterHours.Value
-                && task.EscalatedAt is null)
+            catch (Exception ex)
             {
-                await EscalateTaskAsync(task, stateConfig, dbContext, assigneeResolver,
-                    messageDispatcher, userReader, config, ct);
-                task.MarkEscalated();
+                logger.LogError(ex, "SLA processing failed for task {TaskId}", task.Id);
             }
         }
-
-        await dbContext.SaveChangesAsync(ct);
     }
 
     private async Task SendReminderAsync(

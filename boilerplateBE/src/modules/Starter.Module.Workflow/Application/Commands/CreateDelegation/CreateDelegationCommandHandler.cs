@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Starter.Abstractions.Capabilities;
 using Starter.Application.Common.Interfaces;
@@ -30,6 +31,17 @@ internal sealed class CreateDelegationCommandHandler(
         if (request.ToUserId == userId)
             return Result.Failure<Guid>(Error.Validation(
                 "Delegation.SelfDelegation", "Cannot delegate to yourself."));
+
+        // Check for overlapping active delegations
+        var hasOverlap = await dbContext.DelegationRules
+            .AnyAsync(d => d.FromUserId == userId
+                && d.IsActive
+                && d.StartDate < request.EndDate
+                && d.EndDate > request.StartDate, cancellationToken);
+
+        if (hasOverlap)
+            return Result.Failure<Guid>(Error.Validation(
+                "Delegation.Overlap", "An active delegation already exists for this date range."));
 
         var rule = DelegationRule.Create(
             currentUser.TenantId,

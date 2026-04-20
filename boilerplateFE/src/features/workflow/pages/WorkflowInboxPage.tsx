@@ -45,8 +45,8 @@ export default function WorkflowInboxPage() {
 
       {/* Active delegation banner */}
       {hasDelegation && (
-        <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/30">
-          <p className="text-sm text-amber-800 dark:text-amber-200">
+        <div className="flex items-center justify-between rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+          <p className="text-sm text-foreground">
             {t('workflow.delegation.banner', {
               name: delegation.toDisplayName ?? delegation.toUserId,
               date: formatDate(delegation.endDate),

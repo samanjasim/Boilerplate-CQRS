@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useDeferredValue } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -6,6 +6,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import { Spinner } from '@/components/ui/spinner';
+import { useSearchUsers } from '@/features/users/api';
 import { useCreateDelegation } from '../api';
 
 interface DelegationDialogProps {
@@ -16,9 +21,18 @@ interface DelegationDialogProps {
 export function DelegationDialog({ open, onOpenChange }: DelegationDialogProps) {
   const { t } = useTranslation();
   const [toUserId, setToUserId] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const { mutate: createDelegation, isPending } = useCreateDelegation();
+
+  const deferredSearch = useDeferredValue(searchTerm);
+  const { data: usersData, isLoading: usersLoading } = useSearchUsers(
+    { searchTerm: deferredSearch, pageSize: 20, status: 'Active' },
+    { enabled: open },
+  );
+
+  const users = usersData?.data ?? [];
 
   const handleConfirm = () => {
     if (!toUserId || !startDate || !endDate) return;
@@ -27,6 +41,7 @@ export function DelegationDialog({ open, onOpenChange }: DelegationDialogProps) 
       {
         onSuccess: () => {
           setToUserId('');
+          setSearchTerm('');
           setStartDate('');
           setEndDate('');
           onOpenChange(false);
@@ -34,6 +49,8 @@ export function DelegationDialog({ open, onOpenChange }: DelegationDialogProps) 
       },
     );
   };
+
+  const selectedUser = users.find((u) => u.id === toUserId);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -49,11 +66,40 @@ export function DelegationDialog({ open, onOpenChange }: DelegationDialogProps) 
           <div className="space-y-1.5">
             <Label htmlFor="delegation-user">{t('workflow.delegation.delegateTo')}</Label>
             <Input
-              id="delegation-user"
-              value={toUserId}
-              onChange={(e) => setToUserId(e.target.value)}
-              placeholder={t('workflow.delegation.userPlaceholder', 'Enter user ID')}
+              id="delegation-user-search"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder={t('workflow.delegation.searchPlaceholder', 'Search users by name or email...')}
+              className="mb-2"
             />
+            {usersLoading ? (
+              <div className="flex justify-center py-3">
+                <Spinner size="sm" />
+              </div>
+            ) : (
+              <Select value={toUserId} onValueChange={setToUserId}>
+                <SelectTrigger id="delegation-user">
+                  <SelectValue placeholder={t('workflow.delegation.selectUser', 'Select a user')}>
+                    {selectedUser
+                      ? `${selectedUser.firstName} ${selectedUser.lastName} (${selectedUser.email})`
+                      : undefined}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {users.length === 0 ? (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                      {t('workflow.delegation.noUsersFound', 'No users found')}
+                    </div>
+                  ) : (
+                    users.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.firstName} {user.lastName} ({user.email})
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
