@@ -19,6 +19,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
     private readonly IKeywordSearchService _keywordSearch;
     private readonly IEmbeddingService _embeddingService;
     private readonly IQueryRewriter _queryRewriter;
+    private readonly IQuestionClassifier _classifier;
     private readonly IReranker _reranker;
     private readonly RerankStrategySelector _rerankSelector;
     private readonly TokenCounter _tokenCounter;
@@ -31,6 +32,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         IKeywordSearchService keywordSearch,
         IEmbeddingService embeddingService,
         IQueryRewriter queryRewriter,
+        IQuestionClassifier classifier,
         IReranker reranker,
         RerankStrategySelector rerankSelector,
         TokenCounter tokenCounter,
@@ -42,6 +44,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         _keywordSearch = keywordSearch;
         _embeddingService = embeddingService;
         _queryRewriter = queryRewriter;
+        _classifier = classifier;
         _reranker = reranker;
         _rerankSelector = rerankSelector;
         _tokenCounter = tokenCounter;
@@ -86,6 +89,45 @@ internal sealed class RagRetrievalService : IRagRetrievalService
             return RetrievedContext.Empty;
 
         var degraded = new List<string>();
+
+        // 0. Classify the question. Short-circuits greetings and passes QuestionType
+        // downstream for the reranker strategy selector.
+        QuestionType? questionType = null;
+        using (var classifyCts = CancellationTokenSource.CreateLinkedTokenSource(ct))
+        {
+            classifyCts.CancelAfter(_settings.StageTimeoutClassifyMs);
+            try
+            {
+                questionType = await _classifier.ClassifyAsync(queryText, classifyCts.Token);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (OperationCanceledException)
+            {
+                degraded.Add("classify");
+                _logger.LogWarning(
+                    "RAG stage 'classify' timed out after {TimeoutMs}ms",
+                    _settings.StageTimeoutClassifyMs);
+            }
+            catch (Exception ex) when (IsTransientStageException(ex))
+            {
+                degraded.Add("classify");
+                _logger.LogError(ex, "RAG stage 'classify' failed");
+            }
+        }
+
+        _logger.LogInformation(
+            "RAG classify: QuestionType={QuestionType}",
+            questionType);
+
+        // Short-circuit greetings — chat injection layer handles empty context gracefully.
+        if (questionType == QuestionType.Greeting)
+        {
+            _logger.LogInformation("RAG short-circuit: greeting");
+            return new RetrievedContext([], [], 0, false, degraded);
+        }
 
         // 1. Query rewrite (original + variants). Never throws.
         var variants = await WithTimeoutAsync(
@@ -164,10 +206,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
 
         // 6. Rerank. Resolve the strategy up front so we can size the candidate pool
         // larger than topK — the reranker reorders within this pool, then we trim.
-        // Task 17 will populate QuestionType once the classifier runs earlier in the
-        // pipeline; for now we pass a null-question context so the selector's default
-        // applies (Listwise when RerankStrategy=Auto).
-        var plannedCtx = new RerankContext(QuestionType: null, StrategyOverride: null);
+        var plannedCtx = new RerankContext(QuestionType: questionType, StrategyOverride: null);
         var plannedStrategy = _rerankSelector.Resolve(plannedCtx);
         var poolMultiplier = plannedStrategy switch
         {

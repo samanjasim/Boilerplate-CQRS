@@ -16,6 +16,42 @@ using Xunit;
 
 namespace Starter.Api.Tests.Ai.Retrieval;
 
+internal sealed class FakeQuestionClassifier : IQuestionClassifier
+{
+    private readonly QuestionType? _type;
+
+    public FakeQuestionClassifier(QuestionType? type) => _type = type;
+
+    public Task<QuestionType?> ClassifyAsync(string query, CancellationToken ct)
+        => Task.FromResult(_type);
+}
+
+internal sealed class CapturingReranker : IReranker
+{
+    public RerankContext? CapturedContext { get; private set; }
+
+    public Task<RerankResult> RerankAsync(
+        string query,
+        IReadOnlyList<HybridHit> candidates,
+        IReadOnlyList<AiDocumentChunk> candidateChunks,
+        RerankContext context,
+        CancellationToken ct)
+    {
+        CapturedContext = context;
+        return Task.FromResult(new RerankResult(
+            Ordered: candidates,
+            StrategyRequested: RerankStrategy.Off,
+            StrategyUsed: RerankStrategy.Off,
+            CandidatesIn: candidates.Count,
+            CandidatesScored: 0,
+            CacheHits: 0,
+            LatencyMs: 0,
+            TokensIn: 0,
+            TokensOut: 0,
+            UnusedRatio: 0));
+    }
+}
+
 internal sealed class FakeEmbeddingService : IEmbeddingService
 {
     public int VectorSize => 1536;
@@ -43,7 +79,8 @@ public sealed class RagRetrievalServiceTests
         FakeVectorStore? vs = null,
         FakeKeywordSearchService? kw = null,
         AiRagSettings? settings = null,
-        IReranker? reranker = null)
+        IReranker? reranker = null,
+        IQuestionClassifier? classifier = null)
     {
         var ragSettings = settings ?? new AiRagSettings
         {
@@ -62,6 +99,7 @@ public sealed class RagRetrievalServiceTests
             kw ?? new FakeKeywordSearchService(),
             new FakeEmbeddingService(),
             new NoOpQueryRewriter(),
+            classifier ?? new NoOpQuestionClassifier(),
             reranker ?? new NoOpReranker(),
             new RerankStrategySelector(ragSettings),
             new TokenCounter(),
@@ -284,5 +322,69 @@ public sealed class RagRetrievalServiceTests
         ctx.Children.Count.Should().Be(2);
         ctx.Parents.Count.Should().Be(1);
         ctx.Parents[0].ChunkId.Should().Be(parent.Id);
+    }
+
+    [Fact]
+    public async Task Greeting_short_circuits_and_returns_empty_context()
+    {
+        await using var db = CreateDb();
+        var classifier = new FakeQuestionClassifier(QuestionType.Greeting);
+        var svc = BuildService(db, classifier: classifier);
+
+        var result = await svc.RetrieveForQueryAsync(
+            tenantId: Guid.NewGuid(),
+            queryText: "hi there",
+            documentFilter: null,
+            topK: 5,
+            minScore: null,
+            includeParents: true,
+            ct: CancellationToken.None);
+
+        result.Children.Should().BeEmpty();
+        result.Parents.Should().BeEmpty();
+        result.DegradedStages.Should().NotContain("embed-query");
+    }
+
+    [Fact]
+    public async Task QuestionType_is_threaded_into_rerank_context()
+    {
+        await using var db = CreateDb();
+
+        // Seed 1 child chunk
+        var documentId = Guid.NewGuid();
+        var chunk = AiDocumentChunk.Create(
+            documentId: documentId,
+            chunkLevel: "child",
+            content: "why did the system fail explanation",
+            chunkIndex: 0,
+            tokenCount: 8,
+            qdrantPointId: Guid.NewGuid());
+        db.AiDocumentChunks.Add(chunk);
+        await db.SaveChangesAsync();
+
+        var fakeVs = new FakeVectorStore
+        {
+            HitsToReturn =
+            [
+                new VectorSearchHit(chunk.QdrantPointId, 0.85m),
+            ]
+        };
+
+        var classifier = new FakeQuestionClassifier(QuestionType.Reasoning);
+        var reranker = new CapturingReranker();
+
+        var svc = BuildService(db, vs: fakeVs, classifier: classifier, reranker: reranker);
+
+        await svc.RetrieveForQueryAsync(
+            tenantId: Guid.NewGuid(),
+            queryText: "why did the system fail",
+            documentFilter: null,
+            topK: 5,
+            minScore: null,
+            includeParents: false,
+            ct: CancellationToken.None);
+
+        reranker.CapturedContext.Should().NotBeNull();
+        reranker.CapturedContext!.QuestionType.Should().Be(QuestionType.Reasoning);
     }
 }
