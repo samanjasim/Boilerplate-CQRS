@@ -58,7 +58,7 @@ internal sealed class StructuredMarkdownChunker(
                         Content: piece.Text,
                         TokenCount: piece.Tokens,
                         ParentIndex: null,
-                        SectionTitle: stack.DeepestHeading,
+                        SectionTitle: stack.Breadcrumb.Length == 0 ? null : stack.Breadcrumb,
                         PageNumber: page.PageNumber,
                         ChunkType: piece.Type);
 

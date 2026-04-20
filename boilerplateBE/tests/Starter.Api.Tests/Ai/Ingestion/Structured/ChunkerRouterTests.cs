@@ -40,7 +40,7 @@ public class ChunkerRouterTests
     {
         var md = "# Title\n\n## Sub\n\nbody\n";
         var chunks = NewRouter().Chunk(Doc(md), Opts("text/plain"));
-        chunks.Children.Single().SectionTitle.Should().Be("Sub");
+        chunks.Children.Single().SectionTitle.Should().Be("Title > Sub");
     }
 
     [Fact]

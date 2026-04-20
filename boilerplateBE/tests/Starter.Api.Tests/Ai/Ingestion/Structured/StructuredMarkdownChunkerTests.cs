@@ -45,8 +45,8 @@ public class StructuredMarkdownChunkerTests
         var md = "# Ch1\n\n## Sec A\n\nbody under A\n\n## Sec B\n\nbody under B\n";
         var chunks = NewChunker().Chunk(OneMarkdownPage(md), Opts());
         chunks.Children.Should().HaveCount(2);
-        chunks.Children[0].SectionTitle.Should().Be("Sec A");
-        chunks.Children[1].SectionTitle.Should().Be("Sec B");
+        chunks.Children[0].SectionTitle.Should().Be("Ch1 > Sec A");
+        chunks.Children[1].SectionTitle.Should().Be("Ch1 > Sec B");
     }
 
     [Fact]
