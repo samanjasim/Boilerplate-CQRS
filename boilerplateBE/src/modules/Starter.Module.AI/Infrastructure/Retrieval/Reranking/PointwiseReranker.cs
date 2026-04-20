@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Services.Retrieval;
 using Starter.Module.AI.Domain.Entities;
+using Starter.Module.AI.Infrastructure.Observability;
 using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Retrieval.Json;
 using Starter.Module.AI.Infrastructure.Settings;
@@ -63,6 +64,10 @@ internal sealed class PointwiseReranker
                     var hit = candidates[idx];
                     var key = BuildPairKey(query, hit.ChunkId);
                     var cached = await _cache.GetAsync<decimal?>(key, ct);
+                    AiRagMetrics.CacheRequests.Add(
+                        1,
+                        new KeyValuePair<string, object?>("rag.cache", "rerank"),
+                        new KeyValuePair<string, object?>("rag.hit", cached.HasValue));
                     if (cached.HasValue)
                     {
                         scores[idx] = cached.Value;

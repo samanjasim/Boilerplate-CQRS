@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Services.Retrieval;
 using Starter.Module.AI.Domain.Entities;
+using Starter.Module.AI.Infrastructure.Observability;
 using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Retrieval.Json;
 using Starter.Module.AI.Infrastructure.Settings;
@@ -42,6 +43,10 @@ internal sealed class ListwiseReranker
 
         var key = BuildCacheKey(query, candidates);
         var cached = await _cache.GetAsync<List<int>>(key, ct);
+        AiRagMetrics.CacheRequests.Add(
+            1,
+            new KeyValuePair<string, object?>("rag.cache", "rerank"),
+            new KeyValuePair<string, object?>("rag.hit", cached is not null));
         IReadOnlyList<int>? indices = cached;
         int tokensIn = 0, tokensOut = 0;
         int cacheHits = cached is null ? 0 : 1;
