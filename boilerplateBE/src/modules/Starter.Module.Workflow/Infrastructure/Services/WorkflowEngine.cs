@@ -349,36 +349,11 @@ public sealed class WorkflowEngine(
             }
         }
 
-        // Execute onExit hooks for the old state
-        if (fromStateConfig is not null)
-        {
-            var exitHookCtx = BuildHookContext(instance, definition.Name, fromState,
-                previousState: null, action: action, actorUserId: actorUserId,
-                assigneeUserId: task.AssigneeUserId, assigneeRole: task.AssigneeRole);
-            await hookExecutor.ExecuteAsync(fromStateConfig.OnExit, exitHookCtx, ct);
-        }
-
-        // Transition the instance
-        instance.TransitionTo(toState, action, actorUserId);
-
-        // Complete the task
+        // ── Step 1: Complete the task (always) ──────────────────────────────
         task.Complete(action, comment, actorUserId);
 
         // Serialize form data into step metadata for history
         var metadataJson = formData is not null ? JsonSerializer.Serialize(formData, JsonOpts) : null;
-
-        // Create a WorkflowStep record
-        var step = WorkflowStep.Create(
-            instance.Id,
-            fromState,
-            toState,
-            StepType.HumanTask,
-            action,
-            actorUserId,
-            comment,
-            metadataJson);
-
-        context.WorkflowSteps.Add(step);
 
         // Merge form data into instance context so downstream conditions can reference it
         if (formData is not null)
@@ -413,6 +388,103 @@ public sealed class WorkflowEngine(
                 logger.LogWarning(ex, "Failed to save comment for task {TaskId}.", taskId);
             }
         }
+
+        // ── Step 2: Check parallel group status ─────────────────────────────
+        // If this task belongs to a parallel group, determine whether the group
+        // is complete before allowing the workflow to transition.
+        if (task.GroupId.HasValue)
+        {
+            var siblingTasks = await context.ApprovalTasks
+                .Where(t => t.GroupId == task.GroupId && t.Id != task.Id)
+                .ToListAsync(ct);
+
+            var parallelMode = fromStateConfig?.Parallel?.Mode ?? "AllOf";
+
+            if (parallelMode.Equals("AnyOf", StringComparison.OrdinalIgnoreCase))
+            {
+                // AnyOf: first completion wins — cancel all remaining siblings
+                foreach (var sibling in siblingTasks.Where(t => t.Status == Domain.Enums.TaskStatus.Pending))
+                    sibling.Cancel();
+
+                // Proceed with transition below
+            }
+            else // AllOf
+            {
+                if (action.Equals("reject", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Any rejection in AllOf: cancel remaining, transition to rejection state
+                    foreach (var sibling in siblingTasks.Where(t => t.Status == Domain.Enums.TaskStatus.Pending))
+                        sibling.Cancel();
+
+                    // Proceed with transition below
+                }
+                else
+                {
+                    // Check if ALL siblings are also completed
+                    var allSiblingsCompleted = siblingTasks.All(t => t.Status == Domain.Enums.TaskStatus.Completed);
+                    if (!allSiblingsCompleted)
+                    {
+                        // Wait — don't transition yet. Create step record and save.
+                        var waitStep = WorkflowStep.Create(
+                            instance.Id,
+                            fromState,
+                            fromState, // stays at same state
+                            StepType.HumanTask,
+                            action,
+                            actorUserId,
+                            comment,
+                            metadataJson);
+
+                        context.WorkflowSteps.Add(waitStep);
+
+                        try
+                        {
+                            await context.SaveChangesAsync(ct);
+                        }
+                        catch (DbUpdateConcurrencyException)
+                        {
+                            logger.LogWarning("Concurrency conflict on task {TaskId}. Another user may have already acted.", taskId);
+                            return false;
+                        }
+
+                        logger.LogInformation(
+                            "Task {TaskId}: completed (parallel AllOf, waiting for siblings). Instance {InstanceId} stays at '{State}'.",
+                            taskId, instance.Id, fromState);
+
+                        return true;
+                    }
+
+                    // All siblings completed — proceed with transition below
+                }
+            }
+        }
+
+        // ── Step 3: Transition the workflow ──────────────────────────────────
+
+        // Execute onExit hooks for the old state
+        if (fromStateConfig is not null)
+        {
+            var exitHookCtx = BuildHookContext(instance, definition.Name, fromState,
+                previousState: null, action: action, actorUserId: actorUserId,
+                assigneeUserId: task.AssigneeUserId, assigneeRole: task.AssigneeRole);
+            await hookExecutor.ExecuteAsync(fromStateConfig.OnExit, exitHookCtx, ct);
+        }
+
+        // Transition the instance
+        instance.TransitionTo(toState, action, actorUserId);
+
+        // Create a WorkflowStep record
+        var step = WorkflowStep.Create(
+            instance.Id,
+            fromState,
+            toState,
+            StepType.HumanTask,
+            action,
+            actorUserId,
+            comment,
+            metadataJson);
+
+        context.WorkflowSteps.Add(step);
 
         // Execute onEnter hooks for the new state
         if (toStateConfig is not null)
@@ -778,6 +850,51 @@ public sealed class WorkflowEngine(
         Guid initiatorUserId,
         CancellationToken ct)
     {
+        // Parallel mode: create one task per assignee with a shared GroupId
+        if (stateConfig.Parallel is { Assignees.Count: > 0 })
+        {
+            var groupId = Guid.NewGuid();
+            var assigneeContext = new WorkflowAssigneeContext(
+                instance.EntityType,
+                instance.EntityId,
+                instance.TenantId,
+                initiatorUserId,
+                instance.CurrentState);
+
+            foreach (var assigneeConfig in stateConfig.Parallel.Assignees)
+            {
+                var strategyJson = JsonSerializer.Serialize(assigneeConfig, JsonOpts);
+                var assignees = await assigneeResolver.ResolveAsync(assigneeConfig, assigneeContext, ct);
+
+                Guid? userId = assignees.Count > 0 ? assignees[0] : null;
+                string? role = null;
+
+                if (assigneeConfig.Strategy.Equals("Role", StringComparison.OrdinalIgnoreCase)
+                    && assigneeConfig.Parameters is not null
+                    && assigneeConfig.Parameters.TryGetValue("roleName", out var roleObj))
+                {
+                    role = roleObj?.ToString();
+                }
+
+                var task = ApprovalTask.Create(
+                    instance.TenantId,
+                    instance.Id,
+                    stateConfig.Name,
+                    userId,
+                    role,
+                    strategyJson,
+                    dueDate: null,
+                    entityType: instance.EntityType,
+                    entityId: instance.EntityId,
+                    groupId: groupId);
+
+                context.ApprovalTasks.Add(task);
+            }
+
+            return;
+        }
+
+        // Single-assignee mode (unchanged)
         Guid? assigneeUserId = null;
         string? assigneeRole = null;
         string? assigneeStrategyJson = null;

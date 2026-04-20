@@ -504,4 +504,256 @@ public sealed class WorkflowEngineTests : IDisposable
 
         count.Should().Be(1);
     }
+
+    // ── Parallel Approval Helpers ───────────────────────────────────────────
+
+    private readonly Guid _parallelUserA = Guid.NewGuid();
+    private readonly Guid _parallelUserB = Guid.NewGuid();
+
+    /// <summary>
+    /// Seeds a definition with a parallel HumanTask state:
+    /// Draft (Initial) → ParallelReview (HumanTask with Parallel config) → Approved / Rejected (Terminal).
+    /// </summary>
+    private async Task<WorkflowDefinition> SeedParallelDefinitionAsync(string mode = "AllOf")
+    {
+        var states = new List<WorkflowStateConfig>
+        {
+            new("Draft", "Draft", "Initial"),
+            new("ParallelReview", "Parallel Review", "HumanTask",
+                Parallel: new ParallelConfig(mode, new List<AssigneeConfig>
+                {
+                    new("SpecificUser", new Dictionary<string, object> { ["userId"] = _parallelUserA.ToString() }),
+                    new("SpecificUser", new Dictionary<string, object> { ["userId"] = _parallelUserB.ToString() }),
+                }),
+                Actions: new List<string> { "approve", "reject" }),
+            new("Approved", "Approved", "Terminal"),
+            new("Rejected", "Rejected", "Terminal"),
+        };
+
+        var transitions = new List<WorkflowTransitionConfig>
+        {
+            new("Draft", "ParallelReview", "submit"),
+            new("ParallelReview", "Approved", "approve"),
+            new("ParallelReview", "Rejected", "reject"),
+        };
+
+        var definition = WorkflowDefinition.Create(
+            tenantId: _tenantId,
+            name: "ParallelApproval",
+            displayName: "Parallel Approval Workflow",
+            entityType: "Order",
+            statesJson: JsonSerializer.Serialize(states),
+            transitionsJson: JsonSerializer.Serialize(transitions),
+            isTemplate: false,
+            sourceModule: "Tests");
+
+        _db.WorkflowDefinitions.Add(definition);
+        await _db.SaveChangesAsync();
+
+        return definition;
+    }
+
+    // ── 14. Parallel AllOf — creates multiple tasks with shared GroupId ──────
+
+    [Fact]
+    public async Task StartAsync_ParallelAllOf_CreatesMultipleTasks()
+    {
+        await SeedParallelDefinitionAsync("AllOf");
+        var entityId = Guid.NewGuid();
+
+        var instanceId = await _sut.StartAsync(
+            "Order", entityId, "ParallelApproval", _initiatorId, _tenantId);
+
+        instanceId.Should().NotBe(Guid.Empty);
+
+        var instance = await _db.WorkflowInstances.FirstAsync(i => i.Id == instanceId);
+        instance.CurrentState.Should().Be("ParallelReview");
+
+        var tasks = await _db.ApprovalTasks
+            .Where(t => t.InstanceId == instanceId)
+            .ToListAsync();
+
+        tasks.Should().HaveCount(2);
+        tasks.Should().AllSatisfy(t => t.Status.Should().Be(TaskStatus.Pending));
+        tasks.Should().AllSatisfy(t => t.GroupId.Should().NotBeNull());
+
+        // All tasks share the same GroupId
+        var groupIds = tasks.Select(t => t.GroupId).Distinct().ToList();
+        groupIds.Should().HaveCount(1);
+
+        // Each task has a different assignee
+        var assigneeIds = tasks.Select(t => t.AssigneeUserId).ToList();
+        assigneeIds.Should().Contain(_parallelUserA);
+        assigneeIds.Should().Contain(_parallelUserB);
+    }
+
+    // ── 15. Parallel AllOf — partial approval waits ─────────────────────────
+
+    [Fact]
+    public async Task ExecuteTaskAsync_ParallelAllOf_PartialApproval_Waits()
+    {
+        await SeedParallelDefinitionAsync("AllOf");
+        var entityId = Guid.NewGuid();
+
+        var instanceId = await _sut.StartAsync(
+            "Order", entityId, "ParallelApproval", _initiatorId, _tenantId);
+
+        var tasks = await _db.ApprovalTasks
+            .Where(t => t.InstanceId == instanceId)
+            .ToListAsync();
+
+        var taskA = tasks.First(t => t.AssigneeUserId == _parallelUserA);
+        var taskB = tasks.First(t => t.AssigneeUserId == _parallelUserB);
+
+        // Complete only one task
+        var result = await _sut.ExecuteTaskAsync(
+            taskA.Id, "approve", null, _parallelUserA);
+
+        result.Should().BeTrue();
+
+        // Workflow should still be Active at ParallelReview
+        var instance = await _db.WorkflowInstances.FirstAsync(i => i.Id == instanceId);
+        instance.CurrentState.Should().Be("ParallelReview");
+        instance.Status.Should().Be(InstanceStatus.Active);
+
+        // Completed task is done, other is still pending
+        var updatedTaskA = await _db.ApprovalTasks.FirstAsync(t => t.Id == taskA.Id);
+        updatedTaskA.Status.Should().Be(TaskStatus.Completed);
+
+        var updatedTaskB = await _db.ApprovalTasks.FirstAsync(t => t.Id == taskB.Id);
+        updatedTaskB.Status.Should().Be(TaskStatus.Pending);
+    }
+
+    // ── 16. Parallel AllOf — last approval transitions ──────────────────────
+
+    [Fact]
+    public async Task ExecuteTaskAsync_ParallelAllOf_LastApproval_Transitions()
+    {
+        await SeedParallelDefinitionAsync("AllOf");
+        var entityId = Guid.NewGuid();
+
+        var instanceId = await _sut.StartAsync(
+            "Order", entityId, "ParallelApproval", _initiatorId, _tenantId);
+
+        var tasks = await _db.ApprovalTasks
+            .Where(t => t.InstanceId == instanceId)
+            .ToListAsync();
+
+        var taskA = tasks.First(t => t.AssigneeUserId == _parallelUserA);
+        var taskB = tasks.First(t => t.AssigneeUserId == _parallelUserB);
+
+        // Complete first task
+        await _sut.ExecuteTaskAsync(taskA.Id, "approve", null, _parallelUserA);
+
+        // Complete second task — should trigger transition
+        var result = await _sut.ExecuteTaskAsync(
+            taskB.Id, "approve", null, _parallelUserB);
+
+        result.Should().BeTrue();
+
+        var instance = await _db.WorkflowInstances.FirstAsync(i => i.Id == instanceId);
+        instance.CurrentState.Should().Be("Approved");
+        instance.Status.Should().Be(InstanceStatus.Completed);
+    }
+
+    // ── 17. Parallel AllOf — any reject cancels all and transitions ─────────
+
+    [Fact]
+    public async Task ExecuteTaskAsync_ParallelAllOf_AnyReject_CancelsAllAndTransitions()
+    {
+        await SeedParallelDefinitionAsync("AllOf");
+        var entityId = Guid.NewGuid();
+
+        var instanceId = await _sut.StartAsync(
+            "Order", entityId, "ParallelApproval", _initiatorId, _tenantId);
+
+        var tasks = await _db.ApprovalTasks
+            .Where(t => t.InstanceId == instanceId)
+            .ToListAsync();
+
+        var taskA = tasks.First(t => t.AssigneeUserId == _parallelUserA);
+        var taskB = tasks.First(t => t.AssigneeUserId == _parallelUserB);
+
+        // Reject from one user
+        var result = await _sut.ExecuteTaskAsync(
+            taskA.Id, "reject", "Not approved", _parallelUserA);
+
+        result.Should().BeTrue();
+
+        // Workflow transitions to Rejected
+        var instance = await _db.WorkflowInstances.FirstAsync(i => i.Id == instanceId);
+        instance.CurrentState.Should().Be("Rejected");
+        instance.Status.Should().Be(InstanceStatus.Completed);
+
+        // The other task should be cancelled
+        var updatedTaskB = await _db.ApprovalTasks.FirstAsync(t => t.Id == taskB.Id);
+        updatedTaskB.Status.Should().Be(TaskStatus.Cancelled);
+    }
+
+    // ── 18. Parallel AnyOf — first approval transitions and cancels rest ────
+
+    [Fact]
+    public async Task ExecuteTaskAsync_ParallelAnyOf_FirstApproval_TransitionsAndCancelsRest()
+    {
+        await SeedParallelDefinitionAsync("AnyOf");
+        var entityId = Guid.NewGuid();
+
+        var instanceId = await _sut.StartAsync(
+            "Order", entityId, "ParallelApproval", _initiatorId, _tenantId);
+
+        var tasks = await _db.ApprovalTasks
+            .Where(t => t.InstanceId == instanceId)
+            .ToListAsync();
+
+        tasks.Should().HaveCount(2);
+
+        var taskA = tasks.First(t => t.AssigneeUserId == _parallelUserA);
+        var taskB = tasks.First(t => t.AssigneeUserId == _parallelUserB);
+
+        // Complete one task — should immediately transition
+        var result = await _sut.ExecuteTaskAsync(
+            taskA.Id, "approve", null, _parallelUserA);
+
+        result.Should().BeTrue();
+
+        // Workflow transitions to Approved
+        var instance = await _db.WorkflowInstances.FirstAsync(i => i.Id == instanceId);
+        instance.CurrentState.Should().Be("Approved");
+        instance.Status.Should().Be(InstanceStatus.Completed);
+
+        // The other task should be cancelled
+        var updatedTaskB = await _db.ApprovalTasks.FirstAsync(t => t.Id == taskB.Id);
+        updatedTaskB.Status.Should().Be(TaskStatus.Cancelled);
+    }
+
+    // ── 19. Single assignee — no GroupId, works unchanged ───────────────────
+
+    [Fact]
+    public async Task SingleAssignee_NoGroupId_WorksUnchanged()
+    {
+        await SeedThreeStateDefinitionAsync();
+        var entityId = Guid.NewGuid();
+
+        var instanceId = await _sut.StartAsync(
+            "Order", entityId, "TestApproval", _initiatorId, _tenantId);
+
+        // Should have a single task with no GroupId
+        var tasks = await _db.ApprovalTasks
+            .Where(t => t.InstanceId == instanceId)
+            .ToListAsync();
+
+        tasks.Should().HaveCount(1);
+        tasks[0].GroupId.Should().BeNull();
+        tasks[0].AssigneeUserId.Should().Be(_approverUserId);
+
+        // Complete the single task — should transition normally
+        var result = await _sut.ExecuteTaskAsync(
+            tasks[0].Id, "approve", null, _approverUserId);
+
+        result.Should().BeTrue();
+
+        var instance = await _db.WorkflowInstances.FirstAsync(i => i.Id == instanceId);
+        instance.CurrentState.Should().Be("Approved");
+        instance.Status.Should().Be(InstanceStatus.Completed);
+    }
 }
