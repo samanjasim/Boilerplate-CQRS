@@ -86,6 +86,35 @@ internal sealed class StructuredMarkdownChunker(
             yield break;
         }
 
+        if (block.Type == BlockType.Table)
+        {
+            var lines = block.Text.Split('\n');
+            if (lines.Length < 2)
+            {
+                yield return (block.Text, tokens, ChunkType.Table);
+                yield break;
+            }
+            var header = string.Join('\n', lines.Take(2));
+            var dataRows = lines.Skip(2).Where(l => !string.IsNullOrEmpty(l)).ToList();
+            var buf = new List<string>();
+            var bufTokens = counter.Count(header);
+            foreach (var row in dataRows)
+            {
+                var rt = counter.Count(row);
+                if (bufTokens + rt > options.ChildTokens && buf.Count > 0)
+                {
+                    yield return (header + "\n" + string.Join('\n', buf), bufTokens, ChunkType.Table);
+                    buf.Clear();
+                    bufTokens = counter.Count(header);
+                }
+                buf.Add(row);
+                bufTokens += rt;
+            }
+            if (buf.Count > 0)
+                yield return (header + "\n" + string.Join('\n', buf), bufTokens, ChunkType.Table);
+            yield break;
+        }
+
         if (block.Type == BlockType.Code)
         {
             var groups = block.Text.Split(new[] { "\n\n" }, StringSplitOptions.None);

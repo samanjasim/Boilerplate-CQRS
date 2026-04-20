@@ -94,4 +94,16 @@ public class StructuredMarkdownChunkerTests
         chunks.Children.Should().HaveCountGreaterThan(1);
         chunks.Children.Should().OnlyContain(c => c.ChunkType == ChunkType.Code);
     }
+
+    [Fact]
+    public void Oversize_table_is_split_with_header_replicated()
+    {
+        var header = "| col1 | col2 |\n|---|---|\n";
+        var body = string.Concat(Enumerable.Range(1, 200).Select(i => $"| r{i}a | r{i}b |\n"));
+        var md = "# T\n\n" + header + body;
+        var chunks = NewChunker().Chunk(OneMarkdownPage(md), Opts(child: 64, parent: 256, overlap: 0));
+        var tables = chunks.Children.Where(c => c.ChunkType == ChunkType.Table).ToList();
+        tables.Should().HaveCountGreaterThan(1);
+        tables.Should().OnlyContain(t => t.Content.Contains("col1") && t.Content.Contains("col2"));
+    }
 }
