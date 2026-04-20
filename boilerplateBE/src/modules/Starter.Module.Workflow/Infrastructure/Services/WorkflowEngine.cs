@@ -130,7 +130,16 @@ public sealed class WorkflowEngine(
             metadataJson: null);
 
         context.WorkflowSteps.Add(step);
-        await context.SaveChangesAsync(ct);
+
+        try
+        {
+            await context.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            logger.LogWarning("Concurrency conflict on cancel for instance {InstanceId}. Another user may have already acted.", instanceId);
+            return;
+        }
 
         logger.LogInformation(
             "Cancelled workflow instance {InstanceId}. Reason: {Reason}",
@@ -154,7 +163,23 @@ public sealed class WorkflowEngine(
         var states = DeserializeStates(instance.Definition.StatesJson);
         var currentState = states.FirstOrDefault(s => s.Name == instance.CurrentState);
         if (currentState is null || !currentState.Type.Equals("Initial", StringComparison.OrdinalIgnoreCase))
+        {
+            // Idempotent: if already past the Initial state, check whether the
+            // instance is at the state the trigger would have transitioned to.
+            var allTransitions = DeserializeTransitions(instance.Definition.TransitionsJson);
+            var wouldHaveGoneTo = allTransitions
+                .Where(t => t.Trigger == trigger)
+                .Select(t => t.To)
+                .FirstOrDefault();
+
+            if (wouldHaveGoneTo is not null && instance.CurrentState == wouldHaveGoneTo)
+            {
+                logger.LogDebug("TransitionAsync: instance {InstanceId} already at state '{State}' — idempotent success.", instanceId, wouldHaveGoneTo);
+                return true;
+            }
+
             return false;
+        }
 
         var transitions = DeserializeTransitions(instance.Definition.TransitionsJson);
         var transition = transitions.FirstOrDefault(t =>
@@ -199,7 +224,15 @@ public sealed class WorkflowEngine(
                 actorUserId, ct);
         }
 
-        await context.SaveChangesAsync(ct);
+        try
+        {
+            await context.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            logger.LogWarning("Concurrency conflict on transition for instance {InstanceId}. Another user may have already acted.", instanceId);
+            return false;
+        }
 
         logger.LogInformation(
             "TransitionAsync: instance {InstanceId} transitioned from '{From}' to '{To}' via '{Trigger}' by user {Actor}.",
@@ -223,6 +256,13 @@ public sealed class WorkflowEngine(
         {
             logger.LogWarning("Approval task {TaskId} not found.", taskId);
             return false;
+        }
+
+        // Idempotent: if already completed with the same action, return success
+        if (task.Status == Domain.Enums.TaskStatus.Completed && task.Action == action)
+        {
+            logger.LogDebug("Task {TaskId} already completed with action {Action} — idempotent success.", taskId, action);
+            return true;
         }
 
         if (task.Status != Domain.Enums.TaskStatus.Pending)
@@ -358,7 +398,15 @@ public sealed class WorkflowEngine(
             await HandleNewStateAsync(instance, definition, states, toStateConfig, actorUserId, ct);
         }
 
-        await context.SaveChangesAsync(ct);
+        try
+        {
+            await context.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            logger.LogWarning("Concurrency conflict on task {TaskId}. Another user may have already acted.", taskId);
+            return false;
+        }
 
         logger.LogInformation(
             "Task {TaskId}: transitioned instance {InstanceId} from '{From}' to '{To}' via '{Action}'.",

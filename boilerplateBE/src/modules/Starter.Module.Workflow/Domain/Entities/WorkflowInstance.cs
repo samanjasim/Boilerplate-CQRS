@@ -21,6 +21,8 @@ public sealed class WorkflowInstance : AggregateRoot, ITenantEntity
     public string? ContextJson { get; private set; }
     public string? EntityDisplayName { get; private set; }
 
+    public uint RowVersion { get; private set; }
+
     public WorkflowDefinition Definition { get; private set; } = default!;
     public ICollection<WorkflowStep> Steps { get; private set; } = [];
     public ICollection<ApprovalTask> Tasks { get; private set; } = [];

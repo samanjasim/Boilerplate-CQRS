@@ -83,6 +83,11 @@ public sealed class WorkflowInstanceConfiguration : IEntityTypeConfiguration<Wor
         builder.Property(i => i.ModifiedBy)
             .HasColumnName("modified_by");
 
+        builder.Property(i => i.RowVersion)
+            .HasColumnName("xmin")
+            .HasColumnType("xid")
+            .IsRowVersion();
+
         builder.HasOne(i => i.Definition)
             .WithMany()
             .HasForeignKey(i => i.DefinitionId)

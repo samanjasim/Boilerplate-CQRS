@@ -46,6 +46,11 @@ public sealed class ProductsModule : IModule
             builder.UseTenantResolver<ProductTenantResolver>();
         });
 
+        services.AddWorkflowableEntity("Product", builder =>
+        {
+            builder.DefaultDefinitionName = "general-approval";
+        });
+
         return services;
     }
 

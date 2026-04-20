@@ -19,6 +19,8 @@ public sealed class ApprovalTask : AggregateRoot, ITenantEntity
     public DateTime? CompletedAt { get; private set; }
     public Guid? CompletedByUserId { get; private set; }
 
+    public uint RowVersion { get; private set; }
+
     public WorkflowInstance Instance { get; private set; } = default!;
 
     private ApprovalTask() { }

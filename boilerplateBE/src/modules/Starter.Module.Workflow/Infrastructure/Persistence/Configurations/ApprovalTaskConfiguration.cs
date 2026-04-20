@@ -73,6 +73,11 @@ public sealed class ApprovalTaskConfiguration : IEntityTypeConfiguration<Approva
         builder.Property(t => t.ModifiedBy)
             .HasColumnName("modified_by");
 
+        builder.Property(t => t.RowVersion)
+            .HasColumnName("xmin")
+            .HasColumnType("xid")
+            .IsRowVersion();
+
         // Most important: inbox query — find all pending tasks for a user
         builder.HasIndex(t => new { t.AssigneeUserId, t.Status });
         builder.HasIndex(t => new { t.InstanceId, t.Status });
