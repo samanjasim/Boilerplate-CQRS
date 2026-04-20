@@ -5,8 +5,9 @@ public sealed record RetrievedContext(
     IReadOnlyList<RetrievedChunk> Parents,
     int TotalTokens,
     bool TruncatedByBudget,
-    IReadOnlyList<string> DegradedStages)
+    IReadOnlyList<string> DegradedStages,
+    IReadOnlyList<RetrievedChunk> Siblings)
 {
-    public static RetrievedContext Empty { get; } = new([], [], 0, false, []);
+    public static RetrievedContext Empty { get; } = new([], [], 0, false, [], []);
     public bool IsEmpty => Children.Count == 0;
 }

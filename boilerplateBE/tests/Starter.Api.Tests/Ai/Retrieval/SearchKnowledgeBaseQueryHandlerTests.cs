@@ -17,8 +17,8 @@ public sealed class SearchKnowledgeBaseQueryHandlerTests
     {
         var child = new RetrievedChunk(
             Guid.NewGuid(), Guid.NewGuid(), "Doc", "content", null, null,
-            "child", 0.9m, 0.3m, 0.7m, null);
-        var retrieval = new FakeRetrievalService(new RetrievedContext([child], [], 10, false, []));
+            "child", 0.9m, 0.3m, 0.7m, null, 0);
+        var retrieval = new FakeRetrievalService(new RetrievedContext([child], [], 10, false, [], []));
         var handler = BuildHandler(retrieval, Guid.NewGuid());
 
         var result = await handler.Handle(
@@ -38,11 +38,11 @@ public sealed class SearchKnowledgeBaseQueryHandlerTests
         var docId = Guid.NewGuid();
         var child = new RetrievedChunk(
             Guid.NewGuid(), docId, "Doc", "child-content", null, null,
-            "child", 0.9m, 0.3m, 0.7m, parentId);
+            "child", 0.9m, 0.3m, 0.7m, parentId, 0);
         var parent = new RetrievedChunk(
             parentId, docId, "Doc", "parent-content", null, null,
-            "parent", 0m, 0m, 0m, null);
-        var retrieval = new FakeRetrievalService(new RetrievedContext([child], [parent], 20, false, []));
+            "parent", 0m, 0m, 0m, null, 0);
+        var retrieval = new FakeRetrievalService(new RetrievedContext([child], [parent], 20, false, [], []));
         var handler = BuildHandler(retrieval, Guid.NewGuid());
 
         var result = await handler.Handle(
@@ -61,8 +61,8 @@ public sealed class SearchKnowledgeBaseQueryHandlerTests
     {
         var child = new RetrievedChunk(
             Guid.NewGuid(), Guid.NewGuid(), "Doc", "content", null, null,
-            "child", 0.9m, 0.3m, 0.7m, null);
-        var retrieval = new FakeRetrievalService(new RetrievedContext([child], [], 10, false, []));
+            "child", 0.9m, 0.3m, 0.7m, null, 0);
+        var retrieval = new FakeRetrievalService(new RetrievedContext([child], [], 10, false, [], []));
         var handler = BuildHandler(retrieval, tenantId: null);
 
         var result = await handler.Handle(

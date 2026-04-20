@@ -30,7 +30,8 @@ public sealed class ContextPromptBuilderTests
             Parents: [],
             TotalTokens: 10,
             TruncatedByBudget: false,
-            DegradedStages: []);
+            DegradedStages: [],
+            Siblings: []);
 
         var sp = ContextPromptBuilder.Build("Be helpful.", ctx);
 
@@ -52,7 +53,8 @@ public sealed class ContextPromptBuilderTests
             Parents: new List<RetrievedChunk> { MakeParent(parentId, "parent context") },
             TotalTokens: 10,
             TruncatedByBudget: false,
-            DegradedStages: []);
+            DegradedStages: [],
+            Siblings: []);
 
         var sp = ContextPromptBuilder.Build("S", ctx);
 
@@ -64,9 +66,9 @@ public sealed class ContextPromptBuilderTests
 
     private static RetrievedChunk MakeChild(string content, Guid? parentChunkId = null) => new(
         Guid.NewGuid(), Guid.NewGuid(), "Doc", content, "Section", 1,
-        "child", 0.9m, 0.4m, 0.7m, parentChunkId);
+        "child", 0.9m, 0.4m, 0.7m, parentChunkId, 0);
 
     private static RetrievedChunk MakeParent(Guid id, string content) => new(
         id, Guid.NewGuid(), "Doc", content, "Section", 1,
-        "parent", 0m, 0m, 0m, null);
+        "parent", 0m, 0m, 0m, null, 0);
 }

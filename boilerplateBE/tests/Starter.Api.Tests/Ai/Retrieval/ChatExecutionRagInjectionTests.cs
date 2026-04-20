@@ -167,13 +167,13 @@ internal sealed class ChatExecutionTestFixture
         {
             new(Guid.NewGuid(), docId, "doc.pdf", "first chunk content",
                 SectionTitle: "S1", PageNumber: 1, ChunkLevel: "child",
-                SemanticScore: 0.9m, KeywordScore: 0.5m, HybridScore: 0.8m, ParentChunkId: null),
+                SemanticScore: 0.9m, KeywordScore: 0.5m, HybridScore: 0.8m, ParentChunkId: null, ChunkIndex: 0),
             new(Guid.NewGuid(), docId, "doc.pdf", "second chunk content",
                 SectionTitle: "S2", PageNumber: 2, ChunkLevel: "child",
-                SemanticScore: 0.85m, KeywordScore: 0.4m, HybridScore: 0.75m, ParentChunkId: null),
+                SemanticScore: 0.85m, KeywordScore: 0.4m, HybridScore: 0.75m, ParentChunkId: null, ChunkIndex: 1),
         };
 
-        _retrieval.Context = new RetrievedContext(chunks, Parents: [], TotalTokens: 20, TruncatedByBudget: false, DegradedStages: []);
+        _retrieval.Context = new RetrievedContext(chunks, Parents: [], TotalTokens: 20, TruncatedByBudget: false, DegradedStages: [], Siblings: []);
         return docId;
     }
 

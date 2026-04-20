@@ -71,5 +71,6 @@ public sealed class CitationParserTests
         SemanticScore: 0.9m,
         KeywordScore: 0.5m,
         HybridScore: 0.8m,
-        ParentChunkId: null);
+        ParentChunkId: null,
+        ChunkIndex: i);
 }

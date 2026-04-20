@@ -11,4 +11,5 @@ public sealed record RetrievedChunk(
     decimal SemanticScore,
     decimal KeywordScore,
     decimal HybridScore,
-    Guid? ParentChunkId);
+    Guid? ParentChunkId,
+    int ChunkIndex);
