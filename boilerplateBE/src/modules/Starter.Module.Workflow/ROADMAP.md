@@ -15,10 +15,105 @@ The following improvements were made after the initial Phase 1 implementation. T
 - **Instance Detail page** — renders step timeline, comments slot, cancel action, and pending task actions. Phase 2's step data collection forms should render inline on this page, and SLA indicators (overdue badges) should attach to the step timeline.
 - **Workflow slot rendered on Products detail page** — proves the entity integration pattern. Phase 2's visual designer should generate slot-rendering code automatically for new entity types.
 - **`startedByDisplayName` in InstanceSummary** — enriches the API response. Phase 2's delegation feature should add `delegatedToDisplayName` similarly.
+- **Concurrency protection** — `RowVersion` (xmin) on `WorkflowInstance` and `ApprovalTask`. `DbUpdateConcurrencyException` caught in ExecuteTask/Transition/Cancel. Prevents dual-approval data corruption.
+- **Idempotent task execution** — retried ExecuteTask calls return success if the task is already completed with the same action. TransitionAsync is idempotent when the instance already passed the Initial state.
+- **`AddWorkflowableEntity` helper** — one-liner registration for modules (`services.AddWorkflowableEntity("Product", ...)`). Products module registered as proof of concept. Registry enables auto-discovery for Phase 2's "Start Workflow" button on entity detail pages.
+- **TransitionAsync** — manual trigger for transitions on Initial-type states. Only the initiator can call it. Used for resubmitting after Return for Revision.
+- **Participant-based access control** — `GetWorkflowHistoryQueryHandler` checks user is initiator, assignee, or has `ViewAllTasks`. Non-participants get 404 (not 403, to avoid info leakage).
+- **Comments & Activity wired to WorkflowInstance** — engine saves approval comments and activity entries against `entityType: "WorkflowInstance"` + `entityId: instanceId`. Detail page renders the unified timeline.
 
 ---
 
 ## Phase 2 Deferred Items
+
+### AI agent as workflow participant
+
+**What:** Allow an AI agent to be an assignee on a workflow step. When a step with `AssigneeStrategy: "AiAgent"` is entered, the AI module auto-processes it — reviewing documents, classifying risk, summarizing content — and either auto-advances the workflow or flags it for human review.
+
+**Why deferred:** The AI module is still in development. The assignee resolution infrastructure (`IAssigneeResolverProvider`) supports this — the AI module would register a provider with strategy `"AiAgent"` that resolves to a system actor ID.
+
+**Pick this up when:** The AI module is merged and a domain module needs automated processing steps (e.g., "AI reviews leave request justification before manager sees it").
+
+**Starting points:**
+- AI module registers `AiAssigneeProvider : IAssigneeResolverProvider` with `SupportedStrategies => ["AiAgent"]`
+- `ResolveAsync` returns a system-level AI actor user ID
+- The engine creates an `ApprovalTask` assigned to the AI actor
+- A MassTransit consumer (`ProcessAiWorkflowTaskConsumer`) picks up `ApprovalTaskAssignedEvent` when assignee is the AI actor, processes the step, and calls `ExecuteTaskAsync`
+
+---
+
+### IWorkflowAiService — AI-friendly workflow API
+
+**What:** A higher-level capability interface that the AI module's function-calling system can consume. Methods like `GetAvailableActionsAsync(entityType, entityId)` → returns what the AI can do next on this entity's workflow, `DescribeWorkflowAsync(definitionId)` → returns a natural-language description of the workflow steps for LLM context.
+
+**Why deferred:** The AI module's tool registry (`IAiToolRegistry`) needs to be merged first. Once it is, workflow tools can be registered automatically.
+
+**Pick this up when:** AI module is merged and AI-powered workflow actions are a product requirement.
+
+**Starting points:**
+- Define `IWorkflowAiService` in `Starter.Abstractions/Capabilities/` extending `ICapability`
+- Implement in the Workflow module's engine
+- Register as an AI tool via `IAiToolRegistry` in `WorkflowModule.ConfigureServices`
+
+---
+
+### External webhook triggers (inbound)
+
+**What:** A `POST /workflow/webhook/{eventName}` endpoint that external systems (payment gateways, CI/CD, third-party APIs) can call to trigger workflow transitions. Authenticated via API key. The engine matches the event name to the current state's transitions and auto-advances.
+
+**Why deferred:** Outbound webhooks (via `IWebhookPublisher`) are working. Inbound requires an event-to-transition mapping config, API key scoping per workflow definition, and payload validation.
+
+**Pick this up when:** An integration requires external systems to advance workflows (e.g., Stripe payment confirmed → order workflow advances from "PendingPayment" to "Paid").
+
+**Starting points:**
+- Add `ExternalTriggerConfig` to `WorkflowTransitionConfig` (event name, expected payload schema)
+- New controller endpoint `POST /workflow/webhook/{eventName}` with API key auth
+- Engine matches event name to transitions on active instances and auto-executes
+
+---
+
+### Transactional outbox on WorkflowDbContext
+
+**What:** Bind MassTransit's EF outbox to `WorkflowDbContext` so domain events and integration events publish atomically with state changes. Currently events publish via in-memory MediatR dispatch — a crash between SaveChanges and event publishing can lose events.
+
+**Why deferred:** Same reasoning as the Comments and Communication modules' outbox deferral. No at-least-once consumer is demanding guaranteed delivery yet.
+
+**Pick this up when:** A downstream consumer requires at-least-once delivery (e.g., billing module tracking workflow completions for invoicing, or compliance audit requiring every transition to be durably recorded externally).
+
+**Starting points:**
+- Mirror `AddEntityFrameworkOutbox<ApplicationDbContext>` from `Starter.Infrastructure/DependencyInjection.cs` against `WorkflowDbContext`
+- Swap `IPublishEndpoint.Publish` in event handlers for `IBus.Publish` inside the same `SaveChangesAsync` transaction
+
+---
+
+### Bulk operations
+
+**What:** Allow admins to select multiple pending tasks and approve/reject them in batch. Useful when a manager has 20+ pending leave requests or expense approvals.
+
+**Why deferred:** Single-task approval covers the v1 use case. Bulk requires a `BatchExecuteTasksCommand`, UI changes (checkbox selection, batch action bar), and careful concurrency handling (what if some tasks fail and others succeed?).
+
+**Pick this up when:** Admin feedback indicates inbox volume makes individual approval impractical (typically > 10 tasks/day for a single approver).
+
+**Starting points:**
+- Add `BatchExecuteTasksCommand(List<(Guid TaskId, string Action)> Tasks, string? Comment)` 
+- Handler loops with per-task try/catch, returns a result summary (succeeded/failed/skipped counts)
+- Frontend: add checkbox column to inbox table, batch action bar at top
+
+---
+
+### Performance optimization — denormalized inbox
+
+**What:** `GetPendingTasksAsync` currently joins `ApprovalTask → WorkflowInstance → WorkflowDefinition` and resolves display names via `IUserReader`. At scale (1000+ tasks), this is slow. Denormalize `DefinitionDisplayName` and `EntityDisplayName` onto `ApprovalTask` at creation time, and add DB-level pagination.
+
+**Why deferred:** Current query performance is acceptable for typical task volumes (< 100 per user). Denormalization adds write-path complexity.
+
+**Pick this up when:** Inbox query latency exceeds 500ms (monitor via OpenTelemetry traces) or a tenant has > 500 pending tasks.
+
+**Starting points:**
+- Add `DefinitionDisplayName` and `EntityDisplayName` columns to `ApprovalTask`
+- Populate in `CreateApprovalTaskAsync` from the instance
+- Remove the join + IUserReader call from `GetPendingTasksAsync`
+- Add server-side pagination parameters to `IWorkflowService.GetPendingTasksAsync`
 
 ### Step data collection (dynamic forms)
 
