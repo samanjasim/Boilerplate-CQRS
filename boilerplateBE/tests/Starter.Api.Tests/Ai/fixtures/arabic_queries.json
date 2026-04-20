@@ -1,0 +1,34 @@
+{
+  "queries": [
+    {
+      "name": "greeting_ar",
+      "input": "مرحبا",
+      "expectedClassification": "Greeting",
+      "expectShortCircuit": true
+    },
+    {
+      "name": "definition_ar_with_taa_marbuta",
+      "input": "ما هي سياسة الإرجاع؟",
+      "expectedClassification": "Definition",
+      "expectedRewrite": "سياسة الإرجاع"
+    },
+    {
+      "name": "listing_ar",
+      "input": "اعرض لي جميع العملاء المسجلين",
+      "expectedClassification": "Listing",
+      "expectedRewrite": "العملاء المسجلين"
+    },
+    {
+      "name": "reasoning_ar",
+      "input": "لماذا فشل الطلب رقم 12345؟",
+      "expectedClassification": "Reasoning",
+      "expectedRewrite": "فشل الطلب 12345"
+    },
+    {
+      "name": "mixed_ar_digits",
+      "input": "ما هو رصيد الحساب ١٢٣٤٥",
+      "expectedClassification": "Definition",
+      "expectedRewrite": "رصيد الحساب"
+    }
+  ]
+}
