@@ -14,7 +14,10 @@ public sealed record WorkflowStateConfig(
     AssigneeConfig? Assignee = null,
     List<string>? Actions = null,
     List<HookConfig>? OnEnter = null,
-    List<HookConfig>? OnExit = null);
+    List<HookConfig>? OnExit = null,
+    List<FormFieldDefinition>? FormFields = null,
+    ParallelConfig? Parallel = null,
+    SlaConfig? Sla = null);
 
 public sealed record WorkflowTransitionConfig(
     string From,
@@ -36,6 +39,30 @@ public sealed record HookConfig(
     string? Action = null);
 
 public sealed record ConditionConfig(
-    string Field,
-    string Operator,
-    object Value);
+    string? Field = null,
+    string? Operator = null,
+    object? Value = null,
+    string? Logic = null,
+    List<ConditionConfig>? Conditions = null);
+
+public sealed record FormFieldDefinition(
+    string Name,
+    string Label,
+    string Type,
+    bool Required = false,
+    List<SelectOption>? Options = null,
+    double? Min = null,
+    double? Max = null,
+    int? MaxLength = null,
+    string? Placeholder = null,
+    string? Description = null);
+
+public sealed record SelectOption(string Value, string Label);
+
+public sealed record ParallelConfig(
+    string Mode,
+    List<AssigneeConfig> Assignees);
+
+public sealed record SlaConfig(
+    int? ReminderAfterHours = null,
+    int? EscalateAfterHours = null);

@@ -245,7 +245,8 @@ public sealed class WorkflowEngine(
 
     public async Task<bool> ExecuteTaskAsync(
         Guid taskId, string action, string? comment,
-        Guid actorUserId, CancellationToken ct = default)
+        Guid actorUserId, Dictionary<string, object>? formData = null,
+        CancellationToken ct = default)
     {
         var task = await context.ApprovalTasks
             .Include(t => t.Instance)

@@ -6,4 +6,5 @@ namespace Starter.Module.Workflow.Application.Commands.ExecuteTask;
 public sealed record ExecuteTaskCommand(
     Guid TaskId,
     string Action,
-    string? Comment = null) : IRequest<Result<bool>>;
+    string? Comment = null,
+    Dictionary<string, object>? FormData = null) : IRequest<Result<bool>>;

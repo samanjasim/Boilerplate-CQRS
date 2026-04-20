@@ -11,12 +11,22 @@ public sealed record PendingTaskSummary(
     string EntityType, Guid EntityId, string StepName,
     string? AssigneeRole, DateTime CreatedAt, DateTime? DueDate,
     List<string>? AvailableActions = null,
-    string? EntityDisplayName = null);
+    string? EntityDisplayName = null,
+    bool CanResubmit = false,
+    List<FormFieldDefinition>? FormFields = null,
+    Guid? GroupId = null,
+    int? ParallelTotal = null,
+    int? ParallelCompleted = null,
+    bool IsOverdue = false,
+    int? HoursOverdue = null,
+    bool IsDelegated = false,
+    string? DelegatedFromDisplayName = null);
 
 public sealed record WorkflowStepRecord(
     string FromState, string ToState, string StepType, string Action,
     Guid? ActorUserId, string? ActorDisplayName, string? Comment,
-    DateTime Timestamp, Dictionary<string, object>? Metadata);
+    DateTime Timestamp, Dictionary<string, object>? Metadata,
+    Dictionary<string, object>? FormData = null);
 
 public sealed record WorkflowInstanceSummary(
     Guid InstanceId, Guid DefinitionId, string DefinitionName,

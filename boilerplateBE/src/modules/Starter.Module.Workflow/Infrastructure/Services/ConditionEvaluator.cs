@@ -12,19 +12,34 @@ internal sealed class ConditionEvaluator : IConditionEvaluator
 {
     public bool Evaluate(ConditionConfig condition, Dictionary<string, object>? context)
     {
+        // Compound expression (AND/OR)
+        if (condition.Logic is not null && condition.Conditions is { Count: > 0 })
+        {
+            return condition.Logic.ToUpperInvariant() switch
+            {
+                "OR" => condition.Conditions.Any(c => Evaluate(c, context)),
+                _ => condition.Conditions.All(c => Evaluate(c, context)), // default AND
+            };
+        }
+
+        if (condition.Field is null) return false;
         if (context is null || !context.TryGetValue(condition.Field, out var rawValue))
             return false;
 
+        if (condition.Operator is null) return false;
+
+        var condValue = condition.Value ?? (object)string.Empty;
+
         return condition.Operator.ToLowerInvariant() switch
         {
-            "equals" => CompareEquals(rawValue, condition.Value),
-            "notequals" => !CompareEquals(rawValue, condition.Value),
-            "greaterthan" => CompareNumeric(rawValue, condition.Value) > 0,
-            "lessthan" => CompareNumeric(rawValue, condition.Value) < 0,
-            "greaterthanorequal" => CompareNumeric(rawValue, condition.Value) >= 0,
-            "lessthanorequal" => CompareNumeric(rawValue, condition.Value) <= 0,
-            "contains" => ToStr(rawValue).Contains(ToStr(condition.Value), StringComparison.OrdinalIgnoreCase),
-            "in" => EvaluateIn(rawValue, condition.Value),
+            "equals" => CompareEquals(rawValue, condValue),
+            "notequals" => !CompareEquals(rawValue, condValue),
+            "greaterthan" => CompareNumeric(rawValue, condValue) > 0,
+            "lessthan" => CompareNumeric(rawValue, condValue) < 0,
+            "greaterthanorequal" => CompareNumeric(rawValue, condValue) >= 0,
+            "lessthanorequal" => CompareNumeric(rawValue, condValue) <= 0,
+            "contains" => ToStr(rawValue).Contains(ToStr(condValue), StringComparison.OrdinalIgnoreCase),
+            "in" => EvaluateIn(rawValue, condValue),
             _ => false,
         };
     }

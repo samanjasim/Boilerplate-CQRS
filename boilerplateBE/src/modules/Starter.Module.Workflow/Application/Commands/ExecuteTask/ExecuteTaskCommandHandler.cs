@@ -17,6 +17,7 @@ internal sealed class ExecuteTaskCommandHandler(
             request.Action,
             request.Comment,
             currentUser.UserId!.Value,
+            request.FormData,
             cancellationToken);
 
         if (!success)

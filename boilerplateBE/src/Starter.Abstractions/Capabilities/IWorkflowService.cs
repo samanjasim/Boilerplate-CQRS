@@ -16,7 +16,8 @@ public interface IWorkflowService : ICapability
 
     // ── Task Actions ──
     Task<bool> ExecuteTaskAsync(Guid taskId, string action, string? comment,
-        Guid actorUserId, CancellationToken ct = default);
+        Guid actorUserId, Dictionary<string, object>? formData = null,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Manually trigger a named transition on an active workflow instance.

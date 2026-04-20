@@ -42,6 +42,7 @@ public sealed class NullWorkflowService(ILogger<NullWorkflowService> logger) : I
         string action,
         string? comment,
         Guid actorUserId,
+        Dictionary<string, object>? formData = null,
         CancellationToken ct = default)
     {
         logger.LogDebug(
