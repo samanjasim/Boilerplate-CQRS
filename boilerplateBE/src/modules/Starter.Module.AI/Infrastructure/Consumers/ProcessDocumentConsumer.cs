@@ -209,7 +209,9 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
                 var body = ragOptions.ApplyArabicNormalization
                     ? ArabicTextNormalizer.Normalize(content, arOpts)
                     : content;
-                return string.IsNullOrWhiteSpace(breadcrumb) ? body : breadcrumb + "\n" + body;
+                if (!ragOptions.IncludeBreadcrumbInFts || string.IsNullOrWhiteSpace(breadcrumb))
+                    return body;
+                return breadcrumb + "\n" + body;
             }
 
             var parentEntities = chunks.Parents.Select(p => AiDocumentChunk.Create(

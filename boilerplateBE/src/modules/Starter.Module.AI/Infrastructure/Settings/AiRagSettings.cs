@@ -81,6 +81,15 @@ public sealed class AiRagSettings
     public int NeighborWindowSize { get; init; } = 0;
     public int StageTimeoutNeighborMs { get; init; } = 3_000;
 
+    // ---- New in Plan 4b-3 — Structural chunking ----
+    // When false, ChunkerRouter always delegates to the heuristic HierarchicalDocumentChunker,
+    // regardless of ContentType. Use for A/B experiments or corpus-specific regressions.
+    public bool EnableStructuralChunking { get; init; } = true;
+    // When false, ProcessDocumentConsumer will not prepend the heading breadcrumb to
+    // NormalizedContent. Breadcrumbs still flow through SectionTitle and into prompts;
+    // the toggle only controls whether they participate in the Postgres FTS index.
+    public bool IncludeBreadcrumbInFts { get; init; } = true;
+
     /// <summary>
     /// Scalar applied to an anchor's HybridScore when attributing a score to its
     /// siblings. Siblings do not earn their own retrieval score — they inherit a

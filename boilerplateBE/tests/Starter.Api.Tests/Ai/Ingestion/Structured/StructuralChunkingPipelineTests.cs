@@ -19,7 +19,8 @@ public class StructuralChunkingPipelineTests
         var router = new ChunkerRouter(
             new StructuredMarkdownChunker(tc, new MarkdownBlockTokenizer()),
             new HierarchicalDocumentChunker(tc),
-            new HtmlToMarkdownConverter());
+            new HtmlToMarkdownConverter(),
+            Microsoft.Extensions.Options.Options.Create(new Starter.Module.AI.Infrastructure.Settings.AiRagSettings()));
 
         var md =
             "# قسم 1\n\n" +

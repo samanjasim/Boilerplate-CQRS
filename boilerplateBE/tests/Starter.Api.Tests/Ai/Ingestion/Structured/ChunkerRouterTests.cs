@@ -1,20 +1,23 @@
 using FluentAssertions;
+using Microsoft.Extensions.Options;
 using Starter.Module.AI.Application.Services.Ingestion;
 using Starter.Module.AI.Infrastructure.Ingestion;
 using Starter.Module.AI.Infrastructure.Ingestion.Structured;
+using Starter.Module.AI.Infrastructure.Settings;
 using Xunit;
 
 namespace Starter.Api.Tests.Ai.Ingestion.Structured;
 
 public class ChunkerRouterTests
 {
-    private static ChunkerRouter NewRouter()
+    private static ChunkerRouter NewRouter(AiRagSettings? settings = null)
     {
         var tc = new TokenCounter();
         return new ChunkerRouter(
             structural: new StructuredMarkdownChunker(tc, new MarkdownBlockTokenizer()),
             fallback: new HierarchicalDocumentChunker(tc),
-            htmlConverter: new HtmlToMarkdownConverter());
+            htmlConverter: new HtmlToMarkdownConverter(),
+            settings: Options.Create(settings ?? new AiRagSettings()));
     }
 
     private static ExtractedDocument Doc(string text) => new([new ExtractedPage(1, text)], false);
@@ -56,6 +59,15 @@ public class ChunkerRouterTests
     {
         var chunks = NewRouter().Chunk(Doc("raw PDF text without markdown."), Opts("application/pdf"));
         chunks.Children.Should().NotBeEmpty();
+        chunks.Children.Should().OnlyContain(c => c.SectionTitle == null);
+    }
+
+    [Fact]
+    public void EnableStructuralChunking_false_forces_fallback_even_for_markdown()
+    {
+        var settings = new AiRagSettings { EnableStructuralChunking = false };
+        var chunks = NewRouter(settings).Chunk(Doc("# Heading\n\nbody text here.\n"), Opts("text/markdown"));
+        // The heuristic fallback does not extract SectionTitle from markdown headings.
         chunks.Children.Should().OnlyContain(c => c.SectionTitle == null);
     }
 }

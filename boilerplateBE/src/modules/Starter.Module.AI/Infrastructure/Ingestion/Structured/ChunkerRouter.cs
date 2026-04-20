@@ -1,14 +1,22 @@
+using Microsoft.Extensions.Options;
 using Starter.Module.AI.Application.Services.Ingestion;
+using Starter.Module.AI.Infrastructure.Settings;
 
 namespace Starter.Module.AI.Infrastructure.Ingestion.Structured;
 
 internal sealed class ChunkerRouter(
     StructuredMarkdownChunker structural,
     HierarchicalDocumentChunker fallback,
-    HtmlToMarkdownConverter htmlConverter) : IDocumentChunker
+    HtmlToMarkdownConverter htmlConverter,
+    IOptions<AiRagSettings> settings) : IDocumentChunker
 {
+    private readonly AiRagSettings _settings = settings.Value;
+
     public HierarchicalChunks Chunk(ExtractedDocument document, ChunkingOptions options)
     {
+        if (!_settings.EnableStructuralChunking)
+            return fallback.Chunk(document, options);
+
         var ct = Normalize(options.ContentType);
 
         if (ct == "text/html")
