@@ -27,6 +27,19 @@ export interface WorkflowStateConfig {
   actions?: string[] | null;
   onEnter?: HookConfig[] | null;
   onExit?: HookConfig[] | null;
+  formFields?: FormFieldDefinition[] | null;
+  parallel?: ParallelConfig | null;
+  sla?: SlaConfig | null;
+}
+
+export interface ParallelConfig {
+  mode: string;
+  assignees: AssigneeConfig[];
+}
+
+export interface SlaConfig {
+  reminderAfterHours?: number | null;
+  escalateAfterHours?: number | null;
 }
 
 export interface WorkflowTransitionConfig {

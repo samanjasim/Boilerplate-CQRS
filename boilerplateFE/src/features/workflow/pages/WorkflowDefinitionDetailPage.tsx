@@ -32,10 +32,12 @@ export default function WorkflowDefinitionDetailPage() {
     );
   }
 
-  if (!definition) return null;
+  // Unwrap API response envelope: { data: { id, name, ... }, success }
+  const def = definition?.data ?? definition;
+  if (!def) return null;
 
   const handleEdit = () => {
-    setEditName(definition.name);
+    setEditName(def.name);
     setIsEditing(true);
   };
 
@@ -49,10 +51,10 @@ export default function WorkflowDefinitionDetailPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={definition.name}
+        title={def.name}
         actions={
           <div className="flex items-center gap-2">
-            {definition.isTemplate ? (
+            {def.isTemplate ? (
               <Button onClick={() => cloneDefinition(id!)} disabled={cloning}>
                 {t('workflow.detail.cloneToCustomize')}
               </Button>
@@ -71,13 +73,13 @@ export default function WorkflowDefinitionDetailPage() {
       <Card>
         <CardContent className="py-5">
           <div className="flex flex-wrap items-center gap-3">
-            <Badge variant="secondary">{definition.entityType}</Badge>
-            <Badge variant={definition.isTemplate ? 'outline' : 'default'}>
-              {definition.isTemplate
+            <Badge variant="secondary">{def.entityType}</Badge>
+            <Badge variant={def.isTemplate ? 'outline' : 'default'}>
+              {def.isTemplate
                 ? t('workflow.definitions.systemTemplate')
                 : t('workflow.definitions.customized')}
             </Badge>
-            {definition.isActive ? (
+            {def.isActive ? (
               <Badge variant="default">{t('workflow.status.active')}</Badge>
             ) : (
               <Badge variant="secondary">{t('common.inactive')}</Badge>
@@ -87,7 +89,7 @@ export default function WorkflowDefinitionDetailPage() {
       </Card>
 
       {/* Editable fields for custom definitions */}
-      {isEditing && !definition.isTemplate && (
+      {isEditing && !def.isTemplate && (
         <Card>
           <CardContent className="py-5 space-y-4">
             <div className="space-y-2">
@@ -110,7 +112,7 @@ export default function WorkflowDefinitionDetailPage() {
       <section className="space-y-3">
         <h2 className="text-base font-semibold text-foreground">{t('workflow.detail.stateList')}</h2>
         <div className="space-y-3">
-          {definition.states?.map((state: WorkflowStateConfig, index: number) => (
+          {def.states?.map((state: WorkflowStateConfig, index: number) => (
             <Card key={state.name}>
               <CardContent className="py-4">
                 <div className="flex items-start justify-between gap-4">
@@ -139,6 +141,39 @@ export default function WorkflowDefinitionDetailPage() {
                             {action}
                           </Badge>
                         ))}
+                      </div>
+                    )}
+                    {state.formFields && state.formFields.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground">{t('workflow.forms.required', 'Form Fields')}:</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {state.formFields.map((f) => (
+                            <Badge key={f.name} variant="outline" className="text-xs">
+                              {f.label} ({f.type}){f.required ? ' *' : ''}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {state.sla && (
+                      <div className="mt-2">
+                        <p className="text-xs text-muted-foreground">
+                          <span className="font-medium">{t('workflow.sla.overdue', 'SLA')}:</span>
+                          {state.sla.reminderAfterHours != null && (
+                            <span className="ms-1">⏰ Reminder after {state.sla.reminderAfterHours}h</span>
+                          )}
+                          {state.sla.escalateAfterHours != null && (
+                            <span className="ms-1">🔺 Escalate after {state.sla.escalateAfterHours}h</span>
+                          )}
+                        </p>
+                      </div>
+                    )}
+                    {state.parallel && (
+                      <div className="mt-2">
+                        <p className="text-xs text-muted-foreground">
+                          <span className="font-medium">{t('workflow.parallel.progress', 'Parallel')}:</span>
+                          <span className="ms-1">{state.parallel.mode} — {state.parallel.assignees.length} assignee(s)</span>
+                        </p>
                       </div>
                     )}
                   </div>
