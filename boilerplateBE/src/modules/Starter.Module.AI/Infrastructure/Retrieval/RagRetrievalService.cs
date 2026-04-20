@@ -118,7 +118,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
             }
         }
 
-        _logger.LogInformation(
+        _logger.LogDebug(
             "RAG classify: QuestionType={QuestionType}",
             questionType);
 
