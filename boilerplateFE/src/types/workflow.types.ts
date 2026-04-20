@@ -1,6 +1,7 @@
 export interface WorkflowDefinitionSummary {
   id: string;
   name: string;
+  displayName: string | null;
   entityType: string;
   stepCount: number;
   isTemplate: boolean;

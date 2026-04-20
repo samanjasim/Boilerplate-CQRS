@@ -73,7 +73,7 @@ export default function WorkflowDefinitionsPage() {
                       to={`/workflows/definitions/${def.id}`}
                       className="hover:underline"
                     >
-                      {def.name}
+                      {def.displayName || def.name}
                     </Link>
                   </TableCell>
                   <TableCell>

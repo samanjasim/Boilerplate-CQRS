@@ -851,6 +851,7 @@ public sealed class WorkflowEngine(
             return new WorkflowDefinitionSummary(
                 d.Id,
                 d.Name,
+                d.DisplayName,
                 d.EntityType,
                 stateCount,
                 d.IsTemplate,

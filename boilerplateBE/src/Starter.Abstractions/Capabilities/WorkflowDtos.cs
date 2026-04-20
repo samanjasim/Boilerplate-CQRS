@@ -37,7 +37,7 @@ public sealed record WorkflowInstanceSummary(
     bool CanResubmit = false);
 
 public sealed record WorkflowDefinitionSummary(
-    Guid Id, string Name, string EntityType, int StepCount,
+    Guid Id, string Name, string? DisplayName, string EntityType, int StepCount,
     bool IsTemplate, bool IsActive, string? SourceModule);
 
 public sealed record WorkflowDefinitionDetail(

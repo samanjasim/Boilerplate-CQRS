@@ -91,7 +91,7 @@ export function NewRequestDialog({ open, onOpenChange }: NewRequestDialogProps) 
               <SelectContent>
                 {activeDefinitions.map((def) => (
                   <SelectItem key={def.id} value={def.id}>
-                    {def.name}
+                    {def.displayName || def.name}
                   </SelectItem>
                 ))}
               </SelectContent>
