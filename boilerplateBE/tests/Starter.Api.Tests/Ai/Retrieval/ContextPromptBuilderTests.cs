@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Starter.Module.AI.Application.Services.Retrieval;
+using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Retrieval;
 using Xunit;
 
@@ -92,6 +93,36 @@ public sealed class ContextPromptBuilderTests
         // [2] would indicate siblings were numbered — they must not be
         output.Should().NotContain("[2]");
     }
+
+    [Fact]
+    public void Code_chunk_is_wrapped_in_triple_backticks()
+    {
+        var ctx = new RetrievedContext([MakeTyped("x = 1", ChunkType.Code)], [], 10, false, [], []);
+        var prompt = ContextPromptBuilder.Build("sys", ctx);
+        prompt.Should().Contain("```\nx = 1\n```");
+    }
+
+    [Fact]
+    public void Math_chunk_is_wrapped_in_dollar_dollar()
+    {
+        var ctx = new RetrievedContext([MakeTyped("a = b + c", ChunkType.Math)], [], 10, false, [], []);
+        var prompt = ContextPromptBuilder.Build("sys", ctx);
+        prompt.Should().Contain("$$\na = b + c\n$$");
+    }
+
+    [Fact]
+    public void Body_chunk_is_unwrapped()
+    {
+        var ctx = new RetrievedContext([MakeTyped("hello", ChunkType.Body)], [], 10, false, [], []);
+        var prompt = ContextPromptBuilder.Build("sys", ctx);
+        prompt.Should().Contain("hello").And.NotContain("```hello");
+    }
+
+    private static RetrievedChunk MakeTyped(string content, ChunkType type) => new(
+        ChunkId: Guid.NewGuid(), DocumentId: Guid.NewGuid(), DocumentName: "d", Content: content,
+        SectionTitle: "S", PageNumber: 1, ChunkLevel: "child",
+        SemanticScore: 0, KeywordScore: 0, HybridScore: 1, ParentChunkId: null, ChunkIndex: 0,
+        ChunkType: type);
 
     private static RetrievedChunk MakeChild(string content, Guid? parentChunkId = null) => new(
         Guid.NewGuid(), Guid.NewGuid(), "Doc", content, "Section", 1,

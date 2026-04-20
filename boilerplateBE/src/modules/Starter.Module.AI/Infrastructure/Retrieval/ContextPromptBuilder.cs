@@ -1,5 +1,6 @@
 using System.Text;
 using Starter.Module.AI.Application.Services.Retrieval;
+using Starter.Module.AI.Domain.Enums;
 
 namespace Starter.Module.AI.Infrastructure.Retrieval;
 
@@ -29,7 +30,22 @@ internal static class ContextPromptBuilder
                 if (child.PageNumber.HasValue)
                     sb.Append(" · Page ").Append(child.PageNumber);
                 sb.AppendLine();
-                sb.AppendLine(child.Content);
+                switch (child.ChunkType)
+                {
+                    case ChunkType.Code:
+                        sb.AppendLine("```");
+                        sb.AppendLine(child.Content);
+                        sb.AppendLine("```");
+                        break;
+                    case ChunkType.Math:
+                        sb.AppendLine("$$");
+                        sb.AppendLine(child.Content);
+                        sb.AppendLine("$$");
+                        break;
+                    default:
+                        sb.AppendLine(child.Content);
+                        break;
+                }
 
                 if (child.ParentChunkId.HasValue && parentsById.TryGetValue(child.ParentChunkId.Value, out var parent))
                 {
