@@ -112,8 +112,10 @@ internal sealed class ChatExecutionTestFixture
     private readonly FakeRetrieval _retrieval = new();
     private readonly IChatExecutionService _chat;
 
-    public ChatExecutionTestFixture()
+    public ChatExecutionTestFixture(IWebhookPublisher? webhookPublisher = null, bool throwOnRetrieve = false)
     {
+        _retrieval.ThrowOnRetrieve = throwOnRetrieve;
+
         var services = new ServiceCollection();
 
         var dbName = $"ai-chat-{Guid.NewGuid():N}";
@@ -124,7 +126,7 @@ internal sealed class ChatExecutionTestFixture
         services.AddSingleton<ICurrentUserService>(new StubCurrentUser(TenantId, UserId));
         services.AddSingleton<IQuotaChecker, StubQuotaChecker>();
         services.AddSingleton<IUsageTracker, StubUsageTracker>();
-        services.AddSingleton<IWebhookPublisher, StubWebhookPublisher>();
+        services.AddSingleton<IWebhookPublisher>(webhookPublisher ?? new StubWebhookPublisher());
         services.AddSingleton<IAiToolRegistry, StubAiToolRegistry>();
         services.AddSingleton<IRagRetrievalService>(_retrieval);
         services.AddSingleton<ISender, NullSender>();
@@ -153,6 +155,10 @@ internal sealed class ChatExecutionTestFixture
         {
             a.SetKnowledgeBase(docIds ?? Array.Empty<Guid>());
             a.SetRagScope(AiRagScope.SelectedDocuments);
+        }
+        else if (scope == AiRagScope.AllTenantDocuments)
+        {
+            a.SetRagScope(AiRagScope.AllTenantDocuments);
         }
 
         Db.AiAssistants.Add(a);
@@ -290,12 +296,14 @@ internal sealed class ScriptedAiProvider : IAiProvider
 internal sealed class FakeRetrieval : IRagRetrievalService
 {
     public RetrievedContext Context { get; set; } = RetrievedContext.Empty;
+    public bool ThrowOnRetrieve { get; set; }
     public int CallCount { get; private set; }
 
     public Task<RetrievedContext> RetrieveForTurnAsync(
         AiAssistant assistant, string latestUserMessage, CancellationToken ct)
     {
         CallCount++;
+        if (ThrowOnRetrieve) throw new InvalidOperationException("simulated retrieval failure");
         return Task.FromResult(Context);
     }
 
@@ -339,6 +347,26 @@ internal sealed class StubWebhookPublisher : IWebhookPublisher
 {
     public Task PublishAsync(string eventType, Guid? tenantId, object data, CancellationToken ct = default) => Task.CompletedTask;
 }
+
+internal sealed class RecordingWebhookPublisher : IWebhookPublisher
+{
+    public int DelayMs { get; set; }
+    public bool ThrowOnPublish { get; set; }
+
+    private readonly List<RecordedEvent> _events = [];
+    public IReadOnlyList<RecordedEvent> Events => _events;
+
+    public async Task PublishAsync(string eventType, Guid? tenantId, object data, CancellationToken cancellationToken = default)
+    {
+        if (ThrowOnPublish)
+            throw new InvalidOperationException("recording publisher: simulated failure");
+        if (DelayMs > 0)
+            await Task.Delay(DelayMs, cancellationToken).ConfigureAwait(false);
+        _events.Add(new RecordedEvent(eventType, tenantId, data));
+    }
+}
+
+internal sealed record RecordedEvent(string EventType, Guid? TenantId, object Data);
 
 internal sealed class StubAiToolRegistry : IAiToolRegistry
 {

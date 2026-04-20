@@ -623,13 +623,81 @@ internal sealed class ChatExecutionService(
             logger.LogInformation(
                 "RAG retrieval for assistant {AssistantId}: children={Children} parents={Parents} tokens={Tokens} truncated={Truncated} degraded={Degraded}",
                 assistant.Id, retrieved.Children.Count, retrieved.Parents.Count, retrieved.TotalTokens, retrieved.TruncatedByBudget, degradedSummary);
+
+            var eventName = retrieved.DegradedStages.Count > 0
+                ? RagWebhookEventNames.Degraded
+                : RagWebhookEventNames.Completed;
+
+            var payload = new
+            {
+                RequestId = Guid.NewGuid(),
+                AssistantId = assistant.Id,
+                TenantId = currentUser.TenantId,
+                KeptChildren = retrieved.Children.Count,
+                KeptParents = retrieved.Parents.Count,
+                SiblingsCount = retrieved.Siblings.Count,
+                FusedCandidates = retrieved.FusedCandidates,
+                TotalTokens = retrieved.TotalTokens,
+                Truncated = retrieved.TruncatedByBudget,
+                DegradedStages = retrieved.DegradedStages.Count == 0
+                    ? Array.Empty<string>()
+                    : retrieved.DegradedStages.ToArray(),
+                DetectedLanguage = retrieved.DetectedLanguage,
+                Stages = Array.Empty<object>()
+            };
+
+            await PublishRagLifecycleAsync(eventName, currentUser.TenantId, payload, ct);
+
             return retrieved;
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "RAG retrieval failed for assistant {AssistantId}; proceeding without context.",
                 assistant.Id);
+
+            var failedPayload = new
+            {
+                RequestId = Guid.NewGuid(),
+                AssistantId = assistant.Id,
+                TenantId = currentUser.TenantId,
+                Error = ex.Message
+            };
+            await PublishRagLifecycleAsync(RagWebhookEventNames.Failed, currentUser.TenantId, failedPayload, ct);
+
             return RetrievedContext.Empty;
+        }
+    }
+
+    private async Task PublishRagLifecycleAsync(string eventType, Guid? tenantId, object payload, CancellationToken ct)
+    {
+        var publishSw = System.Diagnostics.Stopwatch.StartNew();
+        var publishOutcome = RagStageOutcome.Success;
+        try
+        {
+            using var publishCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            publishCts.CancelAfter(500);
+            await webhookPublisher.PublishAsync(eventType, tenantId, payload, publishCts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            publishOutcome = RagStageOutcome.Timeout;
+            logger.LogWarning("RAG webhook publish timed out for event {EventType}", eventType);
+        }
+        catch (Exception ex)
+        {
+            publishOutcome = RagStageOutcome.Error;
+            logger.LogWarning(ex, "RAG webhook publish failed for event {EventType}", eventType);
+        }
+        finally
+        {
+            publishSw.Stop();
+            AiRagMetrics.StageDuration.Record(
+                publishSw.Elapsed.TotalMilliseconds,
+                new KeyValuePair<string, object?>("rag.stage", "webhook-publish"));
+            AiRagMetrics.StageOutcome.Add(
+                1,
+                new KeyValuePair<string, object?>("rag.stage", "webhook-publish"),
+                new KeyValuePair<string, object?>("rag.outcome", publishOutcome));
         }
     }
 
