@@ -37,7 +37,8 @@ public static class OpenTelemetryConfiguration
                 })
                 .AddEntityFrameworkCoreInstrumentation()
                 .AddSource("MassTransit")
-                .AddSource("Starter.Api"))
+                .AddSource("Starter.Api")
+                .AddSource("Starter.Module.AI"))
             .WithMetrics(metrics => metrics
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation())

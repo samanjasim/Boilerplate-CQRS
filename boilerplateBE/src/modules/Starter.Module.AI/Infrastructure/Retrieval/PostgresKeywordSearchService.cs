@@ -34,9 +34,7 @@ internal sealed class PostgresKeywordSearchService : IKeywordSearchService
             return [];
 
         var normalized = _settings.ApplyArabicNormalization
-            ? ArabicTextNormalizer.Normalize(queryText, new ArabicNormalizationOptions(
-                _settings.NormalizeTaMarbuta,
-                _settings.NormalizeArabicDigits))
+            ? ArabicTextNormalizer.Normalize(queryText, _settings.ToArabicOptions())
             : queryText;
 
         if (string.IsNullOrWhiteSpace(normalized))

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -9,6 +10,7 @@ using Starter.Module.AI.Infrastructure.Ingestion;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Retrieval.Reranking;
 using Starter.Module.AI.Infrastructure.Settings;
+using Starter.Module.AI.Infrastructure.Telemetry;
 
 namespace Starter.Module.AI.Infrastructure.Retrieval;
 
@@ -91,6 +93,9 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         if (string.IsNullOrWhiteSpace(queryText))
             return RetrievedContext.Empty;
 
+        using var activity = RagActivitySource.Source.StartActivity("rag.retrieve", ActivityKind.Internal);
+        activity?.SetTag(RagTracingTags.RetrieveTopK, topK);
+
         var degraded = new List<string>();
 
         // 0. Classify the question. Short-circuits greetings and passes QuestionType
@@ -109,21 +114,23 @@ internal sealed class RagRetrievalService : IRagRetrievalService
             }
             catch (OperationCanceledException)
             {
-                degraded.Add("classify");
+                degraded.Add(RagStages.Classify);
                 _logger.LogWarning(
-                    "RAG stage 'classify' timed out after {TimeoutMs}ms",
+                    "RAG stage '{Stage}' timed out after {TimeoutMs}ms",
+                    RagStages.Classify,
                     _settings.StageTimeoutClassifyMs);
             }
             catch (Exception ex) when (IsTransientStageException(ex))
             {
-                degraded.Add("classify");
-                _logger.LogError(ex, "RAG stage 'classify' failed");
+                degraded.Add(RagStages.Classify);
+                _logger.LogError(ex, "RAG stage '{Stage}' failed", RagStages.Classify);
             }
         }
 
         _logger.LogDebug(
             "RAG classify: QuestionType={QuestionType}",
             questionType);
+        activity?.SetTag(RagTracingTags.ClassifyType, questionType?.ToString() ?? "null");
 
         // Short-circuit greetings — chat injection layer handles empty context gracefully.
         if (questionType == QuestionType.Greeting)
@@ -136,18 +143,19 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         var variants = await WithTimeoutAsync(
             innerCt => _queryRewriter.RewriteAsync(queryText, language: null, innerCt),
             _settings.StageTimeoutQueryRewriteMs,
-            "query-rewrite",
+            RagStages.QueryRewrite,
             degraded,
             ct);
         // On rewriter timeout/failure variants is null/empty — fall back to the original query so retrieval continues (degraded stage already recorded above).
         IReadOnlyList<string> effectiveVariants = variants is { Count: > 0 } ? variants : new[] { queryText };
+        activity?.SetTag(RagTracingTags.RewriteVariantsUsed, effectiveVariants.Count);
 
         // 2. Embed all variants in one batched call.
         var vectors = await WithTimeoutAsync(
             innerCt => _embeddingService.EmbedAsync(
                 effectiveVariants, innerCt, attribution: null, requestType: AiRequestType.QueryEmbedding),
             _settings.StageTimeoutEmbedMs,
-            "embed-query",
+            RagStages.EmbedQuery,
             degraded,
             ct);
 
@@ -178,7 +186,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
             var hits = await WithTimeoutAsync(
                 innerCt => _vectorStore.SearchAsync(tenantId, v, documentFilter, retrievalTopK, innerCt),
                 _settings.StageTimeoutVectorMs,
-                $"vector-search[{i}]",
+                RagStages.VectorSearch(i),
                 degraded,
                 ct);
             vectorLists.Add(hits ?? (IReadOnlyList<VectorSearchHit>)Array.Empty<VectorSearchHit>());
@@ -192,7 +200,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
             var hits = await WithTimeoutAsync(
                 innerCt => _keywordSearch.SearchAsync(tenantId, q, documentFilter, retrievalTopK, innerCt),
                 _settings.StageTimeoutKeywordMs,
-                $"keyword-search[{i}]",
+                RagStages.KeywordSearch(i),
                 degraded,
                 ct);
             keywordLists.Add(hits ?? (IReadOnlyList<KeywordSearchHit>)Array.Empty<KeywordSearchHit>());
@@ -219,6 +227,8 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         };
         var poolSize = Math.Max(topK, topK * poolMultiplier);
         var pool = mergedHits.Take(poolSize).ToList();
+        activity?.SetTag(RagTracingTags.RetrievePoolSize, pool.Count);
+        activity?.SetTag(RagTracingTags.RetrieveVariantsUsed, variantCount);
 
         if (pool.Count == 0)
             return new RetrievedContext([], [], 0, false, degraded, []);
@@ -262,7 +272,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         var rerankResult = await WithTimeoutAsync(
             innerCt => _reranker.RerankAsync(queryText, alignedPool, alignedChunks, plannedCtx, innerCt),
             _settings.StageTimeoutRerankMs,
-            "rerank",
+            RagStages.Rerank,
             degraded,
             ct);
 
@@ -279,6 +289,13 @@ internal sealed class RagRetrievalService : IRagRetrievalService
                 rerankResult.TokensOut,
                 rerankResult.CacheHits,
                 rerankResult.UnusedRatio);
+
+            activity?.SetTag(RagTracingTags.RerankStrategyRequested, rerankResult.StrategyRequested.ToString());
+            activity?.SetTag(RagTracingTags.RerankStrategyUsed, rerankResult.StrategyUsed.ToString());
+            activity?.SetTag(RagTracingTags.RerankFellBack, rerankResult.StrategyUsed == RerankStrategy.FallbackRrf);
+            activity?.SetTag(RagTracingTags.RerankCacheHits, rerankResult.CacheHits);
+            activity?.SetTag(RagTracingTags.RerankLatencyMs, rerankResult.LatencyMs);
+            activity?.SetTag(RagTracingTags.RerankUnusedRatio, rerankResult.UnusedRatio);
         }
 
         var topKHits = rerankedHits.Take(topK).ToList();
@@ -330,7 +347,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
             .Select(p => Map(p, null, docNames))
             .ToList();
 
-        var (trimmedChildren, trimmedParents, totalTokens, truncated) =
+        var (trimmedChildren, trimmedParents, usedTokens, truncated) =
             TrimToBudget(childChunks, parentChunks, _settings.MaxContextTokens);
 
         IReadOnlyList<RetrievedChunk> siblings = Array.Empty<RetrievedChunk>();
@@ -339,13 +356,20 @@ internal sealed class RagRetrievalService : IRagRetrievalService
             var expanded = await WithTimeoutAsync(
                 innerCt => _neighborExpander.ExpandAsync(tenantId, trimmedChildren, _settings.NeighborWindowSize, innerCt),
                 _settings.StageTimeoutNeighborMs,
-                "neighbor-expand",
+                RagStages.NeighborExpand,
                 degraded,
                 ct);
-            if (expanded is not null) siblings = expanded;
+            if (expanded is { Count: > 0 })
+            {
+                (siblings, usedTokens, truncated) = TrimSiblingsToRemainingBudget(
+                    expanded, _settings.MaxContextTokens, usedTokens, truncated);
+            }
         }
+        activity?.SetTag(RagTracingTags.NeighborSiblingsReturned, siblings.Count);
+        activity?.SetTag(RagTracingTags.RetrieveTruncated, truncated);
+        activity?.SetTag(RagTracingTags.RetrieveDegradedStages, string.Join(",", degraded));
 
-        return new RetrievedContext(trimmedChildren, trimmedParents, totalTokens, truncated, degraded, siblings);
+        return new RetrievedContext(trimmedChildren, trimmedParents, usedTokens, truncated, degraded, siblings);
     }
 
     private RetrievedChunk Map(
@@ -411,6 +435,30 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         }
 
         return (kept, keptParents, usedTokens, truncated);
+    }
+
+    // Siblings are the first casualties of context-window pressure — they're
+    // contextual nicety, not citation targets. Drop any that would push past
+    // the budget, preserving anchor-order.
+    private (IReadOnlyList<RetrievedChunk> Siblings, int UsedTokens, bool Truncated) TrimSiblingsToRemainingBudget(
+        IReadOnlyList<RetrievedChunk> siblings,
+        int budget,
+        int usedTokens,
+        bool truncated)
+    {
+        var kept = new List<RetrievedChunk>(siblings.Count);
+        foreach (var s in siblings)
+        {
+            var tokens = _tokenCounter.Count(s.Content);
+            if (usedTokens + tokens > budget)
+            {
+                truncated = true;
+                continue;
+            }
+            kept.Add(s);
+            usedTokens += tokens;
+        }
+        return (kept, usedTokens, truncated);
     }
 
     /// <summary>

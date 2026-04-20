@@ -57,6 +57,30 @@ public sealed class SearchKnowledgeBaseQueryHandlerTests
     }
 
     [Fact]
+    public async Task Siblings_Are_Surfaced_As_Nearby_Separately_From_Items()
+    {
+        var docId = Guid.NewGuid();
+        var child = new RetrievedChunk(
+            Guid.NewGuid(), docId, "Doc", "anchor", null, null,
+            "child", 0.9m, 0.3m, 0.7m, null, 0);
+        var sibling = new RetrievedChunk(
+            Guid.NewGuid(), docId, "Doc", "sibling", null, 1,
+            "child", 0m, 0m, 0.35m, null, 1);
+        var retrieval = new FakeRetrievalService(new RetrievedContext([child], [], 15, false, [], [sibling]));
+        var handler = BuildHandler(retrieval, Guid.NewGuid());
+
+        var result = await handler.Handle(
+            new SearchKnowledgeBaseQuery("q", null, 5, null, false),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Items.Should().HaveCount(1);
+        result.Value.Items[0].Content.Should().Be("anchor");
+        result.Value.Nearby.Should().HaveCount(1);
+        result.Value.Nearby[0].Content.Should().Be("sibling");
+    }
+
+    [Fact]
     public async Task Returns_Failure_When_Tenant_Is_Null()
     {
         var child = new RetrievedChunk(

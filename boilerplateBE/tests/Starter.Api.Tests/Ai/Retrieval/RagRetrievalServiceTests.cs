@@ -16,93 +16,6 @@ using Xunit;
 
 namespace Starter.Api.Tests.Ai.Retrieval;
 
-internal sealed class FakeNeighborExpander : INeighborExpander
-{
-    public Guid CapturedTenantId { get; private set; }
-    public int CapturedAnchorCount { get; private set; }
-    public int CapturedWindowSize { get; private set; }
-    public bool WasCalled { get; private set; }
-    private readonly IReadOnlyList<RetrievedChunk> _returns;
-
-    public FakeNeighborExpander(IReadOnlyList<RetrievedChunk> returns) => _returns = returns;
-
-    public Task<IReadOnlyList<RetrievedChunk>> ExpandAsync(
-        Guid tenantId,
-        IReadOnlyList<RetrievedChunk> anchors,
-        int windowSize,
-        CancellationToken ct)
-    {
-        WasCalled = true;
-        CapturedTenantId = tenantId;
-        CapturedAnchorCount = anchors.Count;
-        CapturedWindowSize = windowSize;
-        return Task.FromResult(_returns);
-    }
-}
-
-internal sealed class ThrowingNeighborExpander : INeighborExpander
-{
-    public bool WasCalled { get; private set; }
-
-    public Task<IReadOnlyList<RetrievedChunk>> ExpandAsync(
-        Guid tenantId,
-        IReadOnlyList<RetrievedChunk> anchors,
-        int windowSize,
-        CancellationToken ct)
-    {
-        WasCalled = true;
-        throw new InvalidOperationException("NeighborExpander should not have been called");
-    }
-}
-
-internal sealed class FakeQuestionClassifier : IQuestionClassifier
-{
-    private readonly QuestionType? _type;
-
-    public FakeQuestionClassifier(QuestionType? type) => _type = type;
-
-    public Task<QuestionType?> ClassifyAsync(string query, CancellationToken ct)
-        => Task.FromResult(_type);
-}
-
-internal sealed class CapturingReranker : IReranker
-{
-    public RerankContext? CapturedContext { get; private set; }
-
-    public Task<RerankResult> RerankAsync(
-        string query,
-        IReadOnlyList<HybridHit> candidates,
-        IReadOnlyList<AiDocumentChunk> candidateChunks,
-        RerankContext context,
-        CancellationToken ct)
-    {
-        CapturedContext = context;
-        return Task.FromResult(new RerankResult(
-            Ordered: candidates,
-            StrategyRequested: RerankStrategy.Off,
-            StrategyUsed: RerankStrategy.Off,
-            CandidatesIn: candidates.Count,
-            CandidatesScored: 0,
-            CacheHits: 0,
-            LatencyMs: 0,
-            TokensIn: 0,
-            TokensOut: 0,
-            UnusedRatio: 0));
-    }
-}
-
-internal sealed class FakeEmbeddingService : IEmbeddingService
-{
-    public int VectorSize => 1536;
-
-    public Task<float[][]> EmbedAsync(
-        IReadOnlyList<string> texts,
-        CancellationToken ct,
-        EmbedAttribution? attribution = null,
-        AiRequestType requestType = AiRequestType.Embedding)
-        => Task.FromResult(texts.Select(_ => new float[1536]).ToArray());
-}
-
 public sealed class RagRetrievalServiceTests
 {
     private static AiDbContext CreateDb()
@@ -383,7 +296,7 @@ public sealed class RagRetrievalServiceTests
 
         result.Children.Should().BeEmpty();
         result.Parents.Should().BeEmpty();
-        result.DegradedStages.Should().NotContain("embed-query");
+        result.DegradedStages.Should().NotContain(RagStages.EmbedQuery);
     }
 
     [Fact]

@@ -79,7 +79,7 @@ public sealed class RagRetrievalServiceTimeoutTests
 
         var ctx = await svc.RetrieveForTurnAsync(assistant, "query", CancellationToken.None);
 
-        ctx.DegradedStages.Should().Contain("vector-search[0]");
+        ctx.DegradedStages.Should().Contain(RagStages.VectorSearch(0));
     }
 
     // NOTE: We do not assert total latency here — CI variance makes that flaky.

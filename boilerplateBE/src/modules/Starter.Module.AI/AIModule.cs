@@ -28,7 +28,12 @@ public sealed class AIModule : IModule
 
     public IServiceCollection ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<AiRagSettings>(configuration.GetSection(AiRagSettings.SectionName));
+        services.AddOptions<AiRagSettings>()
+            .Bind(configuration.GetSection(AiRagSettings.SectionName))
+            .Validate(
+                s => s.RerankStrategy != Application.Services.Retrieval.RerankStrategy.FallbackRrf,
+                "AI:Rag:RerankStrategy: 'FallbackRrf' is a runtime outcome (reported via RerankResult.StrategyUsed), not a valid configuration value. Use Off, Listwise, Pointwise, or Auto.")
+            .ValidateOnStart();
         services.Configure<AiQdrantSettings>(configuration.GetSection(AiQdrantSettings.SectionName));
         services.Configure<AiOcrSettings>(configuration.GetSection(AiOcrSettings.SectionName));
 

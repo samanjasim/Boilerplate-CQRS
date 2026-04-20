@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -8,6 +7,7 @@ using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Services.Retrieval;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Module.AI.Infrastructure.Providers;
+using Starter.Module.AI.Infrastructure.Retrieval.Json;
 using Starter.Module.AI.Infrastructure.Settings;
 
 namespace Starter.Module.AI.Infrastructure.Retrieval.Reranking;
@@ -185,41 +185,31 @@ internal sealed class PointwiseReranker
     private static bool TryParseScore(string content, out decimal score)
     {
         score = 0m;
-        var start = content.IndexOf('{');
-        var end = content.LastIndexOf('}');
-        if (start < 0 || end <= start) return false;
-        var slice = content.Substring(start, end - start + 1);
-        try
+        if (!JsonLooseExtractor.TryExtractObject(content, out var obj))
+            return false;
+        if (!obj.TryGetProperty("score", out var scoreEl))
+            return false;
+
+        decimal value;
+        if (scoreEl.ValueKind == JsonValueKind.Number)
         {
-            using var doc = JsonDocument.Parse(slice);
-            if (!doc.RootElement.TryGetProperty("score", out var scoreEl))
-                return false;
-
-            decimal value;
-            if (scoreEl.ValueKind == JsonValueKind.Number)
-            {
-                value = scoreEl.GetDecimal();
-            }
-            else if (scoreEl.ValueKind == JsonValueKind.String
-                && decimal.TryParse(scoreEl.GetString(), System.Globalization.NumberStyles.Float,
-                    System.Globalization.CultureInfo.InvariantCulture, out var parsed))
-            {
-                value = parsed;
-            }
-            else
-            {
-                return false;
-            }
-
-            if (value < 0m) value = 0m;
-            if (value > 1m) value = 1m;
-            score = value;
-            return true;
+            value = scoreEl.GetDecimal();
         }
-        catch (JsonException)
+        else if (scoreEl.ValueKind == JsonValueKind.String
+            && decimal.TryParse(scoreEl.GetString(), System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+        {
+            value = parsed;
+        }
+        else
         {
             return false;
         }
+
+        if (value < 0m) value = 0m;
+        if (value > 1m) value = 1m;
+        score = value;
+        return true;
     }
 
     private decimal RrfFallbackScore(int rank) => 1m / (_settings.RrfK + rank + 1);
@@ -228,13 +218,6 @@ internal sealed class PointwiseReranker
     {
         var provider = _factory.GetDefaultProviderType().ToString();
         var model = _settings.RerankerModel ?? _factory.GetDefaultChatModelId();
-        var hash = Sha256Hex(query);
-        return $"ai:rerank:pw:{provider}:{model}:{hash}:{chunkId:N}";
-    }
-
-    private static string Sha256Hex(string input)
-    {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
-        return Convert.ToHexString(bytes).ToLowerInvariant();
+        return RagCacheKeys.PointwiseRerank(provider, model, query, chunkId);
     }
 }

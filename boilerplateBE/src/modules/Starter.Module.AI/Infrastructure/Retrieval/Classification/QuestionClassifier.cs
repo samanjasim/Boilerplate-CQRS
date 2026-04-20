@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Starter.Application.Common.Interfaces;
@@ -38,9 +36,7 @@ internal sealed class QuestionClassifier : IQuestionClassifier
             return regexHit;
 
         var normalized = _settings.ApplyArabicNormalization
-            ? ArabicTextNormalizer.Normalize(query, new ArabicNormalizationOptions(
-                NormalizeTaMarbuta: _settings.NormalizeTaMarbuta,
-                NormalizeArabicDigits: _settings.NormalizeArabicDigits))
+            ? ArabicTextNormalizer.Normalize(query, _settings.ToArabicOptions())
             : query;
 
         var key = BuildCacheKey(normalized);
@@ -93,7 +89,6 @@ internal sealed class QuestionClassifier : IQuestionClassifier
     {
         var provider = _factory.GetDefaultProviderType().ToString();
         var model = _settings.ClassifierModel ?? _factory.GetDefaultChatModelId();
-        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalized))).ToLowerInvariant();
-        return $"ai:classify:{provider}:{model}:{hash}";
+        return RagCacheKeys.Classify(provider, model, normalized);
     }
 }

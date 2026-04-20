@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Starter.Application.Common.Interfaces;
@@ -137,14 +135,6 @@ internal sealed class QueryRewriter : IQueryRewriter
     {
         var provider = _factory.GetDefaultProviderType().ToString();
         var model = _settings.RewriterModel ?? _factory.GetDefaultChatModelId();
-        var hash = Sha256Hex(Normalize(query));
-        var lang = string.IsNullOrWhiteSpace(language) ? "-" : language;
-        return $"ai:qrw:{provider}:{model}:{lang}:{hash}";
-    }
-
-    private static string Sha256Hex(string input)
-    {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
-        return Convert.ToHexString(bytes).ToLowerInvariant();
+        return RagCacheKeys.QueryRewrite(provider, model, language ?? string.Empty, Normalize(query));
     }
 }

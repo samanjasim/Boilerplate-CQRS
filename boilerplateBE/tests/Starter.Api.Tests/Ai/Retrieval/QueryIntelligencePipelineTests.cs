@@ -72,7 +72,7 @@ public sealed class QueryIntelligencePipelineTests
         var selector = new RerankStrategySelector(settings);
         var reranker = new Reranker(selector, listwise, pointwise, opts, NullLogger<Reranker>.Instance);
 
-        var neighbor = new NeighborExpander(db, NullLogger<NeighborExpander>.Instance);
+        var neighbor = new NeighborExpander(db, opts, NullLogger<NeighborExpander>.Instance);
 
         var vs = new FakeVectorStore
         {

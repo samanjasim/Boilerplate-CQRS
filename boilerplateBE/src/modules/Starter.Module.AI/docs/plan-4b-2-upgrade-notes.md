@@ -9,6 +9,7 @@ These notes cover operator-facing changes when upgrading from 4b-1 to 4b-2. No s
 - Migration for existing appsettings:
   - `EnableReranking: false` → `"RerankStrategy": "Off"`
   - `EnableReranking: true`  → `"RerankStrategy": "Auto"` (recommended) or `"Listwise"` (safer default)
+- `FallbackRrf` is rejected at startup — it is a runtime-only outcome reported via `RerankResult.StrategyUsed`, not a valid configuration value.
 
 ## New settings (AI:Rag)
 
@@ -32,6 +33,7 @@ These notes cover operator-facing changes when upgrading from 4b-1 to 4b-2. No s
 | `QuestionCacheTtlSeconds` | `1800` | Redis TTL for classifier labels, keyed on the normalized query. |
 | `StageTimeoutClassifyMs` | `2000` | Per-stage budget. Exceeding adds `classify` to `DegradedStages`; pipeline continues without a question type. |
 | `NeighborWindowSize` | `1` | Sibling chunks each side of an anchor. `0` disables expansion. |
+| `NeighborScoreWeight` | `0.5` | Scalar applied to an anchor's `HybridScore` when attributing a score to its siblings; range `[0, 1]`. |
 | `StageTimeoutNeighborMs` | `3000` | Per-stage budget. Exceeding adds `neighbor-expand` to `DegradedStages`; pipeline returns the anchors without siblings. |
 
 ## Pipeline order (4b-2)
@@ -61,6 +63,13 @@ These notes cover operator-facing changes when upgrading from 4b-1 to 4b-2. No s
 - `RAG short-circuit: greeting` (Information)
 
 `DegradedStages` on the returned `RetrievedContext` is the source of truth for stage-level failures — surface this via telemetry if you want Grafana alerts on e.g. rerank falling back.
+
+The pipeline also emits OpenTelemetry spans on `ActivitySource` `Starter.Module.AI` (wired into the global OTEL exporters in `OpenTelemetryConfiguration`). The root span for retrieval is named `rag.retrieve` and tagged with:
+
+- `rag.retrieve.top_k`, `rag.retrieve.pool_size`, `rag.retrieve.variants_used`, `rag.retrieve.truncated`, `rag.retrieve.degraded_stages`
+- `rag.classify.type`, `rag.rewrite.variants_used`
+- `rag.rerank.strategy_requested`, `rag.rerank.strategy_used`, `rag.rerank.fell_back`, `rag.rerank.cache_hits`, `rag.rerank.latency_ms`, `rag.rerank.unused_ratio`
+- `rag.neighbor.siblings_returned`
 
 ## Done checklist (plan 4b-2)
 

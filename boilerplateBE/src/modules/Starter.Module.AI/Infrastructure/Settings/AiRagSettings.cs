@@ -80,4 +80,13 @@ public sealed class AiRagSettings
     // ---- New in Plan 4b-2 — Neighbor expansion ----
     public int NeighborWindowSize { get; init; } = 0;
     public int StageTimeoutNeighborMs { get; init; } = 3_000;
+
+    /// <summary>
+    /// Scalar applied to an anchor's HybridScore when attributing a score to its
+    /// siblings. Siblings do not earn their own retrieval score — they inherit a
+    /// damped fraction of the nearest anchor's score so downstream consumers can
+    /// still rank or gate them without pretending they were independently retrieved.
+    /// Range [0, 1]; default 0.5 (half the anchor's score).
+    /// </summary>
+    public decimal NeighborScoreWeight { get; init; } = 0.5m;
 }

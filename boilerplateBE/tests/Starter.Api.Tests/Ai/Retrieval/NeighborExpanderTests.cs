@@ -1,11 +1,13 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Starter.Api.Tests.Ai.Fakes;
 using Starter.Module.AI.Application.Services.Retrieval;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Retrieval;
+using Starter.Module.AI.Infrastructure.Settings;
 using Xunit;
 
 namespace Starter.Api.Tests.Ai.Retrieval;
@@ -55,7 +57,7 @@ public class NeighborExpanderTests
     public async Task Empty_anchors_returns_empty()
     {
         await using var db = CreateDb();
-        var siblings = await new NeighborExpander(db, NullLogger<NeighborExpander>.Instance)
+        var siblings = await new NeighborExpander(db, Options.Create(new AiRagSettings()), NullLogger<NeighborExpander>.Instance)
             .ExpandAsync(Guid.NewGuid(), Array.Empty<RetrievedChunk>(), 2, CancellationToken.None);
         siblings.Should().BeEmpty();
     }
@@ -81,7 +83,7 @@ public class NeighborExpanderTests
         await db.SaveChangesAsync();
 
         var anchor = BuildAnchor(docId, 5, anchorPointId);
-        var siblings = await new NeighborExpander(db, NullLogger<NeighborExpander>.Instance)
+        var siblings = await new NeighborExpander(db, Options.Create(new AiRagSettings()), NullLogger<NeighborExpander>.Instance)
             .ExpandAsync(tenantId, new[] { anchor }, windowSize: 2, CancellationToken.None);
 
         siblings.Select(s => s.ChunkIndex).Should().Equal(3, 4, 6, 7);
@@ -109,7 +111,7 @@ public class NeighborExpanderTests
         await db.SaveChangesAsync();
 
         var anchors = new[] { BuildAnchor(docId, 3, p3), BuildAnchor(docId, 5, p5) };
-        var siblings = await new NeighborExpander(db, NullLogger<NeighborExpander>.Instance)
+        var siblings = await new NeighborExpander(db, Options.Create(new AiRagSettings()), NullLogger<NeighborExpander>.Instance)
             .ExpandAsync(tenantId, anchors, 2, CancellationToken.None);
 
         // Ranges [1..5] and [3..7] → merged [1..7]; minus anchors 3,5 → {1,2,4,6,7}
@@ -142,7 +144,7 @@ public class NeighborExpanderTests
         await db.SaveChangesAsync();
 
         var anchors = new[] { BuildAnchor(docA.Id, 2, a2), BuildAnchor(docB.Id, 2, b2) };
-        var siblings = await new NeighborExpander(db, NullLogger<NeighborExpander>.Instance)
+        var siblings = await new NeighborExpander(db, Options.Create(new AiRagSettings()), NullLogger<NeighborExpander>.Instance)
             .ExpandAsync(tenantId, anchors, 1, CancellationToken.None);
 
         siblings.Should().HaveCount(4);
@@ -166,7 +168,7 @@ public class NeighborExpanderTests
         db.AiDocumentChunks.Add(TestChunkFactory.Build(pointId: Guid.NewGuid(), documentId: docId, chunkIndex: 2, chunkLevel: "child", content: "c2"));
         await db.SaveChangesAsync();
 
-        var siblings = await new NeighborExpander(db, NullLogger<NeighborExpander>.Instance)
+        var siblings = await new NeighborExpander(db, Options.Create(new AiRagSettings()), NullLogger<NeighborExpander>.Instance)
             .ExpandAsync(tenantId, new[] { BuildAnchor(docId, 0, anchorPid) }, 2, CancellationToken.None);
 
         siblings.Select(s => s.ChunkIndex).Should().Equal(2);

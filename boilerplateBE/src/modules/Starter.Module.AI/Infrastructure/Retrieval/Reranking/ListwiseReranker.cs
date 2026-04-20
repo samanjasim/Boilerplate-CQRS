@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -143,14 +142,6 @@ internal sealed class ListwiseReranker
     {
         var provider = _factory.GetDefaultProviderType().ToString();
         var model = _settings.RerankerModel ?? _factory.GetDefaultChatModelId();
-        var ids = string.Join("|", candidates.Select(c => c.ChunkId.ToString("N")).OrderBy(s => s));
-        var hash = Sha256Hex($"{query}|{ids}");
-        return $"ai:rerank:lw:{provider}:{model}:{hash}";
-    }
-
-    private static string Sha256Hex(string input)
-    {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
-        return Convert.ToHexString(bytes).ToLowerInvariant();
+        return RagCacheKeys.ListwiseRerank(provider, model, query, candidates);
     }
 }

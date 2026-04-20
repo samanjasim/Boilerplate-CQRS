@@ -20,7 +20,7 @@ public sealed class AiSearchControllerTests
     public async Task Search_Forwards_Query_To_Mediator_And_Returns_Ok_On_Success()
     {
         var sender = new Mock<ISender>();
-        var dto = new SearchKnowledgeBaseResultDto([], 0, false);
+        var dto = new SearchKnowledgeBaseResultDto([], 0, false, []);
         sender.Setup(s => s.Send(
                 It.IsAny<SearchKnowledgeBaseQuery>(),
                 It.IsAny<CancellationToken>()))

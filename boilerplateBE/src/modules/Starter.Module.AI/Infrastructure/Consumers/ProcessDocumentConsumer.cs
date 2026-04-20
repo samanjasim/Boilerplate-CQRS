@@ -195,9 +195,7 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
             var tenantId = doc.TenantId ?? Guid.Empty;
             await vectorStore.EnsureCollectionAsync(tenantId, embedder.VectorSize, ct);
 
-            var arOpts = new ArabicNormalizationOptions(
-                ragOptions.NormalizeTaMarbuta,
-                ragOptions.NormalizeArabicDigits);
+            var arOpts = ragOptions.ToArabicOptions();
 
             var parentEntities = chunks.Parents.Select(p => AiDocumentChunk.Create(
                 documentId: doc.Id,

@@ -39,6 +39,11 @@ internal static class ContextPromptBuilder
                 sb.AppendLine();
             }
 
+            // Siblings are rendered as a trailing, unnumbered block rather than
+            // interleaved with the numbered children by (page, chunkIndex). Keeping
+            // them separate preserves a single citation-index stream ([1]..[N]) that
+            // the model can reference verbatim; interleaving risks the model citing a
+            // sibling position that the caller cannot resolve to a retrieved chunk.
             if (context.Siblings.Count > 0)
             {
                 sb.AppendLine("--- Nearby context ---");

@@ -1,5 +1,3 @@
-using Starter.Module.AI.Infrastructure.Retrieval;
-
 namespace Starter.Module.AI.Application.Services.Retrieval;
 
 public sealed record RerankResult(

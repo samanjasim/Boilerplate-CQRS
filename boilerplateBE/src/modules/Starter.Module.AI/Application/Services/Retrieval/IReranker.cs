@@ -1,5 +1,4 @@
 using Starter.Module.AI.Domain.Entities;
-using Starter.Module.AI.Infrastructure.Retrieval;
 
 namespace Starter.Module.AI.Application.Services.Retrieval;
 

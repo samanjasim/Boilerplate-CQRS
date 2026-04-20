@@ -2,8 +2,6 @@ using Starter.Module.AI.Application.Services.Retrieval;
 
 namespace Starter.Module.AI.Infrastructure.Retrieval;
 
-public sealed record HybridHit(Guid ChunkId, decimal SemanticScore, decimal KeywordScore, decimal HybridScore);
-
 internal static class HybridScoreCalculator
 {
     public static IReadOnlyList<HybridHit> Combine(

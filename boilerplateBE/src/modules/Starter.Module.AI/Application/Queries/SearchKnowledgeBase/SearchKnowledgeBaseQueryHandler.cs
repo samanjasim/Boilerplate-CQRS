@@ -50,10 +50,15 @@ internal sealed class SearchKnowledgeBaseQueryHandler(
             }
         }
 
+        var nearby = ctx.Siblings.Count == 0
+            ? (IReadOnlyList<SearchKnowledgeBaseResultItemDto>)Array.Empty<SearchKnowledgeBaseResultItemDto>()
+            : ctx.Siblings.Select(Map).ToList();
+
         return Result.Success(new SearchKnowledgeBaseResultDto(
             items,
             ctx.Children.Count,
-            ctx.TruncatedByBudget));
+            ctx.TruncatedByBudget,
+            nearby));
     }
 
     private static SearchKnowledgeBaseResultItemDto Map(RetrievedChunk c)
