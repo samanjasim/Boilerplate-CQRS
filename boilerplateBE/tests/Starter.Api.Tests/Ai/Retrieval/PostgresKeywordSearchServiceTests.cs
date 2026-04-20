@@ -162,4 +162,25 @@ public sealed class PostgresKeywordSearchServiceTests : IClassFixture<AiPostgres
         results.Should().HaveCount(1);
         results[0].ChunkId.Should().Be(chunk.QdrantPointId);
     }
+
+    [Fact]
+    public async Task Keyword_query_matches_chunk_whose_body_lacks_term_but_breadcrumb_has_it()
+    {
+        var tenantId = Guid.NewGuid();
+        var seeded = await _fixture.SeedChunkAsync(
+            tenantId,
+            content: "Rotational energy is transferred to the impeller.",
+            normalizedContent: "Chapter 1 > Pumps\nRotational energy is transferred to the impeller.");
+
+        await using var db = _fixture.CreateDbContext();
+        var svc = new PostgresKeywordSearchService(
+            db,
+            _fixture.Logger<PostgresKeywordSearchService>(),
+            Options.Create(new AiRagSettings()));
+
+        var results = await svc.SearchAsync(tenantId, "Pumps", null, 5, CancellationToken.None);
+
+        results.Should().ContainSingle();
+        results.Single().ChunkId.Should().Be(seeded.Chunk.QdrantPointId);
+    }
 }
