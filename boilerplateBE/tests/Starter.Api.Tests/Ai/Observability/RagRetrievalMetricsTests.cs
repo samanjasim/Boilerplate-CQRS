@@ -18,6 +18,7 @@ using Xunit;
 
 namespace Starter.Api.Tests.Ai.Observability;
 
+[Collection(ObservabilityTestCollection.Name)]
 public class RagRetrievalMetricsTests
 {
     [Fact]
