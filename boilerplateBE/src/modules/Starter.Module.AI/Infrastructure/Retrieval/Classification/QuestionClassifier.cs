@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Services.Retrieval;
+using Starter.Module.AI.Infrastructure.Observability;
 using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Settings;
 
@@ -41,6 +42,10 @@ internal sealed class QuestionClassifier : IQuestionClassifier
 
         var key = BuildCacheKey(normalized);
         var cached = await _cache.GetAsync<string>(key, ct);
+        AiRagMetrics.CacheRequests.Add(
+            1,
+            new KeyValuePair<string, object?>("rag.cache", "classify"),
+            new KeyValuePair<string, object?>("rag.hit", !string.IsNullOrEmpty(cached)));
         if (!string.IsNullOrEmpty(cached))
             return ParseLabel(cached);
 

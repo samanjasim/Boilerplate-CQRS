@@ -8,6 +8,7 @@ using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Ingestion;
 using Starter.Module.AI.Infrastructure.Observability;
 using Starter.Module.AI.Infrastructure.Providers;
+using Starter.Module.AI.Infrastructure.Retrieval.Classification;
 using Starter.Module.AI.Infrastructure.Retrieval.QueryRewriting;
 using Starter.Module.AI.Infrastructure.Settings;
 using Xunit;
@@ -71,6 +72,46 @@ public class CacheMetricsTests
         var rows = listener.Snapshot()
             .Where(m => m.InstrumentName == "rag.cache.requests"
                         && (string?)m.Tags["rag.cache"] == "rewrite")
+            .ToList();
+        rows.Should().HaveCount(2);
+        rows.Should().ContainSingle(m => (bool?)m.Tags["rag.hit"] == false);
+        rows.Should().ContainSingle(m => (bool?)m.Tags["rag.hit"] == true);
+    }
+
+    [Fact]
+    public async Task Classifier_cache_miss_then_hit_emits_both_counters()
+    {
+        using var listener = new TestMeterListener(AiRagMetrics.MeterName);
+
+        var provider = new FakeAiProvider();
+        // Seed the provider with a classify label the parser accepts (e.g., "Definition").
+        provider.EnqueueContent("Definition");
+        var cache = new FakeCacheService();
+        var factory = new FakeAiProviderFactory(provider);
+        var settings = Options.Create(new AiRagSettings
+        {
+            QuestionCacheTtlSeconds = 60,
+            ApplyArabicNormalization = false,
+        });
+
+        var sut = new QuestionClassifier(
+            factory,
+            cache,
+            settings,
+            NullLogger<QuestionClassifier>.Instance);
+
+        // Query contains no RegexQuestionClassifier trigger words (no greeting/define/list/show/why/how come/explain/compare),
+        // so it falls through to the LLM+cache path.
+        const string query = "centrifugal pumps move fluid through impeller rotation";
+
+        await sut.ClassifyAsync(query, CancellationToken.None); // miss
+        await sut.ClassifyAsync(query, CancellationToken.None); // hit
+
+        provider.Calls.Should().Be(1);
+
+        var rows = listener.Snapshot()
+            .Where(m => m.InstrumentName == "rag.cache.requests"
+                        && (string?)m.Tags["rag.cache"] == "classify")
             .ToList();
         rows.Should().HaveCount(2);
         rows.Should().ContainSingle(m => (bool?)m.Tags["rag.hit"] == false);
