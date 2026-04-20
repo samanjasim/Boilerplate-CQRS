@@ -1,3 +1,5 @@
+using Starter.Module.AI.Domain.Enums;
+
 namespace Starter.Module.AI.Application.Services.Ingestion;
 
 public sealed record ChunkDraft(
@@ -6,4 +8,5 @@ public sealed record ChunkDraft(
     int TokenCount,
     int? ParentIndex,
     string? SectionTitle,
-    int? PageNumber);
+    int? PageNumber,
+    ChunkType ChunkType = ChunkType.Body);
