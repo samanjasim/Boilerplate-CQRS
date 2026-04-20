@@ -439,7 +439,8 @@ public sealed class WorkflowEngineTests : IDisposable
         var pending = await _sut.GetPendingTasksAsync(_approverUserId);
 
         // Should only see the auto-created task for the approver, not the other user's task
-        pending.Should().HaveCount(1);
+        pending.Items.Should().HaveCount(1);
+        pending.TotalCount.Should().Be(1);
     }
 
     // ── 12. SeedTemplateAsync — creates definition ───────────────────────────

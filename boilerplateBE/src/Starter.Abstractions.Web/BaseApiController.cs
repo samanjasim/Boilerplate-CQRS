@@ -1,4 +1,5 @@
 using Asp.Versioning;
+using Starter.Abstractions.Paging;
 using Starter.Application.Common.Models;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -65,6 +66,20 @@ public abstract class BaseApiController(ISender mediator) : ControllerBase
         var paged = result.Value;
         var response = PagedResponse<T>.Create(
             paged.Items.ToList(),
+            paged.PageNumber,
+            paged.PageSize,
+            paged.TotalCount);
+        return Ok(PagedApiResponse<T>.Ok(response));
+    }
+
+    protected IActionResult HandlePagedResult<T>(Result<PagedResult<T>> result)
+    {
+        if (result.IsFailure)
+            return HandleFailure(result);
+
+        var paged = result.Value;
+        var response = PagedResponse<T>.Create(
+            paged.Items,
             paged.PageNumber,
             paged.PageSize,
             paged.TotalCount);

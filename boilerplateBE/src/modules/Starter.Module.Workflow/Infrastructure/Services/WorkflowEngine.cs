@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Starter.Abstractions.Capabilities;
+using Starter.Abstractions.Paging;
 using Starter.Abstractions.Readers;
 using Starter.Module.Workflow.Domain.Constants;
 using Starter.Module.Workflow.Domain.Entities;
@@ -570,15 +571,21 @@ public sealed class WorkflowEngine(
 
     // ── Query: Inbox ─────────────────────────────────────────────────────────
 
-    public async Task<IReadOnlyList<PendingTaskSummary>> GetPendingTasksAsync(
-        Guid userId, CancellationToken ct = default)
+    public async Task<PagedResult<PendingTaskSummary>> GetPendingTasksAsync(
+        Guid userId, int pageNumber = 1, int pageSize = 20, CancellationToken ct = default)
     {
-        var tasks = await context.ApprovalTasks
+        var baseQuery = context.ApprovalTasks
             .Include(t => t.Instance)
                 .ThenInclude(i => i.Definition)
             .Where(t => t.Status == Domain.Enums.TaskStatus.Pending
                 && (t.AssigneeUserId == userId || t.OriginalAssigneeUserId == userId))
-            .OrderByDescending(t => t.CreatedAt)
+            .OrderByDescending(t => t.CreatedAt);
+
+        var totalCount = await baseQuery.CountAsync(ct);
+
+        var tasks = await baseQuery
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync(ct);
 
         // Resolve display names for original assignees (delegation source)
@@ -619,7 +626,7 @@ public sealed class WorkflowEngine(
             }
         }
 
-        return tasks.Select(t =>
+        var items = tasks.Select(t =>
         {
             // Derive available actions from the definition's transitions for
             // the instance's current state (manual transitions only).
@@ -692,6 +699,8 @@ public sealed class WorkflowEngine(
                 IsDelegated: isDelegated,
                 DelegatedFromDisplayName: delegatedFromDisplayName);
         }).ToList();
+
+        return new PagedResult<PendingTaskSummary>(items, totalCount, pageNumber, pageSize);
     }
 
     public async Task<int> GetPendingTaskCountAsync(

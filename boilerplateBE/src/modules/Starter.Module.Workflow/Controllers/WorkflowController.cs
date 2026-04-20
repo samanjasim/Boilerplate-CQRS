@@ -152,14 +152,14 @@ public sealed class WorkflowController(ISender mediator) : BaseApiController(med
 
     [HttpGet("tasks")]
     [Authorize(Policy = WorkflowPermissions.ActOnTask)]
-    [ProducesResponseType(typeof(ApiResponse<List<PendingTaskSummary>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(PagedApiResponse<PendingTaskSummary>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPendingTasks(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
     {
         var result = await Mediator.Send(new GetPendingTasksQuery(page, pageSize), ct);
-        return HandleResult(result);
+        return HandlePagedResult(result);
     }
 
     [HttpGet("tasks/count")]

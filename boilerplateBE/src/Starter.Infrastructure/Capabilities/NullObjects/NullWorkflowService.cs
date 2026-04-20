@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Starter.Abstractions.Capabilities;
+using Starter.Abstractions.Paging;
 
 namespace Starter.Infrastructure.Capabilities.NullObjects;
 
@@ -86,14 +87,17 @@ public sealed class NullWorkflowService(ILogger<NullWorkflowService> logger) : I
         return Task.FromResult(false);
     }
 
-    public Task<IReadOnlyList<PendingTaskSummary>> GetPendingTasksAsync(
+    public Task<PagedResult<PendingTaskSummary>> GetPendingTasksAsync(
         Guid userId,
+        int pageNumber = 1,
+        int pageSize = 20,
         CancellationToken ct = default)
     {
         logger.LogDebug(
             "Workflow pending tasks query skipped — Workflow module not installed (userId: {UserId})",
             userId);
-        return Task.FromResult<IReadOnlyList<PendingTaskSummary>>(new List<PendingTaskSummary>());
+        return Task.FromResult(new PagedResult<PendingTaskSummary>(
+            Array.Empty<PendingTaskSummary>(), totalCount: 0, pageNumber, pageSize));
     }
 
     public Task<int> GetPendingTaskCountAsync(
