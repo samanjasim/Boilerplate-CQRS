@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { useSearchUsers } from '@/features/users/api';
 import { useCreateDelegation } from '../api';
+import { formatDelegationDates } from './delegation-serializer';
 
 interface DelegationDialogProps {
   open: boolean;
@@ -46,17 +47,13 @@ export function DelegationDialog({ open, onOpenChange }: DelegationDialogProps) 
 
   const handleConfirm = () => {
     if (!toUserId || !startDate || !endDate) return;
-    // Convert date inputs (YYYY-MM-DD) to ISO datetime strings
+    const { startDate: startIso, endDate: endIso } = formatDelegationDates(startDate, endDate);
     createDelegation(
-      {
-        toUserId,
-        startDate: new Date(startDate + 'T00:00:00').toISOString(),
-        endDate: new Date(endDate + 'T23:59:59').toISOString(),
-      },
+      { toUserId, startDate: startIso, endDate: endIso },
       {
         onSuccess: () => {
           setToUserId('');
-              setSearchTerm('');
+          setSearchTerm('');
           setStartDate('');
           setEndDate('');
           onOpenChange(false);
