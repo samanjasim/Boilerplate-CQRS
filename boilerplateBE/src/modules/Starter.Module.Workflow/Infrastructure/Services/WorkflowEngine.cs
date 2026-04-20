@@ -576,9 +576,24 @@ public sealed class WorkflowEngine(
             .Include(t => t.Instance)
                 .ThenInclude(i => i.Definition)
             .Where(t => t.Status == Domain.Enums.TaskStatus.Pending
-                && t.AssigneeUserId == userId)
+                && (t.AssigneeUserId == userId || t.OriginalAssigneeUserId == userId))
             .OrderByDescending(t => t.CreatedAt)
             .ToListAsync(ct);
+
+        // Resolve display names for original assignees (delegation source)
+        var originalAssigneeIds = tasks
+            .Where(t => t.OriginalAssigneeUserId.HasValue)
+            .Select(t => t.OriginalAssigneeUserId!.Value)
+            .Distinct()
+            .ToList();
+
+        var delegationNameLookup = new Dictionary<Guid, string>();
+        if (originalAssigneeIds.Count > 0)
+        {
+            var users = await userReader.GetManyAsync(originalAssigneeIds, ct);
+            foreach (var u in users)
+                delegationNameLookup[u.Id] = u.DisplayName;
+        }
 
         return tasks.Select(t =>
         {
@@ -605,6 +620,11 @@ public sealed class WorkflowEngine(
                 // Swallow deserialization errors — fall back to null
             }
 
+            var isDelegated = t.OriginalAssigneeUserId.HasValue;
+            string? delegatedFromDisplayName = null;
+            if (isDelegated && delegationNameLookup.TryGetValue(t.OriginalAssigneeUserId!.Value, out var name))
+                delegatedFromDisplayName = name;
+
             return new PendingTaskSummary(
                 t.Id,
                 t.InstanceId,
@@ -618,7 +638,9 @@ public sealed class WorkflowEngine(
                 availableActions,
                 t.Instance.EntityDisplayName,
                 FormFields: formFields,
-                GroupId: t.GroupId);
+                GroupId: t.GroupId,
+                IsDelegated: isDelegated,
+                DelegatedFromDisplayName: delegatedFromDisplayName);
         }).ToList();
     }
 
@@ -627,7 +649,7 @@ public sealed class WorkflowEngine(
     {
         return await context.ApprovalTasks
             .CountAsync(t => t.Status == Domain.Enums.TaskStatus.Pending
-                && t.AssigneeUserId == userId, ct);
+                && (t.AssigneeUserId == userId || t.OriginalAssigneeUserId == userId), ct);
     }
 
     // ── Query: History ───────────────────────────────────────────────────────
@@ -864,9 +886,10 @@ public sealed class WorkflowEngine(
             foreach (var assigneeConfig in stateConfig.Parallel.Assignees)
             {
                 var strategyJson = JsonSerializer.Serialize(assigneeConfig, JsonOpts);
-                var assignees = await assigneeResolver.ResolveAsync(assigneeConfig, assigneeContext, ct);
+                var resolveResult = await assigneeResolver.ResolveWithDelegationAsync(
+                    assigneeConfig, assigneeContext, ct);
 
-                Guid? userId = assignees.Count > 0 ? assignees[0] : null;
+                Guid? userId = resolveResult.AssigneeIds.Count > 0 ? resolveResult.AssigneeIds[0] : null;
                 string? role = null;
 
                 if (assigneeConfig.Strategy.Equals("Role", StringComparison.OrdinalIgnoreCase)
@@ -875,6 +898,11 @@ public sealed class WorkflowEngine(
                 {
                     role = roleObj?.ToString();
                 }
+
+                // If delegated, record the original assignee
+                Guid? originalAssigneeUserId = userId.HasValue
+                    && resolveResult.DelegationMap.TryGetValue(userId.Value, out var origId)
+                        ? origId : null;
 
                 var task = ApprovalTask.Create(
                     instance.TenantId,
@@ -886,7 +914,8 @@ public sealed class WorkflowEngine(
                     dueDate: null,
                     entityType: instance.EntityType,
                     entityId: instance.EntityId,
-                    groupId: groupId);
+                    groupId: groupId,
+                    originalAssigneeUserId: originalAssigneeUserId);
 
                 context.ApprovalTasks.Add(task);
             }
@@ -894,10 +923,11 @@ public sealed class WorkflowEngine(
             return;
         }
 
-        // Single-assignee mode (unchanged)
+        // Single-assignee mode
         Guid? assigneeUserId = null;
         string? assigneeRole = null;
         string? assigneeStrategyJson = null;
+        Guid? originalAssignee = null;
 
         if (stateConfig.Assignee is not null)
         {
@@ -910,12 +940,16 @@ public sealed class WorkflowEngine(
                 initiatorUserId,
                 instance.CurrentState);
 
-            var assignees = await assigneeResolver.ResolveAsync(
+            var resolveResult = await assigneeResolver.ResolveWithDelegationAsync(
                 stateConfig.Assignee, assigneeContext, ct);
 
-            if (assignees.Count > 0)
+            if (resolveResult.AssigneeIds.Count > 0)
             {
-                assigneeUserId = assignees[0];
+                assigneeUserId = resolveResult.AssigneeIds[0];
+
+                // If delegated, record the original assignee
+                if (resolveResult.DelegationMap.TryGetValue(assigneeUserId.Value, out var origId))
+                    originalAssignee = origId;
             }
 
             // Extract role from assignee config parameters if strategy is "Role"
@@ -936,7 +970,8 @@ public sealed class WorkflowEngine(
             assigneeStrategyJson,
             dueDate: null,
             entityType: instance.EntityType,
-            entityId: instance.EntityId);
+            entityId: instance.EntityId,
+            originalAssigneeUserId: originalAssignee);
 
         context.ApprovalTasks.Add(approvalTask);
     }

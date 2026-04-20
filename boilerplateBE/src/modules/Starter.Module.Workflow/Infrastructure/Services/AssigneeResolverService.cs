@@ -1,47 +1,102 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Readers;
+using Starter.Module.Workflow.Infrastructure.Persistence;
 
 namespace Starter.Module.Workflow.Infrastructure.Services;
+
+/// <summary>
+/// Result of assignee resolution, including any delegation swaps.
+/// </summary>
+public sealed record AssigneeResolveResult(
+    IReadOnlyList<Guid> AssigneeIds,
+    IReadOnlyDictionary<Guid, Guid> DelegationMap); // delegateId → originalUserId
 
 /// <summary>
 /// Coordinates assignee resolution across all registered <see cref="IAssigneeResolverProvider"/>
 /// instances. Tries the primary strategy, falls back to the configured fallback strategy,
 /// and ultimately falls back to tenant admins if all else fails.
+/// After resolution, checks for active delegation rules and swaps assignees transparently.
 /// </summary>
 public sealed class AssigneeResolverService(
     IEnumerable<IAssigneeResolverProvider> providers,
     IUserReader userReader,
-    ILogger<AssigneeResolverService> logger)
+    ILogger<AssigneeResolverService> logger,
+    WorkflowDbContext? workflowDbContext = null)
 {
     public async Task<IReadOnlyList<Guid>> ResolveAsync(
         AssigneeConfig config,
         WorkflowAssigneeContext context,
         CancellationToken ct = default)
     {
+        var resolveResult = await ResolveWithDelegationAsync(config, context, ct);
+        return resolveResult.AssigneeIds;
+    }
+
+    public async Task<AssigneeResolveResult> ResolveWithDelegationAsync(
+        AssigneeConfig config,
+        WorkflowAssigneeContext context,
+        CancellationToken ct = default)
+    {
         // Try primary strategy
         var result = await TryResolveAsync(config.Strategy, config.Parameters ?? new(), context, ct);
-        if (result.Count > 0) return result;
 
         // Try fallback strategy
-        if (config.Fallback is not null)
+        if (result.Count == 0 && config.Fallback is not null)
         {
             result = await TryResolveAsync(
                 config.Fallback.Strategy,
                 config.Fallback.Parameters ?? new(),
                 context,
                 ct);
-            if (result.Count > 0) return result;
         }
 
         // Last resort: tenant admin users
-        logger.LogWarning(
-            "All assignee strategies failed for entity {EntityType}/{EntityId} in tenant {TenantId}. Falling back to tenant admins.",
-            context.EntityType,
-            context.EntityId,
-            context.TenantId);
+        if (result.Count == 0)
+        {
+            logger.LogWarning(
+                "All assignee strategies failed for entity {EntityType}/{EntityId} in tenant {TenantId}. Falling back to tenant admins.",
+                context.EntityType,
+                context.EntityId,
+                context.TenantId);
 
-        return await GetTenantAdminIdsAsync(context.TenantId, ct);
+            result = await GetTenantAdminIdsAsync(context.TenantId, ct);
+        }
+
+        // Apply delegation rules
+        return await ApplyDelegationAsync(result, ct);
+    }
+
+    private async Task<AssigneeResolveResult> ApplyDelegationAsync(
+        IReadOnlyList<Guid> primaryAssignees,
+        CancellationToken ct)
+    {
+        if (workflowDbContext is null || primaryAssignees.Count == 0)
+            return new AssigneeResolveResult(primaryAssignees, new Dictionary<Guid, Guid>());
+
+        var now = DateTime.UtcNow;
+        var resultList = new List<Guid>(primaryAssignees);
+        var delegationMap = new Dictionary<Guid, Guid>();
+
+        foreach (var userId in primaryAssignees.ToList())
+        {
+            var delegation = await workflowDbContext.DelegationRules
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(d => d.FromUserId == userId
+                    && d.IsActive
+                    && d.StartDate <= now
+                    && d.EndDate >= now, ct);
+
+            if (delegation is not null)
+            {
+                resultList.Remove(userId);
+                resultList.Add(delegation.ToUserId);
+                delegationMap[delegation.ToUserId] = userId;
+            }
+        }
+
+        return new AssigneeResolveResult(resultList.AsReadOnly(), delegationMap);
     }
 
     private async Task<IReadOnlyList<Guid>> TryResolveAsync(

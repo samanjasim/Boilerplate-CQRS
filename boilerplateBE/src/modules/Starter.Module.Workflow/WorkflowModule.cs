@@ -7,6 +7,7 @@ using Starter.Abstractions.Modularity;
 using Starter.Module.Workflow.Constants;
 using Starter.Module.Workflow.Infrastructure.Persistence;
 using Starter.Module.Workflow.Infrastructure.Services;
+using Microsoft.Extensions.Hosting;
 
 namespace Starter.Module.Workflow;
 
@@ -52,6 +53,8 @@ public sealed class WorkflowModule : IModule
         {
             builder.CustomActivityTypes = ["workflow_transition"];
         });
+
+        services.AddSingleton<IHostedService, SlaEscalationJob>();
 
         services.AddHealthChecks()
             .AddDbContextCheck<WorkflowDbContext>(
@@ -218,6 +221,81 @@ public sealed class WorkflowModule : IModule
                 ["actorName"] = "Saman Jasim",
                 ["comment"] = "Please attach supporting documentation.",
                 ["appUrl"] = "https://app.example.com",
+            },
+            ct: cancellationToken);
+
+        await templateRegistrar.RegisterTemplateAsync(
+            name: "workflow.sla-reminder",
+            moduleSource: "Workflow",
+            category: "workflow",
+            description: "Reminder sent to an assignee when their approval task is approaching the SLA deadline",
+            subjectTemplate: "Reminder: approval task overdue",
+            bodyTemplate: "Hi,\n\nYour approval task for {{entityType}} ({{entityId}}) is overdue.\n\nStep: {{stepName}}\nWorkflow: {{workflowName}}\n\nPlease take action in the app: {{appUrl}}",
+            defaultChannel: NotificationChannelType.Email,
+            availableChannels: ["Email", "InApp"],
+            variableSchema: new()
+            {
+                ["entityType"] = "Type of entity the workflow is running on",
+                ["entityId"] = "ID of the entity",
+                ["stepName"] = "Name of the workflow step requiring action",
+                ["workflowName"] = "Name of the workflow definition",
+                ["appUrl"] = "Base URL of the application",
+            },
+            sampleVariables: new()
+            {
+                ["entityType"] = "LeaveRequest",
+                ["entityId"] = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                ["stepName"] = "Manager Approval",
+                ["workflowName"] = "Leave Approval",
+                ["appUrl"] = "https://app.example.com",
+            },
+            ct: cancellationToken);
+
+        await templateRegistrar.RegisterTemplateAsync(
+            name: "workflow.sla-escalated",
+            moduleSource: "Workflow",
+            category: "workflow",
+            description: "Notification sent to a fallback assignee when a task is escalated due to SLA breach",
+            subjectTemplate: "Escalated: approval task reassigned to you",
+            bodyTemplate: "Hi,\n\nAn approval task for {{entityType}} ({{entityId}}) has been escalated to you because the original assignee did not act within the SLA window.\n\nStep: {{stepName}}\nWorkflow: {{workflowName}}\n\nPlease take action in the app: {{appUrl}}",
+            defaultChannel: NotificationChannelType.Email,
+            availableChannels: ["Email", "InApp"],
+            variableSchema: new()
+            {
+                ["entityType"] = "Type of entity the workflow is running on",
+                ["entityId"] = "ID of the entity",
+                ["stepName"] = "Name of the workflow step requiring action",
+                ["workflowName"] = "Name of the workflow definition",
+                ["appUrl"] = "Base URL of the application",
+            },
+            sampleVariables: new()
+            {
+                ["entityType"] = "LeaveRequest",
+                ["entityId"] = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                ["stepName"] = "Manager Approval",
+                ["workflowName"] = "Leave Approval",
+                ["appUrl"] = "https://app.example.com",
+            },
+            ct: cancellationToken);
+
+        await templateRegistrar.RegisterTemplateAsync(
+            name: "workflow.delegation-created",
+            moduleSource: "Workflow",
+            category: "workflow",
+            description: "Notification sent to a user when someone delegates their approval tasks to them",
+            subjectTemplate: "You have been assigned as a delegate",
+            bodyTemplate: "Hi,\n\nYou have been assigned as a delegate for approval tasks from {{startDate}} to {{endDate}}.\n\nAny tasks assigned to the delegator during this period will be routed to you instead.",
+            defaultChannel: NotificationChannelType.Email,
+            availableChannels: ["Email", "InApp"],
+            variableSchema: new()
+            {
+                ["startDate"] = "Delegation start date",
+                ["endDate"] = "Delegation end date",
+            },
+            sampleVariables: new()
+            {
+                ["startDate"] = "2026-04-20",
+                ["endDate"] = "2026-04-27",
             },
             ct: cancellationToken);
 

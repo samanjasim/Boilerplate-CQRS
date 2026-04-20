@@ -4,12 +4,17 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Web;
+using Starter.Module.Workflow.Application.Commands.CancelDelegation;
 using Starter.Module.Workflow.Application.Commands.CancelWorkflow;
 using Starter.Module.Workflow.Application.Commands.CloneDefinition;
+using Starter.Module.Workflow.Application.Commands.CreateDelegation;
 using Starter.Module.Workflow.Application.Commands.ExecuteTask;
 using Starter.Module.Workflow.Application.Commands.StartWorkflow;
 using Starter.Module.Workflow.Application.Commands.TransitionWorkflow;
 using Starter.Module.Workflow.Application.Commands.UpdateDefinition;
+using Starter.Module.Workflow.Application.DTOs;
+using Starter.Module.Workflow.Application.Queries.GetActiveDelegation;
+using Starter.Module.Workflow.Application.Queries.GetDelegations;
 using Starter.Module.Workflow.Application.Queries.GetPendingTaskCount;
 using Starter.Module.Workflow.Application.Queries.GetPendingTasks;
 using Starter.Module.Workflow.Application.Queries.GetWorkflowDefinitionDetail;
@@ -177,6 +182,48 @@ public sealed class WorkflowController(ISender mediator) : BaseApiController(med
             new ExecuteTaskCommand(taskId, request.Action, request.Comment), ct);
         return HandleResult(result);
     }
+
+    // ── Delegations ─────────────────────────────────────────────────────────
+
+    [HttpPost("delegations")]
+    [Authorize(Policy = WorkflowPermissions.ActOnTask)]
+    [ProducesResponseType(typeof(ApiResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CreateDelegation(
+        [FromBody] CreateDelegationRequest request, CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(
+            new CreateDelegationCommand(request.ToUserId, request.StartDate, request.EndDate), ct);
+        return HandleResult(result);
+    }
+
+    [HttpGet("delegations")]
+    [Authorize(Policy = WorkflowPermissions.ActOnTask)]
+    [ProducesResponseType(typeof(ApiResponse<List<DelegationRuleDto>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetDelegations(CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(new GetDelegationsQuery(), ct);
+        return HandleResult(result);
+    }
+
+    [HttpDelete("delegations/{id:guid}")]
+    [Authorize(Policy = WorkflowPermissions.ActOnTask)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CancelDelegation(Guid id, CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(new CancelDelegationCommand(id), ct);
+        return HandleResult(result);
+    }
+
+    [HttpGet("delegations/active")]
+    [Authorize(Policy = WorkflowPermissions.ActOnTask)]
+    [ProducesResponseType(typeof(ApiResponse<DelegationRuleDto?>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetActiveDelegation(CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(new GetActiveDelegationQuery(), ct);
+        return HandleResult(result);
+    }
 }
 
 public sealed record CancelWorkflowRequest(string? Reason);
@@ -184,3 +231,5 @@ public sealed record CancelWorkflowRequest(string? Reason);
 public sealed record ExecuteTaskRequest(string Action, string? Comment);
 
 public sealed record TransitionWorkflowRequest(string Trigger);
+
+public sealed record CreateDelegationRequest(Guid ToUserId, DateTime StartDate, DateTime EndDate);
