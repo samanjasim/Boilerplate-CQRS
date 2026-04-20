@@ -6,6 +6,7 @@ internal sealed class MarkdownBlockTokenizer
 {
     private static readonly Regex HeadingRegex = new(@"^(#{1,6})\s+(.+?)\s*$", RegexOptions.Compiled);
     private static readonly Regex QuoteRegex = new(@"^\s*>\s?(.*)$", RegexOptions.Compiled);
+    private static readonly Regex CodeFenceRegex = new(@"^```(\w*)\s*$", RegexOptions.Compiled);
 
     public IReadOnlyList<MarkdownBlock> Tokenize(string input)
     {
@@ -18,6 +19,23 @@ internal sealed class MarkdownBlockTokenizer
         {
             var line = lines[i];
             if (line.Length == 0) { i++; continue; }
+
+            // Code fence — must check before heading (``` could theoretically match if not guarded)
+            var fence = CodeFenceRegex.Match(line);
+            if (fence.Success)
+            {
+                var lang = string.IsNullOrWhiteSpace(fence.Groups[1].Value) ? null : fence.Groups[1].Value;
+                i++;
+                var buf = new List<string>();
+                while (i < lines.Length && !CodeFenceRegex.IsMatch(lines[i]))
+                {
+                    buf.Add(lines[i]);
+                    i++;
+                }
+                if (i < lines.Length) i++; // consume closing fence when present
+                blocks.Add(new MarkdownBlock(BlockType.Code, string.Join('\n', buf), CodeLanguage: lang));
+                continue;
+            }
 
             var h = HeadingRegex.Match(line);
             if (h.Success)
@@ -43,12 +61,13 @@ internal sealed class MarkdownBlockTokenizer
                 continue;
             }
 
-            // body: collect until blank line or structural boundary (heading or quote)
+            // body: collect until blank line or structural boundary
             var body = new List<string> { line };
             i++;
             while (i < lines.Length && lines[i].Length > 0
                    && !HeadingRegex.IsMatch(lines[i])
-                   && !QuoteRegex.IsMatch(lines[i]))
+                   && !QuoteRegex.IsMatch(lines[i])
+                   && !CodeFenceRegex.IsMatch(lines[i]))
             {
                 body.Add(lines[i]);
                 i++;

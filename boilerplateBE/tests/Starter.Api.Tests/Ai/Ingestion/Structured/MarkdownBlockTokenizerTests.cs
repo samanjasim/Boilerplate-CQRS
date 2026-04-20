@@ -52,4 +52,39 @@ public class MarkdownBlockTokenizerTests
         blocks.Should().ContainSingle().Which.Type.Should().Be(BlockType.Heading);
         blocks[0].Text.Should().Be("مقدمة");
     }
+
+    [Fact]
+    public void Fenced_code_block_with_language_is_atomic()
+    {
+        var md = "```python\nx = 1\nprint(x)\n```\n";
+        var blocks = Tokenize(md);
+        blocks.Should().ContainSingle().Which.Should().Match<MarkdownBlock>(b =>
+            b.Type == BlockType.Code && b.CodeLanguage == "python" && b.Text == "x = 1\nprint(x)");
+    }
+
+    [Fact]
+    public void Fenced_code_without_language_is_still_code()
+    {
+        var blocks = Tokenize("```\nhello\n```\n");
+        blocks.Single().Type.Should().Be(BlockType.Code);
+        blocks.Single().CodeLanguage.Should().BeNull();
+    }
+
+    [Fact]
+    public void Body_before_code_fence_is_its_own_block()
+    {
+        var md = "intro\n\n```\ncode\n```\n";
+        var blocks = Tokenize(md);
+        blocks.Should().HaveCount(2);
+        blocks[0].Type.Should().Be(BlockType.Body);
+        blocks[1].Type.Should().Be(BlockType.Code);
+    }
+
+    [Fact]
+    public void Unterminated_code_fence_is_treated_as_code_to_end_of_input()
+    {
+        var md = "```\nleft open\n";
+        var blocks = Tokenize(md);
+        blocks.Should().ContainSingle().Which.Type.Should().Be(BlockType.Code);
+    }
 }
