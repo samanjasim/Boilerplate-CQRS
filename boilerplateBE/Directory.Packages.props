@@ -77,5 +77,6 @@
     <PackageVersion Include="Tesseract" Version="5.2.0" />
     <PackageVersion Include="PdfPig" Version="0.1.9" />
     <PackageVersion Include="DocumentFormat.OpenXml" Version="3.2.0" />
+    <PackageVersion Include="ReverseMarkdown" Version="4.6.0" />
   </ItemGroup>
 </Project>
