@@ -1,11 +1,14 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Starter.Api.Tests.Ai.Fakes;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Services.Ingestion;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Ingestion;
 using Starter.Module.AI.Infrastructure.Observability;
 using Starter.Module.AI.Infrastructure.Providers;
+using Starter.Module.AI.Infrastructure.Retrieval.QueryRewriting;
 using Starter.Module.AI.Infrastructure.Settings;
 using Xunit;
 
@@ -31,6 +34,43 @@ public class CacheMetricsTests
         var rows = listener.Snapshot()
             .Where(m => m.InstrumentName == "rag.cache.requests"
                         && (string?)m.Tags["rag.cache"] == "embed")
+            .ToList();
+        rows.Should().HaveCount(2);
+        rows.Should().ContainSingle(m => (bool?)m.Tags["rag.hit"] == false);
+        rows.Should().ContainSingle(m => (bool?)m.Tags["rag.hit"] == true);
+    }
+
+    [Fact]
+    public async Task Query_rewriter_cache_miss_then_hit_emits_both_counters()
+    {
+        using var listener = new TestMeterListener(AiRagMetrics.MeterName);
+
+        var provider = new FakeAiProvider();
+        provider.EnqueueContent("[\"define pump\", \"pump definition\"]");
+        var cache = new FakeCacheService();
+        var factory = new FakeAiProviderFactory(provider);
+        var settings = Options.Create(new AiRagSettings
+        {
+            EnableQueryExpansion = true,
+            QueryRewriteCacheTtlSeconds = 60,
+        });
+
+        var sut = new QueryRewriter(
+            factory,
+            cache,
+            settings,
+            NullLogger<QueryRewriter>.Instance);
+
+        // Miss: no cached entry, LLM returns two variants → cache populated.
+        await sut.RewriteAsync("what is a pump?", language: "en", CancellationToken.None);
+        // Hit: cached entry from previous call is returned.
+        await sut.RewriteAsync("what is a pump?", language: "en", CancellationToken.None);
+
+        provider.Calls.Should().Be(1);
+
+        var rows = listener.Snapshot()
+            .Where(m => m.InstrumentName == "rag.cache.requests"
+                        && (string?)m.Tags["rag.cache"] == "rewrite")
             .ToList();
         rows.Should().HaveCount(2);
         rows.Should().ContainSingle(m => (bool?)m.Tags["rag.hit"] == false);

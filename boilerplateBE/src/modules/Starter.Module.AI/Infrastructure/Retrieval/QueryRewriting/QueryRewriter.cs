@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Services.Retrieval;
+using Starter.Module.AI.Infrastructure.Observability;
 using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Retrieval.Json;
 using Starter.Module.AI.Infrastructure.Settings;
@@ -40,6 +41,10 @@ internal sealed class QueryRewriter : IQueryRewriter
 
         var cacheKey = BuildCacheKey(originalQuery, language);
         var cached = await _cache.GetAsync<List<string>>(cacheKey, ct);
+        AiRagMetrics.CacheRequests.Add(
+            1,
+            new KeyValuePair<string, object?>("rag.cache", "rewrite"),
+            new KeyValuePair<string, object?>("rag.hit", cached is not null));
         IReadOnlyList<string> llmVariants;
         if (cached is not null)
         {
