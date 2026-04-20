@@ -121,4 +121,108 @@ public sealed class ConditionEvaluatorTests
 
         _sut.Evaluate(condition, context).Should().BeTrue();
     }
+
+    // --- Compound condition tests ---
+
+    [Fact]
+    public void Evaluate_AndGroup_AllTrue_ReturnsTrue()
+    {
+        var condition = new ConditionConfig(
+            Logic: "and",
+            Conditions:
+            [
+                new ConditionConfig(Field: "status", Operator: "equals", Value: "Active"),
+                new ConditionConfig(Field: "role", Operator: "equals", Value: "Admin"),
+            ]);
+        var context = MakeContext(new() { ["status"] = "Active", ["role"] = "Admin" });
+
+        _sut.Evaluate(condition, context).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Evaluate_AndGroup_OneFalse_ReturnsFalse()
+    {
+        var condition = new ConditionConfig(
+            Logic: "and",
+            Conditions:
+            [
+                new ConditionConfig(Field: "status", Operator: "equals", Value: "Active"),
+                new ConditionConfig(Field: "role", Operator: "equals", Value: "Admin"),
+            ]);
+        var context = MakeContext(new() { ["status"] = "Active", ["role"] = "User" });
+
+        _sut.Evaluate(condition, context).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Evaluate_OrGroup_OneTrueRestFalse_ReturnsTrue()
+    {
+        var condition = new ConditionConfig(
+            Logic: "or",
+            Conditions:
+            [
+                new ConditionConfig(Field: "status", Operator: "equals", Value: "Closed"),
+                new ConditionConfig(Field: "status", Operator: "equals", Value: "Active"),
+            ]);
+        var context = MakeContext(new() { ["status"] = "Active" });
+
+        _sut.Evaluate(condition, context).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Evaluate_OrGroup_AllFalse_ReturnsFalse()
+    {
+        var condition = new ConditionConfig(
+            Logic: "or",
+            Conditions:
+            [
+                new ConditionConfig(Field: "status", Operator: "equals", Value: "Closed"),
+                new ConditionConfig(Field: "status", Operator: "equals", Value: "Pending"),
+            ]);
+        var context = MakeContext(new() { ["status"] = "Active" });
+
+        _sut.Evaluate(condition, context).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Evaluate_NestedAndOr_EvaluatesCorrectly()
+    {
+        // { and: [leaf-true, { or: [leaf-false, leaf-true] }] } → true
+        var condition = new ConditionConfig(
+            Logic: "and",
+            Conditions:
+            [
+                new ConditionConfig(Field: "status", Operator: "equals", Value: "Active"),
+                new ConditionConfig(
+                    Logic: "or",
+                    Conditions:
+                    [
+                        new ConditionConfig(Field: "role", Operator: "equals", Value: "Manager"),
+                        new ConditionConfig(Field: "role", Operator: "equals", Value: "Admin"),
+                    ]),
+            ]);
+        var context = MakeContext(new() { ["status"] = "Active", ["role"] = "Admin" });
+
+        _sut.Evaluate(condition, context).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Evaluate_EmptyConditionsList_AndReturnsTrue()
+    {
+        // AND over empty set is vacuously true (All() on empty = true)
+        var condition = new ConditionConfig(Logic: "and", Conditions: []);
+        var context = MakeContext(new() { ["status"] = "Active" });
+
+        _sut.Evaluate(condition, context).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Evaluate_LeafCondition_BackwardCompatible()
+    {
+        // Plain leaf ConditionConfig (no Logic/Conditions) still works
+        var condition = new ConditionConfig(Field: "x", Operator: "equals", Value: "y");
+        var context = MakeContext(new() { ["x"] = "y" });
+
+        _sut.Evaluate(condition, context).Should().BeTrue();
+    }
 }
