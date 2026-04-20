@@ -105,16 +105,20 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         using (var classifyCts = CancellationTokenSource.CreateLinkedTokenSource(ct))
         {
             classifyCts.CancelAfter(_settings.StageTimeoutClassifyMs);
+            var classifySw = Stopwatch.StartNew();
+            string classifyOutcome = RagStageOutcome.Success;
             try
             {
                 questionType = await _classifier.ClassifyAsync(queryText, classifyCts.Token);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
+                classifyOutcome = RagStageOutcome.Timeout;
                 throw;
             }
             catch (OperationCanceledException)
             {
+                classifyOutcome = RagStageOutcome.Timeout;
                 degraded.Add(RagStages.Classify);
                 _logger.LogWarning(
                     "RAG stage '{Stage}' timed out after {TimeoutMs}ms",
@@ -123,8 +127,20 @@ internal sealed class RagRetrievalService : IRagRetrievalService
             }
             catch (Exception ex) when (IsTransientStageException(ex))
             {
+                classifyOutcome = RagStageOutcome.Error;
                 degraded.Add(RagStages.Classify);
                 _logger.LogError(ex, "RAG stage '{Stage}' failed", RagStages.Classify);
+            }
+            finally
+            {
+                classifySw.Stop();
+                AiRagMetrics.StageDuration.Record(
+                    classifySw.Elapsed.TotalMilliseconds,
+                    new KeyValuePair<string, object?>("rag.stage", RagStages.Classify));
+                AiRagMetrics.StageOutcome.Add(
+                    1,
+                    new KeyValuePair<string, object?>("rag.stage", RagStages.Classify),
+                    new KeyValuePair<string, object?>("rag.outcome", classifyOutcome));
             }
         }
 
