@@ -251,3 +251,20 @@ The following improvements were made after the initial Phase 1 implementation. T
 - Add `GetWorkflowAnalyticsQuery` under [`Application/Queries/`](../../boilerplateBE/src/modules/Starter.Module.Workflow/Application/Queries/) that groups `WorkflowStep` records by definition + state and computes dwell-time percentiles.
 - Expose via `GET /api/v1/workflows/definitions/{id}/analytics`.
 - Frontend: add an "Analytics" tab to the workflow definition detail page.
+
+---
+
+### WorkflowEngine.cs extraction
+
+**What:** Split [`Infrastructure/Services/WorkflowEngine.cs`](../../boilerplateBE/src/modules/Starter.Module.Workflow/Infrastructure/Services/WorkflowEngine.cs) (~1200 lines) into focused collaborators. Candidates: `ParallelApprovalCoordinator`, `AutoTransitionEvaluator`, `HumanTaskFactory`.
+
+**Why deferred:** Pure refactor — no capability added, no bug fixed. Existing tests cover the behavior well. Doing it inline would balloon the cleanup PR.
+
+**Pick this up when:** Phase 2b integration work needs to modify the engine, OR when the file next grows by more than ~200 lines.
+
+**Starting points:**
+- Identify coordinator boundaries by grouping private methods in `WorkflowEngine.cs` — parallel approval, auto-transition, and task creation clusters are already visually distinct.
+- Introduce one collaborator at a time behind a package-internal interface; existing tests should stay green through each extraction.
+- No public-interface change on `IWorkflowService` or the controller.
+
+---
