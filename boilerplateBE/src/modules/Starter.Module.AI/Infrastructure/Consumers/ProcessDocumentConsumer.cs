@@ -83,7 +83,8 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
                                 qdrantPointId: Guid.NewGuid(),
                                 parentChunkId: null,
                                 sectionTitle: parent.SectionTitle,
-                                pageNumber: parent.PageNumber);
+                                pageNumber: parent.PageNumber,
+                                chunkType: parent.ChunkType);
                             if (!string.IsNullOrEmpty(parent.NormalizedContent))
                                 clonedParent.SetNormalizedContent(parent.NormalizedContent);
                             newParents.Add(clonedParent);
@@ -130,7 +131,8 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
                                 qdrantPointId: newPointId,
                                 parentChunkId: parentDbId,
                                 sectionTitle: child.SectionTitle,
-                                pageNumber: child.PageNumber);
+                                pageNumber: child.PageNumber,
+                                chunkType: child.ChunkType);
                             if (!string.IsNullOrEmpty(child.NormalizedContent))
                                 clonedChild.SetNormalizedContent(child.NormalizedContent);
                             newChildren.Add(clonedChild);
@@ -146,7 +148,8 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
                                     SectionTitle: child.SectionTitle,
                                     PageNumber: child.PageNumber,
                                     ParentChunkId: parentDbId,
-                                    TenantId: cloneTenantId)));
+                                    TenantId: cloneTenantId,
+                                    ChunkType: child.ChunkType)));
                         }
 
                         await vectorStore.UpsertAsync(cloneTenantId, clonePoints, ct);
@@ -197,6 +200,18 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
 
             var arOpts = ragOptions.ToArabicOptions();
 
+            // Builds the NormalizedContent string that backs the Postgres FTS
+            // generated column. Arabic normalization is gated on the setting,
+            // but the breadcrumb prefix is applied unconditionally so heading
+            // text ("Ch1 > Sec A") is matchable via FTS regardless of locale.
+            string BuildNormalized(string? breadcrumb, string content)
+            {
+                var body = ragOptions.ApplyArabicNormalization
+                    ? ArabicTextNormalizer.Normalize(content, arOpts)
+                    : content;
+                return string.IsNullOrWhiteSpace(breadcrumb) ? body : breadcrumb + "\n" + body;
+            }
+
             var parentEntities = chunks.Parents.Select(p => AiDocumentChunk.Create(
                 documentId: doc.Id,
                 chunkLevel: "parent",
@@ -206,13 +221,11 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
                 qdrantPointId: Guid.NewGuid(),
                 parentChunkId: null,
                 sectionTitle: p.SectionTitle,
-                pageNumber: p.PageNumber)).ToList();
+                pageNumber: p.PageNumber,
+                chunkType: p.ChunkType)).ToList();
 
-            if (ragOptions.ApplyArabicNormalization)
-            {
-                foreach (var p in parentEntities)
-                    p.SetNormalizedContent(ArabicTextNormalizer.Normalize(p.Content, arOpts));
-            }
+            foreach (var p in parentEntities)
+                p.SetNormalizedContent(BuildNormalized(p.SectionTitle, p.Content));
 
             db.AiDocumentChunks.AddRange(parentEntities);
             await db.SaveChangesAsync(ct);
@@ -228,7 +241,7 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
                 var pointId = Guid.NewGuid();
                 var parentDbId = draft.ParentIndex is int pIdx ? parentIds[pIdx] : (Guid?)null;
 
-                childEntities.Add(AiDocumentChunk.Create(
+                var childEntity = AiDocumentChunk.Create(
                     documentId: doc.Id,
                     chunkLevel: "child",
                     content: draft.Content,
@@ -237,13 +250,10 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
                     qdrantPointId: pointId,
                     parentChunkId: parentDbId,
                     sectionTitle: draft.SectionTitle,
-                    pageNumber: draft.PageNumber));
-
-                if (ragOptions.ApplyArabicNormalization)
-                {
-                    var last = childEntities[^1];
-                    last.SetNormalizedContent(ArabicTextNormalizer.Normalize(last.Content, arOpts));
-                }
+                    pageNumber: draft.PageNumber,
+                    chunkType: draft.ChunkType);
+                childEntity.SetNormalizedContent(BuildNormalized(draft.SectionTitle, draft.Content));
+                childEntities.Add(childEntity);
 
                 points.Add(new VectorPoint(
                     Id: pointId,
@@ -256,7 +266,8 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
                         SectionTitle: draft.SectionTitle,
                         PageNumber: draft.PageNumber,
                         ParentChunkId: parentDbId,
-                        TenantId: tenantId)));
+                        TenantId: tenantId,
+                        ChunkType: draft.ChunkType)));
             }
 
             await vectorStore.UpsertAsync(tenantId, points, ct);

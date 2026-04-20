@@ -286,6 +286,80 @@ public sealed class ProcessDocumentConsumerTests
     }
 
     [Fact]
+    public async Task Structural_markdown_chunks_persist_chunk_type_and_breadcrumb_in_normalized_content()
+    {
+        // Verifies Task 18 of Plan 4b-3: the consumer must persist ChunkType onto
+        // AiDocumentChunk rows and prepend the heading breadcrumb (SectionTitle)
+        // into NormalizedContent so Postgres FTS matches heading text. The chunker
+        // is mocked here (as in the other consumer tests) to isolate consumer
+        // behavior — the StructuredMarkdownChunker → SectionTitle plumbing is
+        // verified separately in StructuredMarkdownChunkerTests.
+        var harness = new ConsumerHarness();
+        var doc = harness.SeedDocument("doc.md", "text/markdown");
+
+        harness.Extractor
+            .Setup(e => e.ExtractAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ExtractedDocument(
+                new[] { new ExtractedPage(1, "# H1\n\n## H2\n\n```py\nx=1\n```\n") },
+                UsedOcr: false));
+
+        // One parent (Body) wrapping one code child. SectionTitle carries the
+        // full breadcrumb "H1 > H2" so the consumer can prepend it verbatim.
+        var codeDraft = new ChunkDraft(
+            Index: 0,
+            Content: "x=1",
+            TokenCount: 3,
+            ParentIndex: 0,
+            SectionTitle: "H1 > H2",
+            PageNumber: 1,
+            ChunkType: ChunkType.Code);
+        var parentDraft = new ChunkDraft(
+            Index: 0,
+            Content: "x=1",
+            TokenCount: 3,
+            ParentIndex: null,
+            SectionTitle: "H1 > H2",
+            PageNumber: 1,
+            ChunkType: ChunkType.Body);
+
+        harness.Chunker
+            .Setup(c => c.Chunk(It.IsAny<ExtractedDocument>(), It.IsAny<ChunkingOptions>()))
+            .Returns(new HierarchicalChunks(
+                Parents: new[] { parentDraft },
+                Children: new[] { codeDraft }));
+
+        harness.Embedder
+            .Setup(e => e.EmbedAsync(It.IsAny<IReadOnlyList<string>>(), It.IsAny<CancellationToken>(), It.IsAny<EmbedAttribution?>()))
+            .ReturnsAsync(new[] { new[] { 0.1f, 0.2f } });
+        harness.Embedder.SetupGet(e => e.VectorSize).Returns(2);
+
+        IReadOnlyList<VectorPoint>? capturedPoints = null;
+        harness.VectorStore
+            .Setup(v => v.UpsertAsync(It.IsAny<Guid>(), It.IsAny<IReadOnlyList<VectorPoint>>(), It.IsAny<CancellationToken>()))
+            .Callback((Guid _, IReadOnlyList<VectorPoint> p, CancellationToken _) => capturedPoints = p)
+            .Returns(Task.CompletedTask);
+
+        await harness.Consume(new ProcessDocumentMessage(doc.Id, doc.TenantId, Guid.NewGuid()));
+
+        // ChunkType persisted on the child row.
+        var codeChunk = await harness.Db.AiDocumentChunks
+            .AsNoTracking()
+            .Where(c => c.DocumentId == doc.Id && c.ChunkLevel == "child")
+            .SingleAsync();
+        codeChunk.ChunkType.Should().Be(ChunkType.Code);
+        codeChunk.SectionTitle.Should().Be("H1 > H2");
+        // Breadcrumb prepended to NormalizedContent. StartsWith allows the
+        // Arabic normalizer to reshape the body following the prefix/newline.
+        codeChunk.NormalizedContent.Should().NotBeNull();
+        codeChunk.NormalizedContent!.Should().StartWith("H1 > H2\n");
+
+        // VectorPayload carries ChunkType through to Qdrant.
+        capturedPoints.Should().NotBeNull();
+        capturedPoints!.Should().ContainSingle();
+        capturedPoints[0].Payload.ChunkType.Should().Be(ChunkType.Code);
+    }
+
+    [Fact]
     public async Task Passes_Tenant_And_User_Attribution_From_Message_To_Embedder()
     {
         var harness = new ConsumerHarness();
