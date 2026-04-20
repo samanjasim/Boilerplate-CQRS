@@ -1,6 +1,8 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Starter.Abstractions.Capabilities;
 using Starter.Api.Tests.Ai.Retrieval;
+using Starter.Module.AI.Application.Services;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Observability;
 using Xunit;
@@ -82,5 +84,45 @@ public sealed class RagRetrievalWebhookTests
         await fx.RunOneTurnAsync(assistant, "q");
 
         publisher.Events.Should().ContainSingle(e => e.EventType == RagWebhookEventNames.Failed);
+    }
+
+    [Fact]
+    public async Task Aggregate_log_line_includes_new_structured_properties()
+    {
+        var recorder = new RecordingLogger<ChatExecutionService>();
+        var publisher = new RecordingWebhookPublisher();
+
+        var fx = new ChatExecutionTestFixture(publisher, chatLogger: recorder);
+        var docId = fx.SeedTwoRetrievedChunks();
+        var assistant = fx.SeedAssistantWithRagScope(AiRagScope.SelectedDocuments, docIds: new[] { docId });
+        fx.FakeProvider.ScriptedResponse = "reply";
+
+        await fx.RunOneTurnAsync(assistant, "q");
+
+        recorder.Entries.Should().Contain(e =>
+            e.Message.Contains("RAG retrieval done assistant=") &&
+            e.Message.Contains("req=") &&
+            e.Message.Contains("siblings=") &&
+            e.Message.Contains("stages=") &&
+            e.Message.Contains("lang="));
+    }
+
+    [Fact]
+    public async Task Aggregate_log_req_matches_webhook_payload_request_id()
+    {
+        var recorder = new RecordingLogger<ChatExecutionService>();
+        var publisher = new RecordingWebhookPublisher();
+
+        var fx = new ChatExecutionTestFixture(publisher, chatLogger: recorder);
+        var docId = fx.SeedTwoRetrievedChunks();
+        var assistant = fx.SeedAssistantWithRagScope(AiRagScope.SelectedDocuments, docIds: new[] { docId });
+        fx.FakeProvider.ScriptedResponse = "reply";
+
+        await fx.RunOneTurnAsync(assistant, "q");
+
+        var webhookEvent = publisher.Events.Single(e => e.EventType == RagWebhookEventNames.Completed);
+        var webhookRequestId = (Guid)webhookEvent.Data.GetType().GetProperty("RequestId")!.GetValue(webhookEvent.Data)!;
+
+        recorder.Entries.Should().Contain(e => e.Message.Contains($"req={webhookRequestId}"));
     }
 }

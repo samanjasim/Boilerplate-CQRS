@@ -617,12 +617,7 @@ internal sealed class ChatExecutionService(
                 AiRagMetrics.DegradedStages.Add(
                     1, new KeyValuePair<string, object?>("rag.stage", stage));
             }
-            var degradedSummary = retrieved.DegradedStages.Count == 0
-                ? "none"
-                : string.Join(",", retrieved.DegradedStages);
-            logger.LogInformation(
-                "RAG retrieval for assistant {AssistantId}: children={Children} parents={Parents} tokens={Tokens} truncated={Truncated} degraded={Degraded}",
-                assistant.Id, retrieved.Children.Count, retrieved.Parents.Count, retrieved.TotalTokens, retrieved.TruncatedByBudget, degradedSummary);
+            var requestId = Guid.NewGuid();
 
             var eventName = retrieved.DegradedStages.Count > 0
                 ? RagWebhookEventNames.Degraded
@@ -630,7 +625,7 @@ internal sealed class ChatExecutionService(
 
             var payload = new
             {
-                RequestId = Guid.NewGuid(),
+                RequestId = requestId,
                 AssistantId = assistant.Id,
                 TenantId = currentUser.TenantId,
                 KeptChildren = retrieved.Children.Count,
@@ -647,6 +642,23 @@ internal sealed class ChatExecutionService(
             };
 
             await PublishRagLifecycleAsync(eventName, currentUser.TenantId, payload, ct);
+
+            var degradedSummary = retrieved.DegradedStages.Count == 0
+                ? "none"
+                : string.Join(",", retrieved.DegradedStages);
+
+            logger.LogInformation(
+                "RAG retrieval done assistant={AssistantId} req={RequestId} children={Children} parents={Parents} siblings={Siblings} tokens={Tokens} truncated={Truncated} stages={StagesSummary} degraded={DegradedStages} lang={DetectedLang}",
+                assistant.Id,
+                requestId,
+                retrieved.Children.Count,
+                retrieved.Parents.Count,
+                retrieved.Siblings.Count,
+                retrieved.TotalTokens,
+                retrieved.TruncatedByBudget,
+                "all",
+                degradedSummary,
+                retrieved.DetectedLanguage);
 
             return retrieved;
         }

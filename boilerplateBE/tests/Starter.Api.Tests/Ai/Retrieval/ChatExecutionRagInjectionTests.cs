@@ -112,7 +112,10 @@ internal sealed class ChatExecutionTestFixture
     private readonly FakeRetrieval _retrieval = new();
     private readonly IChatExecutionService _chat;
 
-    public ChatExecutionTestFixture(IWebhookPublisher? webhookPublisher = null, bool throwOnRetrieve = false)
+    public ChatExecutionTestFixture(
+        IWebhookPublisher? webhookPublisher = null,
+        bool throwOnRetrieve = false,
+        ILogger<ChatExecutionService>? chatLogger = null)
     {
         _retrieval.ThrowOnRetrieve = throwOnRetrieve;
 
@@ -120,6 +123,8 @@ internal sealed class ChatExecutionTestFixture
 
         var dbName = $"ai-chat-{Guid.NewGuid():N}";
         services.AddDbContext<AiDbContext>(o => o.UseInMemoryDatabase(dbName));
+        if (chatLogger is not null)
+            services.AddSingleton(chatLogger);
         services.AddLogging(b => b.AddProvider(NullLoggerProvider.Instance));
         services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
 
@@ -380,3 +385,24 @@ internal sealed class StubAiToolRegistry : IAiToolRegistry
             ProviderTools: [],
             DefinitionsByName: new Dictionary<string, IAiToolDefinition>()));
 }
+
+internal sealed class RecordingLogger<T> : ILogger<T>
+{
+    private readonly List<LogEntry> _entries = [];
+    public IReadOnlyList<LogEntry> Entries => _entries;
+
+    public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+    public bool IsEnabled(LogLevel logLevel) => true;
+
+    public void Log<TState>(
+        LogLevel logLevel,
+        EventId eventId,
+        TState state,
+        Exception? exception,
+        Func<TState, Exception?, string> formatter)
+    {
+        _entries.Add(new LogEntry(logLevel, formatter(state, exception), exception));
+    }
+}
+
+internal sealed record LogEntry(LogLevel Level, string Message, Exception? Exception);
