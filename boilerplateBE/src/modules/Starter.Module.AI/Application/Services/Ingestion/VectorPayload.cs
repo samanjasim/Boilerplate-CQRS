@@ -1,3 +1,5 @@
+using Starter.Module.AI.Domain.Enums;
+
 namespace Starter.Module.AI.Application.Services.Ingestion;
 
 public sealed record VectorPayload(
@@ -8,4 +10,5 @@ public sealed record VectorPayload(
     string? SectionTitle,
     int? PageNumber,
     Guid? ParentChunkId,
-    Guid TenantId);
+    Guid TenantId,
+    ChunkType ChunkType = ChunkType.Body);
