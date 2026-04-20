@@ -73,4 +73,25 @@ public class StructuredMarkdownChunkerTests
         var chunks = NewChunker().Chunk(OneMarkdownPage(md), Opts());
         chunks.Children.Should().ContainSingle().Which.SectionTitle.Should().Be("مقدمة");
     }
+
+    [Fact]
+    public void Oversize_body_block_is_split_by_sliding_window()
+    {
+        var longBody = string.Join(" ", Enumerable.Repeat("word", 2000));
+        var md = "# H\n\n" + longBody + "\n";
+        var chunks = NewChunker().Chunk(OneMarkdownPage(md), Opts(child: 64, parent: 256, overlap: 8));
+        chunks.Children.Should().HaveCountGreaterThan(1);
+        chunks.Children.Should().OnlyContain(c => c.ChunkType == ChunkType.Body);
+        chunks.Children.Should().OnlyContain(c => c.SectionTitle == "H");
+    }
+
+    [Fact]
+    public void Oversize_code_block_is_split_by_blank_line_groups()
+    {
+        var codeBody = "block1-a\nblock1-b\n\nblock2-a\nblock2-b\n";
+        var fence = "```text\n" + codeBody + "```\n";
+        var chunks = NewChunker().Chunk(OneMarkdownPage("# C\n\n" + fence), Opts(child: 4, parent: 64, overlap: 0));
+        chunks.Children.Should().HaveCountGreaterThan(1);
+        chunks.Children.Should().OnlyContain(c => c.ChunkType == ChunkType.Code);
+    }
 }
