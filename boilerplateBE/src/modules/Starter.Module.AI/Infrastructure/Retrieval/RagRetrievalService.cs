@@ -7,6 +7,7 @@ using Starter.Module.AI.Application.Services.Retrieval;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Ingestion;
+using Starter.Module.AI.Infrastructure.Observability;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Retrieval.Reranking;
 using Starter.Module.AI.Infrastructure.Settings;
@@ -469,15 +470,39 @@ internal sealed class RagRetrievalService : IRagRetrievalService
     /// stage name is appended to <paramref name="degraded"/> and null is returned so
     /// the pipeline can continue with empty hits for this stage.
     /// </summary>
-    private async Task<T?> WithTimeoutAsync<T>(
+    private Task<T?> WithTimeoutAsync<T>(
         Func<CancellationToken, Task<T>> op,
         int timeoutMs,
         string stageName,
         List<string> degraded,
         CancellationToken ct) where T : class
+        => WithTimeoutAsyncCore(op, timeoutMs, stageName, degraded, _logger, IsTransientStageException, ct);
+
+    /// <summary>
+    /// Test-facing entry point. Uses an "all-transient" filter so tests can assert
+    /// error-outcome emission without importing the internal IsTransientStageException.
+    /// </summary>
+    internal static Task<T?> RunWithTimeoutAsyncForTests<T>(
+        Func<CancellationToken, Task<T>> op,
+        int timeoutMs,
+        string stageName,
+        List<string> degraded,
+        CancellationToken ct = default) where T : class
+        => WithTimeoutAsyncCore(op, timeoutMs, stageName, degraded, logger: null, isTransient: _ => true, ct);
+
+    private static async Task<T?> WithTimeoutAsyncCore<T>(
+        Func<CancellationToken, Task<T>> op,
+        int timeoutMs,
+        string stageName,
+        List<string> degraded,
+        ILogger? logger,
+        Func<Exception, bool> isTransient,
+        CancellationToken ct) where T : class
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(timeoutMs);
+        var sw = Stopwatch.StartNew();
+        string outcome = RagStageOutcome.Success;
         try
         {
             return await op(cts.Token);
@@ -485,20 +510,34 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             // Caller cancelled — propagate so the whole chat turn can abort cleanly.
+            outcome = RagStageOutcome.Timeout;
             throw;
         }
         catch (OperationCanceledException)
         {
             // Stage exceeded the per-stage budget — degrade and continue.
+            outcome = RagStageOutcome.Timeout;
             degraded.Add(stageName);
-            _logger.LogWarning("RAG stage '{Stage}' timed out after {TimeoutMs}ms", stageName, timeoutMs);
+            logger?.LogWarning("RAG stage '{Stage}' timed out after {TimeoutMs}ms", stageName, timeoutMs);
             return null;
         }
-        catch (Exception ex) when (IsTransientStageException(ex))
+        catch (Exception ex) when (isTransient(ex))
         {
+            outcome = RagStageOutcome.Error;
             degraded.Add(stageName);
-            _logger.LogError(ex, "RAG stage '{Stage}' failed", stageName);
+            logger?.LogError(ex, "RAG stage '{Stage}' failed", stageName);
             return null;
+        }
+        finally
+        {
+            sw.Stop();
+            AiRagMetrics.StageDuration.Record(
+                sw.Elapsed.TotalMilliseconds,
+                new KeyValuePair<string, object?>("rag.stage", stageName));
+            AiRagMetrics.StageOutcome.Add(
+                1,
+                new KeyValuePair<string, object?>("rag.stage", stageName),
+                new KeyValuePair<string, object?>("rag.outcome", outcome));
         }
     }
 
