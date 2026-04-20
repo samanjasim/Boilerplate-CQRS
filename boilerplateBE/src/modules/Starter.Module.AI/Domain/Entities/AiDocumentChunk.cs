@@ -1,4 +1,5 @@
 using Starter.Domain.Common;
+using Starter.Module.AI.Domain.Enums;
 
 namespace Starter.Module.AI.Domain.Entities;
 
@@ -13,6 +14,7 @@ public sealed class AiDocumentChunk : BaseEntity
     public int? PageNumber { get; private set; }
     public int TokenCount { get; private set; }
     public Guid QdrantPointId { get; private set; }
+    public ChunkType ChunkType { get; private set; }
 
     private AiDocumentChunk() { }
 
@@ -26,7 +28,8 @@ public sealed class AiDocumentChunk : BaseEntity
         string? sectionTitle,
         int? pageNumber,
         int tokenCount,
-        Guid qdrantPointId) : base(id)
+        Guid qdrantPointId,
+        ChunkType chunkType) : base(id)
     {
         DocumentId = documentId;
         ParentChunkId = parentChunkId;
@@ -37,6 +40,7 @@ public sealed class AiDocumentChunk : BaseEntity
         PageNumber = pageNumber;
         TokenCount = tokenCount;
         QdrantPointId = qdrantPointId;
+        ChunkType = chunkType;
     }
 
     public string? NormalizedContent { get; private set; }
@@ -56,7 +60,8 @@ public sealed class AiDocumentChunk : BaseEntity
         Guid qdrantPointId,
         Guid? parentChunkId = null,
         string? sectionTitle = null,
-        int? pageNumber = null)
+        int? pageNumber = null,
+        ChunkType chunkType = ChunkType.Body)
     {
         return new AiDocumentChunk(
             Guid.NewGuid(),
@@ -68,6 +73,7 @@ public sealed class AiDocumentChunk : BaseEntity
             sectionTitle?.Trim(),
             pageNumber,
             tokenCount,
-            qdrantPointId);
+            qdrantPointId,
+            chunkType);
     }
 }

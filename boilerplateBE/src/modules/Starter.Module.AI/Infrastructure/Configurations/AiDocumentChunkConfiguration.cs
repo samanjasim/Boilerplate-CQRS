@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using NpgsqlTypes;
 using Starter.Module.AI.Domain.Entities;
+using Starter.Module.AI.Domain.Enums;
 
 namespace Starter.Module.AI.Infrastructure.Configurations;
 
@@ -60,6 +61,12 @@ internal sealed class AiDocumentChunkConfiguration : IEntityTypeConfiguration<Ai
 
         builder.Property(e => e.NormalizedContent)
             .HasColumnName("normalized_content");
+
+        builder.Property(c => c.ChunkType)
+            .HasColumnName("chunk_type")
+            .HasConversion<short>()
+            .HasDefaultValue(ChunkType.Body)
+            .IsRequired();
 
         builder.HasIndex(e => e.DocumentId);
         builder.HasIndex(e => e.ParentChunkId);
