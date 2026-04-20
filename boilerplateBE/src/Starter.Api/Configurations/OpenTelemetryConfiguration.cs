@@ -41,7 +41,8 @@ public static class OpenTelemetryConfiguration
                 .AddSource("Starter.Module.AI"))
             .WithMetrics(metrics => metrics
                 .AddAspNetCoreInstrumentation()
-                .AddHttpClientInstrumentation())
+                .AddHttpClientInstrumentation()
+                .AddMeter("Starter.Module.AI.Rag"))
             .UseOtlpExporter(OtlpExportProtocol.HttpProtobuf, new Uri(otlpEndpoint));
 
         return services;
