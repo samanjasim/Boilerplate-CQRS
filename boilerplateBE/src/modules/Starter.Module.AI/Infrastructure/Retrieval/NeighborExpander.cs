@@ -73,7 +73,8 @@ internal sealed class NeighborExpander : INeighborExpander
                 c.PageNumber,
                 c.SectionTitle,
                 c.ChunkLevel,
-                c.ParentChunkId
+                c.ParentChunkId,
+                c.ChunkType
             })
             .ToListAsync(ct);
 
@@ -95,7 +96,8 @@ internal sealed class NeighborExpander : INeighborExpander
                 KeywordScore: 0m,
                 HybridScore: NearestAnchorScore(c.DocumentId, c.ChunkIndex, anchorsByDoc, windowSize) * weight,
                 ParentChunkId: c.ParentChunkId,
-                ChunkIndex: c.ChunkIndex))
+                ChunkIndex: c.ChunkIndex,
+                ChunkType: c.ChunkType))
             .ToList();
 
         _logger.LogDebug(

@@ -71,6 +71,7 @@ internal sealed class QdrantVectorStore : IVectorStore
                 ["page_number"]     = p.Payload.PageNumber ?? 0,
                 ["parent_chunk_id"] = p.Payload.ParentChunkId?.ToString() ?? string.Empty,
                 ["tenant_id"]       = p.Payload.TenantId.ToString(),
+                ["chunk_type"]      = (int)p.Payload.ChunkType,
             }
         }).ToList();
 

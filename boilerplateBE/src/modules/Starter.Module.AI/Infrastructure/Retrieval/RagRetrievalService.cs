@@ -390,7 +390,8 @@ internal sealed class RagRetrievalService : IRagRetrievalService
             KeywordScore: hit?.KeywordScore ?? 0m,
             HybridScore: hit?.HybridScore ?? 0m,
             ParentChunkId: chunk.ParentChunkId,
-            ChunkIndex: chunk.ChunkIndex);
+            ChunkIndex: chunk.ChunkIndex,
+            ChunkType: chunk.ChunkType);
     }
 
     private (IReadOnlyList<RetrievedChunk> Children, IReadOnlyList<RetrievedChunk> Parents, int TotalTokens, bool Truncated)

@@ -1,3 +1,5 @@
+using Starter.Module.AI.Domain.Enums;
+
 namespace Starter.Module.AI.Application.Services.Retrieval;
 
 public sealed record RetrievedChunk(
@@ -12,4 +14,5 @@ public sealed record RetrievedChunk(
     decimal KeywordScore,
     decimal HybridScore,
     Guid? ParentChunkId,
-    int ChunkIndex);
+    int ChunkIndex,
+    ChunkType ChunkType = ChunkType.Body);
