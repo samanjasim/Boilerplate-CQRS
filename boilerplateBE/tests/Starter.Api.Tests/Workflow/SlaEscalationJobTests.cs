@@ -1,13 +1,16 @@
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Readers;
+using Starter.Domain.Common;
 using Starter.Module.Workflow.Domain.Entities;
+using Starter.Module.Workflow.Domain.Events;
 using Starter.Module.Workflow.Infrastructure.Persistence;
 using Starter.Module.Workflow.Infrastructure.Services;
 using Xunit;
@@ -22,6 +25,7 @@ public sealed class SlaEscalationJobTests : IDisposable
     private readonly Mock<IUserReader> _userReader = new();
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly string _dbName;
+    private readonly DomainEventCapture _capturedEvents = new();
 
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly Guid _initiatorId = Guid.NewGuid();
@@ -45,6 +49,7 @@ public sealed class SlaEscalationJobTests : IDisposable
         {
             var opts = new DbContextOptionsBuilder<WorkflowDbContext>()
                 .UseInMemoryDatabase(_dbName)
+                .AddInterceptors(new DomainEventCaptureInterceptor(_capturedEvents))
                 .Options;
             return new WorkflowDbContext(opts);
         });
@@ -382,6 +387,42 @@ public sealed class SlaEscalationJobTests : IDisposable
     }
 
     [Fact]
+    public async Task EscalatesTask_RaisesWorkflowTaskEscalatedEvent()
+    {
+        var definition = SeedDefinitionWithSla(escalateAfterHours: 48);
+        var (instance, task) = SeedPendingTask(definition, hoursAgo: 49);
+
+        var sut = new SlaEscalationJob(_scopeFactory, NullLogger<SlaEscalationJob>.Instance);
+
+        await sut.ProcessOverdueTasksAsync(CancellationToken.None);
+
+        var escalated = _capturedEvents.Events
+            .OfType<WorkflowTaskEscalatedEvent>()
+            .ToList();
+        escalated.Should().ContainSingle();
+        escalated[0].InstanceId.Should().Be(instance.Id);
+        escalated[0].OriginalAssigneeUserId.Should().Be(_assigneeId);
+        escalated[0].NewAssigneeUserId.Should().Be(_fallbackAssigneeId);
+        escalated[0].StepName.Should().Be("PendingApproval");
+        escalated[0].EntityType.Should().Be("Order");
+    }
+
+    [Fact]
+    public async Task EscalatesTask_DoesNotRaiseEvent_WhenAlreadyEscalated()
+    {
+        var definition = SeedDefinitionWithSla(escalateAfterHours: 48);
+        SeedPendingTask(definition, hoursAgo: 49, alreadyEscalated: true);
+
+        var sut = new SlaEscalationJob(_scopeFactory, NullLogger<SlaEscalationJob>.Instance);
+
+        await sut.ProcessOverdueTasksAsync(CancellationToken.None);
+
+        _capturedEvents.Events
+            .OfType<WorkflowTaskEscalatedEvent>()
+            .Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task ProcessOverdueTasks_CompletedTask_Skipped()
     {
         // Arrange: task is already completed
@@ -402,5 +443,49 @@ public sealed class SlaEscalationJobTests : IDisposable
                 It.IsAny<Guid?>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+}
+
+internal sealed class DomainEventCapture
+{
+    private readonly List<IDomainEvent> _events = [];
+    public IReadOnlyList<IDomainEvent> Events => _events;
+    public void Add(IEnumerable<IDomainEvent> events) => _events.AddRange(events);
+}
+
+internal sealed class DomainEventCaptureInterceptor(DomainEventCapture capture) : SaveChangesInterceptor
+{
+    public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+        DbContextEventData eventData,
+        InterceptionResult<int> result,
+        CancellationToken cancellationToken = default)
+    {
+        Capture(eventData);
+        return base.SavingChangesAsync(eventData, result, cancellationToken);
+    }
+
+    public override InterceptionResult<int> SavingChanges(
+        DbContextEventData eventData,
+        InterceptionResult<int> result)
+    {
+        Capture(eventData);
+        return base.SavingChanges(eventData, result);
+    }
+
+    private void Capture(DbContextEventData eventData)
+    {
+        if (eventData.Context is null) return;
+
+        var aggregates = eventData.Context.ChangeTracker
+            .Entries()
+            .Select(e => e.Entity)
+            .OfType<AggregateRoot>()
+            .ToList();
+
+        foreach (var aggregate in aggregates)
+        {
+            var events = aggregate.DomainEvents.ToArray();
+            capture.Add(events);
+        }
     }
 }

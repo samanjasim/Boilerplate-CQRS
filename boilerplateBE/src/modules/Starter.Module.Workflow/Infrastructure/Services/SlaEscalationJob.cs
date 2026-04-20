@@ -201,6 +201,19 @@ public sealed class SlaEscalationJob(
 
         dbContext.ApprovalTasks.Add(escalatedTask);
 
+        // Raise domain event for audit / downstream consumers. Only when both
+        // original and new assignees are resolved — an unknown handoff has no
+        // meaningful payload. Fires through WorkflowInstance's aggregate so the
+        // event is dispatched by the outbox / MediatR pipeline on SaveChanges.
+        if (originalAssigneeId.HasValue && newAssigneeId.HasValue)
+        {
+            task.Instance.RaiseTaskEscalated(
+                escalatedTask.Id,
+                originalAssigneeId.Value,
+                newAssigneeId.Value,
+                task.StepName);
+        }
+
         logger.LogInformation(
             "Escalated task {OldTaskId} -> {NewTaskId}. Original assignee: {OriginalAssignee}, new assignee: {NewAssignee}",
             task.Id, escalatedTask.Id, originalAssigneeId, newAssigneeId);

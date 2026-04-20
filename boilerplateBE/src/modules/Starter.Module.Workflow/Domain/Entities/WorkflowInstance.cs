@@ -136,4 +136,21 @@ public sealed class WorkflowInstance : AggregateRoot, ITenantEntity
         ContextJson = contextJson;
         ModifiedAt = DateTime.UtcNow;
     }
+
+    public void RaiseTaskEscalated(
+        Guid taskId,
+        Guid originalAssigneeUserId,
+        Guid newAssigneeUserId,
+        string stepName)
+    {
+        RaiseDomainEvent(new WorkflowTaskEscalatedEvent(
+            taskId,
+            Id,
+            originalAssigneeUserId,
+            newAssigneeUserId,
+            stepName,
+            EntityType,
+            EntityId,
+            TenantId));
+    }
 }
