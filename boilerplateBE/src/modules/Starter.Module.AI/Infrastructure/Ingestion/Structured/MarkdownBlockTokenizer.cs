@@ -10,6 +10,9 @@ internal sealed class MarkdownBlockTokenizer
     private static readonly Regex MathDisplayRegex = new(@"^\s*\$\$\s*$", RegexOptions.Compiled);
     private static readonly Regex BeginEquationRegex = new(@"^\s*\\begin\{equation\}\s*$", RegexOptions.Compiled);
     private static readonly Regex EndEquationRegex = new(@"^\s*\\end\{equation\}\s*$", RegexOptions.Compiled);
+    private static readonly Regex TableRowRegex = new(@"^\|.+\|\s*$", RegexOptions.Compiled);
+    private static readonly Regex TableSeparatorRegex = new(@"^\|\s*:?-{1,}:?\s*(\|\s*:?-{1,}:?\s*)+\|\s*$", RegexOptions.Compiled);
+    private static readonly Regex ListRegex = new(@"^\s*([-*+]|\d+\.)\s+\S", RegexOptions.Compiled);
 
     public IReadOnlyList<MarkdownBlock> Tokenize(string input)
     {
@@ -44,6 +47,19 @@ internal sealed class MarkdownBlockTokenizer
                 continue;
             }
 
+            // Table: pipe row followed immediately by a separator row
+            if (TableRowRegex.IsMatch(line) && i + 1 < lines.Length && TableSeparatorRegex.IsMatch(lines[i + 1]))
+            {
+                var buf = new List<string> { line, lines[i + 1] };
+                i += 2;
+                while (i < lines.Length && TableRowRegex.IsMatch(lines[i]))
+                {
+                    buf.Add(lines[i]); i++;
+                }
+                blocks.Add(new MarkdownBlock(BlockType.Table, string.Join('\n', buf)));
+                continue;
+            }
+
             var h = HeadingRegex.Match(line);
             if (h.Success)
             {
@@ -68,6 +84,20 @@ internal sealed class MarkdownBlockTokenizer
                 continue;
             }
 
+            // List
+            if (ListRegex.IsMatch(line))
+            {
+                var buf = new List<string> { line };
+                i++;
+                while (i < lines.Length && lines[i].Length > 0
+                       && (ListRegex.IsMatch(lines[i]) || lines[i].StartsWith(' ') || lines[i].StartsWith('\t')))
+                {
+                    buf.Add(lines[i]); i++;
+                }
+                blocks.Add(new MarkdownBlock(BlockType.List, string.Join('\n', buf)));
+                continue;
+            }
+
             // body: collect until blank line or structural boundary
             var body = new List<string> { line };
             i++;
@@ -76,7 +106,9 @@ internal sealed class MarkdownBlockTokenizer
                    && !QuoteRegex.IsMatch(lines[i])
                    && !CodeFenceRegex.IsMatch(lines[i])
                    && !MathDisplayRegex.IsMatch(lines[i])
-                   && !BeginEquationRegex.IsMatch(lines[i]))
+                   && !BeginEquationRegex.IsMatch(lines[i])
+                   && !ListRegex.IsMatch(lines[i])
+                   && !(TableRowRegex.IsMatch(lines[i]) && i + 1 < lines.Length && TableSeparatorRegex.IsMatch(lines[i + 1])))
             {
                 body.Add(lines[i]);
                 i++;

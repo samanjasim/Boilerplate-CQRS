@@ -113,4 +113,37 @@ public class MarkdownBlockTokenizerTests
         blocks.Should().ContainSingle().Which.Type.Should().Be(BlockType.Math);
         blocks.Single().Text.Should().Contain("a = 1").And.Contain("b = 2");
     }
+
+    [Fact]
+    public void Pipe_table_with_separator_row_is_atomic()
+    {
+        var md = "| a | b |\n|---|---|\n| 1 | 2 |\n| 3 | 4 |\n";
+        var blocks = Tokenize(md);
+        blocks.Should().ContainSingle().Which.Type.Should().Be(BlockType.Table);
+        blocks.Single().Text.Should().Contain("1 | 2").And.Contain("3 | 4");
+    }
+
+    [Fact]
+    public void Pipe_rows_without_separator_are_body_not_table()
+    {
+        var md = "| stray | line |\nfollowed by prose\n";
+        var blocks = Tokenize(md);
+        blocks.Single().Type.Should().Be(BlockType.Body);
+    }
+
+    [Fact]
+    public void Hyphen_list_collapses_to_list_block()
+    {
+        var md = "- one\n- two\n- three\n";
+        var blocks = Tokenize(md);
+        blocks.Single().Type.Should().Be(BlockType.List);
+        blocks.Single().Text.Should().Contain("- one").And.Contain("- three");
+    }
+
+    [Fact]
+    public void Numbered_list_also_recognized()
+    {
+        var md = "1. first\n2. second\n";
+        Tokenize(md).Single().Type.Should().Be(BlockType.List);
+    }
 }
