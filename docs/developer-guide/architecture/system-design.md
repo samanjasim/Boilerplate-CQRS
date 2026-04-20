@@ -1,6 +1,6 @@
 # System Design
 
-**Audience:** Anyone working on this boilerplate. New to the codebase? Start here, then read [module-development-guide.md](./module-development-guide.md) when you need to add or extend a feature.
+**Audience:** Anyone working on this boilerplate. New to the codebase? Start here, then read [module-development.md](./module-development.md) when you need to add or extend a feature.
 
 This document is the map of the codebase: which projects exist, what each one is for, what it may and may not depend on, and how the major patterns (CQRS, capabilities, slots, outbox events) flow through them.
 
@@ -642,7 +642,7 @@ The whole sequence is gated by `SeedDataOnStartup`. In production, you set the f
 
 ## 10. Architecture rules and how they're enforced
 
-The rules in [module-development-guide.md Section E](./module-development-guide.md#e-the-dont-rules--architectural-discipline) are enforced at three levels:
+The rules in [module-development.md Section E](./module-development.md#e-the-dont-rules--architectural-discipline) are enforced at three levels:
 
 ### Compile-time (project references)
 

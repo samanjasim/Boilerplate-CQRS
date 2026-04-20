@@ -200,9 +200,9 @@ Build it in this order so each step leaves the system in a working state:
 Read these first in the D2 session to orient:
 
 **Architecture reference**:
-- [docs/architecture/system-design.md](./architecture/system-design.md) — project graph, folder layout, patterns
-- [docs/architecture/module-development-guide.md](./architecture/module-development-guide.md) — Section D (creating a new module) is the step-by-step; Section G (cookbook) has the one-liners
-- [docs/architecture/cross-module-communication.md](./architecture/cross-module-communication.md) — which pattern to use for each cross-module interaction
+- [architecture/system-design.md](./architecture/system-design.md) — project graph, folder layout, patterns
+- [architecture/module-development.md](./architecture/module-development.md) — Section D (creating a new module) is the step-by-step; Section G (cookbook) has the one-liners
+- [architecture/cross-module-communication.md](./architecture/cross-module-communication.md) — which pattern to use for each cross-module interaction
 
 **Existing modules as templates**:
 - `boilerplateBE/src/modules/Starter.Module.Billing/` — most complete template; has the full spread of entities, handlers, event consumers, webhook dispatch, DbContext, usage metric calculator, module class. Copy the skeleton, rename, strip what you don't need.
@@ -246,7 +246,7 @@ D2 complete:
 
 If D2 succeeds, the boilerplate has proved it genuinely supports "add a domain module without touching core". From there the roadmap branches:
 
-- **D3 — Frontend cookbook**: document the frontend module patterns with the same depth as [cross-module-communication.md](./architecture/cross-module-communication.md) has for the backend. Slot contributions, capability hooks, route registration, permission gating. Products gives you concrete examples to lift from.
+- **D3 — Frontend cookbook**: document the frontend module patterns with the same depth as [architecture/cross-module-communication.md](./architecture/cross-module-communication.md) has for the backend. Slot contributions, capability hooks, route registration, permission gating. Products gives you concrete examples to lift from.
 - **D4 — Testing strategy for modules**: per-module test project skeleton (none exist today), integration test fixture that spins up only the module's DbContext, mocking the capability contracts. Products is a good first candidate for this.
 - **D5 — Packaging (deferred from the original refactor spec)**: turn Products (or Billing) into a NuGet package + npm package pair. This is the "distribute modules independently" goal. Only attempt this after D4 because testing isolation proves the module's surface area is stable.
 - **D6 — CLI scaffold**: a `dotnet new` template or a `pwsh` script that scaffolds a new module from a template. Much easier to build after D2 has documented the exact file layout and bootstrap steps.
@@ -260,11 +260,11 @@ These are intentionally loose — revisit the roadmap after D2 lands.
 If you're reading this from a fresh Claude Code session after switching laptops:
 
 1. ✅ `git pull` on `feature/module-architecture` (should have everything through commit `43f3052` or later)
-2. ✅ Read [docs/workstation-setup.md](./workstation-setup.md) — it lists the local-env, docker, and Claude plugins you need
-3. ✅ Read [docs/architecture/system-design.md](./architecture/system-design.md), [module-development-guide.md](./architecture/module-development-guide.md), and [cross-module-communication.md](./architecture/cross-module-communication.md) in that order — probably 20 minutes total
+2. ✅ Read [getting-started.md](./getting-started.md) — it lists the local-env, docker, and Claude plugins you need
+3. ✅ Read [architecture/system-design.md](./architecture/system-design.md), [module-development.md](./architecture/module-development.md), and [cross-module-communication.md](./architecture/cross-module-communication.md) in that order — probably 20 minutes total
 4. ✅ Read this file (you're here)
 5. ✅ `cd boilerplateBE && dotnet build` — must succeed before you start
 6. ✅ `cd boilerplateBE && dotnet test --filter AbstractionsPurityTests` — must pass
-7. ✅ Tell Claude: "Let's start D2. Read docs/D2-domain-module-example.md, then follow §5 execution order starting with the skeleton."
+7. ✅ Tell Claude: "Let's start D2. Read docs/developer-guide/domain-module-example.md, then follow §5 execution order starting with the skeleton."
 
 That's enough context for Claude to resume productively without the prior conversation history.

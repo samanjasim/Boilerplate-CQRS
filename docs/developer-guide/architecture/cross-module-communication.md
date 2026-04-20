@@ -2,7 +2,7 @@
 
 **Audience:** Anyone adding code that crosses a module boundary — inside a module calling core, inside core calling a module, or between modules.
 
-**Prerequisites:** Read [system-design.md](./system-design.md) first to understand the project graph, then [module-development-guide.md](./module-development-guide.md) for the per-module conventions.
+**Prerequisites:** Read [system-design.md](./system-design.md) first to understand the project graph, then [module-development.md](./module-development.md) for the per-module conventions.
 
 ---
 

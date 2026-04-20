@@ -288,14 +288,14 @@ If you have the `superpowers` plugin installed globally (§2.3), Claude will als
 
 Once the environment is up, read these in this order to get productive:
 
-1. **[README.md](../README.md)** (repo root) — one-page project overview
-2. **[CLAUDE.md](../CLAUDE.md)** (repo root) — project instructions, build commands, feature inventory, patterns. Claude Code automatically loads this at session start.
-3. **[docs/architecture/system-design.md](./architecture/system-design.md)** — the map of the codebase. Project graph, folder layout, key patterns, request lifecycle, event lifecycle.
-4. **[docs/architecture/module-development-guide.md](./architecture/module-development-guide.md)** — how to add or extend a feature. Has a decision framework for "is this core or a module", step-by-step guides for each scenario, and the cookbook section G.
-5. **[docs/architecture/cross-module-communication.md](./architecture/cross-module-communication.md)** — the three patterns (capability calls, integration events, reader services) with a decision tree, real examples, and anti-patterns. Read this before adding anything that crosses a module boundary.
-6. **[docs/superpowers/specs/2026-04-07-true-modularity-refactor.md](./superpowers/specs/2026-04-07-true-modularity-refactor.md)** — the historical spec for the true-modularity refactor. Useful background context but not required for day-to-day work.
-7. **[docs/D2-domain-module-example.md](./D2-domain-module-example.md)** — the planned next step (minimal domain module exercise).
-8. **[.claude/skills/post-feature-testing.md](../.claude/skills/post-feature-testing.md)** and **[.claude/skills/test-cleanup.md](../.claude/skills/test-cleanup.md)** — the testing workflow used after every feature.
+1. **[README.md](../../README.md)** (repo root) — one-page project overview
+2. **[CLAUDE.md](../../CLAUDE.md)** (repo root) — project instructions, build commands, feature inventory, patterns. Claude Code automatically loads this at session start.
+3. **[architecture/system-design.md](./architecture/system-design.md)** — the map of the codebase. Project graph, folder layout, key patterns, request lifecycle, event lifecycle.
+4. **[architecture/module-development.md](./architecture/module-development.md)** — how to add or extend a feature. Has a decision framework for "is this core or a module", step-by-step guides for each scenario, and the cookbook section G.
+5. **[architecture/cross-module-communication.md](./architecture/cross-module-communication.md)** — the three patterns (capability calls, integration events, reader services) with a decision tree, real examples, and anti-patterns. Read this before adding anything that crosses a module boundary.
+6. **[../superpowers/specs/2026-04-07-true-modularity-refactor.md](../superpowers/specs/2026-04-07-true-modularity-refactor.md)** — the historical spec for the true-modularity refactor. Useful background context but not required for day-to-day work.
+7. **[domain-module-example.md](./domain-module-example.md)** — the planned next step (minimal domain module exercise).
+8. **[.claude/skills/post-feature-testing.md](../../.claude/skills/post-feature-testing.md)** and **[.claude/skills/test-cleanup.md](../../.claude/skills/test-cleanup.md)** — the testing workflow used after every feature.
 
 20–30 minutes of reading total.
 
@@ -319,8 +319,8 @@ If you've already done §5 and you're starting a new Claude Code session after p
 1. `git pull` on `feature/module-architecture` (should include commits up to `43f3052` or later)
 2. `cd boilerplateBE && dotnet build` — must succeed before you start any work
 3. `cd boilerplateBE && dotnet test --filter AbstractionsPurityTests` — must pass 2/2
-4. Skim [docs/D2-domain-module-example.md](./D2-domain-module-example.md) to remember where the roadmap is
-5. Tell Claude: *"I'm continuing the module architecture work on a new laptop. Read `docs/workstation-setup.md`, then `docs/D2-domain-module-example.md`, then start D2 following §5 execution order."*
+4. Skim [domain-module-example.md](./domain-module-example.md) to remember where the roadmap is
+5. Tell Claude: *"I'm continuing the module architecture work on a new laptop. Read `docs/developer-guide/getting-started.md`, then `docs/developer-guide/domain-module-example.md`, then start D2 following §5 execution order."*
 
 Claude should pick up where the previous session left off without needing the prior conversation history — every architectural decision is documented in one of the files listed in §6.
 
