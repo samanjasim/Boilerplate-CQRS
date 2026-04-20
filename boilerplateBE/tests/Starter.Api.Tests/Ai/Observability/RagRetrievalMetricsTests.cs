@@ -311,4 +311,75 @@ public class RagRetrievalMetricsTests
         rows.Should().ContainSingle(m => (string?)m.Tags["rag.stage"] == "rerank");
         rows.Should().ContainSingle(m => (string?)m.Tags["rag.stage"] == "embed");
     }
+
+    [Fact]
+    public async Task End_to_end_pipeline_emits_core_observability_instruments()
+    {
+        using var listener = new TestMeterListener(AiRagMetrics.MeterName);
+
+        // Part 1 — direct RagRetrievalService path
+        // Exercises: rag.retrieval.requests, rag.stage.duration (classify), rag.stage.outcome (classify),
+        //            rag.fusion.candidates, rag.keyword.hits
+        {
+            var options = new DbContextOptionsBuilder<AiDbContext>()
+                .UseInMemoryDatabase($"rag-e2e-{Guid.NewGuid():N}").Options;
+            await using var db = new AiDbContext(options, currentUserService: null);
+
+            var settings = new AiRagSettings();
+            var svc = new RagRetrievalService(
+                db,
+                new FakeVectorStore(),
+                new FakeKeywordSearchService(),
+                new Fakes.FakeEmbeddingService(),
+                new NoOpQueryRewriter(),
+                new NoOpQuestionClassifier(),
+                new NoOpReranker(),
+                new RerankStrategySelector(settings),
+                new NoOpNeighborExpander(),
+                new TokenCounter(),
+                Options.Create(settings),
+                NullLogger<RagRetrievalService>.Instance);
+
+            var tenantId = Guid.NewGuid();
+            var assistant = AiAssistant.Create(tenantId, "A", null, "p");
+            assistant.SetRagScope(AiRagScope.AllTenantDocuments);
+
+            // Mixed Arabic+English query ensures language detector fires and tags keyword hits
+            _ = await svc.RetrieveForTurnAsync(
+                assistant,
+                "What is المضخة and how does cavitation affect it?",
+                CancellationToken.None);
+        }
+
+        // Part 2 — ChatExecutionService path
+        // Exercises: rag.context.tokens, rag.context.truncated, rag.degraded.stages
+        {
+            var fx = new Starter.Api.Tests.Ai.Retrieval.ChatExecutionTestFixture();
+            var docId = fx.SeedTwoRetrievedChunks();
+            fx.OverrideRetrievalContext(
+                children: fx.CurrentRetrievalContext.Children,
+                truncated: true,
+                degradedStages: new[] { "rerank" });
+
+            var assistant = fx.SeedAssistantWithRagScope(
+                Starter.Module.AI.Domain.Enums.AiRagScope.SelectedDocuments, docIds: new[] { docId });
+            fx.FakeProvider.ScriptedResponse = "reply";
+            await fx.RunOneTurnAsync(assistant, userMessage: "query");
+        }
+
+        var names = listener.Snapshot()
+            .Select(m => m.InstrumentName)
+            .Distinct()
+            .ToHashSet();
+
+        // Instruments proven alive by this regression guard:
+        names.Should().Contain("rag.retrieval.requests");
+        names.Should().Contain("rag.stage.duration");
+        names.Should().Contain("rag.stage.outcome");
+        names.Should().Contain("rag.fusion.candidates");
+        names.Should().Contain("rag.keyword.hits");
+        names.Should().Contain("rag.context.tokens");
+        names.Should().Contain("rag.context.truncated");
+        names.Should().Contain("rag.degraded.stages");
+    }
 }
