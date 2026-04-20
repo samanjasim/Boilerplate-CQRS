@@ -1,6 +1,7 @@
 using MediatR;
 using Starter.Abstractions.Capabilities;
 using Starter.Application.Common.Interfaces;
+using Starter.Module.Workflow.Domain.Constants;
 using Starter.Module.Workflow.Domain.Errors;
 using Starter.Shared.Results;
 
@@ -19,7 +20,7 @@ internal sealed class TransitionWorkflowCommandHandler(
             cancellationToken);
 
         if (!success)
-            return Result.Failure<bool>(WorkflowErrors.InvalidTransition("Initial", request.Trigger));
+            return Result.Failure<bool>(WorkflowErrors.InvalidTransition(WorkflowStateTypes.Initial, request.Trigger));
 
         return Result.Success(true);
     }

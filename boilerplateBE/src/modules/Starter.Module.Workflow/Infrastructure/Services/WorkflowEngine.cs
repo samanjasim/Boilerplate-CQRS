@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Readers;
+using Starter.Module.Workflow.Domain.Constants;
 using Starter.Module.Workflow.Domain.Entities;
 using Starter.Module.Workflow.Domain.Enums;
 using Starter.Module.Workflow.Infrastructure.Persistence;
@@ -52,7 +53,7 @@ public sealed class WorkflowEngine(
 
         var states = DeserializeStates(definition.StatesJson);
         var initialState = states.FirstOrDefault(s =>
-            s.Type.Equals("Initial", StringComparison.OrdinalIgnoreCase))
+            s.Type.Equals(WorkflowStateTypes.Initial, StringComparison.OrdinalIgnoreCase))
             ?? states.FirstOrDefault();
 
         if (initialState is null)
@@ -163,7 +164,7 @@ public sealed class WorkflowEngine(
 
         var states = DeserializeStates(instance.Definition.StatesJson);
         var currentState = states.FirstOrDefault(s => s.Name == instance.CurrentState);
-        if (currentState is null || !currentState.Type.Equals("Initial", StringComparison.OrdinalIgnoreCase))
+        if (currentState is null || !currentState.Type.Equals(WorkflowStateTypes.Initial, StringComparison.OrdinalIgnoreCase))
         {
             // Idempotent: if already past the Initial state, check whether the
             // instance is at the state the trigger would have transitioned to.
@@ -540,7 +541,7 @@ public sealed class WorkflowEngine(
                 var states = DeserializeStates(instance.Definition.StatesJson);
                 var currentSt = states.FirstOrDefault(s => s.Name == instance.CurrentState);
                 canResubmit = currentSt is not null
-                    && currentSt.Type.Equals("Initial", StringComparison.OrdinalIgnoreCase);
+                    && currentSt.Type.Equals(WorkflowStateTypes.Initial, StringComparison.OrdinalIgnoreCase);
             }
             catch { /* swallow deserialization errors */ }
         }
@@ -799,7 +800,7 @@ public sealed class WorkflowEngine(
                     var sts = DeserializeStates(i.Definition.StatesJson);
                     var curSt = sts.FirstOrDefault(s => s.Name == i.CurrentState);
                     canResubmit = curSt is not null
-                        && curSt.Type.Equals("Initial", StringComparison.OrdinalIgnoreCase);
+                        && curSt.Type.Equals(WorkflowStateTypes.Initial, StringComparison.OrdinalIgnoreCase);
                 }
                 catch { /* swallow */ }
             }
@@ -1203,12 +1204,12 @@ public sealed class WorkflowEngine(
         {
             instance.Complete();
         }
-        else if (toStateConfig.Type.Equals("HumanTask", StringComparison.OrdinalIgnoreCase))
+        else if (toStateConfig.Type.Equals(WorkflowStateTypes.HumanTask, StringComparison.OrdinalIgnoreCase))
         {
             await CreateApprovalTaskAsync(instance, toStateConfig, definition,
                 instance.StartedByUserId, ct);
         }
-        else if (toStateConfig.Type.Equals("SystemAction", StringComparison.OrdinalIgnoreCase))
+        else if (toStateConfig.Type.Equals(WorkflowStateTypes.SystemAction, StringComparison.OrdinalIgnoreCase))
         {
             await AutoTransitionAsync(instance, definition, states, toStateConfig,
                 actorUserId, ct);
@@ -1218,7 +1219,7 @@ public sealed class WorkflowEngine(
             await HandleConditionalGateAsync(instance, definition, states, toStateConfig,
                 actorUserId, ct);
         }
-        else if (toStateConfig.Type.Equals("Initial", StringComparison.OrdinalIgnoreCase) && isStarting)
+        else if (toStateConfig.Type.Equals(WorkflowStateTypes.Initial, StringComparison.OrdinalIgnoreCase) && isStarting)
         {
             // Auto-transition from Initial states only during StartAsync.
             // When returned via ExecuteTask (e.g. ReturnForRevision), the requester
