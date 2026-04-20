@@ -124,8 +124,8 @@ The following improvements were made after the initial Phase 1 implementation. T
 **Pick this up when:** A domain module (e.g. Expenses, Purchase Orders) needs structured data at an approval step to drive a condition or populate a downstream record.
 
 **Starting points:**
-- Add `FormSchema` property to `WorkflowStateConfig` in [`Starter.Abstractions/Capabilities/WorkflowConfigRecords.cs`](../../Starter.Abstractions/Capabilities/WorkflowConfigRecords.cs).
-- Validate submitted form data against the schema in [`Application/Commands/ExecuteTask/ExecuteTaskCommandHandler.cs`](./Application/Commands/ExecuteTask/ExecuteTaskCommandHandler.cs).
+- Add `FormSchema` property to `WorkflowStateConfig` in [`Starter.Abstractions/Capabilities/WorkflowConfigRecords.cs`](../../boilerplateBE/src/Starter.Abstractions/Capabilities/WorkflowConfigRecords.cs).
+- Validate submitted form data against the schema in [`Application/Commands/ExecuteTask/ExecuteTaskCommandHandler.cs`](../../boilerplateBE/src/modules/Starter.Module.Workflow/Application/Commands/ExecuteTask/ExecuteTaskCommandHandler.cs).
 - Merge form data into `WorkflowInstance.ContextJson` so `IConditionEvaluator` can reference it.
 
 ---
@@ -154,8 +154,8 @@ The following improvements were made after the initial Phase 1 implementation. T
 **Pick this up when:** A tenant's SLA policy requires escalation within a defined window, OR HR/Leave module adoption brings headcount pressure on approvers.
 
 **Starting points:**
-- Add `DueDuration` to `WorkflowStateConfig` in [`Starter.Abstractions/Capabilities/WorkflowConfigRecords.cs`](../../Starter.Abstractions/Capabilities/WorkflowConfigRecords.cs).
-- Populate `ApprovalTask.DueDate` from it in [`Infrastructure/Services/WorkflowEngine.cs`](./Infrastructure/Services/WorkflowEngine.cs) `CreateApprovalTaskAsync`.
+- Add `DueDuration` to `WorkflowStateConfig` in [`Starter.Abstractions/Capabilities/WorkflowConfigRecords.cs`](../../boilerplateBE/src/Starter.Abstractions/Capabilities/WorkflowConfigRecords.cs).
+- Populate `ApprovalTask.DueDate` from it in [`Infrastructure/Services/WorkflowEngine.cs`](../../boilerplateBE/src/modules/Starter.Module.Workflow/Infrastructure/Services/WorkflowEngine.cs) `CreateApprovalTaskAsync`.
 - Add `SlaEscalationJob : BackgroundService` that queries overdue tasks and applies the configured escalation strategy.
 - Define `EscalationStrategy` config (reassign to manager, notify, auto-approve/reject) on `WorkflowStateConfig`.
 
@@ -201,9 +201,9 @@ The following improvements were made after the initial Phase 1 implementation. T
 **Pick this up when:** A workflow template requires multi-condition branching (e.g. "amount > 5000 AND department = Engineering").
 
 **Starting points:**
-- Extend `ConditionConfig` in [`Starter.Abstractions/Capabilities/WorkflowConfigRecords.cs`](../../Starter.Abstractions/Capabilities/WorkflowConfigRecords.cs) to support `Operator: And|Or|Not` with a `Conditions[]` array.
-- Update [`Infrastructure/Services/ConditionEvaluator.cs`](./Infrastructure/Services/ConditionEvaluator.cs) to recurse over compound expressions.
-- Add unit tests in [`tests/Starter.Api.Tests/Workflow/`](../../../tests/Starter.Api.Tests/Workflow/) covering compound AND/OR/NOT evaluation.
+- Extend `ConditionConfig` in [`Starter.Abstractions/Capabilities/WorkflowConfigRecords.cs`](../../boilerplateBE/src/Starter.Abstractions/Capabilities/WorkflowConfigRecords.cs) to support `Operator: And|Or|Not` with a `Conditions[]` array.
+- Update [`Infrastructure/Services/ConditionEvaluator.cs`](../../boilerplateBE/src/modules/Starter.Module.Workflow/Infrastructure/Services/ConditionEvaluator.cs) to recurse over compound expressions.
+- Add unit tests in [`tests/Starter.Api.Tests/Workflow/`](../../boilerplateBE/tests/Starter.Api.Tests/Workflow/) covering compound AND/OR/NOT evaluation.
 
 ---
 
@@ -217,8 +217,8 @@ The following improvements were made after the initial Phase 1 implementation. T
 
 **Starting points:**
 - Define `HookType.AiAction` in the hook configuration model.
-- Implement `AiActionHookHandler` in [`Infrastructure/Services/HookExecutor.cs`](./Infrastructure/Services/HookExecutor.cs) that calls an `IAiActionProvider` capability (Null Object fallback = no-op).
-- Register `NullAiActionProvider` in [`Starter.Infrastructure/Capabilities/NullObjects`](../../Starter.Infrastructure/Capabilities/NullObjects).
+- Implement `AiActionHookHandler` in [`Infrastructure/Services/HookExecutor.cs`](../../boilerplateBE/src/modules/Starter.Module.Workflow/Infrastructure/Services/HookExecutor.cs) that calls an `IAiActionProvider` capability (Null Object fallback = no-op).
+- Register `NullAiActionProvider` in [`Starter.Infrastructure/Capabilities/NullObjects`](../../boilerplateBE/src/Starter.Infrastructure/Capabilities/NullObjects).
 
 ---
 
@@ -248,6 +248,6 @@ The following improvements were made after the initial Phase 1 implementation. T
 **Pick this up when:** Tenant admins start asking "why does our purchase approval take 3 days?" — i.e., when the workflow catalog is large enough that visibility creates value.
 
 **Starting points:**
-- Add `GetWorkflowAnalyticsQuery` under [`Application/Queries/`](./Application/Queries/) that groups `WorkflowStep` records by definition + state and computes dwell-time percentiles.
+- Add `GetWorkflowAnalyticsQuery` under [`Application/Queries/`](../../boilerplateBE/src/modules/Starter.Module.Workflow/Application/Queries/) that groups `WorkflowStep` records by definition + state and computes dwell-time percentiles.
 - Expose via `GET /api/v1/workflows/definitions/{id}/analytics`.
 - Frontend: add an "Analytics" tab to the workflow definition detail page.

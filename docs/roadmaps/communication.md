@@ -2,7 +2,7 @@
 
 Deliberately deferred improvements for module maintainers. Each entry names the trigger that flips it from "defer" to "do now" and points at the starting files so the next developer does not have to rediscover context.
 
-Integrator-facing integration docs live in [`docs/developer-guide.md`](./docs/developer-guide.md). End-user docs live in [`docs/user-manual.md`](./docs/user-manual.md). This file is maintainer-facing.
+Integrator-facing integration docs live in [`developer-guide/modules/communication.md`](../developer-guide/modules/communication.md). End-user docs live in [`user-manual/modules/communication.md`](../user-manual/modules/communication.md). This file is maintainer-facing.
 
 ---
 
@@ -15,24 +15,24 @@ Integrator-facing integration docs live in [`docs/developer-guide.md`](./docs/de
 **Pick this up when:** A compliance-grade consumer lands (e.g. audit-mandated delivery records, billed-by-sent-message metering) or we observe a crash-window event drop in production that mattered.
 
 **Starting points:**
-- Mirror the `AddEntityFrameworkOutbox<ApplicationDbContext>` block in [`boilerplateBE/src/Starter.Infrastructure/DependencyInjection.cs`](../../Starter.Infrastructure/DependencyInjection.cs) against `CommunicationDbContext` inside [`Infrastructure/DependencyInjection`](./Infrastructure) (register alongside the DbContext in `CommunicationModule.ConfigureServices`).
-- Swap `IPublishEndpoint.Publish` in [`MessageDispatcher`](./Infrastructure/Services) and the trigger-rule dispatch path for `IBus.Publish` inside the same `SaveChangesAsync` transaction.
+- Mirror the `AddEntityFrameworkOutbox<ApplicationDbContext>` block in [`boilerplateBE/src/Starter.Infrastructure/DependencyInjection.cs`](../../boilerplateBE/src/Starter.Infrastructure/DependencyInjection.cs) against `CommunicationDbContext` inside [`Infrastructure/DependencyInjection`](../../boilerplateBE/src/modules/Starter.Module.Communication/Infrastructure) (register alongside the DbContext in `CommunicationModule.ConfigureServices`).
+- Swap `IPublishEndpoint.Publish` in [`MessageDispatcher`](../../boilerplateBE/src/modules/Starter.Module.Communication/Infrastructure/Services) and the trigger-rule dispatch path for `IBus.Publish` inside the same `SaveChangesAsync` transaction.
 - Verify the purity test (`AbstractionsPurityTests`) still passes — abstractions must gain no MassTransit references.
 
 ---
 
 ### SMS channel provider (Twilio)
 
-**What:** Real SMS sending via Twilio. Today `NotificationChannel.Sms` + `ChannelProvider.Twilio` are defined in [`Domain/Enums/NotificationChannel.cs`](./Domain/Enums/NotificationChannel.cs) and [`Domain/Enums/ChannelProvider.cs`](./Domain/Enums/ChannelProvider.cs), the UI exposes the channel in `ChannelSetupDialog`, but no `TwilioSmsProvider : IChannelProvider` implementation exists — dispatch falls through to `null` in `ChannelProviderFactory.GetDefaultProvider(NotificationChannel.Sms)`.
+**What:** Real SMS sending via Twilio. Today `NotificationChannel.Sms` + `ChannelProvider.Twilio` are defined in [`Domain/Enums/NotificationChannel.cs`](../../boilerplateBE/src/modules/Starter.Module.Communication/Domain/Enums/NotificationChannel.cs) and [`Domain/Enums/ChannelProvider.cs`](../../boilerplateBE/src/modules/Starter.Module.Communication/Domain/Enums/ChannelProvider.cs), the UI exposes the channel in `ChannelSetupDialog`, but no `TwilioSmsProvider : IChannelProvider` implementation exists — dispatch falls through to `null` in `ChannelProviderFactory.GetDefaultProvider(NotificationChannel.Sms)`.
 
 **Why deferred:** No tenant has asked for SMS, Twilio adds a paid dependency + credentials flow, and the email/Slack/Telegram/Discord/Teams coverage serves the current catalog.
 
 **Pick this up when:** First tenant requests SMS, OR a Wave 3 domain module (e.g. Attendance, POS) has a workflow that needs SMS fallback.
 
 **Starting points:**
-- Add `TwilioSmsProvider` in [`Infrastructure/Providers`](./Infrastructure/Providers) implementing `IChannelProvider` with `Channel => NotificationChannel.Sms` and `ProviderType => ChannelProvider.Twilio`.
+- Add `TwilioSmsProvider` in [`Infrastructure/Providers`](../../boilerplateBE/src/modules/Starter.Module.Communication/Infrastructure/Providers) implementing `IChannelProvider` with `Channel => NotificationChannel.Sms` and `ProviderType => ChannelProvider.Twilio`.
 - Register via `services.AddScoped<IChannelProvider, TwilioSmsProvider>()` inside `CommunicationModule.ConfigureServices`.
-- Add `Twilio` NuGet reference to [`Starter.Module.Communication.csproj`](./Starter.Module.Communication.csproj).
+- Add `Twilio` NuGet reference to [`Starter.Module.Communication.csproj`](../../boilerplateBE/src/modules/Starter.Module.Communication/Starter.Module.Communication.csproj).
 - Plumb `AccountSid` / `AuthToken` / `FromNumber` through `ChannelConfig.ProviderCredentials` (already encrypted by `ICredentialEncryptionService`).
 
 ---
@@ -46,9 +46,9 @@ Integrator-facing integration docs live in [`docs/developer-guide.md`](./docs/de
 **Pick this up when:** Mobile app adds device-token registration AND a tenant needs server-initiated push (e.g. realtime chat).
 
 **Starting points:**
-- Create `FcmPushProvider` + `ApnsPushProvider` in [`Infrastructure/Providers`](./Infrastructure/Providers).
+- Create `FcmPushProvider` + `ApnsPushProvider` in [`Infrastructure/Providers`](../../boilerplateBE/src/modules/Starter.Module.Communication/Infrastructure/Providers).
 - Add a `DeviceToken` entity (user-scoped, tenant-scoped) somewhere in core so recipients can be resolved to tokens. Consider whether this belongs in core or a new `Starter.Module.Devices`.
-- Mobile: register device token on login in [`boilerplateMobile`](../../../../boilerplateMobile) and expose a `POST /api/v1/notifications/devices` endpoint in core.
+- Mobile: register device token on login in [`boilerplateMobile`](../../boilerplateMobile) and expose a `POST /api/v1/notifications/devices` endpoint in core.
 
 ---
 
@@ -66,22 +66,22 @@ Integrator-facing integration docs live in [`docs/developer-guide.md`](./docs/de
 
 ### Ably real-time push for In-App
 
-**What:** Today [`InAppProvider`](./Infrastructure/Providers/InAppProvider.cs) writes a delivery log entry and stops — the frontend polls. Enhanced Ably support would push the delivery record to connected clients immediately.
+**What:** Today [`InAppProvider`](../../boilerplateBE/src/modules/Starter.Module.Communication/Infrastructure/Providers/InAppProvider.cs) writes a delivery log entry and stops — the frontend polls. Enhanced Ably support would push the delivery record to connected clients immediately.
 
-**Why deferred:** The Enhanced Ably module ("Realtime") is planned for Wave 2 per [`docs/superpowers/specs/2026-04-09-composable-module-catalog-design.md`](../../../../docs/superpowers/specs/2026-04-09-composable-module-catalog-design.md). No point half-implementing here.
+**Why deferred:** The Enhanced Ably module ("Realtime") is planned for Wave 2 per [`docs/superpowers/specs/2026-04-09-composable-module-catalog-design.md`](../superpowers/specs/2026-04-09-composable-module-catalog-design.md). No point half-implementing here.
 
 **Pick this up when:** The Realtime module lands. At that point `InAppProvider` should take an `IRealtimePublisher` capability and call it after the delivery log write.
 
 **Starting points:**
-- Define `IRealtimePublisher : ICapability` in [`Starter.Abstractions/Capabilities`](../../Starter.Abstractions/Capabilities) with a `PublishToUserAsync(Guid userId, string channel, object payload)` method.
-- Register `NullRealtimePublisher` fallback in [`Starter.Infrastructure/Capabilities/NullObjects`](../../Starter.Infrastructure/Capabilities/NullObjects).
+- Define `IRealtimePublisher : ICapability` in [`Starter.Abstractions/Capabilities`](../../boilerplateBE/src/Starter.Abstractions/Capabilities) with a `PublishToUserAsync(Guid userId, string channel, object payload)` method.
+- Register `NullRealtimePublisher` fallback in [`Starter.Infrastructure/Capabilities/NullObjects`](../../boilerplateBE/src/Starter.Infrastructure/Capabilities/NullObjects).
 - Inject into `InAppProvider` — Null Object means this module keeps working when the Realtime module is absent.
 
 ---
 
 ### Provider-specific connection testing
 
-**What:** [`TestChannelConfigCommandHandler.cs`](./Application/Commands/TestChannelConfig/TestChannelConfigCommandHandler.cs) currently performs structural validation only. The `// TODO: Phase 4 will add actual provider-specific connection testing` marker expects each provider to expose a `TestConnectionAsync` method that opens an SMTP handshake, pings the Slack webhook, hits Telegram `getMe`, etc.
+**What:** [`TestChannelConfigCommandHandler.cs`](../../boilerplateBE/src/modules/Starter.Module.Communication/Application/Commands/TestChannelConfig/TestChannelConfigCommandHandler.cs) currently performs structural validation only. The `// TODO: Phase 4 will add actual provider-specific connection testing` marker expects each provider to expose a `TestConnectionAsync` method that opens an SMTP handshake, pings the Slack webhook, hits Telegram `getMe`, etc.
 
 **Why deferred:** Structural validation caught 90% of misconfigurations in the pre-merge testing. A real connection test requires provider-specific error taxonomy + timeout handling, which is significant work for a diagnostic feature.
 
@@ -103,9 +103,9 @@ Integrator-facing integration docs live in [`docs/developer-guide.md`](./docs/de
 **Pick this up when:** A tenant hits SMTP-relay throughput limits or needs SendGrid/SES webhook-based bounce/complaint handling.
 
 **Starting points:**
-- New `SendGridEmailProvider` + `SesEmailProvider` in [`Infrastructure/Providers`](./Infrastructure/Providers) implementing `IChannelProvider` with `Channel => NotificationChannel.Email`.
+- New `SendGridEmailProvider` + `SesEmailProvider` in [`Infrastructure/Providers`](../../boilerplateBE/src/modules/Starter.Module.Communication/Infrastructure/Providers) implementing `IChannelProvider` with `Channel => NotificationChannel.Email`.
 - Add SDK references (`SendGrid`, `AWSSDK.SimpleEmail`).
-- Add a per-provider webhook endpoint in [`Controllers`](./Controllers) for bounce/complaint handling, writing back to `DeliveryLog.Status`.
+- Add a per-provider webhook endpoint in [`Controllers`](../../boilerplateBE/src/modules/Starter.Module.Communication/Controllers) for bounce/complaint handling, writing back to `DeliveryLog.Status`.
 
 ---
 
