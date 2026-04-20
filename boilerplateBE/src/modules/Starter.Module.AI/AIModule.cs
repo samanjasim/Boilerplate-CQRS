@@ -74,7 +74,11 @@ public sealed class AIModule : IModule
         services.AddSingleton<IDocumentTextExtractor, Infrastructure.Ingestion.Extractors.DocxTextExtractor>();
         services.AddScoped<IDocumentTextExtractor, Infrastructure.Ingestion.Extractors.PdfTextExtractor>();
         services.AddScoped<IDocumentTextExtractorRegistry, Infrastructure.Ingestion.DocumentTextExtractorRegistry>();
-        services.AddSingleton<IDocumentChunker, Infrastructure.Ingestion.HierarchicalDocumentChunker>();
+        services.AddSingleton<Infrastructure.Ingestion.HierarchicalDocumentChunker>();
+        services.AddSingleton<Infrastructure.Ingestion.Structured.MarkdownBlockTokenizer>();
+        services.AddSingleton<Infrastructure.Ingestion.Structured.HtmlToMarkdownConverter>();
+        services.AddSingleton<Infrastructure.Ingestion.Structured.StructuredMarkdownChunker>();
+        services.AddSingleton<IDocumentChunker, Infrastructure.Ingestion.Structured.ChunkerRouter>();
         services.AddSingleton<IVectorStore, Infrastructure.Ingestion.QdrantVectorStore>();
         services.AddScoped<Infrastructure.Ingestion.EmbeddingService>();
         services.AddScoped<IEmbeddingService>(sp => new Infrastructure.Ingestion.CachingEmbeddingService(

@@ -173,7 +173,7 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
             var chunks = chunker.Chunk(extracted, new ChunkingOptions(
                 ParentTokens: ragOptions.ParentChunkSize,
                 ChildTokens: ragOptions.ChunkSize,
-                ChildOverlapTokens: ragOptions.ChunkOverlap));
+                ChildOverlapTokens: ragOptions.ChunkOverlap) { ContentType = doc.ContentType });
 
             var childTexts = chunks.Children.Select(c => c.Content).ToList();
 
