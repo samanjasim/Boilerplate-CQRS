@@ -12,12 +12,13 @@ interface WorkflowStepTimelineProps {
 
 type StepStatus = 'completed' | 'current' | 'future';
 
-function getStepStatus(stateName: string, currentState: string, states: WorkflowStateConfig[]): StepStatus {
-  const currentIndex = states.findIndex((s) => s.name === currentState);
-  const stateIndex = states.findIndex((s) => s.name === stateName);
-  if (stateIndex < currentIndex) return 'completed';
-  if (stateIndex === currentIndex) return 'current';
-  return 'future';
+function getStepStatus(
+  stateName: string,
+  currentState: string,
+  history: WorkflowStepRecord[],
+): StepStatus {
+  if (stateName === currentState) return 'current';
+  return history.some((r) => r.toState === stateName) ? 'completed' : 'future';
 }
 
 const dotStyles: Record<StepStatus, string> = {
@@ -68,7 +69,7 @@ export function WorkflowStepTimeline({ instanceId, currentState, states }: Workf
   return (
     <div className="space-y-0">
       {states.map((state, index) => {
-        const status = getStepStatus(state.name, currentState, states);
+        const status = getStepStatus(state.name, currentState, records);
         const record = getRecordForState(state.name);
         const isLast = index === states.length - 1;
 
