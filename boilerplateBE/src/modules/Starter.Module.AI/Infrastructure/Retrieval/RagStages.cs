@@ -8,6 +8,7 @@ namespace Starter.Module.AI.Infrastructure.Retrieval;
 /// </summary>
 internal static class RagStages
 {
+    // Pipeline order: each constant runs in sequence inside RagRetrievalService.
     public const string Contextualize = "contextualize";
     public const string Classify = "classify";
     public const string QueryRewrite = "query-rewrite";

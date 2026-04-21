@@ -18,7 +18,7 @@ public sealed class RagCacheKeysTests
     public void Contextualize_blank_language_defaults_to_dash()
     {
         var key = RagCacheKeys.Contextualize("OpenAI", "gpt-4o-mini", "", "payload");
-        key.Should().Contain(":-:");
+        key.Should().MatchRegex(@"^ai:ctx:OpenAI:gpt-4o-mini:-:[a-f0-9]{64}$");
     }
 
     [Fact]
