@@ -108,7 +108,7 @@ internal sealed class QueryRewriter : IQueryRewriter
         }
     }
 
-    private static IReadOnlyList<string> Merge(
+    private IReadOnlyList<string> Merge(
         IReadOnlyList<string> ruleVariants,
         IReadOnlyList<string> llmVariants,
         int cap)
@@ -131,10 +131,8 @@ internal sealed class QueryRewriter : IQueryRewriter
         return result;
     }
 
-    private static string Normalize(string s) =>
-        ArabicTextNormalizer.Normalize(
-            s.Trim(),
-            new ArabicNormalizationOptions(NormalizeTaMarbuta: true, NormalizeArabicDigits: true));
+    private string Normalize(string s) =>
+        ArabicTextNormalizer.Normalize(s.Trim(), _settings.ToArabicOptions());
 
     private string BuildCacheKey(string query, string? language)
     {

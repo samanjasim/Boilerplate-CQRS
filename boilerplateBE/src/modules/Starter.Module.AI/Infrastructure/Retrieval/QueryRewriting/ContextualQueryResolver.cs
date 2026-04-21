@@ -187,8 +187,6 @@ internal sealed class ContextualQueryResolver : IContextualQueryResolver
         return RagCacheKeys.Contextualize(providerType, model, lang, payload);
     }
 
-    private static string Normalize(string s) =>
-        ArabicTextNormalizer.Normalize(
-            (s ?? string.Empty).Trim(),
-            new ArabicNormalizationOptions(NormalizeTaMarbuta: true, NormalizeArabicDigits: true));
+    private string Normalize(string s) =>
+        ArabicTextNormalizer.Normalize((s ?? string.Empty).Trim(), _settings.ToArabicOptions());
 }
