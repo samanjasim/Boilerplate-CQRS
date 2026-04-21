@@ -10,14 +10,13 @@ import { Spinner } from '@/components/ui/spinner';
 import { PageHeader } from '@/components/common';
 import { useBackNavigation } from '@/hooks';
 import { useWorkflowDefinition, useCloneDefinition, useUpdateDefinition } from '../api';
-import type { WorkflowStateConfig } from '@/types/workflow.types';
 
 export default function WorkflowDefinitionDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   useBackNavigation('/workflows/definitions', t('workflow.definitions.title'));
 
-  const { data: definition, isLoading } = useWorkflowDefinition(id!);
+  const { data: def, isLoading } = useWorkflowDefinition(id!);
   const { mutate: cloneDefinition, isPending: cloning } = useCloneDefinition();
   const { mutate: updateDefinition, isPending: updating } = useUpdateDefinition();
 
@@ -32,8 +31,6 @@ export default function WorkflowDefinitionDetailPage() {
     );
   }
 
-  // Unwrap API response envelope: { data: { id, name, ... }, success }
-  const def = definition?.data ?? definition;
   if (!def) return null;
 
   const handleEdit = () => {
@@ -112,7 +109,7 @@ export default function WorkflowDefinitionDetailPage() {
       <section className="space-y-3">
         <h2 className="text-base font-semibold text-foreground">{t('workflow.detail.stateList')}</h2>
         <div className="space-y-3">
-          {def.states?.map((state: WorkflowStateConfig, index: number) => (
+          {def.states?.map((state, index) => (
             <Card key={state.name}>
               <CardContent className="py-4">
                 <div className="flex items-start justify-between gap-4">

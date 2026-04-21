@@ -11,16 +11,13 @@ import {
 import { PageHeader, EmptyState, Pagination } from '@/components/common';
 import { getPersistedPageSize } from '@/components/common/pagination-utils';
 import { useWorkflowDefinitions, useCloneDefinition } from '../api';
-import type { WorkflowDefinitionSummary } from '@/types/workflow.types';
 
 export default function WorkflowDefinitionsPage() {
   const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(getPersistedPageSize);
-  const { data, isLoading } = useWorkflowDefinitions();
+  const { data: allDefinitions = [], isLoading } = useWorkflowDefinitions();
   const { mutate: cloneDefinition, isPending: cloning } = useCloneDefinition();
-
-  const allDefinitions: WorkflowDefinitionSummary[] = Array.isArray(data) ? data : data?.data ?? [];
 
   // Client-side pagination since the definitions endpoint returns all records
   const totalCount = allDefinitions.length;

@@ -34,8 +34,7 @@ export default function WorkflowInboxPage() {
 
   const tasks: PendingTaskSummary[] = data?.data ?? [];
   const pagination = data?.pagination;
-  const delegation = activeDelegation?.data ?? activeDelegation;
-  const hasDelegation = delegation && delegation.isActive;
+  const hasDelegation = !!activeDelegation?.isActive;
 
   return (
     <div className="space-y-6">
@@ -62,14 +61,14 @@ export default function WorkflowInboxPage() {
         <div className="flex items-center justify-between rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
           <p className="text-sm text-foreground">
             {t('workflow.delegation.banner', {
-              name: delegation.toDisplayName ?? delegation.toUserId,
-              date: formatDate(delegation.endDate),
+              name: activeDelegation!.toDisplayName ?? activeDelegation!.toUserId,
+              date: formatDate(activeDelegation!.endDate),
             })}
           </p>
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => cancelDelegation(delegation.id)}
+            onClick={() => cancelDelegation(activeDelegation!.id)}
             disabled={cancellingDelegation}
           >
             <X className="h-4 w-4 ltr:mr-1 rtl:ml-1" />

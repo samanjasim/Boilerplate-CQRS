@@ -22,7 +22,6 @@ import { PERMISSIONS } from '@/constants';
 import { STATUS_BADGE_VARIANT } from '@/constants/status';
 import { ROUTES } from '@/config';
 import { formatDate } from '@/utils/format';
-import type { WorkflowInstanceSummary } from '@/types/workflow.types';
 
 const STATUS_FILTERS = ['All', 'Active', 'Completed', 'Cancelled'] as const;
 
@@ -47,21 +46,18 @@ export default function WorkflowInstancesPage() {
   // Fetch definitions to populate the entity type dropdown with real values
   const { data: definitions } = useWorkflowDefinitions();
   const entityTypes = [...new Set(
-    (definitions?.data ?? definitions ?? [])
-      .map((d: { entityType: string; displayName: string }) => d.entityType)
+    (definitions ?? [])
+      .map((d) => d.entityType)
       .filter(Boolean) as string[]
   )];
 
-  const { data, isLoading } = useWorkflowInstances({
+  const { data: instances = [], isLoading } = useWorkflowInstances({
     entityType: entityTypeFilter || undefined,
     status: statusFilter !== 'All' ? statusFilter : undefined,
     startedByUserId,
     page,
     pageSize,
   });
-
-  const instances: WorkflowInstanceSummary[] = data?.data ?? [];
-  const pagination = data?.pagination;
 
   const title = canViewAll
     ? t('workflow.instances.title')
@@ -173,10 +169,12 @@ export default function WorkflowInstancesPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline">{instance.currentState}</Badge>
-                      <Badge variant={STATUS_BADGE_VARIANT[instance.status] ?? 'outline'}>
-                        {t(`workflow.status.${instance.status.toLowerCase()}`)}
-                      </Badge>
+                      {instance.currentState && <Badge variant="outline">{instance.currentState}</Badge>}
+                      {instance.status && (
+                        <Badge variant={STATUS_BADGE_VARIANT[instance.status] ?? 'outline'}>
+                          {t(`workflow.status.${instance.status.toLowerCase()}`, { defaultValue: instance.status })}
+                        </Badge>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
@@ -215,13 +213,19 @@ export default function WorkflowInstancesPage() {
             </TableBody>
           </Table>
 
-          {pagination && (
-            <Pagination
-              pagination={pagination}
-              onPageChange={setPage}
-              onPageSizeChange={setPageSize}
-            />
-          )}
+          {/* BE endpoint does not return paged metadata; pagination is client-side only for now. */}
+          <Pagination
+            pagination={{
+              pageNumber: page,
+              pageSize,
+              totalCount: instances.length,
+              totalPages: Math.max(1, Math.ceil(instances.length / pageSize)),
+              hasNextPage: instances.length >= pageSize,
+              hasPreviousPage: page > 1,
+            }}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </>
       )}
       <NewRequestDialog open={newRequestOpen} onOpenChange={setNewRequestOpen} />

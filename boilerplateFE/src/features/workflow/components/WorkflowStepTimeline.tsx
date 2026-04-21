@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
+import { Spinner } from '@/components/ui/spinner';
 import { useWorkflowHistory } from '../api';
 import { formatDateTime } from '@/utils/format';
 import type { WorkflowStateConfig, WorkflowStepRecord } from '@/types/workflow.types';
@@ -8,6 +9,9 @@ interface WorkflowStepTimelineProps {
   instanceId: string;
   currentState: string;
   states: WorkflowStateConfig[];
+  /** Instance.status: Active | Completed | Cancelled. When Completed/Cancelled,
+   *  the terminal state is rendered as 'completed' (not 'current'). */
+  instanceStatus?: string;
 }
 
 type StepStatus = 'completed' | 'current' | 'future';
@@ -16,8 +20,15 @@ function getStepStatus(
   stateName: string,
   currentState: string,
   history: WorkflowStepRecord[],
+  instanceStatus?: string,
 ): StepStatus {
-  if (stateName === currentState) return 'current';
+  if (stateName === currentState) {
+    // Workflow ended on this state — visualize as completed, not current.
+    if (instanceStatus === 'Completed' || instanceStatus === 'Cancelled') {
+      return 'completed';
+    }
+    return 'current';
+  }
   return history.some((r) => r.toState === stateName) ? 'completed' : 'future';
 }
 
@@ -55,21 +66,34 @@ function FormDataDisplay({ formData }: { formData: Record<string, unknown> }) {
   );
 }
 
-export function WorkflowStepTimeline({ instanceId, currentState, states }: WorkflowStepTimelineProps) {
+export function WorkflowStepTimeline({
+  instanceId,
+  currentState,
+  states,
+  instanceStatus,
+}: WorkflowStepTimelineProps) {
   const { t } = useTranslation();
-  const { data: history } = useWorkflowHistory(instanceId);
-
-  const records: WorkflowStepRecord[] = Array.isArray(history) ? history : history?.data ?? [];
+  const { data: records = [], isLoading } = useWorkflowHistory(instanceId);
 
   const getRecordForState = (stateName: string) =>
     records.find((r) => r.toState === stateName);
 
   if (!states || states.length === 0) return null;
 
+  // Guard against the flash where history hasn't loaded yet: without it,
+  // every non-current state briefly renders as 'future' before history arrives.
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-6">
+        <Spinner size="md" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-0">
       {states.map((state, index) => {
-        const status = getStepStatus(state.name, currentState, records);
+        const status = getStepStatus(state.name, currentState, records, instanceStatus);
         const record = getRecordForState(state.name);
         const isLast = index === states.length - 1;
 

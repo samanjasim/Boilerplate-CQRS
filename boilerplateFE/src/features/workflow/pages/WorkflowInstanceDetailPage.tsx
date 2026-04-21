@@ -38,8 +38,7 @@ export default function WorkflowInstanceDetailPage() {
   const instance = (location.state as { instance?: WorkflowInstanceSummary })?.instance;
 
   const { data: history, isLoading: historyLoading, error: historyError } = useWorkflowHistory(instanceId!);
-  const { data: definitionResponse } = useWorkflowDefinition(instance?.definitionId ?? '');
-  const definition = definitionResponse?.data ?? definitionResponse;
+  const { data: definition } = useWorkflowDefinition(instance?.definitionId ?? '');
   const { mutate: cancelWorkflow, isPending: cancelling } = useCancelWorkflow();
   const { mutate: transitionWorkflow, isPending: transitioning } = useTransitionWorkflow();
   const { data: tasksData } = usePendingTasks();
@@ -51,9 +50,7 @@ export default function WorkflowInstanceDetailPage() {
 
   // Find pending task for this instance assigned to current user
   const pendingTasks: PendingTaskSummary[] = tasksData?.data ?? [];
-  const myTask = pendingTasks.find(
-    (task) => task.instanceId === instanceId,
-  );
+  const myTask = pendingTasks.find((task) => task.instanceId === instanceId);
 
   // Check if the current user can resubmit
   const canResubmit =
@@ -169,10 +166,12 @@ export default function WorkflowInstanceDetailPage() {
             <span className="text-sm text-foreground font-medium">
               {instance.entityDisplayName ?? instance.entityId.substring(0, 8) + '...'}
             </span>
-            <Badge variant="outline">{instance.currentState}</Badge>
-            <Badge variant={STATUS_BADGE_VARIANT[instance.status] ?? 'outline'}>
-              {t(`workflow.status.${instance.status.toLowerCase()}`)}
-            </Badge>
+            {instance.currentState && <Badge variant="outline">{instance.currentState}</Badge>}
+            {instance.status && (
+              <Badge variant={STATUS_BADGE_VARIANT[instance.status] ?? 'outline'}>
+                {t(`workflow.status.${instance.status.toLowerCase()}`, { defaultValue: instance.status })}
+              </Badge>
+            )}
           </div>
           <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1">
             <p className="text-sm text-muted-foreground flex items-center gap-1.5">
@@ -256,6 +255,7 @@ export default function WorkflowInstanceDetailPage() {
                 instanceId={instanceId!}
                 currentState={instance.currentState}
                 states={definition.states}
+                instanceStatus={instance.status}
               />
             </CardContent>
           </Card>
@@ -266,10 +266,10 @@ export default function WorkflowInstanceDetailPage() {
         ) : (
           <Card>
             <CardContent className="py-5">
-              {Array.isArray(history) || history?.data ? (
+              {history && history.length > 0 ? (
                 <div className="space-y-2">
-                  {(Array.isArray(history) ? history : history.data).map(
-                    (record: { toState: string; action: string; actorDisplayName?: string; timestamp: string; comment?: string; formData?: Record<string, unknown> | null }, idx: number) => (
+                  {history.map(
+                    (record, idx: number) => (
                       <div key={idx} className="flex items-start gap-3">
                         <div className="h-2.5 w-2.5 rounded-full bg-primary mt-1.5 shrink-0" />
                         <div className="min-w-0 flex-1">

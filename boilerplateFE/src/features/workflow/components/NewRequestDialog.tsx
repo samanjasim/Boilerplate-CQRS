@@ -13,7 +13,6 @@ import {
 import { toast } from 'sonner';
 import { queryKeys } from '@/lib/query/keys';
 import { useWorkflowDefinitions, useStartWorkflow } from '../api';
-import type { WorkflowDefinitionSummary } from '@/types/workflow.types';
 
 interface NewRequestDialogProps {
   open: boolean;
@@ -26,14 +25,10 @@ export function NewRequestDialog({ open, onOpenChange }: NewRequestDialogProps) 
   const [selectedDefinitionId, setSelectedDefinitionId] = useState('');
   const [entityDisplayName, setEntityDisplayName] = useState('');
 
-  const { data: definitionsData, isLoading: defsLoading } = useWorkflowDefinitions();
+  const { data: definitions = [], isLoading: defsLoading } = useWorkflowDefinitions();
   const { mutate: startWorkflow, isPending } = useStartWorkflow();
 
-  const allDefinitions: WorkflowDefinitionSummary[] = Array.isArray(definitionsData)
-    ? definitionsData
-    : definitionsData?.data ?? [];
-
-  const activeDefinitions = allDefinitions.filter((d) => d.isActive);
+  const activeDefinitions = definitions.filter((d) => d.isActive);
 
   const selectedDefinition = activeDefinitions.find((d) => d.id === selectedDefinitionId) ?? null;
 

@@ -46,11 +46,7 @@ export function Sidebar() {
   const importsFlag = useFeatureFlag('imports.enabled');
   const exportsFlag = useFeatureFlag('exports.enabled');
 
-  const { data: pendingTaskCountData } = usePendingTaskCount(isModuleActive('workflow'));
-  const pendingTaskCount = typeof pendingTaskCountData === 'number'
-    ? pendingTaskCountData
-    : (pendingTaskCountData as { data?: number; count?: number })?.data
-      ?? (pendingTaskCountData as { count?: number })?.count ?? 0;
+  const { data: pendingTaskCount = 0 } = usePendingTaskCount(isModuleActive('workflow'));
 
   const tenantLogoUrl = user?.tenantLogoUrl;
   const tenantName = user?.tenantName;

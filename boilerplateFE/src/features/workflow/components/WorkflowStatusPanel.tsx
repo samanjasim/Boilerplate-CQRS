@@ -46,10 +46,14 @@ export function WorkflowStatusPanel({ entityType, entityId }: WorkflowStatusPane
         )}
 
         <div className="flex items-center gap-2 mb-4">
-          <Badge variant={STATUS_BADGE_VARIANT[status.status] ?? 'secondary'}>
-            {String(t(`workflow.status.${status.status.toLowerCase()}`, { defaultValue: status.status }))}
-          </Badge>
-          <span className="text-sm text-muted-foreground">{status.currentState}</span>
+          {status.status && (
+            <Badge variant={STATUS_BADGE_VARIANT[status.status] ?? 'secondary'}>
+              {String(t(`workflow.status.${status.status.toLowerCase()}`, { defaultValue: status.status }))}
+            </Badge>
+          )}
+          {status.currentState && (
+            <span className="text-sm text-muted-foreground">{status.currentState}</span>
+          )}
         </div>
 
         {myTask && (

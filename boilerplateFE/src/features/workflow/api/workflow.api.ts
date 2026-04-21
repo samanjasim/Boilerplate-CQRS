@@ -1,60 +1,112 @@
 import { apiClient } from '@/lib/axios';
 import { API_ENDPOINTS } from '@/config/api.config';
-import type { StartWorkflowRequest, ExecuteTaskRequest, UpdateDefinitionRequest, CreateDelegationRequest } from '@/types/workflow.types';
+import type { ApiResponse, PaginatedResponse } from '@/types/api.types';
+import type {
+  StartWorkflowRequest,
+  ExecuteTaskRequest,
+  UpdateDefinitionRequest,
+  CreateDelegationRequest,
+  WorkflowDefinitionSummary,
+  WorkflowDefinitionDetail,
+  WorkflowInstanceSummary,
+  WorkflowStatusSummary,
+  WorkflowStepRecord,
+  PendingTaskSummary,
+  DelegationRule,
+} from '@/types/workflow.types';
 
 export const workflowApi = {
   // Definitions
-  getDefinitions: (entityType?: string) =>
-    apiClient.get(API_ENDPOINTS.WORKFLOW.DEFINITIONS, { params: { entityType } }).then((r) => r.data),
+  getDefinitions: (entityType?: string): Promise<WorkflowDefinitionSummary[]> =>
+    apiClient
+      .get<ApiResponse<WorkflowDefinitionSummary[]>>(API_ENDPOINTS.WORKFLOW.DEFINITIONS, { params: { entityType } })
+      .then((r) => r.data.data),
 
-  getDefinition: (id: string) =>
-    apiClient.get(API_ENDPOINTS.WORKFLOW.DEFINITION_DETAIL(id)).then((r) => r.data),
+  getDefinition: (id: string): Promise<WorkflowDefinitionDetail> =>
+    apiClient
+      .get<ApiResponse<WorkflowDefinitionDetail>>(API_ENDPOINTS.WORKFLOW.DEFINITION_DETAIL(id))
+      .then((r) => r.data.data),
 
-  cloneDefinition: (id: string) =>
-    apiClient.post(API_ENDPOINTS.WORKFLOW.DEFINITION_CLONE(id)).then((r) => r.data),
+  cloneDefinition: (id: string): Promise<string> =>
+    apiClient
+      .post<ApiResponse<string>>(API_ENDPOINTS.WORKFLOW.DEFINITION_CLONE(id))
+      .then((r) => r.data.data),
 
-  updateDefinition: (id: string, data: UpdateDefinitionRequest) =>
-    apiClient.put(API_ENDPOINTS.WORKFLOW.DEFINITION_DETAIL(id), data).then((r) => r.data),
+  updateDefinition: (id: string, data: UpdateDefinitionRequest): Promise<void> =>
+    apiClient.put(API_ENDPOINTS.WORKFLOW.DEFINITION_DETAIL(id), data).then(() => undefined),
 
   // Instances
-  startWorkflow: (data: StartWorkflowRequest) =>
-    apiClient.post(API_ENDPOINTS.WORKFLOW.INSTANCES, data).then((r) => r.data),
+  startWorkflow: (data: StartWorkflowRequest): Promise<string> =>
+    apiClient
+      .post<ApiResponse<string>>(API_ENDPOINTS.WORKFLOW.INSTANCES, data)
+      .then((r) => r.data.data),
 
-  getInstances: (params: { entityType?: string; state?: string; status?: string; startedByUserId?: string; page?: number; pageSize?: number }) =>
-    apiClient.get(API_ENDPOINTS.WORKFLOW.INSTANCES, { params }).then((r) => r.data),
+  getInstances: (params: {
+    entityType?: string;
+    state?: string;
+    status?: string;
+    startedByUserId?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<WorkflowInstanceSummary[]> =>
+    apiClient
+      .get<ApiResponse<WorkflowInstanceSummary[]>>(API_ENDPOINTS.WORKFLOW.INSTANCES, { params })
+      .then((r) => r.data.data),
 
-  getStatus: (entityType: string, entityId: string) =>
-    apiClient.get(API_ENDPOINTS.WORKFLOW.INSTANCE_STATUS, { params: { entityType, entityId } }).then((r) => r.data),
+  getStatus: (entityType: string, entityId: string): Promise<WorkflowStatusSummary> =>
+    apiClient
+      .get<ApiResponse<WorkflowStatusSummary>>(API_ENDPOINTS.WORKFLOW.INSTANCE_STATUS, {
+        params: { entityType, entityId },
+      })
+      .then((r) => r.data.data),
 
-  getHistory: (instanceId: string) =>
-    apiClient.get(API_ENDPOINTS.WORKFLOW.INSTANCE_HISTORY(instanceId)).then((r) => r.data),
+  getHistory: (instanceId: string): Promise<WorkflowStepRecord[]> =>
+    apiClient
+      .get<ApiResponse<WorkflowStepRecord[]>>(API_ENDPOINTS.WORKFLOW.INSTANCE_HISTORY(instanceId))
+      .then((r) => r.data.data),
 
-  cancelWorkflow: (instanceId: string, reason?: string) =>
-    apiClient.post(API_ENDPOINTS.WORKFLOW.INSTANCE_CANCEL(instanceId), { reason }).then((r) => r.data),
+  cancelWorkflow: (instanceId: string, reason?: string): Promise<void> =>
+    apiClient
+      .post(API_ENDPOINTS.WORKFLOW.INSTANCE_CANCEL(instanceId), { reason })
+      .then(() => undefined),
 
-  transitionWorkflow: (instanceId: string, trigger: string) =>
-    apiClient.post(API_ENDPOINTS.WORKFLOW.INSTANCE_TRANSITION(instanceId), { trigger }).then((r) => r.data),
+  transitionWorkflow: (instanceId: string, trigger: string): Promise<boolean> =>
+    apiClient
+      .post<ApiResponse<boolean>>(API_ENDPOINTS.WORKFLOW.INSTANCE_TRANSITION(instanceId), { trigger })
+      .then((r) => r.data.data),
 
-  // Tasks
-  getPendingTasks: (params?: { page?: number; pageSize?: number }) =>
-    apiClient.get(API_ENDPOINTS.WORKFLOW.TASKS, { params }).then((r) => r.data),
+  // Tasks — paginated (returns envelope with data[] + pagination)
+  getPendingTasks: (params?: { page?: number; pageSize?: number }): Promise<PaginatedResponse<PendingTaskSummary>> =>
+    apiClient
+      .get<PaginatedResponse<PendingTaskSummary>>(API_ENDPOINTS.WORKFLOW.TASKS, { params })
+      .then((r) => r.data),
 
-  getPendingTaskCount: () =>
-    apiClient.get(API_ENDPOINTS.WORKFLOW.TASKS_COUNT).then((r) => r.data),
+  getPendingTaskCount: (): Promise<number> =>
+    apiClient
+      .get<ApiResponse<number>>(API_ENDPOINTS.WORKFLOW.TASKS_COUNT)
+      .then((r) => r.data.data),
 
-  executeTask: (taskId: string, data: ExecuteTaskRequest) =>
-    apiClient.post(API_ENDPOINTS.WORKFLOW.TASK_EXECUTE(taskId), data).then((r) => r.data),
+  executeTask: (taskId: string, data: ExecuteTaskRequest): Promise<boolean> =>
+    apiClient
+      .post<ApiResponse<boolean>>(API_ENDPOINTS.WORKFLOW.TASK_EXECUTE(taskId), data)
+      .then((r) => r.data.data),
 
   // Delegations
-  getDelegations: () =>
-    apiClient.get(API_ENDPOINTS.WORKFLOW.DELEGATIONS).then((r) => r.data),
+  getDelegations: (): Promise<DelegationRule[]> =>
+    apiClient
+      .get<ApiResponse<DelegationRule[]>>(API_ENDPOINTS.WORKFLOW.DELEGATIONS)
+      .then((r) => r.data.data),
 
-  getActiveDelegation: () =>
-    apiClient.get(API_ENDPOINTS.WORKFLOW.DELEGATION_ACTIVE).then((r) => r.data),
+  getActiveDelegation: (): Promise<DelegationRule | null> =>
+    apiClient
+      .get<ApiResponse<DelegationRule | null>>(API_ENDPOINTS.WORKFLOW.DELEGATION_ACTIVE)
+      .then((r) => r.data.data),
 
-  createDelegation: (data: CreateDelegationRequest) =>
-    apiClient.post(API_ENDPOINTS.WORKFLOW.DELEGATIONS, data).then((r) => r.data),
+  createDelegation: (data: CreateDelegationRequest): Promise<string> =>
+    apiClient
+      .post<ApiResponse<string>>(API_ENDPOINTS.WORKFLOW.DELEGATIONS, data)
+      .then((r) => r.data.data),
 
-  cancelDelegation: (id: string) =>
-    apiClient.delete(API_ENDPOINTS.WORKFLOW.DELEGATION_CANCEL(id)).then((r) => r.data),
+  cancelDelegation: (id: string): Promise<void> =>
+    apiClient.delete(API_ENDPOINTS.WORKFLOW.DELEGATION_CANCEL(id)).then(() => undefined),
 };

@@ -159,6 +159,9 @@ export function DelegationDialog({ open, onOpenChange }: DelegationDialogProps) 
               />
             </div>
           </div>
+          <p className="text-xs text-muted-foreground">
+            {t('workflow.delegation.utcHelp', 'Dates are stored in UTC. Your delegation starts at 00:00 UTC on the start date and ends at 23:59:59 UTC on the end date.')}
+          </p>
         </div>
 
         <DialogFooter>
