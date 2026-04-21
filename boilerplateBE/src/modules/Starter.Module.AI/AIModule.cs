@@ -15,6 +15,7 @@ using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Services;
 using Starter.Module.AI.Infrastructure.Retrieval;
 using Starter.Module.AI.Infrastructure.Retrieval.Classification;
+using Starter.Module.AI.Infrastructure.Retrieval.Resilience;
 using Starter.Module.AI.Infrastructure.Settings;
 
 namespace Starter.Module.AI;
@@ -79,14 +80,21 @@ public sealed class AIModule : IModule
         services.AddSingleton<Infrastructure.Ingestion.Structured.HtmlToMarkdownConverter>();
         services.AddSingleton<Infrastructure.Ingestion.Structured.StructuredMarkdownChunker>();
         services.AddSingleton<IDocumentChunker, Infrastructure.Ingestion.Structured.ChunkerRouter>();
-        services.AddSingleton<IVectorStore, Infrastructure.Ingestion.QdrantVectorStore>();
+        services.AddSingleton<RagCircuitBreakerRegistry>();
+        services.AddSingleton<Infrastructure.Ingestion.QdrantVectorStore>();
+        services.AddSingleton<IVectorStore>(sp => new CircuitBreakingVectorStore(
+            sp.GetRequiredService<Infrastructure.Ingestion.QdrantVectorStore>(),
+            sp.GetRequiredService<RagCircuitBreakerRegistry>()));
         services.AddScoped<Infrastructure.Ingestion.EmbeddingService>();
         services.AddScoped<IEmbeddingService>(sp => new Infrastructure.Ingestion.CachingEmbeddingService(
             sp.GetRequiredService<Infrastructure.Ingestion.EmbeddingService>(),
             sp.GetRequiredService<Starter.Application.Common.Interfaces.ICacheService>(),
             sp.GetRequiredService<Infrastructure.Providers.IAiProviderFactory>(),
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<Infrastructure.Settings.AiRagSettings>>()));
-        services.AddScoped<IKeywordSearchService, Infrastructure.Retrieval.PostgresKeywordSearchService>();
+        services.AddScoped<Infrastructure.Retrieval.PostgresKeywordSearchService>();
+        services.AddScoped<IKeywordSearchService>(sp => new CircuitBreakingKeywordSearch(
+            sp.GetRequiredService<Infrastructure.Retrieval.PostgresKeywordSearchService>(),
+            sp.GetRequiredService<RagCircuitBreakerRegistry>()));
         services.AddScoped<IQueryRewriter, Infrastructure.Retrieval.QueryRewriting.QueryRewriter>();
         services.AddScoped<IContextualQueryResolver, Infrastructure.Retrieval.QueryRewriting.ContextualQueryResolver>();
         services.AddScoped<Infrastructure.Retrieval.Reranking.RerankStrategySelector>(sp =>
