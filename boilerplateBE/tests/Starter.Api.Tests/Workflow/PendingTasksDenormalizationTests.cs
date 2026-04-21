@@ -124,4 +124,64 @@ public sealed class PendingTasksDenormalizationTests : IDisposable
 
         task.SlaReminderAfterHours.Should().Be(4);
     }
+
+    [Fact]
+    public async Task GetPendingTasks_FastPath_DoesNotRequireDefinitionRow()
+    {
+        // Arrange — seed an instance + definition + a fully denormalized task.
+        var def = WorkflowDefinition.Create(
+            tenantId: _tenantId,
+            name: "InboxFastPath",
+            displayName: "Inbox Fast Path",
+            entityType: "Order",
+            statesJson: "[]",
+            transitionsJson: "[]",
+            isTemplate: false,
+            sourceModule: "Tests");
+        _db.WorkflowDefinitions.Add(def);
+
+        var instance = WorkflowInstance.Create(
+            tenantId: _tenantId,
+            definitionId: def.Id,
+            entityType: "Order",
+            entityId: Guid.NewGuid(),
+            initialState: "Review",
+            startedByUserId: _userId,
+            contextJson: null,
+            definitionName: def.DisplayName);
+        _db.WorkflowInstances.Add(instance);
+
+        var task = ApprovalTask.Create(
+            tenantId: _tenantId,
+            instanceId: instance.Id,
+            stepName: "Review",
+            assigneeUserId: _userId,
+            assigneeRole: null,
+            assigneeStrategyJson: null,
+            entityType: "Order",
+            entityId: instance.EntityId,
+            definitionName: "InboxFastPath",
+            availableActionsJson: "[\"Approve\",\"Reject\"]",
+            definitionDisplayName: "Inbox Fast Path",
+            entityDisplayName: "Order #42");
+        _db.ApprovalTasks.Add(task);
+        await _db.SaveChangesAsync();
+
+        // Act — detach the task first (so EF won't cascade-delete it along the required FK),
+        // then wipe the definition + instance so any JOIN would fail/return empty.
+        _db.Entry(task).State = EntityState.Detached;
+        _db.WorkflowInstances.Remove(instance);
+        _db.WorkflowDefinitions.Remove(def);
+        await _db.SaveChangesAsync();
+
+        var page = await _sut.GetPendingTasksAsync(_userId, pageNumber: 1, pageSize: 10);
+
+        // Assert — the task is still returned, populated from denormalized columns.
+        page.Items.Should().HaveCount(1);
+        var item = page.Items.Single();
+        item.DefinitionName.Should().Be("InboxFastPath");
+        item.EntityType.Should().Be("Order");
+        item.EntityDisplayName.Should().Be("Order #42");
+        item.AvailableActions.Should().BeEquivalentTo("Approve", "Reject");
+    }
 }
