@@ -571,7 +571,7 @@ public sealed class WorkflowEngine(
 
     // ── Query: Inbox ─────────────────────────────────────────────────────────
 
-    public async Task<PagedResult<PendingTaskSummary>> GetPendingTasksAsync(
+    public async Task<PaginatedList<PendingTaskSummary>> GetPendingTasksAsync(
         Guid userId, int pageNumber = 1, int pageSize = 20, CancellationToken ct = default)
     {
         var baseQuery = context.ApprovalTasks
@@ -700,7 +700,7 @@ public sealed class WorkflowEngine(
                 DelegatedFromDisplayName: delegatedFromDisplayName);
         }).ToList();
 
-        return new PagedResult<PendingTaskSummary>(items, totalCount, pageNumber, pageSize);
+        return PaginatedList<PendingTaskSummary>.Create(items, totalCount, pageNumber, pageSize);
     }
 
     public async Task<int> GetPendingTaskCountAsync(

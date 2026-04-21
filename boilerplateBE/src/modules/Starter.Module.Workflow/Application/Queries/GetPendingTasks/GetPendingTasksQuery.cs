@@ -7,4 +7,4 @@ namespace Starter.Module.Workflow.Application.Queries.GetPendingTasks;
 
 public sealed record GetPendingTasksQuery(
     int Page = 1,
-    int PageSize = 20) : IRequest<Result<PagedResult<PendingTaskSummary>>>;
+    int PageSize = 20) : IRequest<Result<PaginatedList<PendingTaskSummary>>>;

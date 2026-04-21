@@ -36,7 +36,7 @@ public interface IWorkflowService : ICapability
         CancellationToken ct = default);
 
     // ── Query: Inbox ──
-    Task<PagedResult<PendingTaskSummary>> GetPendingTasksAsync(Guid userId,
+    Task<PaginatedList<PendingTaskSummary>> GetPendingTasksAsync(Guid userId,
         int pageNumber = 1, int pageSize = 20,
         CancellationToken ct = default);
     Task<int> GetPendingTaskCountAsync(Guid userId, CancellationToken ct = default);

@@ -1,8 +1,9 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Starter.Abstractions.Paging;
 using Starter.Abstractions.Readers;
+using Starter.Application.Common.Extensions;
 using Starter.Application.Common.Interfaces;
-using Starter.Application.Common.Models;
 using Starter.Module.CommentsActivity.Application.DTOs;
 using Starter.Module.CommentsActivity.Domain.Entities;
 using Starter.Module.CommentsActivity.Infrastructure.Persistence;
@@ -26,8 +27,8 @@ internal sealed class GetCommentsQueryHandler(
             .Where(c => c.ParentCommentId == null)
             .OrderBy(c => c.CreatedAt);
 
-        var page = await PaginatedList<Comment>.CreateAsync(
-            query, request.PageNumber, request.PageSize, cancellationToken);
+        var page = await query.ToPaginatedListAsync(
+            request.PageNumber, request.PageSize, cancellationToken);
 
         var commentIds = page.Items.Select(c => c.Id).ToList();
 

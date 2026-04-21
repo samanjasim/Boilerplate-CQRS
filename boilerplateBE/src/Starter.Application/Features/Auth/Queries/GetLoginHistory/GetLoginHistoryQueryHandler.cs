@@ -1,5 +1,6 @@
+using Starter.Abstractions.Paging;
+using Starter.Application.Common.Extensions;
 using Starter.Application.Common.Interfaces;
-using Starter.Application.Common.Models;
 using Starter.Domain.Identity.Errors;
 using Starter.Shared.Results;
 using MediatR;
@@ -30,8 +31,7 @@ internal sealed class GetLoginHistoryQueryHandler(
                 lh.FailureReason,
                 lh.CreatedAt));
 
-        var paginatedList = await PaginatedList<LoginHistoryDto>.CreateAsync(
-            query,
+        var paginatedList = await query.ToPaginatedListAsync(
             request.PageNumber,
             request.PageSize,
             cancellationToken);

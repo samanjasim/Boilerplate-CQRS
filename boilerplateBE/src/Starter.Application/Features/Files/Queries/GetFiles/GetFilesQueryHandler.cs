@@ -1,5 +1,6 @@
+using Starter.Abstractions.Paging;
+using Starter.Application.Common.Extensions;
 using Starter.Application.Common.Interfaces;
-using Starter.Application.Common.Models;
 using Starter.Domain.Common;
 using Starter.Domain.Common.Enums;
 using Starter.Domain.Identity.Entities;
@@ -64,8 +65,7 @@ internal sealed class GetFilesQueryHandler(
                 f.Origin.ToString(),
                 f.ExpiresAt);
 
-        var paginatedList = await PaginatedList<FileDto>.CreateAsync(
-            projectedQuery,
+        var paginatedList = await projectedQuery.ToPaginatedListAsync(
             request.PageNumber,
             request.PageSize,
             cancellationToken);

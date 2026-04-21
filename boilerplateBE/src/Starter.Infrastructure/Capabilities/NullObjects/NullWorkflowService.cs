@@ -87,7 +87,7 @@ public sealed class NullWorkflowService(ILogger<NullWorkflowService> logger) : I
         return Task.FromResult(false);
     }
 
-    public Task<PagedResult<PendingTaskSummary>> GetPendingTasksAsync(
+    public Task<PaginatedList<PendingTaskSummary>> GetPendingTasksAsync(
         Guid userId,
         int pageNumber = 1,
         int pageSize = 20,
@@ -96,7 +96,7 @@ public sealed class NullWorkflowService(ILogger<NullWorkflowService> logger) : I
         logger.LogDebug(
             "Workflow pending tasks query skipped — Workflow module not installed (userId: {UserId})",
             userId);
-        return Task.FromResult(new PagedResult<PendingTaskSummary>(
+        return Task.FromResult(new PaginatedList<PendingTaskSummary>(
             Array.Empty<PendingTaskSummary>(), totalCount: 0, pageNumber, pageSize));
     }
 

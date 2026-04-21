@@ -1,3 +1,5 @@
+using Starter.Abstractions.Paging;
+using Starter.Application.Common.Extensions;
 using Starter.Application.Common.Interfaces;
 using Starter.Application.Common.Models;
 using Starter.Application.Features.AuditLogs.DTOs;
@@ -68,8 +70,7 @@ internal sealed class GetAuditLogsQueryHandler(
             a.IpAddress,
             a.CorrelationId));
 
-        var paginatedList = await PaginatedList<AuditLogDto>.CreateAsync(
-            projected,
+        var paginatedList = await projected.ToPaginatedListAsync(
             request.PageNumber,
             request.PageSize,
             cancellationToken);

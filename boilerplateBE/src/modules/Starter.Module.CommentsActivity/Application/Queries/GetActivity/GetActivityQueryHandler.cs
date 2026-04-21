@@ -1,7 +1,8 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Starter.Abstractions.Paging;
 using Starter.Abstractions.Readers;
-using Starter.Application.Common.Models;
+using Starter.Application.Common.Extensions;
 using Starter.Module.CommentsActivity.Application.DTOs;
 using Starter.Module.CommentsActivity.Domain.Entities;
 using Starter.Module.CommentsActivity.Infrastructure.Persistence;
@@ -21,8 +22,8 @@ internal sealed class GetActivityQueryHandler(
             .Where(a => a.EntityType == request.EntityType && a.EntityId == request.EntityId)
             .OrderBy(a => a.CreatedAt);
 
-        var page = await PaginatedList<ActivityEntry>.CreateAsync(
-            query, request.PageNumber, request.PageSize, cancellationToken);
+        var page = await query.ToPaginatedListAsync(
+            request.PageNumber, request.PageSize, cancellationToken);
 
         var actorIds = page.Items
             .Where(a => a.ActorId.HasValue)

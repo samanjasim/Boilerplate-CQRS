@@ -8,9 +8,9 @@ namespace Starter.Module.Workflow.Application.Queries.GetPendingTasks;
 
 internal sealed class GetPendingTasksQueryHandler(
     IWorkflowService workflowService,
-    ICurrentUserService currentUser) : IRequestHandler<GetPendingTasksQuery, Result<PagedResult<PendingTaskSummary>>>
+    ICurrentUserService currentUser) : IRequestHandler<GetPendingTasksQuery, Result<PaginatedList<PendingTaskSummary>>>
 {
-    public async Task<Result<PagedResult<PendingTaskSummary>>> Handle(
+    public async Task<Result<PaginatedList<PendingTaskSummary>>> Handle(
         GetPendingTasksQuery request, CancellationToken cancellationToken)
     {
         var paged = await workflowService.GetPendingTasksAsync(
