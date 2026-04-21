@@ -71,6 +71,7 @@ public static class DependencyInjection
         services.AddScoped<IUserReader, UserReader>();
         services.AddScoped<IRoleReader, RoleReader>();
         services.AddScoped<IFileReader, FileReader>();
+        services.AddScoped<IRoleUserReader, RoleUserReader>();
         services.AddScoped<INotificationPreferenceReader, NotificationPreferenceReaderService>();
 
         // Null Object fallbacks — lifetimes match the real module implementations
@@ -81,6 +82,7 @@ public static class DependencyInjection
         services.TryAddScoped<IMessageDispatcher, NullMessageDispatcher>();
         services.TryAddScoped<ICommunicationEventNotifier, NullCommunicationEventNotifier>();
         services.TryAddScoped<ITemplateRegistrar, NullTemplateRegistrar>();
+        services.TryAddScoped<IWorkflowService, NullWorkflowService>();
 
         // Comments & Activity — Null Object fallbacks
         services.TryAddSingleton<ICommentableEntityRegistry, NullCommentableEntityRegistry>();

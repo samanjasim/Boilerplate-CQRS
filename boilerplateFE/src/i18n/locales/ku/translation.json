@@ -139,7 +139,9 @@
     "triggerRules": "Trigger Rules",
     "integrations": "Integrations",
     "deliveryLog": "Delivery Log",
-    "collapse": "کچکردن"
+    "collapse": "کچکردن",
+    "taskInbox": "سندووقی ئەرکەکان",
+    "workflowDefinitions": "پێناسەکان"
   },
   "header": {
     "logout": "دەرچوون",
@@ -417,7 +419,8 @@
       "tenantCreated": "دروستکردنی خاوەنکار",
       "invitationAccepted": "وەرگرتنی بانگهێشت",
       "loginFromNewDevice": "چوونەژوورەوە لە ئامێرێکی نوێ",
-      "commentMentioned": "ئاماژەدان لە کۆمێنتەکان"
+      "commentMentioned": "ئاماژەدان لە کۆمێنتەکان",
+      "workflowTaskAssigned": "دیاریکردنی ئەرکی ڕێڕەوی کار"
     },
     "emailRequiresCommunication": "ئاگادارکردنەوەکانی ئیمەیل بەردەستن کاتێک مۆدیوولی کۆمیونیکەیشن چالاک بێت"
   },
@@ -1089,6 +1092,136 @@
       "deliveryRate": "Delivery Rate",
       "failedDeliveries": "Failed",
       "viewLog": "View Log"
+    }
+  },
+  "workflow": {
+    "inbox": {
+      "title": "سندووقی ئەرکەکان",
+      "empty": "هیچ ئەرکێکی چاوەڕوان نییە",
+      "emptyDesc": "هیچ ئەرکی پەسەندکردنت چاوەڕوانی کردارت ناکات",
+      "approve": "پەسەندکردن",
+      "reject": "ڕەتکردنەوە",
+      "return": "گەڕاندنەوە بۆ پێداچوونەوە",
+      "entity": "بەرهەم",
+      "request": "داواکاری",
+      "workflowName": "ڕێڕەوی کار",
+      "step": "هەنگاو",
+      "assignedDate": "بەرواری دیاریکردن",
+      "dueDate": "بەرواری کۆتایی",
+      "actions": "کردارەکان",
+      "viewAll": "بینینی هەموو ئەرکەکان"
+    },
+    "definitions": {
+      "title": "پێناسەکانی ڕێڕەوی کار",
+      "name": "ناو",
+      "entityType": "جۆری بەرهەم",
+      "steps": "هەنگاوەکان",
+      "source": "سەرچاوە",
+      "status": "دۆخ",
+      "systemTemplate": "قاڵبی سیستەم",
+      "customized": "تایبەتکراو",
+      "clone": "لەبەرگرتنەوە",
+      "edit": "دەستکاریکردن",
+      "view": "بینین",
+      "deactivate": "ناچالاککردن",
+      "activate": "چالاککردن",
+      "cloneSuccess": "پێناسەکە بە سەرکەوتوویی لەبەرگیرایەوە",
+      "updateSuccess": "پێناسەکە بە سەرکەوتوویی نوێکرایەوە",
+      "emptyDesc": "هیچ پێناسەیەکی ڕێڕەوی کار نەدۆزرایەوە"
+    },
+    "approval": {
+      "title": "کرداری ڕێڕەوی کار",
+      "comment": "کۆمێنت (ئارەزوومەندانە)",
+      "commentHint": "کۆمێنتەکەت لە تایمڵاینی چالاکی بەرهەمەکە دەردەکەوێت",
+      "success": "کردارەکە بە سەرکەوتوویی تەواوبوو"
+    },
+    "status": {
+      "active": "چالاک",
+      "completed": "تەواوبوو",
+      "cancelled": "هەڵوەشێنرایەوە",
+      "pending": "چاوەڕوان"
+    },
+    "sidebar": {
+      "taskInbox": "سندووقی ئەرکەکان",
+      "history": "مێژووی ڕێڕەوی کار",
+      "definitions": "پێناسەکان"
+    },
+    "instances": {
+      "title": "مێژووی ڕێڕەوی کار",
+      "myRequests": "داواکارییەکانم",
+      "myRequestsOnly": "داواکارییەکانم تەنها",
+      "empty": "هیچ نموونەیەکی ڕێڕەوی کار نەدۆزرایەوە",
+      "emptyDesc": "هیچ ڕێڕەوێک لەگەڵ فلتەرەکانی ئێستا نایگونجێت",
+      "definitionName": "ڕێڕەوی کار",
+      "request": "داواکاری",
+      "type": "جۆر",
+      "entityType": "جۆری بەرهەم",
+      "entityId": "بەرهەم",
+      "currentState": "دۆخی ئێستا",
+      "status": "دۆخ",
+      "startedBy": "دەستپێکراوە لەلایەن",
+      "startedAt": "بەرواری دەستپێکردن",
+      "viewDetail": "بینین",
+      "cancelConfirm": "دڵنیایت لە هەڵوەشاندنەوەی ئەم ڕێڕەوە؟",
+      "cancelSuccess": "ڕێڕەوی کار هەڵوەشێنرایەوە",
+      "accessDenied": "مەترسی نییە",
+      "accessDeniedDesc": "مافی بینینی ئەم نموونەی ڕێڕەوی کارت نییە. تەنها دەستپێکەر، پەسەندکەری دیاریکراو، یان بەڕێوەبەران دەتوانن پێیانگەیەن."
+    },
+    "detail": {
+      "title": "پێناسەی ڕێڕەوی کار",
+      "version": "وەشان",
+      "cloneToCustomize": "لەبەرگرتنەوە بۆ تایبەتکردن",
+      "stateList": "دۆخەکان",
+      "assignee": "بەرپرس",
+      "hooks": "هووکەکان",
+      "cancelWorkflow": "هەڵوەشاندنەوەی ڕێڕەوی کار",
+      "stepHistory": "مێژووی هەنگاوەکان",
+      "comments": "کۆمێنت و چالاکی",
+      "pendingAction": "کرداری پێویست",
+      "resubmit": "دووبارە ناردنەوە",
+      "completedAt": "تەواوبوو",
+      "returnedForRevision": "گەڕێنراوەتەوە بۆ پێداچوونەوە",
+      "returnedForRevisionDesc": "ئەم ڕێڕەوە گەڕێنراوەتەوە بۆ پێداچوونەوە. پێداچوونەوە بکە و دووبارە بینێرەوە کاتێک ئامادەیت."
+    },
+    "resubmitSuccess": "ڕێڕەوی کار دووبارە نێردرایەوە",
+    "delegation": {
+      "title": "وەکاڵەتکردنی ئەرکەکانم",
+      "description": "ئەرکە چاوەڕوانەکانت بۆ بەکارهێنەرێکی تر وەکاڵەت بکە بۆ ماوەیەکی دیاریکراو.",
+      "delegateTo": "وەکاڵەتکردن بۆ",
+      "userPlaceholder": "ناسنامەی بەکارهێنەر بنووسە",
+      "startDate": "بەرواری دەستپێکردن",
+      "endDate": "بەرواری کۆتایی",
+      "confirm": "دروستکردنی وەکاڵەت",
+      "cancel": "هەڵوەشاندنەوەی وەکاڵەت",
+      "banner": "ئەرکەکانت وەکاڵەتکراون بۆ {{name}} تا {{date}}",
+      "badgeFrom": "وەکاڵەتکراو لەلایەن {{name}}",
+      "badgeTo": "وەکاڵەتکراو بۆ {{name}}",
+      "success": "وەکاڵەتەکە بە سەرکەوتوویی دروستکرا",
+      "cancelled": "وەکاڵەتەکە هەڵوەشێنرایەوە"
+    },
+    "sla": {
+      "overdue": "دواکەوتوو",
+      "overdueHours": "{{hours}} کاتژمێر دواکەوتوو",
+      "reminderSent": "بیرهێنەرەوە نێردرا"
+    },
+    "parallel": {
+      "progress": "{{completed}} لە {{total}} پەسەندکراو",
+      "waiting": "چاوەڕوانی {{remaining}} ی تر"
+    },
+    "forms": {
+      "required": "پێویستە",
+      "submittedData": "داتای نێردراو",
+      "selectPlaceholder": "هەڵبژێرە..."
+    },
+    "newRequest": {
+      "title": "داواکاری نوێ",
+      "description": "دەستپێکردنی داواکارییەکی ڕێڕەوی کاری نوێ",
+      "workflowType": "جۆری ڕێڕەوی کار",
+      "selectWorkflow": "ڕێڕەوی کار هەڵبژێرە...",
+      "requestName": "ناوی داواکاری",
+      "requestNamePlaceholder": "نموونە: زیادکردنی بودجەی چارەکی سێیەم — بەشی ئەندازیاری",
+      "submit": "ناردنی داواکاری",
+      "success": "داواکارییەکە بە سەرکەوتوویی نێردرا"
     }
   }
 }

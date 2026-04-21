@@ -4,6 +4,7 @@ import { importExportModule } from '@/features/import-export';
 import { productsModule } from '@/features/products';
 import { commentsActivityModule } from '@/features/comments-activity';
 import { communicationModule } from '@/features/communication';
+import { workflowModule } from '@/features/workflow';
 
 /**
  * Optional module registry. To remove a module from a build, comment out
@@ -20,6 +21,7 @@ export const activeModules = {
   products: true,
   commentsActivity: true,
   communication: true,
+  workflow: true,
 } as const;
 
 export type ModuleName = keyof typeof activeModules;
@@ -46,6 +48,7 @@ const enabledModules: AppModule[] = [
   productsModule,
   commentsActivityModule,
   communicationModule,
+  workflowModule,
 ];
 
 /**

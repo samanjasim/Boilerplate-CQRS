@@ -139,7 +139,9 @@
     "triggerRules": "قواعد التشغيل",
     "integrations": "التكاملات",
     "deliveryLog": "سجل التسليم",
-    "collapse": "طي"
+    "collapse": "طي",
+    "taskInbox": "صندوق المهام",
+    "workflowDefinitions": "التعريفات"
   },
   "header": {
     "logout": "تسجيل الخروج",
@@ -417,7 +419,8 @@
       "tenantCreated": "إنشاء مستأجر",
       "invitationAccepted": "قبول الدعوة",
       "loginFromNewDevice": "تسجيل دخول من جهاز جديد",
-      "commentMentioned": "الإشارة في التعليقات"
+      "commentMentioned": "الإشارة في التعليقات",
+      "workflowTaskAssigned": "تعيين مهمة سير العمل"
     },
     "emailRequiresCommunication": "إشعارات البريد الإلكتروني متاحة عند تفعيل وحدة الاتصال"
   },
@@ -1135,6 +1138,136 @@
       "deliveryRate": "معدل التسليم",
       "failedDeliveries": "فشل",
       "viewLog": "عرض السجل"
+    }
+  },
+  "workflow": {
+    "inbox": {
+      "title": "صندوق المهام",
+      "empty": "لا توجد مهام معلقة",
+      "emptyDesc": "لا توجد مهام موافقة بانتظار إجراءك",
+      "approve": "موافقة",
+      "reject": "رفض",
+      "return": "إرجاع للمراجعة",
+      "entity": "الكيان",
+      "request": "الطلب",
+      "workflowName": "سير العمل",
+      "step": "الخطوة",
+      "assignedDate": "تاريخ التعيين",
+      "dueDate": "تاريخ الاستحقاق",
+      "actions": "الإجراءات",
+      "viewAll": "عرض جميع المهام"
+    },
+    "definitions": {
+      "title": "تعريفات سير العمل",
+      "name": "الاسم",
+      "entityType": "نوع الكيان",
+      "steps": "الخطوات",
+      "source": "المصدر",
+      "status": "الحالة",
+      "systemTemplate": "قالب النظام",
+      "customized": "مخصص",
+      "clone": "نسخ",
+      "edit": "تعديل",
+      "view": "عرض",
+      "deactivate": "تعطيل",
+      "activate": "تفعيل",
+      "cloneSuccess": "تم نسخ التعريف بنجاح",
+      "updateSuccess": "تم تحديث التعريف بنجاح",
+      "emptyDesc": "لا توجد تعريفات لسير العمل"
+    },
+    "approval": {
+      "title": "إجراء سير العمل",
+      "comment": "تعليق (اختياري)",
+      "commentHint": "سيظهر تعليقك في الجدول الزمني لنشاط الكيان",
+      "success": "تم إتمام الإجراء بنجاح"
+    },
+    "status": {
+      "active": "نشط",
+      "completed": "مكتمل",
+      "cancelled": "ملغى",
+      "pending": "معلق"
+    },
+    "sidebar": {
+      "taskInbox": "صندوق المهام",
+      "history": "سجل سير العمل",
+      "definitions": "التعريفات"
+    },
+    "instances": {
+      "title": "سجل سير العمل",
+      "myRequests": "طلباتي",
+      "myRequestsOnly": "طلباتي فقط",
+      "empty": "لا توجد نسخ سير عمل",
+      "emptyDesc": "لا توجد نتائج تطابق الفلاتر الحالية",
+      "definitionName": "سير العمل",
+      "request": "الطلب",
+      "type": "النوع",
+      "entityType": "نوع الكيان",
+      "entityId": "الكيان",
+      "currentState": "الحالة الحالية",
+      "status": "الحالة",
+      "startedBy": "بدأ بواسطة",
+      "startedAt": "تاريخ البدء",
+      "viewDetail": "عرض",
+      "cancelConfirm": "هل أنت متأكد من إلغاء سير العمل هذا؟",
+      "cancelSuccess": "تم إلغاء سير العمل",
+      "accessDenied": "الوصول مرفوض",
+      "accessDeniedDesc": "ليس لديك صلاحية لعرض هذه النسخة من سير العمل. يمكن الوصول إليها فقط للمُبادر أو المعتمدين المعيّنين أو المسؤولين."
+    },
+    "detail": {
+      "title": "تعريف سير العمل",
+      "version": "الإصدار",
+      "cloneToCustomize": "نسخ للتخصيص",
+      "stateList": "الحالات",
+      "assignee": "المسؤول",
+      "hooks": "الخطافات",
+      "cancelWorkflow": "إلغاء سير العمل",
+      "stepHistory": "سجل الخطوات",
+      "comments": "التعليقات والنشاط",
+      "pendingAction": "إجراء مطلوب",
+      "resubmit": "إعادة الإرسال",
+      "completedAt": "اكتمل",
+      "returnedForRevision": "تم الإرجاع للمراجعة",
+      "returnedForRevisionDesc": "تم إرجاع سير العمل هذا للمراجعة. راجع وأعد الإرسال عندما تكون جاهزاً."
+    },
+    "resubmitSuccess": "تم إعادة إرسال سير العمل",
+    "delegation": {
+      "title": "تفويض مهامي",
+      "description": "فوّض مهامك المعلقة إلى مستخدم آخر لفترة محددة.",
+      "delegateTo": "تفويض إلى",
+      "userPlaceholder": "أدخل معرّف المستخدم",
+      "startDate": "تاريخ البدء",
+      "endDate": "تاريخ الانتهاء",
+      "confirm": "إنشاء التفويض",
+      "cancel": "إلغاء التفويض",
+      "banner": "مهامك مفوّضة إلى {{name}} حتى {{date}}",
+      "badgeFrom": "مفوّض من {{name}}",
+      "badgeTo": "مفوّض إلى {{name}}",
+      "success": "تم إنشاء التفويض بنجاح",
+      "cancelled": "تم إلغاء التفويض"
+    },
+    "sla": {
+      "overdue": "متأخر",
+      "overdueHours": "متأخر بـ {{hours}} ساعة",
+      "reminderSent": "تم إرسال التذكير"
+    },
+    "parallel": {
+      "progress": "{{completed}} من {{total}} تمت الموافقة",
+      "waiting": "بانتظار {{remaining}} إضافية"
+    },
+    "forms": {
+      "required": "مطلوب",
+      "submittedData": "البيانات المرسلة",
+      "selectPlaceholder": "اختر..."
+    },
+    "newRequest": {
+      "title": "طلب جديد",
+      "description": "بدء طلب سير عمل جديد",
+      "workflowType": "نوع سير العمل",
+      "selectWorkflow": "اختر سير عمل...",
+      "requestName": "اسم الطلب",
+      "requestNamePlaceholder": "مثال: زيادة ميزانية الربع الثالث — قسم الهندسة",
+      "submit": "إرسال الطلب",
+      "success": "تم إرسال الطلب بنجاح"
     }
   }
 }

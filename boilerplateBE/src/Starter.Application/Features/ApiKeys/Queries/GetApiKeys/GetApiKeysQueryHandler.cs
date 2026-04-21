@@ -1,7 +1,8 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Starter.Abstractions.Paging;
+using Starter.Application.Common.Extensions;
 using Starter.Application.Common.Interfaces;
-using Starter.Application.Common.Models;
 using Starter.Application.Features.ApiKeys.DTOs;
 using Starter.Domain.ApiKeys.Entities;
 using Starter.Shared.Results;
@@ -67,8 +68,8 @@ public sealed class GetApiKeysQueryHandler(
                     k.CreatedAt, k.CreatedBy));
         }
 
-        var result = await PaginatedList<ApiKeyDto>.CreateAsync(
-            query, request.PageNumber, request.PageSize);
+        var result = await query.ToPaginatedListAsync(
+            request.PageNumber, request.PageSize, cancellationToken);
 
         return Result.Success(result);
     }

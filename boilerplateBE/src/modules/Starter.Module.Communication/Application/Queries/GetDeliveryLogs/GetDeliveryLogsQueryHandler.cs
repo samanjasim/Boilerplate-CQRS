@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Starter.Application.Common.Models;
+using Starter.Abstractions.Paging;
+using Starter.Application.Common.Extensions;
 using Starter.Module.Communication.Application.DTOs;
 using Starter.Module.Communication.Infrastructure.Persistence;
 using Starter.Shared.Results;
@@ -54,8 +55,8 @@ internal sealed class GetDeliveryLogsQueryHandler(
                 d.CreatedAt,
                 d.ModifiedAt));
 
-        var result = await PaginatedList<DeliveryLogDto>.CreateAsync(
-            projected, request.PageNumber, request.PageSize, cancellationToken);
+        var result = await projected.ToPaginatedListAsync(
+            request.PageNumber, request.PageSize, cancellationToken);
 
         return Result.Success(result);
     }

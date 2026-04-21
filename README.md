@@ -284,7 +284,7 @@ export const activePreset: ThemePresetName = 'warm-copper'; // change this
 
 Available: `warm-copper` (default), `ocean-blue`, `deep-indigo`, `midnight-sapphire`, `rose`, `emerald`.
 
-To create a custom theme, generate a color scale at [uicolors.app](https://uicolors.app) and add it to the presets object. See `docs/theming-guide.md` for the full guide.
+To create a custom theme, generate a color scale at [uicolors.app](https://uicolors.app) and add it to the presets object. See [`docs/developer-guide/theming.md`](docs/developer-guide/theming.md) for the full guide.
 
 ## Subdomain Tenant Routing
 
@@ -310,6 +310,13 @@ Each tenant gets a branded URL like `acme.starter.com`. The frontend detects the
 Subdomain routing works locally:
 - `acme.localhost:3000` works in Chrome/Firefox natively
 - `localhost:3000?tenant=acme` works as a fallback in any browser
+
+## Documentation
+
+- **[User Manual](docs/user-manual/README.md)** — end-user guides.
+- **[Developer Guide](docs/developer-guide/README.md)** — architecture, module internals, extension points.
+- **[Roadmaps](docs/roadmaps/)** — deferred items per module + product roadmap.
+- **[docs/](docs/)** — full index.
 
 ## License
 

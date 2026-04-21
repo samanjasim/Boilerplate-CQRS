@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Starter.Abstractions.Paging;
 using Starter.Application.Common.Interfaces;
 using Starter.Application.Common.Models;
 using Starter.Application.Features.Reports.DTOs;

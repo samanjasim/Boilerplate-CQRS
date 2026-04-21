@@ -139,7 +139,9 @@
     "triggerRules": "Trigger Rules",
     "integrations": "Integrations",
     "deliveryLog": "Delivery Log",
-    "collapse": "Collapse"
+    "collapse": "Collapse",
+    "taskInbox": "Task Inbox",
+    "workflowDefinitions": "Definitions"
   },
   "header": {
     "logout": "Logout",
@@ -421,7 +423,8 @@
       "tenantCreated": "Tenant Created",
       "invitationAccepted": "Invitation Accepted",
       "loginFromNewDevice": "Login From New Device",
-      "commentMentioned": "Comment Mentions"
+      "commentMentioned": "Comment Mentions",
+      "workflowTaskAssigned": "Workflow Task Assigned"
     },
     "emailRequiresCommunication": "Email notifications are available when the Communication module is enabled"
   },
@@ -1179,6 +1182,136 @@
       "deliveryRate": "Delivery Rate",
       "failedDeliveries": "Failed",
       "viewLog": "View Log"
+    }
+  },
+  "workflow": {
+    "inbox": {
+      "title": "Task Inbox",
+      "empty": "No pending tasks",
+      "emptyDesc": "You have no approval tasks waiting for your action",
+      "approve": "Approve",
+      "reject": "Reject",
+      "return": "Return for Revision",
+      "entity": "Entity",
+      "request": "Request",
+      "workflowName": "Workflow",
+      "step": "Step",
+      "assignedDate": "Assigned",
+      "dueDate": "Due Date",
+      "actions": "Actions",
+      "viewAll": "View All Tasks"
+    },
+    "definitions": {
+      "title": "Workflow Definitions",
+      "name": "Name",
+      "entityType": "Entity Type",
+      "steps": "Steps",
+      "source": "Source",
+      "status": "Status",
+      "systemTemplate": "System Template",
+      "customized": "Customized",
+      "clone": "Clone",
+      "edit": "Edit",
+      "view": "View",
+      "deactivate": "Deactivate",
+      "activate": "Activate",
+      "cloneSuccess": "Definition cloned successfully",
+      "updateSuccess": "Definition updated successfully",
+      "emptyDesc": "No workflow definitions found"
+    },
+    "approval": {
+      "title": "Workflow Action",
+      "comment": "Comment (optional)",
+      "commentHint": "Your comment will appear in the entity's activity timeline",
+      "success": "Action completed successfully"
+    },
+    "status": {
+      "active": "Active",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "pending": "Pending"
+    },
+    "sidebar": {
+      "taskInbox": "Task Inbox",
+      "history": "Workflow History",
+      "definitions": "Definitions"
+    },
+    "instances": {
+      "title": "Workflow History",
+      "myRequests": "My Requests",
+      "myRequestsOnly": "My Requests Only",
+      "empty": "No workflow instances found",
+      "emptyDesc": "No workflows match your current filters",
+      "definitionName": "Workflow",
+      "request": "Request",
+      "type": "Type",
+      "entityType": "Entity Type",
+      "entityId": "Entity",
+      "currentState": "Current State",
+      "status": "Status",
+      "startedBy": "Started By",
+      "startedAt": "Started",
+      "viewDetail": "View",
+      "cancelConfirm": "Are you sure you want to cancel this workflow?",
+      "cancelSuccess": "Workflow cancelled",
+      "accessDenied": "Access Denied",
+      "accessDeniedDesc": "You do not have permission to view this workflow instance. Only the initiator, assigned approvers, or administrators can access it."
+    },
+    "detail": {
+      "title": "Workflow Definition",
+      "version": "Version",
+      "cloneToCustomize": "Clone to Customize",
+      "stateList": "States",
+      "assignee": "Assignee",
+      "hooks": "Hooks",
+      "cancelWorkflow": "Cancel Workflow",
+      "stepHistory": "Step History",
+      "comments": "Comments & Activity",
+      "pendingAction": "Action Required",
+      "resubmit": "Resubmit",
+      "completedAt": "Completed",
+      "returnedForRevision": "Returned for Revision",
+      "returnedForRevisionDesc": "This workflow was returned for revision. Review and resubmit when ready."
+    },
+    "resubmitSuccess": "Workflow resubmitted",
+    "delegation": {
+      "title": "Delegate My Tasks",
+      "description": "Delegate your pending tasks to another user for a specific period.",
+      "delegateTo": "Delegate To",
+      "userPlaceholder": "Enter user ID",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "confirm": "Create Delegation",
+      "cancel": "Cancel Delegation",
+      "banner": "Your tasks are delegated to {{name}} until {{date}}",
+      "badgeFrom": "Delegated from {{name}}",
+      "badgeTo": "Delegated to {{name}}",
+      "success": "Delegation created successfully",
+      "cancelled": "Delegation cancelled"
+    },
+    "sla": {
+      "overdue": "Overdue",
+      "overdueHours": "Overdue by {{hours}}h",
+      "reminderSent": "Reminder sent"
+    },
+    "parallel": {
+      "progress": "{{completed}} of {{total}} approved",
+      "waiting": "Waiting for {{remaining}} more"
+    },
+    "forms": {
+      "required": "Required",
+      "submittedData": "Submitted Data",
+      "selectPlaceholder": "Select..."
+    },
+    "newRequest": {
+      "title": "New Request",
+      "description": "Start a new workflow request",
+      "workflowType": "Workflow Type",
+      "selectWorkflow": "Select a workflow...",
+      "requestName": "Request Name",
+      "requestNamePlaceholder": "e.g., Q3 Budget Increase — Engineering Dept",
+      "submit": "Submit Request",
+      "success": "Request submitted successfully"
     }
   }
 }

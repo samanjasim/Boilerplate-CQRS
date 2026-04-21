@@ -1,5 +1,5 @@
 using Asp.Versioning;
-using Starter.Application.Common.Models;
+using Starter.Abstractions.Paging;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -52,9 +52,9 @@ public abstract class BaseApiController(ISender mediator) : ControllerBase
         return HandleFailure(result);
     }
 
-    protected IActionResult HandlePagedResult<T>(PagedResponse<T> pagedResponse)
+    protected IActionResult HandlePagedResult<T>(PaginatedList<T> paged)
     {
-        return Ok(PagedApiResponse<T>.Ok(pagedResponse));
+        return Ok(PagedApiResponse<T>.Ok(paged));
     }
 
     protected IActionResult HandlePagedResult<T>(Result<PaginatedList<T>> result)
@@ -62,13 +62,7 @@ public abstract class BaseApiController(ISender mediator) : ControllerBase
         if (result.IsFailure)
             return HandleFailure(result);
 
-        var paged = result.Value;
-        var response = PagedResponse<T>.Create(
-            paged.Items.ToList(),
-            paged.PageNumber,
-            paged.PageSize,
-            paged.TotalCount);
-        return Ok(PagedApiResponse<T>.Ok(response));
+        return Ok(PagedApiResponse<T>.Ok(result.Value));
     }
 
     private IActionResult HandleFailure(Result result)
