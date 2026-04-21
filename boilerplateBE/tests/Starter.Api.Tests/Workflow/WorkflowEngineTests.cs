@@ -55,6 +55,9 @@ public sealed class WorkflowEngineTests : IDisposable
             new ConfigurationBuilder().Build(),
             NullLogger<HookExecutor>.Instance);
 
+        var humanTaskFactory = new HumanTaskFactory(
+            _db, assigneeResolver, NullLogger<HumanTaskFactory>.Instance);
+
         _sut = new WorkflowEngine(
             _db,
             conditionEvaluator,
@@ -63,6 +66,7 @@ public sealed class WorkflowEngineTests : IDisposable
             _commentService.Object,
             _userReader.Object,
             new FormDataValidator(),
+            humanTaskFactory,
             NullLogger<WorkflowEngine>.Instance);
     }
 

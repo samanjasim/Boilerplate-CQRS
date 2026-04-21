@@ -44,6 +44,7 @@ public sealed class WorkflowModule : IModule
         services.AddScoped<AssigneeResolverService>();
         services.AddScoped<IAssigneeResolverProvider, BuiltInAssigneeProvider>();
         services.AddScoped<HookExecutor>();
+        services.AddScoped<HumanTaskFactory>();
         services.AddSingleton<IFormDataValidator, FormDataValidator>();
 
         // Register WorkflowInstance as a commentable entity so the Comments &

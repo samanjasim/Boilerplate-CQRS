@@ -45,6 +45,9 @@ public sealed class GetPendingTasksPaginationTests : IDisposable
             new ConfigurationBuilder().Build(),
             NullLogger<HookExecutor>.Instance);
 
+        var humanTaskFactory = new HumanTaskFactory(
+            _db, assigneeResolver, NullLogger<HumanTaskFactory>.Instance);
+
         _sut = new WorkflowEngine(
             _db,
             new ConditionEvaluator(),
@@ -53,6 +56,7 @@ public sealed class GetPendingTasksPaginationTests : IDisposable
             Mock.Of<ICommentService>(),
             userReader.Object,
             new FormDataValidator(),
+            humanTaskFactory,
             NullLogger<WorkflowEngine>.Instance);
     }
 
