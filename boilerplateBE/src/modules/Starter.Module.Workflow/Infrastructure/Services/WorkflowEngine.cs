@@ -574,9 +574,9 @@ public sealed class WorkflowEngine(
     public async Task<PaginatedList<PendingTaskSummary>> GetPendingTasksAsync(
         Guid userId, int pageNumber = 1, int pageSize = 20, CancellationToken ct = default)
     {
+        // Single-table query — denormalized columns on ApprovalTask remove the need
+        // to JOIN WorkflowInstances and WorkflowDefinitions. See Phase 2b spec.
         var baseQuery = context.ApprovalTasks
-            .Include(t => t.Instance)
-                .ThenInclude(i => i.Definition)
             .Where(t => t.Status == Domain.Enums.TaskStatus.Pending
                 && (t.AssigneeUserId == userId || t.OriginalAssigneeUserId == userId))
             .OrderByDescending(t => t.CreatedAt);
@@ -588,7 +588,7 @@ public sealed class WorkflowEngine(
             .Take(pageSize)
             .ToListAsync(ct);
 
-        // Resolve display names for original assignees (delegation source)
+        // Resolve display names for original assignees (delegation source) — batched.
         var originalAssigneeIds = tasks
             .Where(t => t.OriginalAssigneeUserId.HasValue)
             .Select(t => t.OriginalAssigneeUserId!.Value)
@@ -603,7 +603,7 @@ public sealed class WorkflowEngine(
                 delegationNameLookup[u.Id] = u.DisplayName;
         }
 
-        // Pre-load parallel group sibling counts to avoid N+1 queries
+        // Pre-load parallel group sibling counts to avoid N+1 queries.
         var groupIds = tasks
             .Where(t => t.GroupId.HasValue)
             .Select(t => t.GroupId!.Value)
@@ -626,42 +626,90 @@ public sealed class WorkflowEngine(
             }
         }
 
+        // Identify legacy rows whose denormalized columns were never populated
+        // (created before the Phase 2b migration). Fall back to a JOIN for these only.
+        var legacyTaskIds = tasks
+            .Where(t => string.IsNullOrEmpty(t.DefinitionName))
+            .Select(t => t.Id)
+            .ToList();
+
+        Dictionary<Guid, LegacyTaskFallback>? legacyLookup = null;
+        if (legacyTaskIds.Count > 0)
+        {
+            var legacyRows = await context.ApprovalTasks
+                .Where(t => legacyTaskIds.Contains(t.Id))
+                .Include(t => t.Instance)
+                    .ThenInclude(i => i.Definition)
+                .Select(t => new
+                {
+                    t.Id,
+                    DefinitionName = t.Instance.Definition.Name,
+                    DefinitionDisplayName = t.Instance.Definition.DisplayName,
+                    t.Instance.EntityType,
+                    t.Instance.EntityId,
+                    t.Instance.EntityDisplayName,
+                    t.Instance.Definition.StatesJson,
+                    t.Instance.Definition.TransitionsJson,
+                    CurrentState = t.Instance.CurrentState,
+                })
+                .ToListAsync(ct);
+
+            legacyLookup = legacyRows.ToDictionary(
+                r => r.Id,
+                r => new LegacyTaskFallback(
+                    r.DefinitionName,
+                    r.DefinitionDisplayName,
+                    r.EntityType,
+                    r.EntityId,
+                    r.EntityDisplayName,
+                    r.StatesJson,
+                    r.TransitionsJson,
+                    r.CurrentState));
+        }
+
         var items = tasks.Select(t =>
         {
-            // Derive available actions from the definition's transitions for
-            // the instance's current state (manual transitions only).
-            List<string>? availableActions = null;
-            List<FormFieldDefinition>? formFields = null;
+            // Resolve denormalized vs legacy values.
+            string definitionName;
+            string entityType;
+            Guid entityId;
+            string? entityDisplayName;
+            List<string>? availableActions;
+            List<FormFieldDefinition>? formFields;
+            int? slaReminderAfterHours;
+
+            if (string.IsNullOrEmpty(t.DefinitionName) && legacyLookup is not null
+                && legacyLookup.TryGetValue(t.Id, out var legacy))
+            {
+                definitionName = legacy.DefinitionName;
+                entityType = legacy.EntityType;
+                entityId = legacy.EntityId;
+                entityDisplayName = legacy.EntityDisplayName;
+                (availableActions, formFields, slaReminderAfterHours) =
+                    DeriveLegacyStateFields(legacy.StatesJson, legacy.TransitionsJson, legacy.CurrentState);
+            }
+            else
+            {
+                definitionName = t.DefinitionName;
+                entityType = t.EntityType;
+                entityId = t.EntityId;
+                entityDisplayName = t.EntityDisplayName;
+                availableActions = DeserializeAvailableActions(t.AvailableActionsJson);
+                formFields = DeserializeFormFields(t.FormFieldsJson);
+                slaReminderAfterHours = t.SlaReminderAfterHours;
+            }
+
+            // Compute overdue from SLA config.
             bool isOverdue = false;
             int? hoursOverdue = null;
-            try
+            if (slaReminderAfterHours.HasValue)
             {
-                var transitions = DeserializeTransitions(t.Instance.Definition.TransitionsJson);
-                availableActions = transitions
-                    .Where(tr => tr.From == t.Instance.CurrentState
-                        && tr.Type.Equals("Manual", StringComparison.OrdinalIgnoreCase))
-                    .Select(tr => tr.Trigger)
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToList();
-
-                var states = DeserializeStates(t.Instance.Definition.StatesJson);
-                var stateConfig = states.FirstOrDefault(s => s.Name == t.Instance.CurrentState);
-                formFields = stateConfig?.FormFields is { Count: > 0 } ? stateConfig.FormFields : null;
-
-                // Compute overdue status from SLA config
-                if (stateConfig?.Sla?.ReminderAfterHours.HasValue == true)
+                var hours = (int)(DateTime.UtcNow - t.CreatedAt).TotalHours;
+                if (hours >= slaReminderAfterHours.Value)
                 {
-                    var hours = (int)(DateTime.UtcNow - t.CreatedAt).TotalHours;
-                    if (hours >= stateConfig.Sla.ReminderAfterHours.Value)
-                    {
-                        isOverdue = true;
-                        hoursOverdue = hours - stateConfig.Sla.ReminderAfterHours.Value;
-                    }
+                    isOverdue = true;
+                    hoursOverdue = hours - slaReminderAfterHours.Value;
                 }
-            }
-            catch
-            {
-                // Swallow deserialization errors — fall back to null
             }
 
             var isDelegated = t.OriginalAssigneeUserId.HasValue;
@@ -669,7 +717,6 @@ public sealed class WorkflowEngine(
             if (isDelegated && delegationNameLookup.TryGetValue(t.OriginalAssigneeUserId!.Value, out var name))
                 delegatedFromDisplayName = name;
 
-            // Parallel group progress
             int? parallelTotal = null;
             int? parallelCompleted = null;
             if (t.GroupId.HasValue && groupCounts.TryGetValue(t.GroupId.Value, out var counts))
@@ -681,15 +728,15 @@ public sealed class WorkflowEngine(
             return new PendingTaskSummary(
                 t.Id,
                 t.InstanceId,
-                t.Instance.Definition.Name,
-                t.Instance.EntityType,
-                t.Instance.EntityId,
+                definitionName,
+                entityType,
+                entityId,
                 t.StepName,
                 t.AssigneeRole,
                 t.CreatedAt,
                 t.DueDate,
                 availableActions,
-                t.Instance.EntityDisplayName,
+                entityDisplayName,
                 FormFields: formFields,
                 GroupId: t.GroupId,
                 ParallelTotal: parallelTotal,
@@ -701,6 +748,56 @@ public sealed class WorkflowEngine(
         }).ToList();
 
         return PaginatedList<PendingTaskSummary>.Create(items, totalCount, pageNumber, pageSize);
+    }
+
+    private sealed record LegacyTaskFallback(
+        string DefinitionName,
+        string? DefinitionDisplayName,
+        string EntityType,
+        Guid EntityId,
+        string? EntityDisplayName,
+        string StatesJson,
+        string TransitionsJson,
+        string CurrentState);
+
+    private static List<string>? DeserializeAvailableActions(string? json)
+    {
+        if (string.IsNullOrEmpty(json)) return null;
+        try { return JsonSerializer.Deserialize<List<string>>(json, JsonOpts); }
+        catch { return null; }
+    }
+
+    private static List<FormFieldDefinition>? DeserializeFormFields(string? json)
+    {
+        if (string.IsNullOrEmpty(json)) return null;
+        try { return JsonSerializer.Deserialize<List<FormFieldDefinition>>(json, JsonOpts); }
+        catch { return null; }
+    }
+
+    private (List<string>? Actions, List<FormFieldDefinition>? FormFields, int? SlaReminderAfterHours)
+        DeriveLegacyStateFields(string statesJson, string transitionsJson, string currentState)
+    {
+        try
+        {
+            var transitions = DeserializeTransitions(transitionsJson);
+            var actions = transitions
+                .Where(tr => tr.From == currentState
+                    && tr.Type.Equals("Manual", StringComparison.OrdinalIgnoreCase))
+                .Select(tr => tr.Trigger)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var states = DeserializeStates(statesJson);
+            var stateConfig = states.FirstOrDefault(s => s.Name == currentState);
+            var formFields = stateConfig?.FormFields is { Count: > 0 } ? stateConfig.FormFields : null;
+            var sla = stateConfig?.Sla?.ReminderAfterHours;
+
+            return (actions, formFields, sla);
+        }
+        catch
+        {
+            return (null, null, null);
+        }
     }
 
     public async Task<int> GetPendingTaskCountAsync(
