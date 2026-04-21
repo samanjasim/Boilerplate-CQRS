@@ -70,4 +70,59 @@ public sealed class ContextualQueryResolverTests
         result.Should().Be("What is the default RRF constant used in hybrid fusion?");
         provider.Calls.Should().Be(0);
     }
+
+    [Fact]
+    public async Task Heuristic_positive_cache_miss_calls_llm_and_caches_result()
+    {
+        var provider = new FakeAiProvider();
+        provider.EnqueueContent("How do we configure Qdrant?");
+        var cache = new FakeCacheService();
+        var svc = Build(provider, cache);
+
+        var result = await svc.ResolveAsync(
+            "how do we configure it?",
+            Hist(("user", "what is qdrant?"), ("assistant", "qdrant is a vector db.")),
+            language: "en", CancellationToken.None);
+
+        result.Should().Be("How do we configure Qdrant?");
+        provider.Calls.Should().Be(1);
+        var second = await svc.ResolveAsync(
+            "how do we configure it?",
+            Hist(("user", "what is qdrant?"), ("assistant", "qdrant is a vector db.")),
+            language: "en", CancellationToken.None);
+        second.Should().Be("How do we configure Qdrant?");
+        provider.Calls.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Strips_surrounding_quotes_from_llm_output()
+    {
+        var provider = new FakeAiProvider();
+        provider.EnqueueContent("\"How do we configure Qdrant?\"");
+        var cache = new FakeCacheService();
+        var svc = Build(provider, cache);
+
+        var result = await svc.ResolveAsync(
+            "how do we configure it?",
+            Hist(("user", "what is qdrant?"), ("assistant", "qdrant is a vector db.")),
+            language: "en", CancellationToken.None);
+
+        result.Should().Be("How do we configure Qdrant?");
+    }
+
+    [Fact]
+    public async Task Empty_llm_response_falls_back_to_raw()
+    {
+        var provider = new FakeAiProvider();
+        provider.EnqueueContent("   ");
+        var cache = new FakeCacheService();
+        var svc = Build(provider, cache);
+
+        var result = await svc.ResolveAsync(
+            "how do we configure it?",
+            Hist(("user", "what is qdrant?"), ("assistant", "qdrant is a vector db.")),
+            language: "en", CancellationToken.None);
+
+        result.Should().Be("how do we configure it?");
+    }
 }
