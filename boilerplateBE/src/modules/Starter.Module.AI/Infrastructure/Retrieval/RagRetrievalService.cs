@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Polly.CircuitBreaker;
 using Starter.Module.AI.Application.Services.Ingestion;
 using Starter.Module.AI.Application.Services.Retrieval;
 using Starter.Module.AI.Domain.Entities;
@@ -597,9 +598,12 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         }
         catch (Exception ex) when (isTransient(ex))
         {
-            outcome = RagStageOutcome.Error;
+            outcome = ex is BrokenCircuitException
+                ? RagStageOutcome.CircuitOpen
+                : RagStageOutcome.Error;
             degraded.Add(stageName);
-            logger?.LogError(ex, "RAG stage '{Stage}' failed", stageName);
+            logger?.LogWarning(ex,
+                "RAG stage '{Stage}' failed ({Outcome})", stageName, outcome);
             return null;
         }
         finally

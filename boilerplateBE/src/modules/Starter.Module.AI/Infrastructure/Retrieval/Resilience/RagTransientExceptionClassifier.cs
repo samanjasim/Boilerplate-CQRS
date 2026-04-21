@@ -1,5 +1,6 @@
 using System.Data.Common;
 using System.Net.Http;
+using Polly.CircuitBreaker;
 
 namespace Starter.Module.AI.Infrastructure.Retrieval.Resilience;
 
@@ -17,5 +18,6 @@ internal static class RagTransientExceptionClassifier
            or TimeoutException
            or DbException
            or Grpc.Core.RpcException
-           or TaskCanceledException;
+           or TaskCanceledException
+           or BrokenCircuitException;
 }

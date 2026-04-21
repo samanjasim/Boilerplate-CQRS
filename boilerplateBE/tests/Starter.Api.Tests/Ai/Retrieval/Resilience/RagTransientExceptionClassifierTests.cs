@@ -41,6 +41,13 @@ public class RagTransientExceptionClassifierTests
         RagTransientExceptionClassifier.IsTransient(ex).Should().BeFalse();
     }
 
+    [Fact]
+    public void BrokenCircuitException_is_transient()
+    {
+        var ex = new Polly.CircuitBreaker.BrokenCircuitException();
+        RagTransientExceptionClassifier.IsTransient(ex).Should().BeTrue();
+    }
+
     private sealed class FakeDbException : DbException
     {
         public FakeDbException() : base("fake") { }
