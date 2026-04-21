@@ -92,8 +92,21 @@ public sealed class GetPendingTasksPaginationTests : IDisposable
         for (int i = 0; i < count; i++)
         {
             var task = ApprovalTask.Create(
-                _tenantId, instanceId, "PendingApproval",
-                _userId, null, null, null, "Order", Guid.NewGuid());
+                tenantId: _tenantId,
+                instanceId: instanceId,
+                stepName: "PendingApproval",
+                assigneeUserId: _userId,
+                assigneeRole: null,
+                assigneeStrategyJson: null,
+                dueDate: null,
+                entityType: "Order",
+                entityId: Guid.NewGuid(),
+                definitionName: "PaginationTest",
+                definitionDisplayName: "Pagination Test",
+                entityDisplayName: null,
+                formFieldsJson: null,
+                availableActionsJson: "[]",
+                slaReminderAfterHours: null);
             _db.ApprovalTasks.Add(task);
         }
         await _db.SaveChangesAsync();

@@ -937,6 +937,22 @@ public sealed class WorkflowEngine(
         Guid initiatorUserId,
         CancellationToken ct)
     {
+        // Pre-compute denormalized fields shared by both parallel + single-assignee branches.
+        var formFieldsJson = stateConfig.FormFields is { Count: > 0 }
+            ? JsonSerializer.Serialize(stateConfig.FormFields, JsonOpts)
+            : null;
+
+        var transitions = DeserializeTransitions(definition.TransitionsJson);
+        var availableActions = transitions
+            .Where(tr => tr.From == stateConfig.Name
+                && tr.Type.Equals("Manual", StringComparison.OrdinalIgnoreCase))
+            .Select(tr => tr.Trigger)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var availableActionsJson = JsonSerializer.Serialize(availableActions, JsonOpts);
+
+        var slaReminderAfterHours = stateConfig.Sla?.ReminderAfterHours;
+
         // Parallel mode: create one task per assignee with a shared GroupId
         if (stateConfig.Parallel is { Assignees.Count: > 0 })
         {
@@ -970,15 +986,21 @@ public sealed class WorkflowEngine(
                         ? origId : null;
 
                 var task = ApprovalTask.Create(
-                    instance.TenantId,
-                    instance.Id,
-                    stateConfig.Name,
-                    userId,
-                    role,
-                    strategyJson,
+                    tenantId: instance.TenantId,
+                    instanceId: instance.Id,
+                    stepName: stateConfig.Name,
+                    assigneeUserId: userId,
+                    assigneeRole: role,
+                    assigneeStrategyJson: strategyJson,
                     dueDate: null,
                     entityType: instance.EntityType,
                     entityId: instance.EntityId,
+                    definitionName: definition.Name,
+                    definitionDisplayName: definition.DisplayName,
+                    entityDisplayName: instance.EntityDisplayName,
+                    formFieldsJson: formFieldsJson,
+                    availableActionsJson: availableActionsJson,
+                    slaReminderAfterHours: slaReminderAfterHours,
                     groupId: groupId,
                     originalAssigneeUserId: originalAssigneeUserId);
 
@@ -1027,15 +1049,21 @@ public sealed class WorkflowEngine(
         }
 
         var approvalTask = ApprovalTask.Create(
-            instance.TenantId,
-            instance.Id,
-            stateConfig.Name,
-            assigneeUserId,
-            assigneeRole,
-            assigneeStrategyJson,
+            tenantId: instance.TenantId,
+            instanceId: instance.Id,
+            stepName: stateConfig.Name,
+            assigneeUserId: assigneeUserId,
+            assigneeRole: assigneeRole,
+            assigneeStrategyJson: assigneeStrategyJson,
             dueDate: null,
             entityType: instance.EntityType,
             entityId: instance.EntityId,
+            definitionName: definition.Name,
+            definitionDisplayName: definition.DisplayName,
+            entityDisplayName: instance.EntityDisplayName,
+            formFieldsJson: formFieldsJson,
+            availableActionsJson: availableActionsJson,
+            slaReminderAfterHours: slaReminderAfterHours,
             originalAssigneeUserId: originalAssignee);
 
         context.ApprovalTasks.Add(approvalTask);
