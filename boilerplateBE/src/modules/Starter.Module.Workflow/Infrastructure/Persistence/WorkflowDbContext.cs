@@ -1,4 +1,5 @@
 using System.Reflection;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Starter.Abstractions.Modularity;
 using Starter.Application.Common.Interfaces;
@@ -35,6 +36,11 @@ public sealed class WorkflowDbContext : DbContext, IModuleDbContext
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+
+        // MassTransit transactional outbox tables (OutboxMessage, OutboxState, InboxState).
+        // Bound to WorkflowDbContext so workflow integration events publish atomically
+        // with workflow state changes. See Phase 2b spec.
+        modelBuilder.AddTransactionalOutboxEntities();
 
         // System templates (TenantId=null) are visible to ALL tenants
         modelBuilder.Entity<WorkflowDefinition>().HasQueryFilter(d =>
