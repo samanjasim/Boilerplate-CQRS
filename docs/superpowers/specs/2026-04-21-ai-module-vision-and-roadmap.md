@@ -64,7 +64,7 @@ Domain modules extend the AI module through two primitives:
 - **Tools** — MediatR commands auto-discovered by the existing tool registry, callable by any agent whose admin enables them.
 - **Agent Templates** — a module-registered bundle of `(system prompt + curated tool list + seed KB documents + default settings)`. Tenant admins "install" a template and get a pre-configured assistant they can then customise. Templates are the "agent as a product" unit.
 
-A **Full Domain Adapter** pattern (custom retrieval pipelines per-domain, UI slots, orchestration hooks) is documented as a future direction in the *Deferred* section below but not implemented until a concrete need surfaces.
+A **Full Domain Adapter** pattern (custom retrieval pipelines per-domain, page-override hooks, orchestration overrides beyond what Tools and Templates express) is documented as a future direction in the *Deferred* section below but not implemented until a concrete need surfaces. Note: the `<AiSurfaceSlot />` placement system introduced in Decision 5 is a narrower, opinionated mechanism for insights and actions — it is not the same as the deferred Full Domain Adapter.
 
 ### Decision 4 — Delegate reasoning loops to provider-native runtimes
 
@@ -90,16 +90,38 @@ The boilerplate does **not** reimplement agent reasoning loops, plan-mode behavi
 
 **Rationale.** Every time a provider ships a new loop capability — reasoning models, plan-mode, built-in search — we absorb it by upgrading the SDK. If we'd built our own loop, each advance would require re-engineering. Across all four pillars this approach is strictly better or equal; the only measurable constraint is that OpenAI's server-side Responses-API loop does not let us inject code between steps. For agents that need fine-grained per-step interception, route them to the in-process Anthropic or Ollama runtime.
 
+### Decision 5 — Embedded AI surfaces: Insights, Actions, Automations
+
+Chat is one entry point, not the only one. The boilerplate exposes three named primitives that domain modules and tenant admins use to embed AI *inline* with existing workflows, plus a cross-cutting Activity view over all agent runs.
+
+**Primitives:**
+- **Insight** — read-only. Produces structured data rendered as a card (numbers, lists, short narratives). Hybrid cadence: on-demand for contextual/cheap insights ("summarise *this* student's recent attendance"), precomputed by scheduled runs for expensive/cohort insights ("at-risk cohort for the term", "this week's sales anomalies"). Registered by modules via a `RegisterInsight(name, context, prompt, tools, outputSchema, refresh)` helper.
+- **Action** — one-click AI operation bound to a record or context. Produces a result the user previews and confirms/executes ("Draft follow-up email to this lead", "Generate ad copy for this product"). Inherits Decision 2's user-invoker identity; dangerous actions use the `[DangerousAction]` pause from Plan 5c.
+- **Automation** — event- or cron-triggered agent run with no UI invocation. Runs as the service account from Decision 2. Writes to the Activity feed and may emit webhooks per Plan 4b-4. Triggers include domain events ("LeadCreated", "EnrolmentChanged") and cron ("nightly 02:00").
+
+**Placement — slot-based.** Pages declare named slots (`<AiSurfaceSlot name="student.detail.sidebar" context={{ studentId }} />`). Modules register insights and actions targeting slots. Tenant admins enable/disable/reorder items per slot and toggle precomputed refresh cadence through the Embedded AI admin UI. Parallels the existing Flutter modular nav-item pattern on the web.
+
+**Authorship — developer-seeded, tenant-customisable.** Modules ship opinionated defaults in code. Tenant admins can (a) enable/disable shipped insights per tenant, (b) edit prompt / tool list / refresh cadence, (c) create new insights and actions from scratch by selecting tool + prompt + target slot through the admin UI. No code is required for (a), (b), or (c). Symmetric with the Templates model (Decision 3).
+
+**Activity view — two audiences, one data source.**
+- *Admin run-trace dashboard* — step-by-step trace of recent agent runs across all three primitives (tool calls, tokens, durations, degradations, errors). Powered by Plan 4b-4 observability. For troubleshooting and cost attribution.
+- *End-user outcome inbox* — notifications-tray style panel showing outcomes of runs that affect the current user ("The Attendance Agent flagged 3 at-risk students", with links to records). Each run emits a short, typed outcome summary alongside its detailed trace.
+
+Both views read the same run records; audience selection is projection plus permission.
+
+**Rationale.** This surface is the difference between "the platform has a chat" and "the platform is AI-native". It reuses every piece of plumbing from Plans 3–5 — tool registry, RAG, agent runtime, identity model, cost caps, observability — and adds three narrow primitives plus a slot system on top. The three primitives are kept distinct because the admin mental models genuinely differ: configuring an insight card, wiring an inline action, and scheduling an automation are three different jobs to be done.
+
 ---
 
 ## Principles
 
 1. **Wrap, don't rebuild.** Prefer provider-native capabilities behind a thin interface over re-implementations.
-2. **Agents are products.** Templates are the unit of distribution; treat them with the same care as a shippable feature.
-3. **Least privilege by default.** Service accounts start with minimal roles; admins escalate explicitly.
-4. **Observe everything.** Every tool call, step, cost increment, and outcome is logged, metered, and webhook-broadcast.
-5. **Bilingual from the start.** English and Arabic are first-class for every new capability (prompts, retrieval, moderation, UI).
-6. **Fail degraded, not silent.** Timeouts and errors surface as typed degradations (already established in Plan 4b-4), never as empty results.
+2. **Agents are products.** Templates, insights, and actions are units of distribution; treat them with the same care as a shippable feature.
+3. **AI is inline, not only behind chat.** Insights, actions, and automations sit in the workflows users are already in.
+4. **Least privilege by default.** Service accounts start with minimal roles; admins escalate explicitly.
+5. **Observe everything.** Every tool call, step, cost increment, and outcome is logged, metered, and webhook-broadcast.
+6. **Bilingual from the start.** English and Arabic are first-class for every new capability (prompts, retrieval, moderation, UI).
+7. **Fail degraded, not silent.** Timeouts and errors surface as typed degradations (already established in Plan 4b-4), never as empty results.
 
 ---
 
@@ -148,13 +170,23 @@ Plan 4 is complete when 4b-9 ships.
 | 6 | Chat Sidebar UI (global slide-in, assistant selector, streaming markdown, citation hover, quota bar, keyboard toggle). | L |
 | 7 | Admin Pages (Assistants, Knowledge Base, AI Tools, Agent Triggers, Usage Dashboard, Templates install/manage). | L |
 
+### Plan 8 — Embedded AI Surfaces
+
+| Plan | Scope | Size |
+|---|---|---|
+| 8a | Insight primitive + slot system. Backend `RegisterInsight` helper, hybrid cadence scheduler (on-demand vs precomputed), typed output schemas, `<AiSurfaceSlot />` frontend registry, default card renderers. | L |
+| 8b | Action primitive. One-click execute flow with preview/confirm, `[DangerousAction]` pause integration (on top of Plan 5c), inline action slot registration. | M |
+| 8c | Automation primitive. Event bus wiring (domain events → automations), cron-triggered automations (on top of Plan 5c triggers), outcome-summary emission, webhook extensions. | M |
+| 8d | Activity Views. Admin run-trace dashboard (trace + tokens + degradations) plus end-user outcome inbox (notification-style panel). Both backed by the same run store. | M |
+| 8e | Embedded AI admin UI. Per-slot enable/disable/reorder, prompt/tool editor for insights and actions, automation trigger editor, tenant-level "new insight/action from scratch" builder. | L |
+
 ### New dimensions
 
 | Plan | Scope | Size |
 |---|---|---|
-| 8 | Mobile chat client (Flutter). | L |
-| 9 | Multi-modal: image/video/audio generation with `IAiImageGenerator` / `IAiVideoGenerator` / `IAiAudioGenerator` abstractions; provider adapters; content moderation; asset storage via existing MinIO. | L |
-| 10 | Marketplace & Cost Governance (superadmin publishing templates across tenants, per-tenant budgets, billing integration, opt-in/opt-out, enforcement). | M |
+| 9 | Mobile chat client (Flutter). | L |
+| 10 | Multi-modal: image/video/audio generation with `IAiImageGenerator` / `IAiVideoGenerator` / `IAiAudioGenerator` abstractions; provider adapters; content moderation; asset storage via existing MinIO. | L |
+| 11 | Marketplace & Cost Governance (superadmin publishing templates and embedded-AI surfaces across tenants, per-tenant budgets, billing integration, opt-in/opt-out, enforcement). | M |
 
 ---
 
@@ -179,10 +211,12 @@ A developer generating a new project from the boilerplate receives, out of the b
 - An admin UI to create assistants, upload knowledge, enable tools, schedule agent triggers, and install/manage templates.
 - Autonomous agents with cron and event triggers, human-in-the-loop for dangerous actions, per-agent cost caps, and a full audit trail.
 - A chat sidebar that end-users can open from any page.
+- Embedded AI surfaces: insight cards inline on domain pages, one-click AI actions bound to records, event- and cron-driven automations that write to an end-user outcome inbox and an admin run-trace dashboard.
+- A slot-based placement system so domain modules register insights and actions onto pages without the AI module needing to know about them.
 - Mobile chat in Flutter.
 - Image, video, and audio generation with content moderation and asset storage.
-- Superadmin publishing of agent templates across tenants with per-tenant budgets and billing integration.
-- Extension points for downstream modules to ship their own AI agents (HR, Tutor, Social Media, etc.) as templates — without modifying the AI module.
+- Superadmin publishing of agent templates and embedded-AI surfaces across tenants with per-tenant budgets and billing integration.
+- Extension points for downstream modules to ship their own AI agents (HR, Tutor, Social Media, etc.) as templates plus their own insights, actions, and automations — without modifying the AI module.
 
 A product developer's effort to build an AI-enabled SaaS on top of this boilerplate collapses to: configure provider keys, write a few domain tools as MediatR commands, register one or two Agent Templates, customise prompts, ship.
 
@@ -192,10 +226,10 @@ A product developer's effort to build an AI-enabled SaaS on top of this boilerpl
 
 | Pillar | Primary plans | Supporting plans |
 |---|---|---|
-| 1. Tenant/superadmin-authored agents | 3, 5b, 7 | 4a–4b family (RAG), 6, 10 |
-| 2. Domain operational agents | 5a, 5b | Future domain modules (HR, Tutor, …) each ship their own Template(s) |
-| 3. System-wide AI with permissions | 5a, 5c, 5d | `docs/ai-friendly-modules.md`, Plan 7 |
-| 4. AI-first products | 9 | 5a, 5b, 10; future product modules (Social Media, …) |
+| 1. Tenant/superadmin-authored agents | 3, 5b, 7, 8e | 4a–4b family (RAG), 6, 11 |
+| 2. Domain operational agents | 5a, 5b, 8a–8d | Future domain modules (HR, Tutor, …) each ship their own Template(s), insights, actions, automations |
+| 3. System-wide AI with permissions | 5a, 5c, 5d, 8c, 8d | `docs/ai-friendly-modules.md`, Plan 7 |
+| 4. AI-first products | 10 | 5a, 5b, 8b, 11; future product modules (Social Media, …) |
 
 ---
 
