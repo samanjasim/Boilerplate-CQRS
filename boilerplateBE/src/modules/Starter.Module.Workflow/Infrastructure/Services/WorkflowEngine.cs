@@ -644,7 +644,6 @@ public sealed class WorkflowEngine(
                 {
                     t.Id,
                     DefinitionName = t.Instance.Definition.Name,
-                    DefinitionDisplayName = t.Instance.Definition.DisplayName,
                     t.Instance.EntityType,
                     t.Instance.EntityId,
                     t.Instance.EntityDisplayName,
@@ -658,7 +657,6 @@ public sealed class WorkflowEngine(
                 r => r.Id,
                 r => new LegacyTaskFallback(
                     r.DefinitionName,
-                    r.DefinitionDisplayName,
                     r.EntityType,
                     r.EntityId,
                     r.EntityDisplayName,
@@ -712,7 +710,9 @@ public sealed class WorkflowEngine(
                 }
             }
 
-            var isDelegated = t.OriginalAssigneeUserId.HasValue;
+            // Only treat as delegated when the caller is NOT themselves the original assignee —
+            // otherwise a pending reassignment returning to the original would render as "me delegated to me".
+            var isDelegated = t.OriginalAssigneeUserId.HasValue && t.OriginalAssigneeUserId.Value != userId;
             string? delegatedFromDisplayName = null;
             if (isDelegated && delegationNameLookup.TryGetValue(t.OriginalAssigneeUserId!.Value, out var name))
                 delegatedFromDisplayName = name;
@@ -752,7 +752,6 @@ public sealed class WorkflowEngine(
 
     private sealed record LegacyTaskFallback(
         string DefinitionName,
-        string? DefinitionDisplayName,
         string EntityType,
         Guid EntityId,
         string? EntityDisplayName,
@@ -760,18 +759,26 @@ public sealed class WorkflowEngine(
         string TransitionsJson,
         string CurrentState);
 
-    private static List<string>? DeserializeAvailableActions(string? json)
+    private List<string>? DeserializeAvailableActions(string? json)
     {
         if (string.IsNullOrEmpty(json)) return null;
         try { return JsonSerializer.Deserialize<List<string>>(json, JsonOpts); }
-        catch { return null; }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Failed to deserialize AvailableActionsJson");
+            return null;
+        }
     }
 
-    private static List<FormFieldDefinition>? DeserializeFormFields(string? json)
+    private List<FormFieldDefinition>? DeserializeFormFields(string? json)
     {
         if (string.IsNullOrEmpty(json)) return null;
         try { return JsonSerializer.Deserialize<List<FormFieldDefinition>>(json, JsonOpts); }
-        catch { return null; }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Failed to deserialize FormFieldsJson");
+            return null;
+        }
     }
 
     private (List<string>? Actions, List<FormFieldDefinition>? FormFields, int? SlaReminderAfterHours)
@@ -794,8 +801,9 @@ public sealed class WorkflowEngine(
 
             return (actions, formFields, sla);
         }
-        catch
+        catch (Exception ex)
         {
+            logger.LogWarning(ex, "Failed to derive legacy state fields for state {CurrentState}", currentState);
             return (null, null, null);
         }
     }
