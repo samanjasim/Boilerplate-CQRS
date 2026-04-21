@@ -184,4 +184,82 @@ public sealed class PendingTasksDenormalizationTests : IDisposable
         item.EntityDisplayName.Should().Be("Order #42");
         item.AvailableActions.Should().BeEquivalentTo("Approve", "Reject");
     }
+
+    [Fact]
+    public async Task GetPendingTasks_LegacyTasks_FallbackToJoin()
+    {
+        // Arrange — seed a definition + instance + a task with EMPTY denormalized columns
+        // (simulates a row that existed before the Phase 2b migration ran).
+        var states = new List<WorkflowStateConfig>
+        {
+            new("Draft", "Draft", "Initial"),
+            new("Review", "Review", "HumanTask",
+                Actions: ["Approve", "Reject"],
+                FormFields: [new("note", "Note", "text", Required: false)],
+                Sla: new(ReminderAfterHours: 2)),
+        };
+        var transitions = new List<WorkflowTransitionConfig>
+        {
+            new("Draft", "Review", "Submit"),
+            new("Review", "Draft", "Approve", Type: "Manual"),
+            new("Review", "Draft", "Reject", Type: "Manual"),
+        };
+
+        var def = WorkflowDefinition.Create(
+            tenantId: _tenantId,
+            name: "LegacyFlow",
+            displayName: "Legacy Flow",
+            entityType: "Doc",
+            statesJson: JsonSerializer.Serialize(states),
+            transitionsJson: JsonSerializer.Serialize(transitions),
+            isTemplate: false,
+            sourceModule: "Tests");
+        _db.WorkflowDefinitions.Add(def);
+
+        var instance = WorkflowInstance.Create(
+            tenantId: _tenantId,
+            definitionId: def.Id,
+            entityType: "Doc",
+            entityId: Guid.NewGuid(),
+            initialState: "Review",
+            startedByUserId: _userId,
+            contextJson: null,
+            definitionName: def.DisplayName,
+            entityDisplayName: "Q3 Roadmap");
+        _db.WorkflowInstances.Add(instance);
+        await _db.SaveChangesAsync();
+
+        // Insert a task with a placeholder definitionName; we'll wipe it post-save to simulate legacy.
+        var legacyTask = ApprovalTask.Create(
+            tenantId: _tenantId,
+            instanceId: instance.Id,
+            stepName: "Review",
+            assigneeUserId: _userId,
+            assigneeRole: null,
+            assigneeStrategyJson: null,
+            entityType: "Doc",
+            entityId: instance.EntityId,
+            definitionName: "PLACEHOLDER",
+            availableActionsJson: "[]");
+        _db.ApprovalTasks.Add(legacyTask);
+        await _db.SaveChangesAsync();
+
+        // Wipe the denormalized column to simulate a pre-Phase-2b row.
+        var entry = _db.Entry(legacyTask);
+        entry.Property(nameof(ApprovalTask.DefinitionName)).CurrentValue = string.Empty;
+        await _db.SaveChangesAsync();
+
+        // Act
+        var page = await _sut.GetPendingTasksAsync(_userId, pageNumber: 1, pageSize: 10);
+
+        // Assert — fallback fills in fields by joining Instance + Definition + StateConfig.
+        page.Items.Should().HaveCount(1);
+        var item = page.Items.Single();
+        item.DefinitionName.Should().Be("LegacyFlow");
+        item.EntityType.Should().Be("Doc");
+        item.EntityDisplayName.Should().Be("Q3 Roadmap");
+        item.AvailableActions.Should().BeEquivalentTo("Approve", "Reject");
+        item.FormFields.Should().NotBeNull();
+        item.FormFields!.Should().ContainSingle(f => f.Name == "note");
+    }
 }
