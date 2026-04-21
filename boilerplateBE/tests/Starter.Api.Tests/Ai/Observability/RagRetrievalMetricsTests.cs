@@ -103,6 +103,7 @@ public class RagRetrievalMetricsTests
             new FakeKeywordSearchService(),
             new Fakes.FakeEmbeddingService(),
             new NoOpQueryRewriter(),
+            new NoOpContextualQueryResolver(),
             new NoOpQuestionClassifier(),
             new NoOpReranker(),
             new RerankStrategySelector(settings),
@@ -146,6 +147,7 @@ public class RagRetrievalMetricsTests
             new FakeKeywordSearchService(),
             new Fakes.FakeEmbeddingService(),
             new NoOpQueryRewriter(),
+            new NoOpContextualQueryResolver(),
             new NoOpQuestionClassifier(),
             new NoOpReranker(),
             new RerankStrategySelector(settings),
@@ -185,6 +187,7 @@ public class RagRetrievalMetricsTests
             new FakeKeywordSearchService(),
             new Fakes.FakeEmbeddingService(),
             new NoOpQueryRewriter(),
+            new NoOpContextualQueryResolver(),
             new NoOpQuestionClassifier(),
             new NoOpReranker(),
             new RerankStrategySelector(settings),
@@ -219,6 +222,7 @@ public class RagRetrievalMetricsTests
             new FakeKeywordSearchService(),
             new Fakes.FakeEmbeddingService(),
             new NoOpQueryRewriter(),
+            new NoOpContextualQueryResolver(),
             new NoOpQuestionClassifier(),
             new NoOpReranker(),
             new RerankStrategySelector(settings),
@@ -332,6 +336,7 @@ public class RagRetrievalMetricsTests
                 new FakeKeywordSearchService(),
                 new Fakes.FakeEmbeddingService(),
                 new NoOpQueryRewriter(),
+                new NoOpContextualQueryResolver(),
                 new NoOpQuestionClassifier(),
                 new NoOpReranker(),
                 new RerankStrategySelector(settings),
@@ -382,5 +387,92 @@ public class RagRetrievalMetricsTests
         names.Should().Contain("rag.context.tokens");
         names.Should().Contain("rag.context.truncated");
         names.Should().Contain("rag.degraded.stages");
+    }
+
+    [Fact]
+    public async Task Contextualize_stage_emits_duration_and_outcome_when_history_present()
+    {
+        using var listener = new TestMeterListener(AiRagMetrics.MeterName);
+
+        var options = new DbContextOptionsBuilder<AiDbContext>()
+            .UseInMemoryDatabase($"rag-contextualize-{Guid.NewGuid():N}").Options;
+        await using var db = new AiDbContext(options, currentUserService: null);
+
+        var settings = new AiRagSettings();
+        var svc = new RagRetrievalService(
+            db,
+            new FakeVectorStore(),
+            new FakeKeywordSearchService(),
+            new Fakes.FakeEmbeddingService(),
+            new NoOpQueryRewriter(),
+            new NoOpContextualQueryResolver(),
+            new NoOpQuestionClassifier(),
+            new NoOpReranker(),
+            new RerankStrategySelector(settings),
+            new NoOpNeighborExpander(),
+            new TokenCounter(),
+            Options.Create(settings),
+            NullLogger<RagRetrievalService>.Instance);
+
+        var tenantId = Guid.NewGuid();
+        var assistant = AiAssistant.Create(tenantId, "A", null, "p");
+        assistant.SetRagScope(AiRagScope.AllTenantDocuments);
+
+        var history = new[]
+        {
+            new RagHistoryMessage("user", "what is the pump model?"),
+            new RagHistoryMessage("assistant", "It is an XR-200 centrifugal pump."),
+        };
+
+        _ = await svc.RetrieveForTurnAsync(assistant, "how do we configure it?", history, CancellationToken.None);
+
+        var snapshot = listener.Snapshot();
+
+        snapshot.Should().Contain(m =>
+            m.InstrumentName == "rag.stage.duration"
+            && (string?)m.Tags["rag.stage"] == RagStages.Contextualize);
+
+        snapshot.Should().Contain(m =>
+            m.InstrumentName == "rag.stage.outcome"
+            && (string?)m.Tags["rag.stage"] == RagStages.Contextualize
+            && (string?)m.Tags["rag.outcome"] == "success");
+    }
+
+    [Fact]
+    public async Task Contextualize_stage_absent_when_history_empty()
+    {
+        using var listener = new TestMeterListener(AiRagMetrics.MeterName);
+
+        var options = new DbContextOptionsBuilder<AiDbContext>()
+            .UseInMemoryDatabase($"rag-contextualize-nohist-{Guid.NewGuid():N}").Options;
+        await using var db = new AiDbContext(options, currentUserService: null);
+
+        var settings = new AiRagSettings();
+        var svc = new RagRetrievalService(
+            db,
+            new FakeVectorStore(),
+            new FakeKeywordSearchService(),
+            new Fakes.FakeEmbeddingService(),
+            new NoOpQueryRewriter(),
+            new NoOpContextualQueryResolver(),
+            new NoOpQuestionClassifier(),
+            new NoOpReranker(),
+            new RerankStrategySelector(settings),
+            new NoOpNeighborExpander(),
+            new TokenCounter(),
+            Options.Create(settings),
+            NullLogger<RagRetrievalService>.Instance);
+
+        var tenantId = Guid.NewGuid();
+        var assistant = AiAssistant.Create(tenantId, "A", null, "p");
+        assistant.SetRagScope(AiRagScope.AllTenantDocuments);
+
+        _ = await svc.RetrieveForTurnAsync(assistant, "what is qdrant?", Array.Empty<RagHistoryMessage>(), CancellationToken.None);
+
+        var snapshot = listener.Snapshot();
+
+        snapshot.Should().NotContain(m =>
+            m.InstrumentName == "rag.stage.outcome"
+            && (string?)m.Tags["rag.stage"] == RagStages.Contextualize);
     }
 }

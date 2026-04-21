@@ -90,6 +90,7 @@ public sealed class QueryIntelligencePipelineTests
             kw,
             new FakeEmbeddingService(),
             rewriter,
+            new NoOpContextualQueryResolver(),
             classifier,
             reranker,
             selector,

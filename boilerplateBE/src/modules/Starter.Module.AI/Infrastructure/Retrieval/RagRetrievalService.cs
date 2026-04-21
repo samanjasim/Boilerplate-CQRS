@@ -22,6 +22,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
     private readonly IKeywordSearchService _keywordSearch;
     private readonly IEmbeddingService _embeddingService;
     private readonly IQueryRewriter _queryRewriter;
+    private readonly IContextualQueryResolver _contextualResolver;
     private readonly IQuestionClassifier _classifier;
     private readonly IReranker _reranker;
     private readonly RerankStrategySelector _rerankSelector;
@@ -36,6 +37,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         IKeywordSearchService keywordSearch,
         IEmbeddingService embeddingService,
         IQueryRewriter queryRewriter,
+        IContextualQueryResolver contextualResolver,
         IQuestionClassifier classifier,
         IReranker reranker,
         RerankStrategySelector rerankSelector,
@@ -49,6 +51,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         _keywordSearch = keywordSearch;
         _embeddingService = embeddingService;
         _queryRewriter = queryRewriter;
+        _contextualResolver = contextualResolver;
         _classifier = classifier;
         _reranker = reranker;
         _rerankSelector = rerankSelector;
@@ -64,8 +67,6 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         IReadOnlyList<RagHistoryMessage> history,
         CancellationToken ct)
     {
-        _ = history; // reserved for Task 9 (contextualize stage wiring)
-
         if (assistant.RagScope == AiRagScope.None)
             throw new InvalidOperationException(
                 "Caller must ensure RagScope != None before invoking retrieval.");
@@ -75,9 +76,39 @@ internal sealed class RagRetrievalService : IRagRetrievalService
             ? assistant.KnowledgeBaseDocIds.ToList()
             : null;
 
+        string effectiveQuery = latestUserMessage;
+        var degradedForContext = new List<string>();
+
+        if (_settings.EnableContextualRewrite && history.Count > 0)
+        {
+            var detectedLang = RagLanguageDetector.Detect(latestUserMessage);
+            var resolved = await WithTimeoutAsync(
+                innerCt => _contextualResolver.ResolveAsync(latestUserMessage, history, detectedLang, innerCt),
+                _settings.StageTimeoutContextualizeMs,
+                RagStages.Contextualize,
+                degradedForContext,
+                ct);
+
+            if (!string.IsNullOrWhiteSpace(resolved))
+                effectiveQuery = resolved;
+        }
+
+        if (degradedForContext.Count > 0)
+        {
+            return await RetrieveForQueryInternalAsync(
+                tenantId,
+                effectiveQuery,
+                docFilter,
+                _settings.TopK,
+                _settings.MinHybridScore,
+                _settings.IncludeParentContext,
+                seedDegraded: degradedForContext,
+                ct);
+        }
+
         return await RetrieveForQueryAsync(
             tenantId,
-            latestUserMessage,
+            effectiveQuery,
             docFilter,
             _settings.TopK,
             _settings.MinHybridScore,
@@ -85,13 +116,24 @@ internal sealed class RagRetrievalService : IRagRetrievalService
             ct);
     }
 
-    public async Task<RetrievedContext> RetrieveForQueryAsync(
+    public Task<RetrievedContext> RetrieveForQueryAsync(
         Guid tenantId,
         string queryText,
         IReadOnlyCollection<Guid>? documentFilter,
         int topK,
         decimal? minScore,
         bool includeParents,
+        CancellationToken ct)
+        => RetrieveForQueryInternalAsync(tenantId, queryText, documentFilter, topK, minScore, includeParents, seedDegraded: null, ct);
+
+    private async Task<RetrievedContext> RetrieveForQueryInternalAsync(
+        Guid tenantId,
+        string queryText,
+        IReadOnlyCollection<Guid>? documentFilter,
+        int topK,
+        decimal? minScore,
+        bool includeParents,
+        IReadOnlyList<string>? seedDegraded,
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(queryText))
@@ -105,7 +147,9 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         using var activity = RagActivitySource.Source.StartActivity("rag.retrieve", ActivityKind.Internal);
         activity?.SetTag(RagTracingTags.RetrieveTopK, topK);
 
-        var degraded = new List<string>();
+        var degraded = seedDegraded is { Count: > 0 }
+            ? new List<string>(seedDegraded)
+            : new List<string>();
 
         // 0. Classify the question. Short-circuits greetings and passes QuestionType
         // downstream for the reranker strategy selector.

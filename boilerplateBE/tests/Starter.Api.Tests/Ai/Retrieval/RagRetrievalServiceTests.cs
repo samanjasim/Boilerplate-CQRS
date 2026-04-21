@@ -52,6 +52,7 @@ public sealed class RagRetrievalServiceTests
             kw ?? new FakeKeywordSearchService(),
             new FakeEmbeddingService(),
             new NoOpQueryRewriter(),
+            new NoOpContextualQueryResolver(),
             classifier ?? new NoOpQuestionClassifier(),
             reranker ?? new NoOpReranker(),
             new RerankStrategySelector(ragSettings),

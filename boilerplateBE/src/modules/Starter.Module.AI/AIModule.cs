@@ -88,6 +88,7 @@ public sealed class AIModule : IModule
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<Infrastructure.Settings.AiRagSettings>>()));
         services.AddScoped<IKeywordSearchService, Infrastructure.Retrieval.PostgresKeywordSearchService>();
         services.AddScoped<IQueryRewriter, Infrastructure.Retrieval.QueryRewriting.QueryRewriter>();
+        services.AddScoped<IContextualQueryResolver, Infrastructure.Retrieval.QueryRewriting.ContextualQueryResolver>();
         services.AddScoped<Infrastructure.Retrieval.Reranking.RerankStrategySelector>(sp =>
             new Infrastructure.Retrieval.Reranking.RerankStrategySelector(
                 sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<AiRagSettings>>().Value));
