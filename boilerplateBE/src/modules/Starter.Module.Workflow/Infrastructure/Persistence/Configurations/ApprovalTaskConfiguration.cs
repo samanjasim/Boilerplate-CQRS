@@ -72,6 +72,40 @@ public sealed class ApprovalTaskConfiguration : IEntityTypeConfiguration<Approva
         builder.Property(t => t.OriginalAssigneeUserId)
             .HasColumnName("original_assignee_user_id");
 
+        builder.Property(t => t.DefinitionName)
+            .HasColumnName("definition_name")
+            .HasMaxLength(200)
+            .IsRequired();
+
+        builder.Property(t => t.DefinitionDisplayName)
+            .HasColumnName("definition_display_name")
+            .HasMaxLength(200);
+
+        builder.Property(t => t.EntityType)
+            .HasColumnName("entity_type")
+            .HasMaxLength(100)
+            .IsRequired();
+
+        builder.Property(t => t.EntityId)
+            .HasColumnName("entity_id")
+            .IsRequired();
+
+        builder.Property(t => t.EntityDisplayName)
+            .HasColumnName("entity_display_name")
+            .HasMaxLength(200);
+
+        builder.Property(t => t.FormFieldsJson)
+            .HasColumnName("form_fields_json")
+            .HasColumnType("text");
+
+        builder.Property(t => t.AvailableActionsJson)
+            .HasColumnName("available_actions_json")
+            .HasColumnType("text")
+            .IsRequired();
+
+        builder.Property(t => t.SlaReminderAfterHours)
+            .HasColumnName("sla_reminder_after_hours");
+
         builder.Property(t => t.CreatedAt)
             .HasColumnName("created_at")
             .IsRequired();

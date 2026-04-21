@@ -186,16 +186,23 @@ public sealed class SlaEscalationJob(
         }
 
         // Create a new escalated task
+        // Snapshot semantics: escalations preserve the definition/entity state as of original task creation.
         var escalatedTask = ApprovalTask.Create(
-            task.TenantId,
-            task.InstanceId,
-            task.StepName,
-            newAssigneeId,
-            task.AssigneeRole,
-            task.AssigneeStrategyJson,
+            tenantId: task.TenantId,
+            instanceId: task.InstanceId,
+            stepName: task.StepName,
+            assigneeUserId: newAssigneeId,
+            assigneeRole: task.AssigneeRole,
+            assigneeStrategyJson: task.AssigneeStrategyJson,
             dueDate: null,
-            entityType: task.Instance.EntityType,
-            entityId: task.Instance.EntityId,
+            entityType: task.EntityType,
+            entityId: task.EntityId,
+            definitionName: task.DefinitionName,
+            definitionDisplayName: task.DefinitionDisplayName,
+            entityDisplayName: task.EntityDisplayName,
+            formFieldsJson: task.FormFieldsJson,
+            availableActionsJson: task.AvailableActionsJson,
+            slaReminderAfterHours: task.SlaReminderAfterHours,
             groupId: task.GroupId,
             originalAssigneeUserId: originalAssigneeId);
 

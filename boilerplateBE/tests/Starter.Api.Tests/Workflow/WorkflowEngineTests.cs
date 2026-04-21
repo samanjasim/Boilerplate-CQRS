@@ -229,8 +229,21 @@ public sealed class WorkflowEngineTests : IDisposable
         instance.TransitionTo("PendingApproval", "submit", _initiatorId);
 
         var approvalTask = ApprovalTask.Create(
-            _tenantId, instanceId, "PendingApproval",
-            _approverUserId, null, null, null, "Order", entityId);
+            tenantId: _tenantId,
+            instanceId: instanceId,
+            stepName: "PendingApproval",
+            assigneeUserId: _approverUserId,
+            assigneeRole: null,
+            assigneeStrategyJson: null,
+            dueDate: null,
+            entityType: "Order",
+            entityId: entityId,
+            definitionName: "TestApproval",
+            definitionDisplayName: "Test Approval",
+            entityDisplayName: null,
+            formFieldsJson: null,
+            availableActionsJson: "[]",
+            slaReminderAfterHours: null);
         _db.ApprovalTasks.Add(approvalTask);
         await _db.SaveChangesAsync();
 
@@ -259,8 +272,21 @@ public sealed class WorkflowEngineTests : IDisposable
         instance.TransitionTo("PendingApproval", "submit", _initiatorId);
 
         var approvalTask = ApprovalTask.Create(
-            _tenantId, instanceId, "PendingApproval",
-            _approverUserId, null, null, null, "Order", entityId);
+            tenantId: _tenantId,
+            instanceId: instanceId,
+            stepName: "PendingApproval",
+            assigneeUserId: _approverUserId,
+            assigneeRole: null,
+            assigneeStrategyJson: null,
+            dueDate: null,
+            entityType: "Order",
+            entityId: entityId,
+            definitionName: "TestApproval",
+            definitionDisplayName: "Test Approval",
+            entityDisplayName: null,
+            formFieldsJson: null,
+            availableActionsJson: "[]",
+            slaReminderAfterHours: null);
         _db.ApprovalTasks.Add(approvalTask);
         await _db.SaveChangesAsync();
 
@@ -288,8 +314,21 @@ public sealed class WorkflowEngineTests : IDisposable
         instance.TransitionTo("PendingApproval", "submit", _initiatorId);
 
         var approvalTask = ApprovalTask.Create(
-            _tenantId, instanceId, "PendingApproval",
-            _approverUserId, null, null, null, "Order", entityId);
+            tenantId: _tenantId,
+            instanceId: instanceId,
+            stepName: "PendingApproval",
+            assigneeUserId: _approverUserId,
+            assigneeRole: null,
+            assigneeStrategyJson: null,
+            dueDate: null,
+            entityType: "Order",
+            entityId: entityId,
+            definitionName: "TestApproval",
+            definitionDisplayName: "Test Approval",
+            entityDisplayName: null,
+            formFieldsJson: null,
+            availableActionsJson: "[]",
+            slaReminderAfterHours: null);
         _db.ApprovalTasks.Add(approvalTask);
         await _db.SaveChangesAsync();
 
@@ -315,8 +354,21 @@ public sealed class WorkflowEngineTests : IDisposable
         instance.TransitionTo("PendingApproval", "submit", _initiatorId);
 
         var approvalTask = ApprovalTask.Create(
-            _tenantId, instanceId, "PendingApproval",
-            _approverUserId, null, null, null, "Order", entityId);
+            tenantId: _tenantId,
+            instanceId: instanceId,
+            stepName: "PendingApproval",
+            assigneeUserId: _approverUserId,
+            assigneeRole: null,
+            assigneeStrategyJson: null,
+            dueDate: null,
+            entityType: "Order",
+            entityId: entityId,
+            definitionName: "TestApproval",
+            definitionDisplayName: "Test Approval",
+            entityDisplayName: null,
+            formFieldsJson: null,
+            availableActionsJson: "[]",
+            slaReminderAfterHours: null);
         _db.ApprovalTasks.Add(approvalTask);
         await _db.SaveChangesAsync();
 
@@ -343,8 +395,21 @@ public sealed class WorkflowEngineTests : IDisposable
         instance.TransitionTo("PendingApproval", "submit", _initiatorId);
 
         var approvalTask = ApprovalTask.Create(
-            _tenantId, instanceId, "PendingApproval",
-            _approverUserId, null, null, null, "Order", entityId);
+            tenantId: _tenantId,
+            instanceId: instanceId,
+            stepName: "PendingApproval",
+            assigneeUserId: _approverUserId,
+            assigneeRole: null,
+            assigneeStrategyJson: null,
+            dueDate: null,
+            entityType: "Order",
+            entityId: entityId,
+            definitionName: "TestApproval",
+            definitionDisplayName: "Test Approval",
+            entityDisplayName: null,
+            formFieldsJson: null,
+            availableActionsJson: "[]",
+            slaReminderAfterHours: null);
         _db.ApprovalTasks.Add(approvalTask);
         await _db.SaveChangesAsync();
 
@@ -378,8 +443,21 @@ public sealed class WorkflowEngineTests : IDisposable
         instance.TransitionTo("PendingApproval", "submit", _initiatorId);
 
         var approvalTask = ApprovalTask.Create(
-            _tenantId, instanceId, "PendingApproval",
-            _approverUserId, null, null, null, "Order", entityId);
+            tenantId: _tenantId,
+            instanceId: instanceId,
+            stepName: "PendingApproval",
+            assigneeUserId: _approverUserId,
+            assigneeRole: null,
+            assigneeStrategyJson: null,
+            dueDate: null,
+            entityType: "Order",
+            entityId: entityId,
+            definitionName: "TestApproval",
+            definitionDisplayName: "Test Approval",
+            entityDisplayName: null,
+            formFieldsJson: null,
+            availableActionsJson: "[]",
+            slaReminderAfterHours: null);
         _db.ApprovalTasks.Add(approvalTask);
         await _db.SaveChangesAsync();
 
@@ -431,8 +509,21 @@ public sealed class WorkflowEngineTests : IDisposable
         // Also create a pending task for a different user on the same instance
         var otherUserId = Guid.NewGuid();
         var otherTask = ApprovalTask.Create(
-            _tenantId, instanceId, "PendingApproval",
-            otherUserId, null, null, null, "Order", entityId);
+            tenantId: _tenantId,
+            instanceId: instanceId,
+            stepName: "PendingApproval",
+            assigneeUserId: otherUserId,
+            assigneeRole: null,
+            assigneeStrategyJson: null,
+            dueDate: null,
+            entityType: "Order",
+            entityId: entityId,
+            definitionName: "TestApproval",
+            definitionDisplayName: "Test Approval",
+            entityDisplayName: null,
+            formFieldsJson: null,
+            availableActionsJson: "[]",
+            slaReminderAfterHours: null);
         _db.ApprovalTasks.Add(otherTask);
         await _db.SaveChangesAsync();
 

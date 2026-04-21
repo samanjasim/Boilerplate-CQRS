@@ -23,6 +23,15 @@ public sealed class ApprovalTask : AggregateRoot, ITenantEntity
     public DateTime? EscalatedAt { get; private set; }
     public Guid? OriginalAssigneeUserId { get; private set; }
 
+    public string DefinitionName { get; private set; } = default!;
+    public string? DefinitionDisplayName { get; private set; }
+    public string EntityType { get; private set; } = default!;
+    public Guid EntityId { get; private set; }
+    public string? EntityDisplayName { get; private set; }
+    public string? FormFieldsJson { get; private set; }
+    public string AvailableActionsJson { get; private set; } = "[]";
+    public int? SlaReminderAfterHours { get; private set; }
+
     public uint RowVersion { get; private set; }
 
     public WorkflowInstance Instance { get; private set; } = default!;
@@ -39,7 +48,15 @@ public sealed class ApprovalTask : AggregateRoot, ITenantEntity
         string? assigneeStrategyJson,
         DateTime? dueDate,
         Guid? groupId,
-        Guid? originalAssigneeUserId) : base(id)
+        Guid? originalAssigneeUserId,
+        string definitionName,
+        string? definitionDisplayName,
+        string entityType,
+        Guid entityId,
+        string? entityDisplayName,
+        string? formFieldsJson,
+        string availableActionsJson,
+        int? slaReminderAfterHours) : base(id)
     {
         TenantId = tenantId;
         InstanceId = instanceId;
@@ -51,6 +68,14 @@ public sealed class ApprovalTask : AggregateRoot, ITenantEntity
         DueDate = dueDate;
         GroupId = groupId;
         OriginalAssigneeUserId = originalAssigneeUserId;
+        DefinitionName = definitionName;
+        DefinitionDisplayName = definitionDisplayName;
+        EntityType = entityType;
+        EntityId = entityId;
+        EntityDisplayName = entityDisplayName;
+        FormFieldsJson = formFieldsJson;
+        AvailableActionsJson = availableActionsJson;
+        SlaReminderAfterHours = slaReminderAfterHours;
     }
 
     public static ApprovalTask Create(
@@ -60,12 +85,23 @@ public sealed class ApprovalTask : AggregateRoot, ITenantEntity
         Guid? assigneeUserId,
         string? assigneeRole,
         string? assigneeStrategyJson,
-        DateTime? dueDate,
         string entityType,
         Guid entityId,
+        string definitionName,
+        string availableActionsJson,
+        DateTime? dueDate = null,
+        string? definitionDisplayName = null,
+        string? entityDisplayName = null,
+        string? formFieldsJson = null,
+        int? slaReminderAfterHours = null,
         Guid? groupId = null,
         Guid? originalAssigneeUserId = null)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(stepName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(entityType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(definitionName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(availableActionsJson);
+
         var task = new ApprovalTask(
             Guid.NewGuid(),
             tenantId,
@@ -76,7 +112,15 @@ public sealed class ApprovalTask : AggregateRoot, ITenantEntity
             assigneeStrategyJson,
             dueDate,
             groupId,
-            originalAssigneeUserId);
+            originalAssigneeUserId,
+            definitionName,
+            definitionDisplayName,
+            entityType,
+            entityId,
+            entityDisplayName,
+            formFieldsJson,
+            availableActionsJson,
+            slaReminderAfterHours);
 
         task.RaiseDomainEvent(new ApprovalTaskAssignedEvent(
             task.Id,
