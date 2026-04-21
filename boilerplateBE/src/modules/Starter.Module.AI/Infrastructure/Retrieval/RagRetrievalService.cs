@@ -10,6 +10,7 @@ using Starter.Module.AI.Infrastructure.Ingestion;
 using Starter.Module.AI.Infrastructure.Observability;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Retrieval.Reranking;
+using Starter.Module.AI.Infrastructure.Retrieval.Resilience;
 using Starter.Module.AI.Infrastructure.Settings;
 using Starter.Module.AI.Infrastructure.Telemetry;
 
@@ -177,7 +178,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
                     RagStages.Classify,
                     _settings.StageTimeoutClassifyMs);
             }
-            catch (Exception ex) when (IsTransientStageException(ex))
+            catch (Exception ex) when (RagTransientExceptionClassifier.IsTransient(ex))
             {
                 classifyOutcome = RagStageOutcome.Error;
                 degraded.Add(RagStages.Classify);
@@ -549,7 +550,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         string stageName,
         List<string> degraded,
         CancellationToken ct) where T : class
-        => WithTimeoutAsyncCore(op, timeoutMs, stageName, degraded, _logger, IsTransientStageException, ct);
+        => WithTimeoutAsyncCore(op, timeoutMs, stageName, degraded, _logger, RagTransientExceptionClassifier.IsTransient, ct);
 
     /// <summary>
     /// Test-facing entry point. Uses an "all-transient" filter so tests can assert
@@ -614,14 +615,4 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         }
     }
 
-    // Exceptions we treat as transient dependency failures (I/O or RPC). Programmer
-    // bugs (ArgumentException, ObjectDisposedException, InvalidOperationException,
-    // NullReferenceException, etc.) fall through and fail the turn loudly so they
-    // are caught in development instead of being silently hidden as "degraded".
-    private static bool IsTransientStageException(Exception ex) =>
-        ex is System.Net.Http.HttpRequestException
-           or TimeoutException
-           or System.Data.Common.DbException
-           or Grpc.Core.RpcException
-           or TaskCanceledException;
 }
