@@ -38,7 +38,8 @@ export default function WorkflowInstanceDetailPage() {
   const instance = (location.state as { instance?: WorkflowInstanceSummary })?.instance;
 
   const { data: history, isLoading: historyLoading, error: historyError } = useWorkflowHistory(instanceId!);
-  const { data: definition } = useWorkflowDefinition(instance?.definitionId ?? '');
+  const { data: definitionResponse } = useWorkflowDefinition(instance?.definitionId ?? '');
+  const definition = definitionResponse?.data ?? definitionResponse;
   const { mutate: cancelWorkflow, isPending: cancelling } = useCancelWorkflow();
   const { mutate: transitionWorkflow, isPending: transitioning } = useTransitionWorkflow();
   const { data: tasksData } = usePendingTasks();
