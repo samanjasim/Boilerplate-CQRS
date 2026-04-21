@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Starter.Application.Common.Interfaces;
 using Starter.Api.Tests.Ai.Fakes;
 using Starter.Module.AI.Application.Services.Retrieval;
 using Starter.Module.AI.Infrastructure.Retrieval.QueryRewriting;
@@ -13,7 +14,7 @@ public sealed class ContextualQueryResolverTests
 {
     private static ContextualQueryResolver Build(
         FakeAiProvider provider,
-        FakeCacheService cache,
+        ICacheService cache,
         AiRagSettings? settings = null)
     {
         var factory = new FakeAiProviderFactory(provider);
@@ -124,5 +125,88 @@ public sealed class ContextualQueryResolverTests
             language: "en", CancellationToken.None);
 
         result.Should().Be("how do we configure it?");
+    }
+
+    [Fact]
+    public async Task Llm_throws_returns_raw()
+    {
+        var provider = new FakeAiProvider();
+        provider.EnqueueThrow(new InvalidOperationException("provider down"));
+        var cache = new FakeCacheService();
+        var svc = Build(provider, cache);
+
+        var result = await svc.ResolveAsync(
+            "how do we configure it?",
+            Hist(("user", "what is qdrant?"), ("assistant", "qdrant is a vector db.")),
+            language: "en", CancellationToken.None);
+
+        result.Should().Be("how do we configure it?");
+    }
+
+    [Fact]
+    public async Task Arabic_follow_up_triggers_llm_and_returns_result()
+    {
+        var provider = new FakeAiProvider();
+        provider.EnqueueContent("كيف نضبط Qdrant؟");
+        var cache = new FakeCacheService();
+        var svc = Build(provider, cache);
+
+        var result = await svc.ResolveAsync(
+            "كيف نضبطه؟",
+            Hist(("user", "ما هو Qdrant؟"), ("assistant", "Qdrant هو قاعدة بيانات متجهية.")),
+            language: "ar", CancellationToken.None);
+
+        result.Should().Be("كيف نضبط Qdrant؟");
+        provider.Calls.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Short_english_follow_up_triggers_llm()
+    {
+        var provider = new FakeAiProvider();
+        provider.EnqueueContent("Tell me more about Qdrant?");
+        var cache = new FakeCacheService();
+        var svc = Build(provider, cache);
+
+        var result = await svc.ResolveAsync(
+            "and then?",
+            Hist(("user", "what is qdrant?"), ("assistant", "qdrant is a vector db.")),
+            language: "en", CancellationToken.None);
+
+        provider.Calls.Should().Be(1);
+        result.Should().Be("Tell me more about Qdrant?");
+    }
+
+    [Fact]
+    public async Task Cache_unavailable_still_returns_llm_result()
+    {
+        var provider = new FakeAiProvider();
+        provider.EnqueueContent("How do we configure Qdrant?");
+        var cache = new ThrowingCacheService();
+        var svc = Build(provider, cache);
+
+        var result = await svc.ResolveAsync(
+            "how do we configure it?",
+            Hist(("user", "what is qdrant?"), ("assistant", "qdrant is a vector db.")),
+            language: "en", CancellationToken.None);
+
+        result.Should().Be("How do we configure Qdrant?");
+        provider.Calls.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Llm_translation_detected_falls_back_to_raw()
+    {
+        var provider = new FakeAiProvider();
+        provider.EnqueueContent("How do we configure Qdrant?");
+        var cache = new FakeCacheService();
+        var svc = Build(provider, cache);
+
+        var result = await svc.ResolveAsync(
+            "كيف نضبطه؟",
+            Hist(("user", "ما هو Qdrant؟"), ("assistant", "Qdrant هو قاعدة بيانات متجهية.")),
+            language: "ar", CancellationToken.None);
+
+        result.Should().Be("كيف نضبطه؟");
     }
 }
