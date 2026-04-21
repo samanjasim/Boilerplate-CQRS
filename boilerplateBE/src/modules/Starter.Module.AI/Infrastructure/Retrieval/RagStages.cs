@@ -8,6 +8,7 @@ namespace Starter.Module.AI.Infrastructure.Retrieval;
 /// </summary>
 internal static class RagStages
 {
+    public const string Contextualize = "contextualize";
     public const string Classify = "classify";
     public const string QueryRewrite = "query-rewrite";
     public const string EmbedQuery = "embed-query";

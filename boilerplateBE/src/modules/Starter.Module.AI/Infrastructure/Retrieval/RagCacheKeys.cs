@@ -34,4 +34,10 @@ internal static class RagCacheKeys
 
     public static string PointwiseRerank(string provider, string model, string query, Guid chunkId)
         => $"ai:rerank:pw:{provider}:{model}:{Sha256Hex(query)}:{chunkId:N}";
+
+    public static string Contextualize(string provider, string model, string language, string normalizedPayload)
+    {
+        var lang = string.IsNullOrWhiteSpace(language) ? "-" : language;
+        return $"ai:ctx:{provider}:{model}:{lang}:{Sha256Hex(normalizedPayload)}";
+    }
 }

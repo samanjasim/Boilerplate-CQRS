@@ -98,4 +98,11 @@ public sealed class AiRagSettings
     /// Range [0, 1]; default 0.5 (half the anchor's score).
     /// </summary>
     public decimal NeighborScoreWeight { get; init; } = 0.5m;
+
+    // ---- New in Plan 4b-5 — Contextual query rewrite ----
+    public bool EnableContextualRewrite { get; init; } = true;
+    public int StageTimeoutContextualizeMs { get; init; } = 3_000;
+    public int ContextualRewriteCacheTtlSeconds { get; init; } = 600;
+    public int ContextualRewriteHistoryTurns { get; init; } = 3;
+    public string? ContextualRewriterModel { get; init; } = null;
 }
