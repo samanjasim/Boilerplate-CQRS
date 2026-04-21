@@ -85,18 +85,23 @@ public sealed class ApprovalTask : AggregateRoot, ITenantEntity
         Guid? assigneeUserId,
         string? assigneeRole,
         string? assigneeStrategyJson,
-        DateTime? dueDate,
         string entityType,
         Guid entityId,
         string definitionName,
-        string? definitionDisplayName,
-        string? entityDisplayName,
-        string? formFieldsJson,
         string availableActionsJson,
-        int? slaReminderAfterHours,
+        DateTime? dueDate = null,
+        string? definitionDisplayName = null,
+        string? entityDisplayName = null,
+        string? formFieldsJson = null,
+        int? slaReminderAfterHours = null,
         Guid? groupId = null,
         Guid? originalAssigneeUserId = null)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(stepName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(entityType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(definitionName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(availableActionsJson);
+
         var task = new ApprovalTask(
             Guid.NewGuid(),
             tenantId,

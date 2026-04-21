@@ -186,6 +186,7 @@ public sealed class SlaEscalationJob(
         }
 
         // Create a new escalated task
+        // Snapshot semantics: escalations preserve the definition/entity state as of original task creation.
         var escalatedTask = ApprovalTask.Create(
             tenantId: task.TenantId,
             instanceId: task.InstanceId,
