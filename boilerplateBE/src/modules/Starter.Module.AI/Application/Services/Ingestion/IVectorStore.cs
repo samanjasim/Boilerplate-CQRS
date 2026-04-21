@@ -14,4 +14,14 @@ public interface IVectorStore
         IReadOnlyCollection<Guid>? documentFilter,
         int limit,
         CancellationToken ct);
+
+    /// <summary>
+    /// Retrieve stored embedding vectors for a batch of point-ids. Missing ids are
+    /// silently omitted from the result dictionary (eventual consistency between
+    /// Qdrant and the relational DB can leave orphan ids).
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, float[]>> GetVectorsByIdsAsync(
+        Guid tenantId,
+        IReadOnlyCollection<Guid> pointIds,
+        CancellationToken ct);
 }

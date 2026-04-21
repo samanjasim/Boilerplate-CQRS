@@ -4,10 +4,11 @@ using Starter.Module.AI.Application.Services.Retrieval;
 namespace Starter.Module.AI.Infrastructure.Retrieval.Resilience;
 
 /// <summary>
-/// <see cref="IVectorStore"/> decorator that routes <see cref="SearchAsync"/>
-/// through the Qdrant circuit-breaker pipeline. Mutating operations (Ensure/Upsert/
-/// Delete/Drop) bypass the breaker because they are invoked from the ingestion path
-/// (indexing retries are MassTransit's concern, not the live-chat latency budget).
+/// <see cref="IVectorStore"/> decorator that routes <see cref="SearchAsync"/> and
+/// <see cref="GetVectorsByIdsAsync"/> through the Qdrant circuit-breaker pipeline.
+/// Mutating operations (Ensure/Upsert/Delete/Drop) bypass the breaker because they
+/// are invoked from the ingestion path (indexing retries are MassTransit's concern,
+/// not the live-chat latency budget).
 /// </summary>
 internal sealed class CircuitBreakingVectorStore : IVectorStore
 {
@@ -41,6 +42,16 @@ internal sealed class CircuitBreakingVectorStore : IVectorStore
     {
         return await _registry.Qdrant.ExecuteAsync(
             async token => await _inner.SearchAsync(tenantId, queryVector, documentFilter, limit, token),
+            ct);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, float[]>> GetVectorsByIdsAsync(
+        Guid tenantId,
+        IReadOnlyCollection<Guid> pointIds,
+        CancellationToken ct)
+    {
+        return await _registry.Qdrant.ExecuteAsync(
+            async token => await _inner.GetVectorsByIdsAsync(tenantId, pointIds, token),
             ct);
     }
 }

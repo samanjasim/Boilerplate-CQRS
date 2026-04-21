@@ -95,5 +95,8 @@ public class CircuitBreakingVectorStoreTests
             CallCount++;
             throw _ex;
         }
+        public Task<IReadOnlyDictionary<Guid, float[]>> GetVectorsByIdsAsync(
+            Guid tenantId, IReadOnlyCollection<Guid> pointIds, CancellationToken ct)
+            => Task.FromResult<IReadOnlyDictionary<Guid, float[]>>(new Dictionary<Guid, float[]>());
     }
 }

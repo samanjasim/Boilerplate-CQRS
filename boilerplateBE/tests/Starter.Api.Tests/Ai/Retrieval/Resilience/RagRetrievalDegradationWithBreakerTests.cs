@@ -119,5 +119,8 @@ public class RagRetrievalDegradationWithBreakerTests
         public Task<IReadOnlyList<VectorSearchHit>> SearchAsync(
             Guid t, float[] v, IReadOnlyCollection<Guid>? d, int limit, CancellationToken ct)
             => throw new TimeoutException("simulated qdrant outage");
+        public Task<IReadOnlyDictionary<Guid, float[]>> GetVectorsByIdsAsync(
+            Guid tenantId, IReadOnlyCollection<Guid> pointIds, CancellationToken ct)
+            => Task.FromResult<IReadOnlyDictionary<Guid, float[]>>(new Dictionary<Guid, float[]>());
     }
 }

@@ -157,4 +157,34 @@ internal sealed class QdrantVectorStore : IVectorStore
                 Score: (decimal)hit.Score))
             .ToList();
     }
+
+    public async Task<IReadOnlyDictionary<Guid, float[]>> GetVectorsByIdsAsync(
+        Guid tenantId,
+        IReadOnlyCollection<Guid> pointIds,
+        CancellationToken ct)
+    {
+        if (pointIds.Count == 0)
+            return new Dictionary<Guid, float[]>();
+
+        var name = CollectionName(tenantId);
+        var ids = pointIds
+            .Select(id => new PointId { Uuid = id.ToString() })
+            .ToList();
+
+        var points = await _client.RetrieveAsync(
+            collectionName: name,
+            ids: ids,
+            withPayload: false,
+            withVectors: true,
+            cancellationToken: ct);
+
+        var map = new Dictionary<Guid, float[]>(points.Count);
+        foreach (var p in points)
+        {
+            if (p.Vectors?.Vector?.Data is not { Count: > 0 } data) continue;
+            map[Guid.Parse(p.Id.Uuid)] = data.ToArray();
+        }
+
+        return map;
+    }
 }

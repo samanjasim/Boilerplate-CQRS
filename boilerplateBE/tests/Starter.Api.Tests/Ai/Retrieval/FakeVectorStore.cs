@@ -33,4 +33,17 @@ internal sealed class FakeVectorStore : IVectorStore
         IReadOnlyList<VectorSearchHit> result = HitsToReturn.Take(limit).ToList();
         return Task.FromResult(result);
     }
+
+    public Dictionary<Guid, float[]> VectorsById { get; } = new();
+
+    public Task<IReadOnlyDictionary<Guid, float[]>> GetVectorsByIdsAsync(
+        Guid tenantId,
+        IReadOnlyCollection<Guid> pointIds,
+        CancellationToken ct)
+    {
+        IReadOnlyDictionary<Guid, float[]> result = pointIds
+            .Where(VectorsById.ContainsKey)
+            .ToDictionary(id => id, id => VectorsById[id]);
+        return Task.FromResult(result);
+    }
 }

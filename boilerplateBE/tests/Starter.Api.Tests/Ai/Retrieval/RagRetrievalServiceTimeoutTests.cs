@@ -36,6 +36,9 @@ public sealed class RagRetrievalServiceTimeoutTests
             await Task.Delay(TimeSpan.FromSeconds(10), ct);
             return [];
         }
+        public Task<IReadOnlyDictionary<Guid, float[]>> GetVectorsByIdsAsync(
+            Guid tenantId, IReadOnlyCollection<Guid> pointIds, CancellationToken ct)
+            => Task.FromResult<IReadOnlyDictionary<Guid, float[]>>(new Dictionary<Guid, float[]>());
     }
 
     private sealed class FakeKw : IKeywordSearchService

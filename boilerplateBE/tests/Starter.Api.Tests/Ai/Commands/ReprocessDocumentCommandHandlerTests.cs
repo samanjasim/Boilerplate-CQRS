@@ -203,5 +203,11 @@ public sealed class ReprocessDocumentCommandHandlerTests
             return Task.FromResult<IReadOnlyList<Starter.Module.AI.Application.Services.Retrieval.VectorSearchHit>>(
                 Array.Empty<Starter.Module.AI.Application.Services.Retrieval.VectorSearchHit>());
         }
+
+        public Task<IReadOnlyDictionary<Guid, float[]>> GetVectorsByIdsAsync(
+            Guid tenantId,
+            IReadOnlyCollection<Guid> pointIds,
+            CancellationToken ct)
+            => Task.FromResult<IReadOnlyDictionary<Guid, float[]>>(new Dictionary<Guid, float[]>());
     }
 }
