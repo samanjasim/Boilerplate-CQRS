@@ -36,7 +36,13 @@ internal sealed class ContextualQueryResolver : IContextualQueryResolver
         if (!_settings.EnableContextualRewrite) return latestUserMessage;
         if (history.Count == 0) return latestUserMessage;
 
-        // Heuristic + cache + LLM path: filled in by Task 5+.
+        if (!ContextualFollowUpHeuristic.LooksLikeFollowUp(latestUserMessage))
+        {
+            _logger.LogDebug("contextualize: heuristic-skip original={Original}", latestUserMessage);
+            return latestUserMessage;
+        }
+
+        // Cache + LLM path: filled in by Task 6+.
         await Task.CompletedTask;
         return latestUserMessage;
     }

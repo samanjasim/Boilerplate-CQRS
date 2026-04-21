@@ -54,4 +54,20 @@ public sealed class ContextualQueryResolverTests
         result.Should().Be("how do we configure it?");
         provider.Calls.Should().Be(0);
     }
+
+    [Fact]
+    public async Task Heuristic_skips_self_contained_question_returns_raw()
+    {
+        var provider = new FakeAiProvider();
+        var cache = new FakeCacheService();
+        var svc = Build(provider, cache);
+
+        var result = await svc.ResolveAsync(
+            "What is the default RRF constant used in hybrid fusion?",
+            Hist(("user", "hi"), ("assistant", "hello")),
+            language: "en", CancellationToken.None);
+
+        result.Should().Be("What is the default RRF constant used in hybrid fusion?");
+        provider.Calls.Should().Be(0);
+    }
 }
