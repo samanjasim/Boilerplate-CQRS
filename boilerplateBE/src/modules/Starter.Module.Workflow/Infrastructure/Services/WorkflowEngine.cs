@@ -628,6 +628,9 @@ public sealed class WorkflowEngine(
 
         // Identify legacy rows whose denormalized columns were never populated
         // (created before the Phase 2b migration). Fall back to a JOIN for these only.
+        // TODO: retire this branch once no pre-Phase-2b pending tasks remain.
+        // Check via: SELECT COUNT(*) FROM workflow_approval_tasks
+        //            WHERE status='Pending' AND (definition_name IS NULL OR definition_name='');
         var legacyTaskIds = tasks
             .Where(t => string.IsNullOrEmpty(t.DefinitionName))
             .Select(t => t.Id)
