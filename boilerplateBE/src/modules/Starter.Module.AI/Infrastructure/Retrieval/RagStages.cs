@@ -14,6 +14,7 @@ internal static class RagStages
     public const string QueryRewrite = "query-rewrite";
     public const string EmbedQuery = "embed-query";
     public const string Rerank = "rerank";
+    public const string MmrDiversify = "mmr-diversify";
     public const string NeighborExpand = "neighbor-expand";
 
     public static string VectorSearch(int variantIndex) => $"vector-search[{variantIndex}]";

@@ -109,4 +109,25 @@ public sealed class AiRagSettings
 
     // ---- New in Plan 4b-6 — Retrieval circuit breakers ----
     public RagCircuitBreakerSettings CircuitBreakers { get; init; } = new();
+
+    // ---- New in Plan 4b-7 — MMR diversification ----
+    /// <summary>
+    /// When true, a Maximal Marginal Relevance pass runs after rerank to reduce
+    /// near-duplicate chunks in the final top-K. Off by default; flip on per-environment
+    /// when QA confirms near-duplicate symptoms in retrieved context.
+    /// </summary>
+    public bool EnableMmr { get; init; } = false;
+
+    /// <summary>
+    /// MMR λ trade-off: 1.0 = pure relevance (no-op), 0.0 = pure diversity. Clamped
+    /// to [0,1] at runtime. Literature-recommended range 0.5–0.8; default 0.7
+    /// mildly favours relevance.
+    /// </summary>
+    public double MmrLambda { get; init; } = 0.7;
+
+    /// <summary>
+    /// Per-stage timeout for the MMR diversification pass. Guards the Qdrant
+    /// vector-fetch round-trip that MMR needs; the algorithm itself runs in microseconds.
+    /// </summary>
+    public int StageTimeoutMmrMs { get; init; } = 2_000;
 }
