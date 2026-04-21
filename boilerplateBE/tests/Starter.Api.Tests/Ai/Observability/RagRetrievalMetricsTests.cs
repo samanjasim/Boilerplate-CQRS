@@ -355,6 +355,17 @@ public class RagRetrievalMetricsTests
                 "What is المضخة and how does cavitation affect it?",
                 Array.Empty<RagHistoryMessage>(),
                 CancellationToken.None);
+
+            // Second turn with history exercises the contextualize stage instruments
+            _ = await svc.RetrieveForTurnAsync(
+                assistant,
+                "and how do we configure it?",
+                new[]
+                {
+                    new RagHistoryMessage("user", "what is المضخة?"),
+                    new RagHistoryMessage("assistant", "المضخة is a pump.")
+                },
+                CancellationToken.None);
         }
 
         // Part 2 — ChatExecutionService path
@@ -387,6 +398,11 @@ public class RagRetrievalMetricsTests
         names.Should().Contain("rag.context.tokens");
         names.Should().Contain("rag.context.truncated");
         names.Should().Contain("rag.degraded.stages");
+
+        // New in 4b-5: contextualize stage tag visible on the stage instruments when history is present.
+        var snapshot = listener.Snapshot();
+        snapshot.Should().Contain(m => m.InstrumentName == "rag.stage.duration"
+                                       && (string?)m.Tags["rag.stage"] == RagStages.Contextualize);
     }
 
     [Fact]
