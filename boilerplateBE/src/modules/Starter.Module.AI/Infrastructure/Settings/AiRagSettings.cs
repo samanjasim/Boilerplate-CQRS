@@ -1,4 +1,5 @@
 using Starter.Module.AI.Application.Services.Retrieval;
+using Starter.Module.AI.Infrastructure.Retrieval.Resilience;
 
 namespace Starter.Module.AI.Infrastructure.Settings;
 
@@ -105,4 +106,7 @@ public sealed class AiRagSettings
     public int ContextualRewriteCacheTtlSeconds { get; init; } = 600;
     public int ContextualRewriteHistoryTurns { get; init; } = 3;
     public string? ContextualRewriterModel { get; init; } = null;
+
+    // ---- New in Plan 4b-6 — Retrieval circuit breakers ----
+    public RagCircuitBreakerSettings CircuitBreakers { get; init; } = new();
 }

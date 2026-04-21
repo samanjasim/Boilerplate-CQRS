@@ -7,4 +7,5 @@ internal static class RagStageOutcome
     public const string Success = "success";
     public const string Timeout = "timeout";
     public const string Error = "error";
+    public const string CircuitOpen = "circuit_open";
 }
