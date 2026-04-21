@@ -47,23 +47,21 @@ internal static class ContextualFollowUpHeuristic
         foreach (var starter in ArabicContinuationStarters)
             if (trimmed.StartsWith(starter, StringComparison.Ordinal)) return true;
 
-        foreach (Match m in WordSplitter.Matches(trimmed))
+        var words = WordSplitter.Matches(trimmed);
+        foreach (Match m in words)
         {
             if (PronounTokens.Contains(m.Value)) return true;
         }
 
-        // Arabic pronoun-suffix: messages like "نضبطه" carry the pronoun as a
-        // suffix on the verb; check for the short attached-pronoun forms.
-        if (ContainsArabicPronounSuffix(trimmed)) return true;
-
-        return false;
+        return ContainsArabicPronounSuffix(words);
     }
 
-    private static bool ContainsArabicPronounSuffix(string s)
+    private static bool ContainsArabicPronounSuffix(MatchCollection words)
     {
-        // Third-person pronoun clitics: ـه, ـها, ـهم, ـهن
-        // Cheap heuristic: any word that ends with these sequences.
-        foreach (Match m in WordSplitter.Matches(s))
+        // Arabic third-person pronoun clitics (ـه, ـها, ـهم, ـهن) attach to verbs
+        // as suffixes, e.g. "نضبطه" = "we configure it". WordSplitter's [\p{L}]+
+        // keeps the full token intact, so suffix matching is a cheap EndsWith.
+        foreach (Match m in words)
         {
             var w = m.Value;
             if (w.EndsWith("ه", StringComparison.Ordinal)
