@@ -77,7 +77,7 @@ public sealed class RagRetrievalServiceTimeoutTests
         var assistant = AiAssistant.Create(tenantId, "A", null, "p");
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
-        var ctx = await svc.RetrieveForTurnAsync(assistant, "query", CancellationToken.None);
+        var ctx = await svc.RetrieveForTurnAsync(assistant, "query", Array.Empty<RagHistoryMessage>(), CancellationToken.None);
 
         ctx.DegradedStages.Should().Contain(RagStages.VectorSearch(0));
     }
@@ -111,7 +111,7 @@ public sealed class RagRetrievalServiceTimeoutTests
         using var callerCts = new CancellationTokenSource();
         callerCts.CancelAfter(TimeSpan.FromMilliseconds(50));
 
-        Func<Task> act = () => svc.RetrieveForTurnAsync(assistant, "query", callerCts.Token);
+        Func<Task> act = () => svc.RetrieveForTurnAsync(assistant, "query", Array.Empty<RagHistoryMessage>(), callerCts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
     }

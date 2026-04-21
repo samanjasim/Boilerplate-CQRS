@@ -61,8 +61,11 @@ internal sealed class RagRetrievalService : IRagRetrievalService
     public async Task<RetrievedContext> RetrieveForTurnAsync(
         AiAssistant assistant,
         string latestUserMessage,
+        IReadOnlyList<RagHistoryMessage> history,
         CancellationToken ct)
     {
+        _ = history; // reserved for Task 9 (contextualize stage wiring)
+
         if (assistant.RagScope == AiRagScope.None)
             throw new InvalidOperationException(
                 "Caller must ensure RagScope != None before invoking retrieval.");

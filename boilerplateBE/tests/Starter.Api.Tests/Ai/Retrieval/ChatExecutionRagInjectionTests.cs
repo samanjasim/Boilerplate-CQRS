@@ -305,8 +305,9 @@ internal sealed class FakeRetrieval : IRagRetrievalService
     public int CallCount { get; private set; }
 
     public Task<RetrievedContext> RetrieveForTurnAsync(
-        AiAssistant assistant, string latestUserMessage, CancellationToken ct)
+        AiAssistant assistant, string latestUserMessage, IReadOnlyList<RagHistoryMessage> history, CancellationToken ct)
     {
+        _ = history;
         CallCount++;
         if (ThrowOnRetrieve) throw new InvalidOperationException("simulated retrieval failure");
         return Task.FromResult(Context);

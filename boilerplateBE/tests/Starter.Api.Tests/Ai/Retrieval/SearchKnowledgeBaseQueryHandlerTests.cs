@@ -106,7 +106,12 @@ internal sealed class FakeRetrievalService(RetrievedContext context) : IRagRetri
     public Task<RetrievedContext> RetrieveForTurnAsync(
         Starter.Module.AI.Domain.Entities.AiAssistant a,
         string q,
-        CancellationToken ct) => throw new NotSupportedException();
+        IReadOnlyList<RagHistoryMessage> history,
+        CancellationToken ct)
+    {
+        _ = history;
+        throw new NotSupportedException();
+    }
 
     public Task<RetrievedContext> RetrieveForQueryAsync(
         Guid tenantId,

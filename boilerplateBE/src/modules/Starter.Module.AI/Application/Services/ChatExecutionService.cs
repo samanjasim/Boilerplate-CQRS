@@ -50,7 +50,7 @@ internal sealed class ChatExecutionService(
             return Result.Failure<AiChatReplyDto>(stateResult.Error);
 
         var state = stateResult.Value;
-        var retrieved = await RetrieveContextSafelyAsync(state.Assistant, userMessage, ct);
+        var retrieved = await RetrieveContextSafelyAsync(state.Assistant, userMessage, state.ProviderMessages, ct);
         var effectiveSystemPrompt = ResolveSystemPrompt(state.Assistant, retrieved);
 
         var provider = providerFactory.Create(ResolveProvider(state.Assistant));
@@ -153,7 +153,7 @@ internal sealed class ChatExecutionService(
             UserMessageId = state.UserMessage.Id
         });
 
-        var retrieved = await RetrieveContextSafelyAsync(state.Assistant, userMessage, ct);
+        var retrieved = await RetrieveContextSafelyAsync(state.Assistant, userMessage, state.ProviderMessages, ct);
         var effectiveSystemPrompt = ResolveSystemPrompt(state.Assistant, retrieved);
 
         var provider = providerFactory.Create(ResolveProvider(state.Assistant));
@@ -598,14 +598,15 @@ internal sealed class ChatExecutionService(
             Tools: tools.Count == 0 ? null : tools);
 
     private async Task<RetrievedContext> RetrieveContextSafelyAsync(
-        AiAssistant assistant, string userMessage, CancellationToken ct)
+        AiAssistant assistant, string userMessage, IReadOnlyList<AiChatMessage> providerMessages, CancellationToken ct)
     {
         if (assistant.RagScope == AiRagScope.None || string.IsNullOrWhiteSpace(userMessage))
             return RetrievedContext.Empty;
 
         try
         {
-            var retrieved = await retrievalService.RetrieveForTurnAsync(assistant, userMessage, ct);
+            var history = BuildRagHistory(providerMessages);
+            var retrieved = await retrievalService.RetrieveForTurnAsync(assistant, userMessage, history, ct);
             AiRagMetrics.ContextTokens.Record(retrieved.TotalTokens);
             if (retrieved.TruncatedByBudget)
             {
@@ -717,6 +718,28 @@ internal sealed class ChatExecutionService(
         retrieved.IsEmpty
             ? assistant.SystemPrompt
             : ContextPromptBuilder.Build(assistant.SystemPrompt, retrieved);
+
+    /// <summary>
+    /// Converts the provider message list into a history slice for the RAG retrieval service.
+    /// The last entry is the current turn's user message — it is excluded so the resolver
+    /// only sees prior conversation turns.
+    /// </summary>
+    private static IReadOnlyList<RagHistoryMessage> BuildRagHistory(IReadOnlyList<AiChatMessage> providerMessages)
+    {
+        // providerMessages' last entry is the current turn's user message — drop it
+        // so the resolver only sees prior conversation.
+        if (providerMessages.Count <= 1) return Array.Empty<RagHistoryMessage>();
+
+        var result = new List<RagHistoryMessage>(providerMessages.Count - 1);
+        for (var i = 0; i < providerMessages.Count - 1; i++)
+        {
+            var m = providerMessages[i];
+            if (m.Role != "user" && m.Role != "assistant") continue;
+            if (string.IsNullOrWhiteSpace(m.Content)) continue;
+            result.Add(new RagHistoryMessage(m.Role, m.Content));
+        }
+        return result;
+    }
 
     /// <summary>
     /// 4 chars per token is a widely used rough heuristic (GPT tokenizer averages ~3.5-4).

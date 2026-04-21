@@ -115,7 +115,7 @@ public class RagRetrievalMetricsTests
         var assistant = AiAssistant.Create(tenantId, "A", null, "p");
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
-        _ = await svc.RetrieveForTurnAsync(assistant, "hello world", CancellationToken.None);
+        _ = await svc.RetrieveForTurnAsync(assistant, "hello world", Array.Empty<RagHistoryMessage>(), CancellationToken.None);
 
         var outcomes = listener.Snapshot()
             .Where(m => m.InstrumentName == "rag.stage.outcome"
@@ -158,7 +158,7 @@ public class RagRetrievalMetricsTests
         var assistant = AiAssistant.Create(tenantId, "A", null, "p");
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
-        _ = await svc.RetrieveForTurnAsync(assistant, "centrifugal pumps move fluid through impeller rotation", CancellationToken.None);
+        _ = await svc.RetrieveForTurnAsync(assistant, "centrifugal pumps move fluid through impeller rotation", Array.Empty<RagHistoryMessage>(), CancellationToken.None);
 
         listener.Snapshot()
             .Should().Contain(m =>
@@ -197,7 +197,7 @@ public class RagRetrievalMetricsTests
         var assistant = AiAssistant.Create(tenantId, "A", null, "p");
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
-        _ = await svc.RetrieveForTurnAsync(assistant, "centrifugal pumps move fluid through impeller rotation", CancellationToken.None);
+        _ = await svc.RetrieveForTurnAsync(assistant, "centrifugal pumps move fluid through impeller rotation", Array.Empty<RagHistoryMessage>(), CancellationToken.None);
 
         listener.Snapshot()
             .Should().Contain(m => m.InstrumentName == "rag.fusion.candidates");
@@ -231,7 +231,7 @@ public class RagRetrievalMetricsTests
         var assistant = AiAssistant.Create(tenantId, "A", null, "p");
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
-        _ = await svc.RetrieveForTurnAsync(assistant, "ما هي المضخة الطاردة المركزية وكيف تعمل", CancellationToken.None);
+        _ = await svc.RetrieveForTurnAsync(assistant, "ما هي المضخة الطاردة المركزية وكيف تعمل", Array.Empty<RagHistoryMessage>(), CancellationToken.None);
 
         listener.Snapshot()
             .Should().Contain(m =>
@@ -348,6 +348,7 @@ public class RagRetrievalMetricsTests
             _ = await svc.RetrieveForTurnAsync(
                 assistant,
                 "What is المضخة and how does cavitation affect it?",
+                Array.Empty<RagHistoryMessage>(),
                 CancellationToken.None);
         }
 

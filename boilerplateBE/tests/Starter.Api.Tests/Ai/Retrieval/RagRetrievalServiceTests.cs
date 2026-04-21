@@ -105,7 +105,7 @@ public sealed class RagRetrievalServiceTests
         // RagScope defaults to None — do not call SetRagScope
 
         var act = async () =>
-            await svc.RetrieveForTurnAsync(assistant, "query", CancellationToken.None);
+            await svc.RetrieveForTurnAsync(assistant, "query", Array.Empty<RagHistoryMessage>(), CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*RagScope != None*");
@@ -125,7 +125,7 @@ public sealed class RagRetrievalServiceTests
         assistant.SetKnowledgeBase([docId]);
         assistant.SetRagScope(AiRagScope.SelectedDocuments);
 
-        await svc.RetrieveForTurnAsync(assistant, "query", CancellationToken.None);
+        await svc.RetrieveForTurnAsync(assistant, "query", Array.Empty<RagHistoryMessage>(), CancellationToken.None);
 
         fakeVs.LastDocFilter.Should().NotBeNull();
         fakeVs.LastDocFilter.Should().Contain(docId);
@@ -143,7 +143,7 @@ public sealed class RagRetrievalServiceTests
         var assistant = AiAssistant.Create(tenantId, "A", null, "p");
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
-        await svc.RetrieveForTurnAsync(assistant, "query", CancellationToken.None);
+        await svc.RetrieveForTurnAsync(assistant, "query", Array.Empty<RagHistoryMessage>(), CancellationToken.None);
 
         fakeVs.LastDocFilter.Should().BeNull();
     }
@@ -158,7 +158,7 @@ public sealed class RagRetrievalServiceTests
         var assistant = AiAssistant.Create(tenantId, "A", null, "p");
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
-        var ctx = await svc.RetrieveForTurnAsync(assistant, "query", CancellationToken.None);
+        var ctx = await svc.RetrieveForTurnAsync(assistant, "query", Array.Empty<RagHistoryMessage>(), CancellationToken.None);
 
         ctx.IsEmpty.Should().BeTrue();
     }
@@ -227,7 +227,7 @@ public sealed class RagRetrievalServiceTests
         var assistant = AiAssistant.Create(tenantId, "A", null, "p");
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
-        var ctx = await svc.RetrieveForTurnAsync(assistant, "query", CancellationToken.None);
+        var ctx = await svc.RetrieveForTurnAsync(assistant, "query", Array.Empty<RagHistoryMessage>(), CancellationToken.None);
 
         ctx.Children.Should().HaveCount(2);
         ctx.Children[0].ChunkId.Should().Be(chunks[1].Id);
@@ -271,7 +271,7 @@ public sealed class RagRetrievalServiceTests
         var assistant = AiAssistant.Create(tenantId, "A", null, "p");
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
-        var ctx = await svc.RetrieveForTurnAsync(assistant, "query", CancellationToken.None);
+        var ctx = await svc.RetrieveForTurnAsync(assistant, "query", Array.Empty<RagHistoryMessage>(), CancellationToken.None);
 
         ctx.Children.Count.Should().Be(2);
         ctx.Parents.Count.Should().Be(1);

@@ -7,6 +7,7 @@ public interface IRagRetrievalService
     Task<RetrievedContext> RetrieveForTurnAsync(
         AiAssistant assistant,
         string latestUserMessage,
+        IReadOnlyList<RagHistoryMessage> history,
         CancellationToken ct);
 
     Task<RetrievedContext> RetrieveForQueryAsync(
