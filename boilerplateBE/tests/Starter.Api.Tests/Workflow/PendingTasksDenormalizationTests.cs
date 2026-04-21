@@ -104,6 +104,9 @@ public sealed class PendingTasksDenormalizationTests : IDisposable
             entityDisplayName: "Lunch with client");
 
         // Assert — task exists with all denormalized fields populated.
+        var instance = await _db.WorkflowInstances.SingleAsync();
+        instance.CurrentState.Should().Be("Review");
+
         var task = await _db.ApprovalTasks.SingleAsync();
 
         task.DefinitionName.Should().Be("ExpenseFlow");
@@ -111,8 +114,14 @@ public sealed class PendingTasksDenormalizationTests : IDisposable
         task.EntityType.Should().Be("Expense");
         task.EntityId.Should().Be(entityId);
         task.EntityDisplayName.Should().Be("Lunch with client");
-        task.FormFieldsJson.Should().NotBeNullOrEmpty().And.Contain("amount");
-        task.AvailableActionsJson.Should().Contain("Approve").And.Contain("Reject");
+
+        task.FormFieldsJson.Should().NotBeNullOrEmpty();
+        var formFields = JsonSerializer.Deserialize<List<FormFieldDefinition>>(task.FormFieldsJson!);
+        formFields.Should().ContainSingle().Which.Name.Should().Be("amount");
+
+        var actions = JsonSerializer.Deserialize<List<string>>(task.AvailableActionsJson);
+        actions.Should().BeEquivalentTo(new[] { "Approve", "Reject" });
+
         task.SlaReminderAfterHours.Should().Be(4);
     }
 }
