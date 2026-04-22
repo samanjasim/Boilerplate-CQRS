@@ -135,7 +135,7 @@ public sealed class ReprocessDocumentCommandHandlerTests
                 tenantId: tenantId,
                 name: "doc.txt",
                 fileName: "doc.txt",
-                fileRef: $"ai/documents/{Guid.NewGuid():N}/doc.txt",
+                fileId: Guid.NewGuid(),
                 contentType: "text/plain",
                 sizeBytes: 100,
                 uploadedByUserId: Guid.NewGuid());

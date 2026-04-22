@@ -11,7 +11,7 @@ namespace Starter.Module.AI.Application.Commands.DeleteDocument;
 
 internal sealed class DeleteDocumentCommandHandler(
     AiDbContext db,
-    IStorageService storage,
+    IFileService fileService,
     IVectorStore vectors,
     ILogger<DeleteDocumentCommandHandler> logger) : IRequestHandler<DeleteDocumentCommand, Result>
 {
@@ -34,8 +34,8 @@ internal sealed class DeleteDocumentCommandHandler(
         var chunks = db.AiDocumentChunks.Where(c => c.DocumentId == doc.Id);
         db.AiDocumentChunks.RemoveRange(chunks);
 
-        try { await storage.DeleteAsync(doc.FileRef, ct); }
-        catch (Exception ex) { logger.LogWarning(ex, "Failed to delete storage object {Key}", doc.FileRef); }
+        try { await fileService.DeleteManagedFileAsync(doc.FileId, ct); }
+        catch (Exception ex) { logger.LogWarning(ex, "Failed to delete managed file {FileId} for document {DocId}", doc.FileId, doc.Id); }
 
         db.AiDocuments.Remove(doc);
         await db.SaveChangesAsync(ct);

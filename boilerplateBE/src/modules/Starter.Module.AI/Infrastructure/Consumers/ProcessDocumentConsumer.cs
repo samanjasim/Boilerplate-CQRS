@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Starter.Application.Common.Interfaces;
+using Starter.Domain.Common;
 using Starter.Module.AI.Application.Messages;
 using Starter.Module.AI.Application.Services.Ingestion;
 using Starter.Module.AI.Domain.Entities;
@@ -23,6 +24,7 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
         using var scope = scopeFactory.CreateScope();
 
         var db = scope.ServiceProvider.GetRequiredService<AiDbContext>();
+        var appDb = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
         var storage = scope.ServiceProvider.GetRequiredService<IStorageService>();
         var extractors = scope.ServiceProvider.GetRequiredService<IDocumentTextExtractorRegistry>();
         var chunker = scope.ServiceProvider.GetRequiredService<IDocumentChunker>();
@@ -166,7 +168,14 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
                 ?? throw new InvalidOperationException(
                     $"No extractor registered for content type '{doc.ContentType}'.");
 
-            await using var fileStream = await storage.DownloadAsync(doc.FileRef, ct);
+            var fileMetadata = await appDb.Set<FileMetadata>()
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(f => f.Id == doc.FileId, ct)
+                ?? throw new InvalidOperationException(
+                    $"FileMetadata {doc.FileId} for AiDocument {doc.Id} not found.");
+
+            await using var fileStream = await storage.DownloadAsync(fileMetadata.StorageKey, ct);
             using var buffered = new MemoryStream();
             await fileStream.CopyToAsync(buffered, ct);
             buffered.Position = 0;

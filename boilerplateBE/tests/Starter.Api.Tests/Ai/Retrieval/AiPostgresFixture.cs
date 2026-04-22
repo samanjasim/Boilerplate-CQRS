@@ -48,7 +48,7 @@ public sealed class AiPostgresFixture : IAsyncLifetime
             tenantId: tenantId,
             name: "seed",
             fileName: "seed.txt",
-            fileRef: "ref://seed",
+            fileId: Guid.NewGuid(),
             contentType: "text/plain",
             sizeBytes: content.Length,
             uploadedByUserId: Guid.NewGuid());

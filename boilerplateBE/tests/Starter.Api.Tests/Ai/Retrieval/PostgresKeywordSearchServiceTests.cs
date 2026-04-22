@@ -27,8 +27,8 @@ public sealed class PostgresKeywordSearchServiceTests : IClassFixture<AiPostgres
 
         await using var db = _fixture.CreateDbContext();
 
-        var docA = AiDocument.Create(tenantA, "Doc A", "doc-a.pdf", "ref-a", "application/pdf", 1024, uploaderA);
-        var docB = AiDocument.Create(tenantB, "Doc B", "doc-b.pdf", "ref-b", "application/pdf", 1024, uploaderB);
+        var docA = AiDocument.Create(tenantA, "Doc A", "doc-a.pdf", Guid.NewGuid(), "application/pdf", 1024, uploaderA);
+        var docB = AiDocument.Create(tenantB, "Doc B", "doc-b.pdf", Guid.NewGuid(), "application/pdf", 1024, uploaderB);
         db.AiDocuments.AddRange(docA, docB);
 
         var chunkA1 = AiDocumentChunk.Create(docA.Id, "child", "photosynthesis light reactions chlorophyll", 0, 10, Guid.NewGuid());
@@ -55,8 +55,8 @@ public sealed class PostgresKeywordSearchServiceTests : IClassFixture<AiPostgres
 
         await using var db = _fixture.CreateDbContext();
 
-        var docX = AiDocument.Create(tenant, "Doc X", "doc-x.pdf", "ref-x", "application/pdf", 512, uploader);
-        var docY = AiDocument.Create(tenant, "Doc Y", "doc-y.pdf", "ref-y", "application/pdf", 512, uploader);
+        var docX = AiDocument.Create(tenant, "Doc X", "doc-x.pdf", Guid.NewGuid(), "application/pdf", 512, uploader);
+        var docY = AiDocument.Create(tenant, "Doc Y", "doc-y.pdf", Guid.NewGuid(), "application/pdf", 512, uploader);
         db.AiDocuments.AddRange(docX, docY);
 
         var chunkX = AiDocumentChunk.Create(docX.Id, "child", "photosynthesis converts sunlight into energy", 0, 8, Guid.NewGuid());
@@ -92,7 +92,7 @@ public sealed class PostgresKeywordSearchServiceTests : IClassFixture<AiPostgres
 
         await using var db = _fixture.CreateDbContext();
 
-        var doc = AiDocument.Create(tenant, "Doc AR", "doc-ar.pdf", "ref-ar", "application/pdf", 512, uploader);
+        var doc = AiDocument.Create(tenant, "Doc AR", "doc-ar.pdf", Guid.NewGuid(), "application/pdf", 512, uploader);
         db.AiDocuments.Add(doc);
 
         // Chunk body uses أ; query will use ا. After normalization both become ا.
@@ -119,7 +119,7 @@ public sealed class PostgresKeywordSearchServiceTests : IClassFixture<AiPostgres
 
         await using var db = _fixture.CreateDbContext();
 
-        var doc = AiDocument.Create(tenant, "Doc AR2", "doc-ar2.pdf", "ref-ar2", "application/pdf", 512, uploader);
+        var doc = AiDocument.Create(tenant, "Doc AR2", "doc-ar2.pdf", Guid.NewGuid(), "application/pdf", 512, uploader);
         db.AiDocuments.Add(doc);
 
         var chunk = AiDocumentChunk.Create(doc.Id, "child", "مُؤَسَّسَة تعليمية", 0, 5, Guid.NewGuid());
@@ -145,7 +145,7 @@ public sealed class PostgresKeywordSearchServiceTests : IClassFixture<AiPostgres
 
         await using var db = _fixture.CreateDbContext();
 
-        var doc = AiDocument.Create(tenant, "Doc Mixed", "mix.pdf", "ref-mix", "application/pdf", 512, uploader);
+        var doc = AiDocument.Create(tenant, "Doc Mixed", "mix.pdf", Guid.NewGuid(), "application/pdf", 512, uploader);
         db.AiDocuments.Add(doc);
 
         var chunk = AiDocumentChunk.Create(doc.Id, "child", "photosynthesis التمثيل الضوئي", 0, 5, Guid.NewGuid());

@@ -8,7 +8,7 @@ public sealed class AiDocument : BaseEntity, ITenantEntity
     public Guid? TenantId { get; private set; }
     public string Name { get; private set; } = default!;
     public string FileName { get; private set; } = default!;
-    public string FileRef { get; private set; } = default!;
+    public Guid FileId { get; private set; }
     public string ContentType { get; private set; } = default!;
     public long SizeBytes { get; private set; }
     public int ChunkCount { get; private set; }
@@ -26,7 +26,7 @@ public sealed class AiDocument : BaseEntity, ITenantEntity
         Guid? tenantId,
         string name,
         string fileName,
-        string fileRef,
+        Guid fileId,
         string contentType,
         long sizeBytes,
         bool requiresOcr,
@@ -36,7 +36,7 @@ public sealed class AiDocument : BaseEntity, ITenantEntity
         TenantId = tenantId;
         Name = name;
         FileName = fileName;
-        FileRef = fileRef;
+        FileId = fileId;
         ContentType = contentType;
         SizeBytes = sizeBytes;
         EmbeddingStatus = Enums.EmbeddingStatus.Pending;
@@ -49,7 +49,7 @@ public sealed class AiDocument : BaseEntity, ITenantEntity
         Guid? tenantId,
         string name,
         string fileName,
-        string fileRef,
+        Guid fileId,
         string contentType,
         long sizeBytes,
         Guid uploadedByUserId,
@@ -61,7 +61,7 @@ public sealed class AiDocument : BaseEntity, ITenantEntity
             tenantId,
             name.Trim(),
             fileName.Trim(),
-            fileRef.Trim(),
+            fileId,
             contentType.Trim(),
             sizeBytes,
             requiresOcr,

@@ -115,7 +115,7 @@ public sealed class QueryIntelligencePipelineTests
             tenantId,
             $"doc-{name}",
             "d.pdf",
-            $"refs/{name}.pdf",
+            Guid.NewGuid(),
             "application/pdf",
             1024,
             Guid.NewGuid());

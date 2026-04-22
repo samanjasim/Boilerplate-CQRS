@@ -28,9 +28,8 @@ internal sealed class AiDocumentConfiguration : IEntityTypeConfiguration<AiDocum
             .HasMaxLength(500)
             .IsRequired();
 
-        builder.Property(e => e.FileRef)
-            .HasColumnName("file_ref")
-            .HasMaxLength(1000)
+        builder.Property(e => e.FileId)
+            .HasColumnName("file_id")
             .IsRequired();
 
         builder.Property(e => e.ContentType)
@@ -84,6 +83,7 @@ internal sealed class AiDocumentConfiguration : IEntityTypeConfiguration<AiDocum
 
         builder.HasIndex(e => e.TenantId);
         builder.HasIndex(e => e.EmbeddingStatus);
+        builder.HasIndex(e => e.FileId).HasDatabaseName("ix_ai_documents_file_id");
         builder.HasIndex(e => new { e.TenantId, e.ContentHash })
             .HasDatabaseName("ix_ai_documents_tenant_content_hash");
     }

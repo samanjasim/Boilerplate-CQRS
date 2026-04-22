@@ -2,6 +2,8 @@ using System.Security.Cryptography;
 using MassTransit;
 using MediatR;
 using Starter.Application.Common.Interfaces;
+using Starter.Domain.Common.Access.Enums;
+using Starter.Domain.Common.Enums;
 using Starter.Module.AI.Application.DTOs;
 using Starter.Module.AI.Application.Messages;
 using Starter.Module.AI.Domain.Entities;
@@ -13,7 +15,7 @@ namespace Starter.Module.AI.Application.Commands.UploadDocument;
 internal sealed class UploadDocumentCommandHandler(
     AiDbContext db,
     IApplicationDbContext appDb,
-    IStorageService storage,
+    IFileService fileService,
     ICurrentUserService currentUser,
     IPublishEndpoint bus)
     : IRequestHandler<UploadDocumentCommand, Result<AiDocumentDto>>
@@ -25,10 +27,6 @@ internal sealed class UploadDocumentCommandHandler(
 
         var file = request.File;
         var safeName = SanitizeFileName(file.FileName);
-        var key = $"ai/documents/{Guid.NewGuid():N}/{safeName}";
-
-        await using (var s = file.OpenReadStream())
-            await storage.UploadAsync(s, key, file.ContentType, ct);
 
         string contentHash;
         await using (var hashStream = file.OpenReadStream())
@@ -37,11 +35,22 @@ internal sealed class UploadDocumentCommandHandler(
             contentHash = Convert.ToHexString(hashBytes).ToLowerInvariant();
         }
 
+        await using var uploadStream = file.OpenReadStream();
+        var managed = await fileService.CreateManagedFileAsync(new ManagedFileUpload(
+            Stream: uploadStream,
+            FileName: safeName,
+            ContentType: file.ContentType,
+            Size: file.Length,
+            Category: FileCategory.AiDocument,
+            Visibility: ResourceVisibility.Private,
+            EntityType: "AiDocument",
+            Origin: FileOrigin.UserUpload), ct);
+
         var doc = AiDocument.Create(
             tenantId: currentUser.TenantId,
             name: string.IsNullOrWhiteSpace(request.Name) ? safeName : request.Name!,
             fileName: safeName,
-            fileRef: key,
+            fileId: managed.Id,
             contentType: file.ContentType,
             sizeBytes: file.Length,
             uploadedByUserId: userId);
@@ -49,6 +58,8 @@ internal sealed class UploadDocumentCommandHandler(
 
         db.AiDocuments.Add(doc);
         await db.SaveChangesAsync(ct);
+
+        await fileService.AttachToEntityAsync(managed.Id, doc.Id, "AiDocument", ct);
 
         await bus.Publish(new ProcessDocumentMessage(doc.Id, doc.TenantId, userId), ct);
         await appDb.SaveChangesAsync(ct);

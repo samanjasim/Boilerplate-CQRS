@@ -7,6 +7,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using Starter.Application.Common.Interfaces;
+using Starter.Domain.Common;
+using Starter.Domain.Common.Enums;
+using Starter.Infrastructure.Persistence;
 using Starter.Module.AI.Application.Messages;
 using Starter.Module.AI.Application.Services.Ingestion;
 using Starter.Module.AI.Domain.Entities;
@@ -392,6 +395,7 @@ public sealed class ProcessDocumentConsumerTests
     private sealed class ConsumerHarness
     {
         public AiDbContext Db { get; }
+        public ApplicationDbContext AppDb { get; }
         public Mock<IStorageService> Storage { get; } = new();
         public Mock<IDocumentTextExtractorRegistry> Registry { get; } = new();
         public Mock<IDocumentTextExtractor> Extractor { get; } = new();
@@ -407,6 +411,8 @@ public sealed class ProcessDocumentConsumerTests
 
             var dbName = $"ai-{Guid.NewGuid():N}";
             services.AddDbContext<AiDbContext>(o => o.UseInMemoryDatabase(dbName));
+            services.AddDbContext<ApplicationDbContext>(o => o.UseInMemoryDatabase($"{dbName}-app"));
+            services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
             services.AddSingleton(Storage.Object);
             services.AddSingleton(Registry.Object);
             services.AddSingleton(Chunker.Object);
@@ -417,7 +423,9 @@ public sealed class ProcessDocumentConsumerTests
 
             var sp = services.BuildServiceProvider();
             _scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
-            Db = sp.CreateScope().ServiceProvider.GetRequiredService<AiDbContext>();
+            var rootScope = sp.CreateScope();
+            Db = rootScope.ServiceProvider.GetRequiredService<AiDbContext>();
+            AppDb = rootScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
             Registry.Setup(r => r.Resolve(It.IsAny<string>())).Returns(Extractor.Object);
             Storage.Setup(s => s.DownloadAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -426,14 +434,28 @@ public sealed class ProcessDocumentConsumerTests
 
         public AiDocument SeedDocument(string fileName, string contentType, Guid? tenantId = null)
         {
+            var resolvedTenant = tenantId ?? Guid.NewGuid();
+            var uploader = Guid.NewGuid();
+
+            var fileMeta = FileMetadata.Create(
+                fileName: fileName,
+                storageKey: $"ai/documents/{Guid.NewGuid():N}/{fileName}",
+                contentType: contentType,
+                size: 100,
+                category: FileCategory.AiDocument,
+                uploadedBy: uploader,
+                tenantId: resolvedTenant);
+            AppDb.Set<FileMetadata>().Add(fileMeta);
+            AppDb.SaveChanges();
+
             var doc = AiDocument.Create(
-                tenantId: tenantId ?? Guid.NewGuid(),
+                tenantId: resolvedTenant,
                 name: fileName,
                 fileName: fileName,
-                fileRef: $"ai/documents/{Guid.NewGuid():N}/{fileName}",
+                fileId: fileMeta.Id,
                 contentType: contentType,
                 sizeBytes: 100,
-                uploadedByUserId: Guid.NewGuid());
+                uploadedByUserId: uploader);
             Db.AiDocuments.Add(doc);
             Db.SaveChanges();
             return doc;

@@ -46,7 +46,7 @@ public class NeighborExpanderTests
             tenantId: tenantId,
             name: name ?? $"doc-{Guid.NewGuid():N}",
             fileName: "test.pdf",
-            fileRef: "ref/test.pdf",
+            fileId: Guid.NewGuid(),
             contentType: "application/pdf",
             sizeBytes: 1024,
             uploadedByUserId: Guid.NewGuid());
