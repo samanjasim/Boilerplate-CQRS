@@ -388,14 +388,31 @@ internal sealed class RagRetrievalService : IRagRetrievalService
                 {
                     var pointIds = rerankedHits.Select(h => h.ChunkId).ToList();
                     var embeddings = await _vectorStore.GetVectorsByIdsAsync(tenantId, pointIds, innerCt);
-                    return (IReadOnlyList<HybridHit>)MmrDiversifier.Diversify(
+                    if (embeddings.Count < pointIds.Count)
+                    {
+                        _logger.LogWarning(
+                            "MMR vector fetch returned {Got}/{Expected} embeddings; missing ids dropped from diversification",
+                            embeddings.Count, pointIds.Count);
+                    }
+                    return MmrDiversifier.Diversify(
                         rerankedHits, embeddings, _settings.MmrLambda, topK);
                 },
                 _settings.StageTimeoutMmrMs,
                 RagStages.MmrDiversify,
                 degraded,
                 ct);
-            if (mmrResult is { Count: > 0 }) orderedForTopK = mmrResult;
+            if (mmrResult is { Count: > 0 })
+            {
+                orderedForTopK = mmrResult;
+            }
+            else if (mmrResult is not null)
+            {
+                // Stage ran without error but every reranked hit was missing from the
+                // vector-store response (eventual consistency between DB and Qdrant, or
+                // stale point-ids). Signal degradation so ChatExecutionService surfaces
+                // it alongside timeouts/circuit-opens, and fall back to rerank order.
+                degraded.Add(RagStages.MmrDiversify);
+            }
         }
 
         var topKHits = orderedForTopK.Take(topK).ToList();
