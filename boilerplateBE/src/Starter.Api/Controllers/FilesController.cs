@@ -17,6 +17,7 @@ using Starter.Application.Features.Files.Commands.UploadFile;
 using Starter.Application.Features.Files.Queries.GetFileById;
 using Starter.Application.Features.Files.Queries.GetFiles;
 using Starter.Application.Features.Files.Queries.GetFileUrl;
+using Starter.Application.Features.Files.Queries.GetStorageSummary;
 using Starter.Domain.Common.Access.Enums;
 using Starter.Domain.Common.Enums;
 using Starter.Shared.Constants;
@@ -228,6 +229,18 @@ public sealed class FilesController(ISender mediator, IFileService fileService, 
     {
         var command = new TransferResourceOwnershipCommand(ResourceTypes.File, id, request.NewOwnerId);
         var result = await Mediator.Send(command, ct);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Get storage summary by category, entity type and top uploaders.
+    /// </summary>
+    [HttpGet("storage-summary")]
+    [Authorize(Policy = Permissions.Files.View)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetStorageSummary([FromQuery] bool allTenants = false, CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(new GetStorageSummaryQuery(allTenants), ct);
         return HandleResult(result);
     }
 }
