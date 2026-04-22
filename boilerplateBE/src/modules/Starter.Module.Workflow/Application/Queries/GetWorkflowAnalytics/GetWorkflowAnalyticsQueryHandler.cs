@@ -41,6 +41,10 @@ internal sealed class GetWorkflowAnalyticsQueryHandler(
 
         var actionRates = await ComputeActionRatesAsync(definition.Id, windowStart, windowEnd, ct);
 
+        var stuckInstances = await ComputeStuckInstancesAsync(definition.Id, windowStart, windowEnd, now, ct);
+
+        var approverActivity = await ComputeApproverActivityAsync(definition.Id, windowStart, windowEnd, ct);
+
         var dto = new WorkflowAnalyticsDto(
             DefinitionId: definition.Id,
             DefinitionName: definition.Name,
@@ -52,8 +56,8 @@ internal sealed class GetWorkflowAnalyticsQueryHandler(
             StatesByBottleneck: bottlenecks,
             ActionRates: actionRates,
             InstanceCountSeries: series,
-            StuckInstances: Array.Empty<StuckInstanceDto>(),
-            ApproverActivity: Array.Empty<ApproverActivityDto>());
+            StuckInstances: stuckInstances,
+            ApproverActivity: approverActivity);
 
         return Result.Success(dto);
     }
@@ -293,6 +297,157 @@ internal sealed class GetWorkflowAnalyticsQueryHandler(
             })
             .OrderBy(m => m.StateName).ThenByDescending(m => m.Count)
             .ToList();
+    }
+
+    private async Task<IReadOnlyList<StuckInstanceDto>> ComputeStuckInstancesAsync(
+        Guid definitionId, DateTime windowStart, DateTime windowEnd, DateTime now, CancellationToken ct)
+    {
+        var activeRows = await db.WorkflowInstances
+            .AsNoTracking()
+            .Where(i => i.DefinitionId == definitionId
+                     && i.Status == Domain.Enums.InstanceStatus.Active
+                     && i.StartedAt >= windowStart
+                     && i.StartedAt <= windowEnd)
+            .OrderBy(i => i.StartedAt)
+            .Take(10)
+            .Select(i => new
+            {
+                i.Id,
+                i.EntityDisplayName,
+                i.CurrentState,
+                i.StartedAt,
+            })
+            .ToListAsync(ct);
+
+        if (activeRows.Count == 0) return Array.Empty<StuckInstanceDto>();
+
+        var instanceIdList = activeRows.Select(r => r.Id).ToList();
+
+        var pendingAssigneesByInstance = await db.ApprovalTasks
+            .AsNoTracking()
+            .Where(t => instanceIdList.Contains(t.InstanceId)
+                     && t.Status == Domain.Enums.TaskStatus.Pending
+                     && t.AssigneeUserId != null)
+            .GroupBy(t => t.InstanceId)
+            .Select(g => new { InstanceId = g.Key, AssigneeUserId = g.First().AssigneeUserId!.Value })
+            .ToListAsync(ct);
+
+        var assigneeLookup = pendingAssigneesByInstance
+            .ToDictionary(x => x.InstanceId, x => x.AssigneeUserId);
+
+        var userIds = assigneeLookup.Values.Distinct().ToList();
+        var displayNameLookup = new Dictionary<Guid, string>();
+        if (userIds.Count > 0)
+        {
+            var users = await _userReader.GetManyAsync(userIds, ct);
+            foreach (var u in users) displayNameLookup[u.Id] = u.DisplayName;
+        }
+
+        return activeRows.Select(r =>
+        {
+            string? assigneeName = null;
+            if (assigneeLookup.TryGetValue(r.Id, out var uid)
+                && displayNameLookup.TryGetValue(uid, out var name))
+                assigneeName = name;
+
+            return new StuckInstanceDto(
+                InstanceId: r.Id,
+                EntityDisplayName: r.EntityDisplayName,
+                CurrentState: r.CurrentState,
+                StartedAt: r.StartedAt,
+                DaysSinceStarted: (int)Math.Ceiling((now - r.StartedAt).TotalDays),
+                CurrentAssigneeDisplayName: assigneeName);
+        }).ToList();
+    }
+
+    private async Task<IReadOnlyList<ApproverActivityDto>> ComputeApproverActivityAsync(
+        Guid definitionId, DateTime windowStart, DateTime windowEnd, CancellationToken ct)
+    {
+        var instanceIds = await db.WorkflowInstances
+            .AsNoTracking()
+            .Where(i => i.DefinitionId == definitionId
+                     && i.StartedAt >= windowStart
+                     && i.StartedAt <= windowEnd)
+            .Select(i => i.Id)
+            .ToListAsync(ct);
+
+        if (instanceIds.Count == 0) return Array.Empty<ApproverActivityDto>();
+
+        var steps = await db.WorkflowSteps
+            .AsNoTracking()
+            .Where(s => instanceIds.Contains(s.InstanceId)
+                     && s.StepType == Domain.Enums.StepType.HumanTask
+                     && s.ActorUserId != null)
+            .Select(s => new { ActorUserId = s.ActorUserId!.Value, s.Action, s.Timestamp })
+            .ToListAsync(ct);
+
+        if (steps.Count == 0) return Array.Empty<ApproverActivityDto>();
+
+        var completedTasks = await db.ApprovalTasks
+            .AsNoTracking()
+            .Where(t => instanceIds.Contains(t.InstanceId)
+                     && t.Status == Domain.Enums.TaskStatus.Completed
+                     && t.CompletedByUserId != null
+                     && t.CompletedAt != null)
+            .Select(t => new
+            {
+                UserId = t.CompletedByUserId!.Value,
+                CompletedAt = t.CompletedAt!.Value,
+                t.CreatedAt,
+            })
+            .ToListAsync(ct);
+
+        var grouped = steps
+            .GroupBy(s => s.ActorUserId)
+            .Select(g =>
+            {
+                var stepList = g.ToList();
+                var approvals  = stepList.Count(x => string.Equals(x.Action, "approve",           StringComparison.OrdinalIgnoreCase));
+                var rejections = stepList.Count(x => string.Equals(x.Action, "reject",            StringComparison.OrdinalIgnoreCase));
+                var returns    = stepList.Count(x =>
+                    string.Equals(x.Action, "return",            StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(x.Action, "returnforrevision", StringComparison.OrdinalIgnoreCase));
+                var userId = g.Key;
+
+                var samples = new List<double>();
+                foreach (var step in stepList)
+                {
+                    var matchedTask = completedTasks.FirstOrDefault(t =>
+                        t.UserId == userId &&
+                        Math.Abs((t.CompletedAt - step.Timestamp).TotalSeconds) < 1.0);
+                    if (matchedTask != null)
+                        samples.Add((matchedTask.CompletedAt - matchedTask.CreatedAt).TotalHours);
+                }
+
+                return new
+                {
+                    UserId     = userId,
+                    Approvals  = approvals,
+                    Rejections = rejections,
+                    Returns    = returns,
+                    Total      = stepList.Count,
+                    AvgHours   = samples.Count > 0 ? (double?)Math.Round(samples.Average(), 2) : null,
+                };
+            })
+            .OrderByDescending(x => x.Total)
+            .Take(10)
+            .ToList();
+
+        var userIds = grouped.Select(x => x.UserId).Distinct().ToList();
+        var displayNameLookup = new Dictionary<Guid, string>();
+        if (userIds.Count > 0)
+        {
+            var users = await _userReader.GetManyAsync(userIds, ct);
+            foreach (var u in users) displayNameLookup[u.Id] = u.DisplayName;
+        }
+
+        return grouped.Select(x => new ApproverActivityDto(
+            UserId: x.UserId,
+            UserDisplayName: displayNameLookup.TryGetValue(x.UserId, out var name) ? name : x.UserId.ToString(),
+            Approvals: x.Approvals,
+            Rejections: x.Rejections,
+            Returns: x.Returns,
+            AvgResponseTimeHours: x.AvgHours)).ToList();
     }
 
     private enum BucketGranularity { Day, Week, Month }

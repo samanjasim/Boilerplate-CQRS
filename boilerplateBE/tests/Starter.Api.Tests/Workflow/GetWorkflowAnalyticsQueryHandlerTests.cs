@@ -265,7 +265,107 @@ public sealed class GetWorkflowAnalyticsQueryHandlerTests : IDisposable
         rates.Sum(r => r.Percentage).Should().BeApproximately(1.0, 0.001);
     }
 
+    [Fact]
+    public async Task Handle_StuckInstances_OrderedByStartedAtAsc_And_IncludeAssigneeDisplayName()
+    {
+        var def = CreateTenantDefinition();
+        var now = DateTime.UtcNow;
+        var alice = Guid.NewGuid();
+
+        var oldest = SeedInstance(def.Id, now.AddDays(-10), InstanceStatus.Active);
+        var middle = SeedInstance(def.Id, now.AddDays(-5),  InstanceStatus.Active);
+        var newest = SeedInstance(def.Id, now.AddDays(-1),  InstanceStatus.Active);
+
+        SeedPendingTask(oldest.Id, "AwaitingApproval", alice);
+        SeedPendingTask(middle.Id, "AwaitingApproval", alice);
+        SeedPendingTask(newest.Id, "AwaitingApproval", alice);
+
+        var result = await _sut.Handle(
+            new GetWorkflowAnalyticsQuery(def.Id, WindowSelector.ThirtyDays),
+            CancellationToken.None);
+
+        var stuck = result.Value.StuckInstances;
+        stuck.Should().HaveCount(3);
+        stuck[0].InstanceId.Should().Be(oldest.Id);
+        stuck[1].InstanceId.Should().Be(middle.Id);
+        stuck[2].InstanceId.Should().Be(newest.Id);
+        stuck[0].DaysSinceStarted.Should().BeGreaterThanOrEqualTo(10);
+        stuck[0].CurrentAssigneeDisplayName.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task Handle_StuckInstances_CappedAtTenRows()
+    {
+        var def = CreateTenantDefinition();
+        var now = DateTime.UtcNow;
+
+        for (var i = 0; i < 15; i++)
+            SeedInstance(def.Id, now.AddDays(-i - 1), InstanceStatus.Active);
+
+        var result = await _sut.Handle(
+            new GetWorkflowAnalyticsQuery(def.Id, WindowSelector.ThirtyDays),
+            CancellationToken.None);
+
+        result.Value.StuckInstances.Should().HaveCount(10);
+    }
+
+    [Fact]
+    public async Task Handle_ApproverActivity_CountsAndOrderByTotalActionsDesc()
+    {
+        var def = CreateTenantDefinition();
+        var now = DateTime.UtcNow;
+        var alice = Guid.NewGuid();
+        var bob   = Guid.NewGuid();
+
+        var inst = SeedInstance(def.Id, now.AddDays(-5), InstanceStatus.Active);
+
+        // Alice: 3 approvals, 1 reject
+        for (var i = 0; i < 3; i++)
+            SeedStep(inst.Id, "ManagerReview", "Approved", StepType.HumanTask, "approve", alice,
+                now.AddDays(-5).AddMinutes(i));
+        SeedStep(inst.Id, "ManagerReview", "Rejected", StepType.HumanTask, "reject", alice,
+            now.AddDays(-5).AddMinutes(5));
+
+        // Bob: 1 return
+        SeedStep(inst.Id, "ManagerReview", "Draft", StepType.HumanTask, "return", bob,
+            now.AddDays(-4));
+
+        // System action — must be excluded.
+        SeedStep(inst.Id, "ManagerReview", "AutoArchived", StepType.SystemAction, "autoArchive",
+            actorUserId: null, now.AddDays(-3));
+
+        var result = await _sut.Handle(
+            new GetWorkflowAnalyticsQuery(def.Id, WindowSelector.ThirtyDays),
+            CancellationToken.None);
+
+        var activity = result.Value.ApproverActivity;
+        activity.Should().HaveCount(2);
+        activity[0].UserId.Should().Be(alice);
+        activity[0].Approvals.Should().Be(3);
+        activity[0].Rejections.Should().Be(1);
+        activity[0].Returns.Should().Be(0);
+        activity[1].UserId.Should().Be(bob);
+        activity[1].Returns.Should().Be(1);
+    }
+
     // ── Fixture helpers ──────────────────────────────────────────────────────
+
+    private void SeedPendingTask(Guid instanceId, string stepName, Guid assigneeUserId)
+    {
+        var task = ApprovalTask.Create(
+            tenantId: _tenantId,
+            instanceId: instanceId,
+            stepName: stepName,
+            assigneeUserId: assigneeUserId,
+            assigneeRole: null,
+            assigneeStrategyJson: null,
+            entityType: "Order",
+            entityId: Guid.NewGuid(),
+            definitionName: "analytics-test",
+            availableActionsJson: "[]");
+        _db.ApprovalTasks.Add(task);
+        _db.SaveChanges();
+    }
 
     private void SeedStep(Guid instanceId, string fromState, string toState,
         StepType stepType, string action, Guid? actorUserId, DateTime timestamp)
