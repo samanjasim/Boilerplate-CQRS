@@ -74,6 +74,8 @@ public sealed class RagRetrievalServiceTimeoutTests
             new RerankStrategySelector(settings),
             new NoOpNeighborExpander(),
             new TokenCounter(),
+            new Starter.Api.Tests.Ai.Fakes.FakeResourceAccessService(),
+            new Starter.Api.Tests.Ai.Fakes.FakeCurrentUserService(),
             Options.Create(settings),
             NullLogger<RagRetrievalService>.Instance);
 
@@ -106,6 +108,8 @@ public sealed class RagRetrievalServiceTimeoutTests
             new RerankStrategySelector(settings),
             new NoOpNeighborExpander(),
             new TokenCounter(),
+            new Starter.Api.Tests.Ai.Fakes.FakeResourceAccessService(),
+            new Starter.Api.Tests.Ai.Fakes.FakeCurrentUserService(),
             Options.Create(settings),
             NullLogger<RagRetrievalService>.Instance);
 

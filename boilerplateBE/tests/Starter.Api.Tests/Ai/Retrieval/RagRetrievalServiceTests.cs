@@ -58,6 +58,8 @@ public sealed class RagRetrievalServiceTests
             new RerankStrategySelector(ragSettings),
             neighborExpander ?? new NoOpNeighborExpander(),
             new TokenCounter(),
+            new FakeResourceAccessService(),
+            new FakeCurrentUserService(),
             Options.Create(ragSettings),
             NullLogger<RagRetrievalService>.Instance);
     }

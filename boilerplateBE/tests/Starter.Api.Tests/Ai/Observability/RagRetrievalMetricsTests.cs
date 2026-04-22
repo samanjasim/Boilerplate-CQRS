@@ -109,6 +109,8 @@ public class RagRetrievalMetricsTests
             new RerankStrategySelector(settings),
             new NoOpNeighborExpander(),
             new TokenCounter(),
+            new Fakes.FakeResourceAccessService(),
+            new Fakes.FakeCurrentUserService(),
             Options.Create(settings),
             NullLogger<RagRetrievalService>.Instance);
 
@@ -153,6 +155,8 @@ public class RagRetrievalMetricsTests
             new RerankStrategySelector(settings),
             new NoOpNeighborExpander(),
             new TokenCounter(),
+            new Fakes.FakeResourceAccessService(),
+            new Fakes.FakeCurrentUserService(),
             Options.Create(settings),
             NullLogger<RagRetrievalService>.Instance);
 
@@ -193,6 +197,8 @@ public class RagRetrievalMetricsTests
             new RerankStrategySelector(settings),
             new NoOpNeighborExpander(),
             new TokenCounter(),
+            new Fakes.FakeResourceAccessService(),
+            new Fakes.FakeCurrentUserService(),
             Options.Create(settings),
             NullLogger<RagRetrievalService>.Instance);
 
@@ -228,6 +234,8 @@ public class RagRetrievalMetricsTests
             new RerankStrategySelector(settings),
             new NoOpNeighborExpander(),
             new TokenCounter(),
+            new Fakes.FakeResourceAccessService(),
+            new Fakes.FakeCurrentUserService(),
             Options.Create(settings),
             NullLogger<RagRetrievalService>.Instance);
 
@@ -342,6 +350,8 @@ public class RagRetrievalMetricsTests
                 new RerankStrategySelector(settings),
                 new NoOpNeighborExpander(),
                 new TokenCounter(),
+                new Fakes.FakeResourceAccessService(),
+                new Fakes.FakeCurrentUserService(),
                 Options.Create(settings),
                 NullLogger<RagRetrievalService>.Instance);
 
@@ -427,6 +437,8 @@ public class RagRetrievalMetricsTests
             new RerankStrategySelector(settings),
             new NoOpNeighborExpander(),
             new TokenCounter(),
+            new Fakes.FakeResourceAccessService(),
+            new Fakes.FakeCurrentUserService(),
             Options.Create(settings),
             NullLogger<RagRetrievalService>.Instance);
 
@@ -476,6 +488,8 @@ public class RagRetrievalMetricsTests
             new RerankStrategySelector(settings),
             new NoOpNeighborExpander(),
             new TokenCounter(),
+            new Fakes.FakeResourceAccessService(),
+            new Fakes.FakeCurrentUserService(),
             Options.Create(settings),
             NullLogger<RagRetrievalService>.Instance);
 

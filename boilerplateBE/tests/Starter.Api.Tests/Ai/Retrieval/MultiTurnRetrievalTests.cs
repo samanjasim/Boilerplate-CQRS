@@ -61,6 +61,8 @@ public sealed class MultiTurnRetrievalTests
             new RerankStrategySelector(settings),
             new NoOpNeighborExpander(),
             new TokenCounter(),
+            new FakeResourceAccessService(),
+            new FakeCurrentUserService(),
             Options.Create(settings),
             NullLogger<RagRetrievalService>.Instance);
     }

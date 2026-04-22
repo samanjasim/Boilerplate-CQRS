@@ -43,6 +43,8 @@ public sealed class MmrIntegrationTests
             new RerankStrategySelector(settings),
             new NoOpNeighborExpander(),
             new TokenCounter(),
+            new FakeResourceAccessService(),
+            new FakeCurrentUserService(),
             Options.Create(settings),
             NullLogger<RagRetrievalService>.Instance);
     }
@@ -258,6 +260,8 @@ public sealed class MmrIntegrationTests
             new RerankStrategySelector(settings),
             new NoOpNeighborExpander(),
             new TokenCounter(),
+            new FakeResourceAccessService(),
+            new FakeCurrentUserService(),
             Options.Create(settings),
             NullLogger<RagRetrievalService>.Instance);
 

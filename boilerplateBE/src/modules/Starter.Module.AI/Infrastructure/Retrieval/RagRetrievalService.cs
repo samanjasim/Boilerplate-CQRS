@@ -3,6 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Polly.CircuitBreaker;
+using Starter.Application.Common.Access;
+using Starter.Application.Common.Access.Contracts;
+using Starter.Application.Common.Interfaces;
+using Starter.Domain.Common.Access.Enums;
 using Starter.Module.AI.Application.Services.Ingestion;
 using Starter.Module.AI.Application.Services.Retrieval;
 using Starter.Module.AI.Domain.Entities;
@@ -31,6 +35,8 @@ internal sealed class RagRetrievalService : IRagRetrievalService
     private readonly RerankStrategySelector _rerankSelector;
     private readonly INeighborExpander _neighborExpander;
     private readonly TokenCounter _tokenCounter;
+    private readonly IResourceAccessService _access;
+    private readonly ICurrentUserService _currentUser;
     private readonly AiRagSettings _settings;
     private readonly ILogger<RagRetrievalService> _logger;
 
@@ -46,6 +52,8 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         RerankStrategySelector rerankSelector,
         INeighborExpander neighborExpander,
         TokenCounter tokenCounter,
+        IResourceAccessService access,
+        ICurrentUserService currentUser,
         IOptions<AiRagSettings> settings,
         ILogger<RagRetrievalService> logger)
     {
@@ -60,6 +68,8 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         _rerankSelector = rerankSelector;
         _neighborExpander = neighborExpander;
         _tokenCounter = tokenCounter;
+        _access = access;
+        _currentUser = currentUser;
         _settings = settings.Value;
         _logger = logger;
     }
@@ -105,17 +115,20 @@ internal sealed class RagRetrievalService : IRagRetrievalService
                 _settings.TopK,
                 _settings.MinHybridScore,
                 _settings.IncludeParentContext,
+                accessMode: assistant.AccessMode,
                 seedDegraded: degradedForContext,
                 ct);
         }
 
-        return await RetrieveForQueryAsync(
+        return await RetrieveForQueryInternalAsync(
             tenantId,
             effectiveQuery,
             docFilter,
             _settings.TopK,
             _settings.MinHybridScore,
             _settings.IncludeParentContext,
+            accessMode: assistant.AccessMode,
+            seedDegraded: null,
             ct);
     }
 
@@ -127,7 +140,11 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         decimal? minScore,
         bool includeParents,
         CancellationToken ct)
-        => RetrieveForQueryInternalAsync(tenantId, queryText, documentFilter, topK, minScore, includeParents, seedDegraded: null, ct);
+        => RetrieveForQueryInternalAsync(
+            tenantId, queryText, documentFilter, topK, minScore, includeParents,
+            accessMode: AssistantAccessMode.CallerPrincipal,
+            seedDegraded: null,
+            ct);
 
     private async Task<RetrievedContext> RetrieveForQueryInternalAsync(
         Guid tenantId,
@@ -136,6 +153,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         int topK,
         decimal? minScore,
         bool includeParents,
+        AssistantAccessMode accessMode,
         IReadOnlyList<string>? seedDegraded,
         CancellationToken ct)
     {
@@ -250,13 +268,46 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         var retrievalTopK = _settings.RetrievalTopK;
         var minHybrid = minScore ?? _settings.MinHybridScore;
 
+        // 2b. acl-resolve — only for CallerPrincipal mode. For AssistantPrincipal the
+        // chat gate (Task 11) has already bounded what the caller can invoke, and the
+        // assistant itself acts as the identity; we rely on tenant-scoped filtering only.
+        // Fail-closed: if the resolver times out or throws a transient exception, the
+        // stage is marked degraded and we return an empty context rather than run
+        // retrieval without per-document ACL filtering.
+        AclPayloadFilter? aclFilter = null;
+        if (accessMode == AssistantAccessMode.CallerPrincipal && _currentUser.UserId is Guid userId)
+        {
+            var resolution = await WithTimeoutAsync(
+                innerCt => _access.ResolveAccessibleResourcesAsync(_currentUser, ResourceTypes.File, innerCt),
+                _settings.StageTimeoutAclResolveMs,
+                RagStages.AclResolve,
+                degraded,
+                ct);
+
+            if (resolution is null)
+            {
+                _logger.LogWarning(
+                    "RAG acl-resolve degraded — returning empty context (fail-closed) for tenant {TenantId}",
+                    tenantId);
+                return new RetrievedContext([], [], 0, false, degraded, [], 0, detectedLang);
+            }
+
+            if (!resolution.IsAdminBypass)
+            {
+                aclFilter = new AclPayloadFilter(
+                    UserId: userId,
+                    MinVisibilityTenantWide: ResourceVisibility.TenantWide,
+                    GrantedFileIds: resolution.ExplicitGrantedResourceIds);
+            }
+        }
+
         // 3. Vector search per variant.
         var vectorLists = new List<IReadOnlyList<VectorSearchHit>>(variantCount);
         for (var i = 0; i < variantCount; i++)
         {
             var v = vectors[i];
             var hits = await WithTimeoutAsync(
-                innerCt => _vectorStore.SearchAsync(tenantId, v, documentFilter, aclFilter: null, retrievalTopK, innerCt),
+                innerCt => _vectorStore.SearchAsync(tenantId, v, documentFilter, aclFilter, retrievalTopK, innerCt),
                 _settings.StageTimeoutVectorMs,
                 RagStages.VectorSearch(i),
                 degraded,
@@ -270,7 +321,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         {
             var q = effectiveVariants[i];
             var hits = await WithTimeoutAsync(
-                innerCt => _keywordSearch.SearchAsync(tenantId, q, documentFilter, aclFilter: null, retrievalTopK, innerCt),
+                innerCt => _keywordSearch.SearchAsync(tenantId, q, documentFilter, aclFilter, retrievalTopK, innerCt),
                 _settings.StageTimeoutKeywordMs,
                 RagStages.KeywordSearch(i),
                 degraded,

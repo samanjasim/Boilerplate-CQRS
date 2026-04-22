@@ -96,6 +96,8 @@ public sealed class QueryIntelligencePipelineTests
             selector,
             neighbor,
             new TokenCounter(),
+            new FakeResourceAccessService(),
+            new FakeCurrentUserService(),
             opts,
             NullLogger<RagRetrievalService>.Instance);
 

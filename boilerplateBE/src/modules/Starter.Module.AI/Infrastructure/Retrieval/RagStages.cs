@@ -13,6 +13,7 @@ internal static class RagStages
     public const string Classify = "classify";
     public const string QueryRewrite = "query-rewrite";
     public const string EmbedQuery = "embed-query";
+    public const string AclResolve = "acl-resolve";
     public const string Rerank = "rerank";
     public const string MmrDiversify = "mmr-diversify";
     public const string NeighborExpand = "neighbor-expand";

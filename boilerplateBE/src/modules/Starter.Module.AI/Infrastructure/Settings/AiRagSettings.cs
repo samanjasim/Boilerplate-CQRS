@@ -130,4 +130,20 @@ public sealed class AiRagSettings
     /// vector-fetch round-trip that MMR needs; the algorithm itself runs in microseconds.
     /// </summary>
     public int StageTimeoutMmrMs { get; init; } = 2_000;
+
+    // ---- New in Plan 4b-8 — Per-document ACLs ----
+    /// <summary>
+    /// Per-stage timeout for the acl-resolve stage. If the access resolver exceeds this
+    /// budget, the stage fails closed (empty context, degraded) rather than leaking
+    /// unfiltered results. Keep generous enough to tolerate a Postgres round-trip
+    /// plus short cache warmup.
+    /// </summary>
+    public int StageTimeoutAclResolveMs { get; init; } = 1_500;
+
+    /// <summary>
+    /// TTL for the per-user resolved ACL payload cache. Controls how quickly a newly
+    /// granted (or revoked) share becomes visible in retrieval. Set to 0 to disable
+    /// the cache.
+    /// </summary>
+    public int AclCacheTtlSeconds { get; init; } = 60;
 }
