@@ -12,3 +12,8 @@ export * from './FileUpload';
 export * from './UserAvatar';
 export * from './Pagination';
 export * from './pagination-utils';
+export * from './VisibilityBadge';
+export * from './SubjectPicker';
+export * from './SubjectStack';
+export * from './OwnershipTransferDialog';
+export * from './ResourceShareDialog';
