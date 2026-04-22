@@ -341,7 +341,7 @@ public sealed class WorkflowEngineTests : IDisposable
             approvalTask.Id, "approve", null, randomUserId);
 
         result.IsFailure.Should().BeTrue();
-        result.ErrorCode.Should().Be("Error.Forbidden");
+        result.ErrorCode.Should().Be("Workflow.TaskNotAssignedToUser");
     }
 
     // ── 7. ExecuteTaskAsync — terminal state completes instance ──────────────

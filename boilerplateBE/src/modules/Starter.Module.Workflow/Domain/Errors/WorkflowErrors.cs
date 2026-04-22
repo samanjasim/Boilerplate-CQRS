@@ -20,7 +20,7 @@ public static class WorkflowErrors
         Error.Validation("Workflow.InvalidTransition", $"Action '{action}' is not valid from state '{currentState}'");
 
     public static Error TaskNotAssignedToUser(Guid taskId, Guid userId) =>
-        Error.Forbidden($"Task '{taskId}' is not assigned to user '{userId}'");
+        new("Workflow.TaskNotAssignedToUser", $"Task '{taskId}' is not assigned to user '{userId}'", ErrorType.Forbidden);
 
     public static Error InstanceNotActive(Guid id) =>
         Error.Validation("Workflow.InstanceNotActive", $"Workflow instance '{id}' is not active");
