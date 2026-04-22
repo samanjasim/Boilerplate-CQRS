@@ -34,7 +34,8 @@ internal sealed class GetWorkflowAnalyticsQueryHandler(
 
         var headline = await ComputeHeadlineAsync(definition.Id, windowStart, windowEnd, ct);
 
-        var series = BuildZeroFilledSeries(request.Window, windowStart, windowEnd);
+        var series = await ComputeInstanceCountSeriesAsync(
+            definition.Id, request.Window, windowStart, windowEnd, ct);
 
         var dto = new WorkflowAnalyticsDto(
             DefinitionId: definition.Id,
@@ -64,21 +65,66 @@ internal sealed class GetWorkflowAnalyticsQueryHandler(
             _ => throw new ArgumentOutOfRangeException(nameof(window)),
         };
 
-    private static IReadOnlyList<InstanceCountPoint> BuildZeroFilledSeries(
-        WindowSelector window, DateTime start, DateTime end)
+    private async Task<IReadOnlyList<InstanceCountPoint>> ComputeInstanceCountSeriesAsync(
+        Guid definitionId,
+        WindowSelector window,
+        DateTime windowStart,
+        DateTime windowEnd,
+        CancellationToken ct)
     {
         var granularity = PickGranularity(window);
-        var buckets = new List<InstanceCountPoint>();
-        var cursor = TruncateTo(start, granularity);
-        var endTrunc = TruncateTo(end, granularity);
 
-        while (cursor <= endTrunc)
+        // Always materialize within-window rows and bucket in C# so EF InMemory
+        // (tests) and Postgres behave identically. This is the read path's hot
+        // aggregation — profiling in the perf test (Task 13) is the signal to
+        // move to raw SQL date_trunc if 1s is ever breached.
+        var rows = await db.WorkflowInstances
+            .AsNoTracking()
+            .Where(i => i.DefinitionId == definitionId
+                     && i.StartedAt >= windowStart
+                     && i.StartedAt <= windowEnd)
+            .Select(i => new
+            {
+                i.StartedAt,
+                i.Status,
+                i.CompletedAt,
+                i.CancelledAt,
+            })
+            .ToListAsync(ct);
+
+        var dict = new Dictionary<DateTime, (int started, int completed, int cancelled)>();
+        for (var cursor = TruncateTo(windowStart, granularity);
+             cursor <= TruncateTo(windowEnd, granularity);
+             cursor = Advance(cursor, granularity))
         {
-            buckets.Add(new InstanceCountPoint(cursor, 0, 0, 0));
-            cursor = Advance(cursor, granularity);
+            dict[cursor] = (0, 0, 0);
         }
 
-        return buckets;
+        foreach (var r in rows)
+        {
+            var startBucket = TruncateTo(r.StartedAt, granularity);
+            if (dict.TryGetValue(startBucket, out var s))
+                dict[startBucket] = (s.started + 1, s.completed, s.cancelled);
+
+            if (r.Status == Domain.Enums.InstanceStatus.Completed && r.CompletedAt.HasValue)
+            {
+                var completedBucket = TruncateTo(r.CompletedAt.Value, granularity);
+                if (dict.TryGetValue(completedBucket, out var c))
+                    dict[completedBucket] = (c.started, c.completed + 1, c.cancelled);
+            }
+
+            if (r.Status == Domain.Enums.InstanceStatus.Cancelled && r.CancelledAt.HasValue)
+            {
+                var cancelledBucket = TruncateTo(r.CancelledAt.Value, granularity);
+                if (dict.TryGetValue(cancelledBucket, out var x))
+                    dict[cancelledBucket] = (x.started, x.completed, x.cancelled + 1);
+            }
+        }
+
+        return dict
+            .OrderBy(kvp => kvp.Key)
+            .Select(kvp => new InstanceCountPoint(kvp.Key, kvp.Value.started, kvp.Value.completed, kvp.Value.cancelled))
+            .ToList();
     }
 
     private static BucketGranularity PickGranularity(WindowSelector window) => window switch

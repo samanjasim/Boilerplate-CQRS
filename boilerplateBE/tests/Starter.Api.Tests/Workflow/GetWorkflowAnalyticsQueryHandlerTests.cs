@@ -157,6 +157,38 @@ public sealed class GetWorkflowAnalyticsQueryHandlerTests : IDisposable
         result.Value.Headline.TotalCompleted.Should().Be(1);
     }
 
+    [Fact]
+    public async Task Handle_30DayWindow_InstanceCountSeriesBucketsByDayAndIncludesStartedCompletedCancelled()
+    {
+        var def = CreateTenantDefinition();
+        var today = DateTime.UtcNow.Date;
+
+        // Two started today.
+        SeedInstance(def.Id, today.AddHours(2),  InstanceStatus.Active);
+        SeedInstance(def.Id, today.AddHours(10), InstanceStatus.Active);
+        // One started+completed yesterday.
+        SeedInstance(def.Id, today.AddDays(-1).AddHours(5), InstanceStatus.Completed,
+            completedAt: today.AddDays(-1).AddHours(9));
+        // One started two days ago, cancelled today.
+        SeedInstance(def.Id, today.AddDays(-2).AddHours(1), InstanceStatus.Cancelled,
+            cancelledAt: today.AddHours(12));
+
+        var result = await _sut.Handle(
+            new GetWorkflowAnalyticsQuery(def.Id, WindowSelector.ThirtyDays),
+            CancellationToken.None);
+
+        var series = result.Value.InstanceCountSeries;
+        var todayBucket     = series.Single(p => p.Bucket.Date == today);
+        var yesterdayBucket = series.Single(p => p.Bucket.Date == today.AddDays(-1));
+        var twoDaysBucket   = series.Single(p => p.Bucket.Date == today.AddDays(-2));
+
+        todayBucket.Started.Should().Be(2);
+        todayBucket.Cancelled.Should().Be(1);
+        yesterdayBucket.Started.Should().Be(1);
+        yesterdayBucket.Completed.Should().Be(1);
+        twoDaysBucket.Started.Should().Be(1);
+    }
+
     // ── Fixture helpers ──────────────────────────────────────────────────────
 
     private WorkflowDefinition CreateTenantDefinition()
