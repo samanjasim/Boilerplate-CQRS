@@ -31,19 +31,9 @@ internal sealed class ExecuteTaskCommandHandler(
             return Result.ValidationFailure<bool>(validationErrors);
         }
 
-        // Map workflow error codes back to the right ErrorType so the API
-        // returns the correct HTTP status (404 / 403 / 400 / 409 vs generic 500).
-        var code = wfResult.ErrorCode!;
-        var description = wfResult.ErrorDescription!;
-        var errorType = code switch
-        {
-            "Workflow.TaskNotFound" => ErrorType.NotFound,
-            "Workflow.TaskNotAssignedToUser" => ErrorType.Forbidden,
-            "Workflow.InvalidTransition" => ErrorType.Validation,
-            "Workflow.TaskNotPending" => ErrorType.Conflict,
-            "Workflow.Concurrency" => ErrorType.Conflict,
-            _ => ErrorType.Failure,
-        };
-        return Result.Failure<bool>(new Error(code, description, errorType));
+        return Result.Failure<bool>(new Error(
+            wfResult.ErrorCode!,
+            wfResult.ErrorDescription!,
+            (ErrorType)wfResult.Kind));
     }
 }

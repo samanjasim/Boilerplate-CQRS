@@ -49,7 +49,7 @@ public sealed class NullWorkflowService(ILogger<NullWorkflowService> logger) : I
         logger.LogDebug(
             "Workflow task execution skipped — Workflow module not installed (taskId: {TaskId}, action: {Action})",
             taskId, action);
-        return Task.FromResult(WorkflowTaskResult.Failure("Workflow.ModuleNotInstalled", "The Workflow module is not installed."));
+        return Task.FromResult(WorkflowTaskResult.Success());
     }
 
     public Task<bool> TransitionAsync(
