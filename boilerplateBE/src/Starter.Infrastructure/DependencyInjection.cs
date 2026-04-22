@@ -2,6 +2,7 @@ using Amazon.S3;
 using QuestPDF.Infrastructure;
 using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Readers;
+using Starter.Application.Common.Access;
 using Starter.Application.Common.Interfaces;
 using Starter.Infrastructure.Capabilities.MetricCalculators;
 using Starter.Infrastructure.Capabilities.NullObjects;
@@ -10,6 +11,7 @@ using Starter.Infrastructure.Persistence;
 using Starter.Infrastructure.Persistence.Interceptors;
 using Starter.Infrastructure.Readers;
 using Starter.Infrastructure.Services;
+using Starter.Infrastructure.Services.Access;
 using Starter.Infrastructure.Settings;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
@@ -218,6 +220,7 @@ public static class DependencyInjection
         services.AddScoped<IFeatureFlagService, FeatureFlagService>();
         services.AddScoped<IPermissionHierarchyService, PermissionHierarchyService>();
         services.AddScoped<IUsageTracker, UsageTrackerService>();
+        services.AddScoped<IResourceAccessService, ResourceAccessService>();
 
         return services;
     }
