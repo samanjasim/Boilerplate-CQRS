@@ -18,7 +18,7 @@ All the raw data needed already exists in the schema:
 |---|---|
 | `WorkflowInstance` | `StartedAt`, `CompletedAt`, `CancelledAt`, `Status`, `DefinitionId`, `TenantId`, `CurrentState` |
 | `WorkflowStep` | `InstanceId`, `FromState`, `ToState`, `StepType`, `Action`, `ActorUserId`, `Timestamp` |
-| `ApprovalTask` | `InstanceId`, `AssigneeUserId`, `CompletedAt`, `AssigneeDisplayName` (denormalized Phase 2b) |
+| `ApprovalTask` | `InstanceId`, `AssigneeUserId`, `CompletedAt` (resolve display name via `IUserReader`, same pattern `WorkflowEngine` uses for history) |
 
 Phase 2b already added `(TenantId, DefinitionId)` on `WorkflowInstance` and `(InstanceId, Timestamp)` on `WorkflowStep`. No new indexes or tables are required for this phase.
 
@@ -94,7 +94,7 @@ GET /api/v1/Workflow/definitions/{id}/analytics?window=30d
 **Boundary rules:**
 
 - Query lives in `boilerplateBE/src/modules/Starter.Module.Workflow/Application/Queries/GetWorkflowAnalytics/` following the existing `GetWorkflowDefinitionByIdQuery` pattern (one folder, query record, handler, DTO file).
-- Handler depends on the existing `IWorkflowDbContext` — no new abstraction, no new interface.
+- Handler injects the concrete `WorkflowDbContext` directly (the module-owned context; no `IWorkflowDbContext` interface exists and none is added). It also injects `IUserReader` for resolving assignee/approver display names — the same pattern `WorkflowEngine.GetHistoryAsync` uses.
 - Reads go against `WorkflowInstances`, `WorkflowSteps`, `ApprovalTasks`. All joins are tenant-filtered by the existing global query filter on `WorkflowInstance`.
 - **Percentile calculations** (median + P95 dwell per state) use one raw-SQL call via `FromSqlInterpolated` that invokes Postgres `percentile_cont(0.5) WITHIN GROUP (ORDER BY duration_seconds)`. The handler detects the provider via `db.Database.ProviderName` and falls back to `AVG(...)` on non-Postgres providers so the EF InMemory test provider still returns a plausible number.
 - **Window validation** — query-string `window` parsed to a `WindowSelector` sealed enum (`SevenDays | ThirtyDays | NinetyDays | AllTime`). Invalid strings return `400 Workflow.InvalidAnalyticsWindow`.
@@ -177,10 +177,10 @@ All failures flow through the existing `HandleResult()` envelope.
 | Headline: `totalStarted`, `totalCompleted`, `totalCancelled` | `WorkflowInstance` | `COUNT(*)` grouped by `Status`, filtered by `DefinitionId`, `StartedAt ∈ window`. |
 | Headline: `avgCycleTimeHours` | `WorkflowInstance` | `AVG(CompletedAt - StartedAt)` where `Status = Completed` and `StartedAt ∈ window`. Expressed in hours to one decimal. |
 | Bottleneck states (per state) | `WorkflowStep` | For each step with `FromState = X`, find the *preceding* step landing in `X` (i.e. `ToState = X`). Dwell = `exit.Timestamp − entry.Timestamp`. Compute `median` + `p95` (Postgres `percentile_cont`) + `count`. **Only states with `visitCount ≥ 3` are returned** — fewer runs aren't meaningful. Sorted descending by `medianDwellHours`. |
-| Action rates (per state + action) | `WorkflowStep` where `StepType = UserAction` | `GROUP BY (FromState, Action)`; `percentage` is within the `FromState` group. |
+| Action rates (per state + action) | `WorkflowStep` where `StepType = HumanTask` AND `ActorUserId IS NOT NULL` | `GROUP BY (FromState, Action)`; `percentage` is within the `FromState` group. (`HumanTask` is the step type the engine emits for user-executed task actions — see `WorkflowEngine.ExecuteTaskAsync`.) |
 | Instance count series | `WorkflowInstance` | Auto-bucket: `7d→day`, `30d→day`, `90d→week`, `AllTime→month`. On Postgres, `date_trunc` in raw SQL. On EF InMemory (tests), the handler materializes rows in-window and buckets in C# using the same provider-detection switch used for percentiles. Missing buckets zero-filled in the handler (not the DB) so the series is always dense. Each point has `started`, `completed`, `cancelled`. |
-| Stuck instances (top 10) | `WorkflowInstance` + `ApprovalTask` | `Status = Active`, `ORDER BY StartedAt ASC`, `LIMIT 10`. Left-join to the pending `ApprovalTask` for `currentAssigneeDisplayName`. `daysSinceStarted = CEIL((now − StartedAt).TotalDays)`. |
-| Approver activity (top 10) | `WorkflowStep` + `ApprovalTask` | `WHERE ActorUserId IS NOT NULL AND StepType = UserAction`, `GROUP BY ActorUserId`. Counts of `approve` / `reject` / `return`. `avgResponseTimeHours = AVG(step.Timestamp − task.CreatedAt)` for the matching task. Top 10 by total-action count. |
+| Stuck instances (top 10) | `WorkflowInstance` + `ApprovalTask` | `Status = Active`, `ORDER BY StartedAt ASC`, `LIMIT 10`. Left-join the pending `ApprovalTask` by `InstanceId` + `Status = Pending` to get `AssigneeUserId`; the handler then calls `IUserReader.GetManyAsync` (same two-phase lookup pattern `WorkflowEngine.GetHistoryAsync` uses) to resolve `currentAssigneeDisplayName`. `daysSinceStarted = CEIL((now − StartedAt).TotalDays)`. |
+| Approver activity (top 10) | `WorkflowStep` + `ApprovalTask` | `WHERE ActorUserId IS NOT NULL AND StepType = HumanTask`, `GROUP BY ActorUserId`. Counts of `approve` / `reject` / `return`. `avgResponseTimeHours = AVG(step.Timestamp − task.CreatedAt)` for the matching completed task. Top 10 by total-action count. `userDisplayName` resolved via `IUserReader.GetManyAsync`. |
 
 **Low-data caveat.** When `instancesInWindow < 5` the response still includes all numbers; the frontend shows a muted banner ("Based on N runs — metrics may not be representative"). No backend flag.
 
