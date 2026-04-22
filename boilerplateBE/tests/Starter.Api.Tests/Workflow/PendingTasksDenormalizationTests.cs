@@ -49,6 +49,8 @@ public sealed class PendingTasksDenormalizationTests : IDisposable
         var conditionEvaluator = new ConditionEvaluator();
         var autoTransitionEvaluator = new AutoTransitionEvaluator(conditionEvaluator);
 
+        var parallelCoordinator = new ParallelApprovalCoordinator(_db);
+
         _sut = new WorkflowEngine(
             _db,
             conditionEvaluator,
@@ -59,6 +61,7 @@ public sealed class PendingTasksDenormalizationTests : IDisposable
             new FormDataValidator(),
             humanTaskFactory,
             autoTransitionEvaluator,
+            parallelCoordinator,
             NullLogger<WorkflowEngine>.Instance);
     }
 

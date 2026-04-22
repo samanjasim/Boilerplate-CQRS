@@ -51,6 +51,8 @@ public sealed class GetPendingTasksPaginationTests : IDisposable
         var conditionEvaluator = new ConditionEvaluator();
         var autoTransitionEvaluator = new AutoTransitionEvaluator(conditionEvaluator);
 
+        var parallelCoordinator = new ParallelApprovalCoordinator(_db);
+
         _sut = new WorkflowEngine(
             _db,
             conditionEvaluator,
@@ -61,6 +63,7 @@ public sealed class GetPendingTasksPaginationTests : IDisposable
             new FormDataValidator(),
             humanTaskFactory,
             autoTransitionEvaluator,
+            parallelCoordinator,
             NullLogger<WorkflowEngine>.Instance);
     }
 

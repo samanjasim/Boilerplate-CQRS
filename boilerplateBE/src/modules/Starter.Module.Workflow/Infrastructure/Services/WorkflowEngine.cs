@@ -26,6 +26,7 @@ public sealed class WorkflowEngine(
     IFormDataValidator formDataValidator,
     HumanTaskFactory humanTaskFactory,
     AutoTransitionEvaluator autoTransitionEvaluator,
+    ParallelApprovalCoordinator parallelCoordinator,
     ILogger<WorkflowEngine> logger) : IWorkflowService
 {
     private static readonly JsonSerializerOptions JsonOpts = new()
@@ -379,68 +380,39 @@ public sealed class WorkflowEngine(
         // is complete before allowing the workflow to transition.
         if (task.GroupId.HasValue)
         {
-            var siblingTasks = await context.ApprovalTasks
-                .Where(t => t.GroupId == task.GroupId && t.Id != task.Id)
-                .ToListAsync(ct);
-
             var parallelMode = fromStateConfig?.Parallel?.Mode ?? "AllOf";
+            var decision = await parallelCoordinator.EvaluateAsync(task, parallelMode, action, ct);
 
-            if (parallelMode.Equals("AnyOf", StringComparison.OrdinalIgnoreCase))
+            if (!decision.ShouldProceed)
             {
-                // AnyOf: first completion wins — cancel all remaining siblings
-                foreach (var sibling in siblingTasks.Where(t => t.Status == Domain.Enums.TaskStatus.Pending))
-                    sibling.Cancel();
+                // AllOf: not all siblings done yet — stay at current state.
+                var waitStep = WorkflowStep.Create(
+                    instance.Id,
+                    fromState,
+                    fromState, // stays at same state
+                    StepType.HumanTask,
+                    action,
+                    actorUserId,
+                    comment,
+                    metadataJson);
 
-                // Proceed with transition below
-            }
-            else // AllOf
-            {
-                if (action.Equals("reject", StringComparison.OrdinalIgnoreCase))
+                context.WorkflowSteps.Add(waitStep);
+
+                try
                 {
-                    // Any rejection in AllOf: cancel remaining, transition to rejection state
-                    foreach (var sibling in siblingTasks.Where(t => t.Status == Domain.Enums.TaskStatus.Pending))
-                        sibling.Cancel();
-
-                    // Proceed with transition below
+                    await context.SaveChangesAsync(ct);
                 }
-                else
+                catch (DbUpdateConcurrencyException)
                 {
-                    // Check if ALL siblings are also completed
-                    var allSiblingsCompleted = siblingTasks.All(t => t.Status == Domain.Enums.TaskStatus.Completed);
-                    if (!allSiblingsCompleted)
-                    {
-                        // Wait — don't transition yet. Create step record and save.
-                        var waitStep = WorkflowStep.Create(
-                            instance.Id,
-                            fromState,
-                            fromState, // stays at same state
-                            StepType.HumanTask,
-                            action,
-                            actorUserId,
-                            comment,
-                            metadataJson);
-
-                        context.WorkflowSteps.Add(waitStep);
-
-                        try
-                        {
-                            await context.SaveChangesAsync(ct);
-                        }
-                        catch (DbUpdateConcurrencyException)
-                        {
-                            logger.LogWarning("Concurrency conflict on task {TaskId}. Another user may have already acted.", taskId);
-                            return false;
-                        }
-
-                        logger.LogInformation(
-                            "Task {TaskId}: completed (parallel AllOf, waiting for siblings). Instance {InstanceId} stays at '{State}'.",
-                            taskId, instance.Id, fromState);
-
-                        return true;
-                    }
-
-                    // All siblings completed — proceed with transition below
+                    logger.LogWarning("Concurrency conflict on task {TaskId}. Another user may have already acted.", taskId);
+                    return false;
                 }
+
+                logger.LogInformation(
+                    "Task {TaskId}: completed (parallel AllOf, waiting for siblings). Instance {InstanceId} stays at '{State}'.",
+                    taskId, instance.Id, fromState);
+
+                return true;
             }
         }
 
