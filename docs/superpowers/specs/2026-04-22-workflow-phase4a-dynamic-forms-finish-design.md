@@ -48,7 +48,7 @@ Secondary gaps:
 - Fix the validation-error surfacing bug.
 - Plumb field-level errors from the `FormDataValidator` through the API envelope to the `DynamicFormRenderer`.
 - Add end-to-end integration test proving the form-data → conditional-branch chain.
-- Add Vitest unit tests for `DynamicFormRenderer` and the `ApprovalDialog` error path.
+- Live QA (chrome-devtools-mcp) against a rename'd test app as the FE regression guard (standard post-feature workflow).
 - Add user-facing documentation (`docs/features/workflow-forms.md`).
 - Update `docs/roadmaps/workflow.md` to reflect 4a shipped + Phase 4+ deferred items.
 
@@ -65,26 +65,30 @@ Secondary gaps:
 
 ### BE — validation error contract
 
+The codebase already has a first-class validation-error channel — 4a uses it instead of a custom `Error.metadata` payload:
+
+- `Starter.Shared.Results.Result.ValidationFailure<T>(ValidationErrors errors)` — static factory.
+- `Starter.Shared.Results.ValidationErrors` — collects `{PropertyName, ErrorMessage}` pairs; `.ToDictionary()` produces `Dictionary<string, string[]>`.
+- `BaseApiController.HandleFailure` — when `result.ValidationErrors is not null`, returns `400 BadRequest(ApiResponse.Fail(validationErrors))`.
+- `ApiResponse<T>.ValidationErrors: IDictionary<string, string[]>` — serialized on the envelope as `validationErrors`.
+
+No envelope changes, no new `Error` factory, no new serializer work needed.
+
 **Change 1: `WorkflowEngine.ExecuteTaskAsync` return type** — from `Task<bool>` to `Task<Result<bool>>`.
 
 - Success path: `Result.Success(true)`.
 - Task not found / not-in-pending-state / non-matching transition: `Result.Failure<bool>(WorkflowErrors.TaskNotFound(taskId))` (preserves existing semantics).
-- Validation failure: `Result.Failure<bool>(WorkflowErrors.FormValidation(errors))` — the new error carries per-field messages.
+- Form data validation failure: `Result.ValidationFailure<bool>(validationErrors)` — where `validationErrors` is a `ValidationErrors` instance built from the `FormDataValidator` output.
 - **Plan task: audit all existing `return false` paths in `WorkflowEngine.ExecuteTaskAsync`** and categorize each into either (a) a specific `Result.Failure` with an appropriate existing or new `WorkflowErrors.*` factory, or (b) `Result.Success(false)` for legitimate "not advancing yet" no-ops (e.g., parallel-group not yet complete). The plan must enumerate each path before the refactor lands.
 
-**Change 2: New `WorkflowErrors.FormValidation`** factory:
+**Change 2: Adapter in the engine** — translate `List<FormValidationError>` (validator output) into `ValidationErrors` (shared result type):
 
 ```csharp
-public static Error FormValidation(IReadOnlyList<FormValidationError> errors) =>
-    Error.Validation(
-        "Workflow.FormValidation",
-        "Form data validation failed",
-        metadata: new Dictionary<string, object?> {
-            ["fieldErrors"] = errors.ToDictionary(e => e.FieldName, e => e.Message)
-        });
+var validationErrors = new ValidationErrors();
+foreach (var e in formErrors)
+    validationErrors.Add(e.FieldName, e.Message);
+return Result.ValidationFailure<bool>(validationErrors);
 ```
-
-`Error.Validation` is the existing factory on `Starter.Shared.Results.Error`. The `metadata` bag flows through the `ApiResponse<T>` envelope (via the existing error serialization path — no envelope changes needed if the serializer already includes error metadata; if not, add it as a minimal extension).
 
 **Change 3: `ExecuteTaskCommandHandler`** — no longer manually maps `false` to `TaskNotFound`; just propagates the `Result<bool>` from the service:
 
@@ -108,9 +112,7 @@ onError: (err) => {
 }
 ```
 
-`extractFieldErrors` is a small helper that reads field-keyed errors out of the API error envelope.
-
-**Plan task: verify envelope shape first.** Before implementing the FE extractor, the plan must confirm how `Error.metadata` is serialized into `ApiResponse<T>.errors` today. If the serializer already flattens metadata into the `errors` body, the extractor reads `err.response?.data?.errors?.fieldErrors`. If it doesn't, the plan extends the serializer minimally (one test proving the `fieldErrors` key round-trips). No other callers depend on `Error.metadata` today — this is a net-new error-body shape convention.
+`extractFieldErrors` reads `err.response?.data?.validationErrors` (a `Record<string, string[]>`) — the envelope key already used throughout the codebase for FluentValidation results — and flattens each field's first message into a `Record<string, string>` matching the `DynamicFormRenderer` `errors` prop shape.
 
 **Change 2: `DynamicFormRenderer`** — no component changes. It already accepts and renders an `errors` prop per-field.
 
@@ -158,17 +160,9 @@ onError: (err) => {
    - Complementary case: `formData: { amount: 500 }` → `instance.CurrentState == 'Approved'`.
    - Uses the existing EF-in-memory test harness (same pattern as `HumanTaskFactoryTests`).
 
-### FE tests
+### FE verification
 
-4. **`DynamicFormRenderer.test.tsx`** (new — Vitest):
-   - Renders each of the 6 field types when present in the schema.
-   - Required field shows asterisk.
-   - `errors` prop renders the error message under the corresponding field.
-   - `onChange` fires with correct value type per field (number → `number`; checkbox → `boolean`; etc.).
-
-5. **`ApprovalDialog.test.tsx`** (new — Vitest):
-   - On `useExecuteTask` error with `fieldErrors` payload, `formErrors` state is populated; the renderer receives it via prop.
-   - Clearing a field value clears its error (existing behavior — regression guard).
+The codebase has no Vitest harness today. Adding one (deps, config, jsdom, @testing-library setup) is out of scope for this polish PR — it would dwarf the 4a changes. Frontend verification uses the project's standard post-feature testing workflow (live QA) as the regression guard:
 
 ### Live verification
 
@@ -181,7 +175,7 @@ Per the project's post-feature testing workflow (`scripts/rename.ps1` + chrome-d
 
 - Submitting invalid form data returns 400 with field-keyed errors; FE shows them inline under each field (no generic "task not found" leak).
 - Submitting valid form data merges into `ContextJson`; conditional transitions referencing those fields resolve correctly.
-- `dotnet test` green; `npm run build` green; Vitest suite green.
+- `dotnet test` green; `npm run build` green.
 - `docs/features/workflow-forms.md` exists and documents the 6 supported types + authoring-via-template pattern.
 - `docs/roadmaps/workflow.md` has a "Phase 4a Shipped" section and a "Phase 4+ Deferred — Forms" subsection capturing multiselect, file upload, array-of-object, conditional visibility.
 
