@@ -33,7 +33,7 @@ public sealed class HumanTaskFactoryTests : IDisposable
             Mock.Of<IUserReader>(),
             NullLogger<AssigneeResolverService>.Instance);
 
-        _sut = new HumanTaskFactory(_db, resolver, NullLogger<HumanTaskFactory>.Instance);
+        _sut = new HumanTaskFactory(_db, resolver);
     }
 
     public void Dispose() => _db.Dispose();

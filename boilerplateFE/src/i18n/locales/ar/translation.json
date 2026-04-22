@@ -1169,9 +1169,11 @@
       "bulkResultSucceeded": "ناجحة",
       "bulkResultFailed": "فاشلة",
       "bulkResultSkipped": "متخطّاة",
+      "bulkResultUnknownTask": "مهمة",
       "bulkCommentPlaceholder": "تعليق اختياري مطبق على جميع المهام",
       "bulkViewDetails": "عرض التفاصيل",
-      "clearSelection": "مسح التحديد"
+      "clearSelection": "مسح التحديد",
+      "requiresForm": "تحتوي هذه المهمة على حقول نموذج مطلوبة. افتح المهمة لتعبئة النموذج."
     },
     "definitions": {
       "title": "تعريفات سير العمل",

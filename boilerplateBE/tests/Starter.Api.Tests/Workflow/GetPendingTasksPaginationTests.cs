@@ -1,6 +1,5 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Starter.Abstractions.Capabilities;
@@ -41,12 +40,9 @@ public sealed class GetPendingTasksPaginationTests : IDisposable
             Mock.Of<IActivityService>(),
             Mock.Of<IWebhookPublisher>(),
             Mock.Of<INotificationServiceCapability>(),
-            userReader.Object,
-            new ConfigurationBuilder().Build(),
             NullLogger<HookExecutor>.Instance);
 
-        var humanTaskFactory = new HumanTaskFactory(
-            _db, assigneeResolver, NullLogger<HumanTaskFactory>.Instance);
+        var humanTaskFactory = new HumanTaskFactory(_db, assigneeResolver);
 
         var conditionEvaluator = new ConditionEvaluator();
         var autoTransitionEvaluator = new AutoTransitionEvaluator(conditionEvaluator);
@@ -55,8 +51,6 @@ public sealed class GetPendingTasksPaginationTests : IDisposable
 
         _sut = new WorkflowEngine(
             _db,
-            conditionEvaluator,
-            assigneeResolver,
             hookExecutor,
             Mock.Of<ICommentService>(),
             userReader.Object,

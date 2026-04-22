@@ -1,8 +1,6 @@
 using System.Text.Json;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Starter.Abstractions.Capabilities;
-using Starter.Abstractions.Readers;
 
 namespace Starter.Module.Workflow.Infrastructure.Services;
 
@@ -33,8 +31,6 @@ public sealed class HookExecutor(
     IActivityService activityService,
     IWebhookPublisher webhookPublisher,
     INotificationServiceCapability notificationService,
-    IUserReader userReader,
-    IConfiguration configuration,
     ILogger<HookExecutor> logger)
 {
     public async Task ExecuteAsync(

@@ -21,11 +21,18 @@ interface Props {
   onCancel: () => void;
 }
 
+const ACTION_LABEL_KEY: Record<BulkAction, string> = {
+  Approve: 'workflow.inbox.approve',
+  Reject: 'workflow.inbox.reject',
+  ReturnForRevision: 'workflow.inbox.return',
+};
+
 export function BulkConfirmDialog({ action, count, isPending, onSubmit, onCancel }: Props) {
   const { t } = useTranslation();
   const [comment, setComment] = useState('');
 
   const open = action !== null;
+  const actionLabel = action ? t(ACTION_LABEL_KEY[action]) : '';
 
   return (
     <Dialog
@@ -37,7 +44,7 @@ export function BulkConfirmDialog({ action, count, isPending, onSubmit, onCancel
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {t('workflow.inbox.bulkConfirmTitle', { action: action ?? '', count })}
+            {t('workflow.inbox.bulkConfirmTitle', { action: actionLabel, count })}
           </DialogTitle>
           <DialogDescription>{t('workflow.inbox.bulkConfirmDesc')}</DialogDescription>
         </DialogHeader>

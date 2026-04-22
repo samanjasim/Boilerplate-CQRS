@@ -14,10 +14,11 @@ import type { BatchExecuteResult } from '@/types/workflow.types';
 
 interface Props {
   result: BatchExecuteResult | null;
+  taskLabels?: Record<string, string>;
   onClose: () => void;
 }
 
-export function BulkResultDialog({ result, onClose }: Props) {
+export function BulkResultDialog({ result, taskLabels, onClose }: Props) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
 
@@ -63,8 +64,8 @@ export function BulkResultDialog({ result, onClose }: Props) {
                 {result.items.map((item) => (
                   <li key={item.taskId} className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="font-mono text-xs text-muted-foreground truncate">
-                        {item.taskId}
+                      <div className="text-sm text-foreground truncate">
+                        {taskLabels?.[item.taskId] ?? t('workflow.inbox.bulkResultUnknownTask')}
                       </div>
                       {item.error && (
                         <div className="text-xs text-destructive">{item.error}</div>

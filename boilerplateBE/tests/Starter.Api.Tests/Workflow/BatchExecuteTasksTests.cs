@@ -1,24 +1,38 @@
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Starter.Abstractions.Capabilities;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.Workflow.Application.Commands.BatchExecuteTasks;
+using Starter.Module.Workflow.Infrastructure.Persistence;
 using Xunit;
 
 namespace Starter.Api.Tests.Workflow;
 
-public sealed class BatchExecuteTasksTests
+public sealed class BatchExecuteTasksTests : IDisposable
 {
     private readonly Mock<IWorkflowService> _workflow = new();
     private readonly Mock<ICurrentUserService> _currentUser = new();
+    private readonly WorkflowDbContext _db;
     private readonly Guid _userId = Guid.NewGuid();
 
     public BatchExecuteTasksTests()
     {
         _currentUser.SetupGet(x => x.UserId).Returns(_userId);
+        var options = new DbContextOptionsBuilder<WorkflowDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        _db = new WorkflowDbContext(options);
     }
 
-    private BatchExecuteTasksCommandHandler Handler() => new(_workflow.Object, _currentUser.Object);
+    public void Dispose() => _db.Dispose();
+
+    private BatchExecuteTasksCommandHandler Handler() => new(
+        _workflow.Object,
+        _db,
+        _currentUser.Object,
+        NullLogger<BatchExecuteTasksCommandHandler>.Instance);
 
     [Fact]
     public async Task Handle_AllSucceed_ReturnsAllSucceeded()
@@ -60,7 +74,9 @@ public sealed class BatchExecuteTasksTests
         r.Skipped.Should().Be(0);
         r.Items.Single(i => i.TaskId == success).Status.Should().Be("Succeeded");
         r.Items.Single(i => i.TaskId == fail).Status.Should().Be("Failed");
-        r.Items.Single(i => i.TaskId == throws).Error.Should().Contain("nope");
+        // Exception messages must NEVER leak to clients — assert generic message.
+        r.Items.Single(i => i.TaskId == throws).Error.Should().NotContain("nope");
+        r.Items.Single(i => i.TaskId == throws).Error.Should().Contain("unexpected");
     }
 
     [Fact]

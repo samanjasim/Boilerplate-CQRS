@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Microsoft.Extensions.Logging;
 using Starter.Abstractions.Capabilities;
 using Starter.Module.Workflow.Domain.Entities;
 using Starter.Module.Workflow.Infrastructure.Persistence;
@@ -14,8 +13,7 @@ namespace Starter.Module.Workflow.Infrastructure.Services;
 /// </summary>
 public sealed class HumanTaskFactory(
     WorkflowDbContext context,
-    AssigneeResolverService assigneeResolver,
-    ILogger<HumanTaskFactory> logger)
+    AssigneeResolverService assigneeResolver)
 {
     private static readonly JsonSerializerOptions JsonOpts = new()
     {

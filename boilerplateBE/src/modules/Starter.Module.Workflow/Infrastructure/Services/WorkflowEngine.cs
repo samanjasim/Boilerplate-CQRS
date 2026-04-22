@@ -18,8 +18,6 @@ namespace Starter.Module.Workflow.Infrastructure.Services;
 /// </summary>
 public sealed class WorkflowEngine(
     WorkflowDbContext context,
-    IConditionEvaluator conditionEvaluator,
-    AssigneeResolverService assigneeResolver,
     HookExecutor hookExecutor,
     ICommentService commentService,
     IUserReader userReader,

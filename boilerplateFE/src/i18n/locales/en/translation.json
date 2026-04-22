@@ -1213,9 +1213,11 @@
       "bulkResultSucceeded": "Succeeded",
       "bulkResultFailed": "Failed",
       "bulkResultSkipped": "Skipped",
+      "bulkResultUnknownTask": "Task",
       "bulkCommentPlaceholder": "Optional comment applied to all tasks",
       "bulkViewDetails": "View details",
-      "clearSelection": "Clear selection"
+      "clearSelection": "Clear selection",
+      "requiresForm": "This task has required form fields. Open the task to fill the form."
     },
     "definitions": {
       "title": "Workflow Definitions",

@@ -36,6 +36,7 @@ export default function WorkflowInboxPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [pendingBulkAction, setPendingBulkAction] = useState<BulkAction | null>(null);
   const [bulkResult, setBulkResult] = useState<BatchExecuteResult | null>(null);
+  const [bulkResultLabels, setBulkResultLabels] = useState<Record<string, string>>({});
 
   const { data, isLoading } = usePendingTasks({ page, pageSize });
   const { data: activeDelegation } = useActiveDelegation();
@@ -50,9 +51,12 @@ export default function WorkflowInboxPage() {
     setSelectedIds(new Set());
   }, [page, pageSize]);
 
-  const allVisibleIds = tasks.map((x) => x.taskId);
+  const requiresForm = (task: PendingTaskSummary) =>
+    !!task.formFields?.some((f) => f.required);
+
+  const bulkEligibleIds = tasks.filter((t) => !requiresForm(t)).map((t) => t.taskId);
   const allSelected =
-    allVisibleIds.length > 0 && allVisibleIds.every((id) => selectedIds.has(id));
+    bulkEligibleIds.length > 0 && bulkEligibleIds.every((id) => selectedIds.has(id));
 
   const toggleOne = (id: string) => {
     setSelectedIds((prev) => {
@@ -67,21 +71,36 @@ export default function WorkflowInboxPage() {
     setSelectedIds((prev) => {
       if (allSelected) {
         const next = new Set(prev);
-        allVisibleIds.forEach((id) => next.delete(id));
+        bulkEligibleIds.forEach((id) => next.delete(id));
         return next;
       }
-      return new Set([...prev, ...allVisibleIds]);
+      return new Set([...prev, ...bulkEligibleIds]);
     });
   };
 
   const clearSelection = () => setSelectedIds(new Set());
 
+  const buildTaskLabels = (ids: Iterable<string>): Record<string, string> => {
+    const labels: Record<string, string> = {};
+    const byId = new Map(tasks.map((t) => [t.taskId, t]));
+    for (const id of ids) {
+      const task = byId.get(id);
+      labels[id] = task
+        ? `${task.entityType} · ${task.entityDisplayName ?? task.entityId.substring(0, 8) + '...'}`
+        : id.substring(0, 8) + '...';
+    }
+    return labels;
+  };
+
   const confirmBulk = (comment: string | undefined) => {
     if (!pendingBulkAction || selectedIds.size === 0) return;
+    const taskIds = Array.from(selectedIds);
+    const labels = buildTaskLabels(taskIds);
     batchExecute(
-      { taskIds: Array.from(selectedIds), action: pendingBulkAction, comment },
+      { taskIds, action: pendingBulkAction, comment },
       {
         onSuccess: (result) => {
+          setBulkResultLabels(labels);
           setBulkResult(result);
           clearSelection();
         },
@@ -91,7 +110,7 @@ export default function WorkflowInboxPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${selectedIds.size > 0 ? 'pb-28' : ''}`}>
       <PageHeader
         title={t('workflow.inbox.title')}
         actions={
@@ -150,6 +169,7 @@ export default function WorkflowInboxPage() {
                   <Checkbox
                     aria-label={t('workflow.inbox.selectAll')}
                     checked={allSelected}
+                    disabled={bulkEligibleIds.length === 0}
                     onCheckedChange={toggleAll}
                   />
                 </TableHead>
@@ -162,12 +182,16 @@ export default function WorkflowInboxPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {tasks.map((task) => (
+              {tasks.map((task) => {
+                const disabled = requiresForm(task);
+                return (
                 <TableRow key={task.taskId}>
                   <TableCell>
                     <Checkbox
                       aria-label={t('workflow.inbox.select')}
                       checked={selectedIds.has(task.taskId)}
+                      disabled={disabled}
+                      title={disabled ? t('workflow.inbox.requiresForm') : undefined}
                       onCheckedChange={() => toggleOne(task.taskId)}
                     />
                   </TableCell>
@@ -212,7 +236,8 @@ export default function WorkflowInboxPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
 
@@ -247,7 +272,11 @@ export default function WorkflowInboxPage() {
 
       <BulkResultDialog
         result={bulkResult}
-        onClose={() => setBulkResult(null)}
+        taskLabels={bulkResultLabels}
+        onClose={() => {
+          setBulkResult(null);
+          setBulkResultLabels({});
+        }}
       />
 
       {selectedTask && (
