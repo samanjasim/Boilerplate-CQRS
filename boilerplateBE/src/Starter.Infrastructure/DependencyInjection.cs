@@ -221,6 +221,8 @@ public static class DependencyInjection
         services.AddScoped<IPermissionHierarchyService, PermissionHierarchyService>();
         services.AddScoped<IUsageTracker, UsageTrackerService>();
         services.AddScoped<IResourceAccessService, ResourceAccessService>();
+        services.AddScoped<IResourceOwnershipProbe, ResourceOwnershipProbe>();
+        services.AddScoped<IResourceOwnershipHandler, FileOwnershipHandler>();
 
         return services;
     }
