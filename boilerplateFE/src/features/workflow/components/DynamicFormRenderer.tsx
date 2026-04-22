@@ -11,7 +11,8 @@ interface DynamicFormRendererProps {
   fields: FormFieldDefinition[];
   values: Record<string, unknown>;
   onChange: (name: string, value: unknown) => void;
-  errors?: Record<string, string>;
+  /** Per-field validation messages. One or more messages per field; every one is rendered. */
+  errors?: Record<string, string[]>;
 }
 
 export function DynamicFormRenderer({ fields, values, onChange, errors }: DynamicFormRendererProps) {
@@ -108,9 +109,9 @@ export function DynamicFormRenderer({ fields, values, onChange, errors }: Dynami
             <p className="text-xs text-muted-foreground">{field.description}</p>
           )}
 
-          {errors?.[field.name] && (
-            <p className="text-xs text-destructive">{errors[field.name]}</p>
-          )}
+          {errors?.[field.name]?.map((msg, i) => (
+            <p key={i} className="text-xs text-destructive">{msg}</p>
+          ))}
         </div>
       ))}
     </div>

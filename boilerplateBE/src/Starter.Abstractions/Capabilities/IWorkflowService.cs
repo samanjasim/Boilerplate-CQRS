@@ -17,7 +17,7 @@ public interface IWorkflowService : ICapability
         CancellationToken ct = default);
 
     // ── Task Actions ──
-    Task<bool> ExecuteTaskAsync(Guid taskId, string action, string? comment,
+    Task<WorkflowTaskResult> ExecuteTaskAsync(Guid taskId, string action, string? comment,
         Guid actorUserId, Dictionary<string, object>? formData = null,
         CancellationToken ct = default);
 

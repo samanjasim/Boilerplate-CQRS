@@ -90,7 +90,9 @@ export const workflowApi = {
 
   executeTask: (taskId: string, data: ExecuteTaskRequest): Promise<boolean> =>
     apiClient
-      .post<ApiResponse<boolean>>(API_ENDPOINTS.WORKFLOW.TASK_EXECUTE(taskId), data)
+      .post<ApiResponse<boolean>>(API_ENDPOINTS.WORKFLOW.TASK_EXECUTE(taskId), data, {
+        suppressValidationToast: true,
+      })
       .then((r) => r.data.data),
 
   batchExecuteTasks: (data: BatchExecuteTasksRequest): Promise<BatchExecuteResult> =>

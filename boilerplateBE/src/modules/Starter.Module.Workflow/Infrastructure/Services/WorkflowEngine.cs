@@ -7,7 +7,9 @@ using Starter.Abstractions.Readers;
 using Starter.Module.Workflow.Domain.Constants;
 using Starter.Module.Workflow.Domain.Entities;
 using Starter.Module.Workflow.Domain.Enums;
+using Starter.Module.Workflow.Domain.Errors;
 using Starter.Module.Workflow.Infrastructure.Persistence;
+using Starter.Shared.Results;
 
 namespace Starter.Module.Workflow.Infrastructure.Services;
 
@@ -16,7 +18,7 @@ namespace Starter.Module.Workflow.Infrastructure.Services;
 /// Coordinates persistence, condition evaluation, assignee resolution,
 /// hook execution, and cross-module capability calls (comments, activity, user reader).
 /// </summary>
-public sealed class WorkflowEngine(
+internal sealed class WorkflowEngine(
     WorkflowDbContext context,
     HookExecutor hookExecutor,
     ICommentService commentService,
@@ -39,11 +41,21 @@ public sealed class WorkflowEngine(
         Guid initiatorUserId, Guid? tenantId, string? entityDisplayName = null,
         CancellationToken ct = default)
     {
+        // Resolve with a total ordering so the same call always picks the
+        // same row: tenant-scoped definitions beat global templates, and
+        // within the same scope the highest Version wins (tie-broken by Id
+        // to keep the result deterministic even in a same-version race).
+        // A tenant's clone of a template must always take precedence — the
+        // clone is where the tenant's customizations live.
         var definition = await context.WorkflowDefinitions
-            .FirstOrDefaultAsync(d =>
+            .Where(d =>
                 d.Name == definitionName
                 && d.IsActive
-                && (d.TenantId == null || d.TenantId == tenantId), ct);
+                && (d.TenantId == null || d.TenantId == tenantId))
+            .OrderBy(d => d.TenantId == null ? 1 : 0)
+            .ThenByDescending(d => d.Version)
+            .ThenBy(d => d.Id)
+            .FirstOrDefaultAsync(ct);
 
         if (definition is null)
         {
@@ -247,7 +259,7 @@ public sealed class WorkflowEngine(
 
     // ── Task Actions ─────────────────────────────────────────────────────────
 
-    public async Task<bool> ExecuteTaskAsync(
+    public async Task<WorkflowTaskResult> ExecuteTaskAsync(
         Guid taskId, string action, string? comment,
         Guid actorUserId, Dictionary<string, object>? formData = null,
         CancellationToken ct = default)
@@ -260,20 +272,20 @@ public sealed class WorkflowEngine(
         if (task is null)
         {
             logger.LogWarning("Approval task {TaskId} not found.", taskId);
-            return false;
+            return ToWorkflowTaskResult(WorkflowErrors.TaskNotFound(taskId));
         }
 
         // Idempotent: if already completed with the same action, return success
         if (task.Status == Domain.Enums.TaskStatus.Completed && task.Action == action)
         {
             logger.LogDebug("Task {TaskId} already completed with action {Action} — idempotent success.", taskId, action);
-            return true;
+            return WorkflowTaskResult.Success();
         }
 
         if (task.Status != Domain.Enums.TaskStatus.Pending)
         {
             logger.LogWarning("Task {TaskId} is not pending (status: {Status}).", taskId, task.Status);
-            return false;
+            return ToWorkflowTaskResult(WorkflowErrors.TaskNotPending(taskId));
         }
 
         // Verify the actor is the assigned user (or task has no specific assignee)
@@ -282,7 +294,7 @@ public sealed class WorkflowEngine(
             logger.LogWarning(
                 "Actor {ActorId} is not assigned to task {TaskId} (assigned to {AssigneeId}).",
                 actorUserId, taskId, task.AssigneeUserId);
-            return false;
+            return ToWorkflowTaskResult(WorkflowErrors.TaskNotAssignedToUser(taskId, actorUserId));
         }
 
         var instance = task.Instance;
@@ -301,37 +313,44 @@ public sealed class WorkflowEngine(
             logger.LogWarning(
                 "No transition from '{FromState}' with trigger '{Action}' in definition '{DefName}'.",
                 instance.CurrentState, action, definition.Name);
-            return false;
+            return ToWorkflowTaskResult(WorkflowErrors.InvalidTransition(instance.CurrentState, action));
         }
+
+        var fromState = instance.CurrentState;
+        var fromStateConfig = states.FirstOrDefault(s => s.Name == fromState);
+
+        // Validate form data first so a conditional transition never sees
+        // data that was rejected. Failure here short-circuits with no state
+        // change and no context merge.
+        if (fromStateConfig?.FormFields is { Count: > 0 })
+        {
+            var fieldErrors = formDataValidator.Validate(fromStateConfig.FormFields, formData);
+            if (fieldErrors.Count > 0)
+            {
+                logger.LogWarning(
+                    "Form data validation failed for task {TaskId}: {Errors}",
+                    taskId, string.Join(", ", fieldErrors.Select(e => $"{e.FieldName}: {e.Message}")));
+
+                var fieldDict = fieldErrors
+                    .GroupBy(e => e.FieldName)
+                    .ToDictionary(g => g.Key, g => g.Select(e => e.Message).ToArray());
+                return WorkflowTaskResult.ValidationFailure(fieldDict);
+            }
+        }
+
+        // Build the eval context = persisted context overlaid with the form
+        // data just submitted, so a condition like `amount > 10000` can branch
+        // on the same action that carried the value.
+        var instanceContext = MergeFormDataIntoContext(instance.ContextJson, formData);
 
         // If multiple transitions match, evaluate conditional ones first;
         // fall back to the first matching transition if nothing selected.
-        var instanceContext = instance.ContextJson is not null
-            ? JsonSerializer.Deserialize<Dictionary<string, object>>(instance.ContextJson, JsonOpts)
-            : null;
         var selectedTransition = autoTransitionEvaluator.Select(
                 matchingTransitions, instance.CurrentState, instanceContext)
             ?? matchingTransitions[0];
 
-        var fromState = instance.CurrentState;
         var toState = selectedTransition.To;
-
-        // Look up state configs
-        var fromStateConfig = states.FirstOrDefault(s => s.Name == fromState);
         var toStateConfig = states.FirstOrDefault(s => s.Name == toState);
-
-        // Validate form data if the current state has form fields defined
-        if (fromStateConfig?.FormFields is { Count: > 0 })
-        {
-            var validationErrors = formDataValidator.Validate(fromStateConfig.FormFields, formData);
-            if (validationErrors.Count > 0)
-            {
-                logger.LogWarning(
-                    "Form data validation failed for task {TaskId}: {Errors}",
-                    taskId, string.Join(", ", validationErrors.Select(e => $"{e.FieldName}: {e.Message}")));
-                return false;
-            }
-        }
 
         // ── Step 1: Complete the task (always) ──────────────────────────────
         task.Complete(action, comment, actorUserId);
@@ -339,17 +358,12 @@ public sealed class WorkflowEngine(
         // Serialize form data into step metadata for history
         var metadataJson = formData is not null ? JsonSerializer.Serialize(formData, JsonOpts) : null;
 
-        // Merge form data into instance context so downstream conditions can reference it
+        // Persist the merged context so downstream conditions can reference
+        // form fields. The merged dict was already built above for transition
+        // eval — reuse it instead of re-deserializing.
         if (formData is not null)
         {
-            var existingContext = instance.ContextJson is not null
-                ? JsonSerializer.Deserialize<Dictionary<string, object>>(instance.ContextJson, JsonOpts) ?? new()
-                : new Dictionary<string, object>();
-
-            foreach (var (key, value) in formData)
-                existingContext[key] = value;
-
-            instance.UpdateContext(JsonSerializer.Serialize(existingContext, JsonOpts));
+            instance.UpdateContext(JsonSerializer.Serialize(instanceContext, JsonOpts));
         }
 
         // Save the comment via ICommentService if provided
@@ -403,14 +417,14 @@ public sealed class WorkflowEngine(
                 catch (DbUpdateConcurrencyException)
                 {
                     logger.LogWarning("Concurrency conflict on task {TaskId}. Another user may have already acted.", taskId);
-                    return false;
+                    return ToWorkflowTaskResult(WorkflowErrors.Concurrency());
                 }
 
                 logger.LogInformation(
                     "Task {TaskId}: completed (parallel AllOf, waiting for siblings). Instance {InstanceId} stays at '{State}'.",
                     taskId, instance.Id, fromState);
 
-                return true;
+                return WorkflowTaskResult.Success();
             }
         }
 
@@ -463,14 +477,14 @@ public sealed class WorkflowEngine(
         catch (DbUpdateConcurrencyException)
         {
             logger.LogWarning("Concurrency conflict on task {TaskId}. Another user may have already acted.", taskId);
-            return false;
+            return ToWorkflowTaskResult(WorkflowErrors.Concurrency());
         }
 
         logger.LogInformation(
             "Task {TaskId}: transitioned instance {InstanceId} from '{From}' to '{To}' via '{Action}'.",
             taskId, instance.Id, fromState, toState, action);
 
-        return true;
+        return WorkflowTaskResult.Success();
     }
 
     // ── Query: Status ────────────────────────────────────────────────────────
@@ -1146,7 +1160,7 @@ public sealed class WorkflowEngine(
         CancellationToken ct,
         bool isStarting = false)
     {
-        if (toStateConfig.Type.Equals("Terminal", StringComparison.OrdinalIgnoreCase))
+        if (toStateConfig.Type.Equals(WorkflowStateTypes.Terminal, StringComparison.OrdinalIgnoreCase))
         {
             instance.Complete();
         }
@@ -1160,7 +1174,7 @@ public sealed class WorkflowEngine(
             await AutoTransitionAsync(instance, definition, states, toStateConfig,
                 actorUserId, ct);
         }
-        else if (toStateConfig.Type.Equals("ConditionalGate", StringComparison.OrdinalIgnoreCase))
+        else if (toStateConfig.Type.Equals(WorkflowStateTypes.ConditionalGate, StringComparison.OrdinalIgnoreCase))
         {
             await HandleConditionalGateAsync(instance, definition, states, toStateConfig,
                 actorUserId, ct);
@@ -1223,4 +1237,47 @@ public sealed class WorkflowEngine(
 
     private static List<WorkflowTransitionConfig> DeserializeTransitions(string json)
         => JsonSerializer.Deserialize<List<WorkflowTransitionConfig>>(json, JsonOpts) ?? [];
+
+    /// <summary>
+    /// Deserializes <paramref name="contextJson"/> and overlays
+    /// <paramref name="formData"/> on top so conditional transitions can branch
+    /// on just-submitted values. Form keys that collide with entity keys
+    /// logically win — the form value is the newer signal from the user.
+    /// </summary>
+    private Dictionary<string, object> MergeFormDataIntoContext(
+        string? contextJson,
+        Dictionary<string, object>? formData)
+    {
+        var merged = contextJson is not null
+            ? JsonSerializer.Deserialize<Dictionary<string, object>>(contextJson, JsonOpts) ?? new()
+            : new Dictionary<string, object>();
+
+        if (formData is null) return merged;
+
+        foreach (var (key, value) in formData)
+        {
+            if (merged.ContainsKey(key))
+            {
+                logger.LogDebug(
+                    "Form field '{Key}' overwrites existing context value during task execution.",
+                    key);
+            }
+            merged[key] = value;
+        }
+
+        return merged;
+    }
+
+    private static WorkflowTaskResult ToWorkflowTaskResult(Error error)
+        => WorkflowTaskResult.Failure(error.Code, error.Description, MapKind(error.Type));
+
+    private static WorkflowErrorKind MapKind(ErrorType type) => type switch
+    {
+        ErrorType.Validation => WorkflowErrorKind.Validation,
+        ErrorType.NotFound => WorkflowErrorKind.NotFound,
+        ErrorType.Conflict => WorkflowErrorKind.Conflict,
+        ErrorType.Unauthorized => WorkflowErrorKind.Unauthorized,
+        ErrorType.Forbidden => WorkflowErrorKind.Forbidden,
+        _ => WorkflowErrorKind.Failure,
+    };
 }

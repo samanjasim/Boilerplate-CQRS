@@ -9,7 +9,7 @@ namespace Starter.Module.Workflow.Infrastructure.Services;
 /// If no conditional transition matches, the first unconditional transition from the
 /// state is returned. Returns <c>null</c> when no transition applies.
 /// </summary>
-public sealed class AutoTransitionEvaluator(IConditionEvaluator conditionEvaluator)
+internal sealed class AutoTransitionEvaluator(IConditionEvaluator conditionEvaluator)
 {
     public WorkflowTransitionConfig? Select(
         IReadOnlyList<WorkflowTransitionConfig> transitions,

@@ -20,7 +20,7 @@ public static class WorkflowErrors
         Error.Validation("Workflow.InvalidTransition", $"Action '{action}' is not valid from state '{currentState}'");
 
     public static Error TaskNotAssignedToUser(Guid taskId, Guid userId) =>
-        Error.Forbidden($"Task '{taskId}' is not assigned to user '{userId}'");
+        new("Workflow.TaskNotAssignedToUser", $"Task '{taskId}' is not assigned to user '{userId}'", ErrorType.Forbidden);
 
     public static Error InstanceNotActive(Guid id) =>
         Error.Validation("Workflow.InstanceNotActive", $"Workflow instance '{id}' is not active");
@@ -30,4 +30,10 @@ public static class WorkflowErrors
 
     public static Error CannotEditTemplate() =>
         Error.Validation("Workflow.CannotEditTemplate", "System templates cannot be edited directly. Clone it first.");
+
+    public static Error TaskNotPending(Guid id) =>
+        Error.Conflict("Workflow.TaskNotPending", $"Approval task '{id}' is not in a pending state");
+
+    public static Error Concurrency() =>
+        Error.Conflict("Workflow.Concurrency", "Another user acted on this task concurrently. Please refresh and try again.");
 }

@@ -8,5 +8,7 @@ public sealed record BatchExecuteResult(
 
 public sealed record BatchItemOutcome(
     Guid TaskId,
-    string Status, // "Succeeded" | "Failed" | "Skipped"
-    string? Error);
+    string Status,                                      // "Succeeded" | "Failed" | "Skipped"
+    string? Error,                                      // Human-readable message; null on Succeeded.
+    string? ErrorCode = null,                           // e.g. "Workflow.TaskNotFound" — present on typed failures.
+    IReadOnlyDictionary<string, string[]>? FieldErrors = null); // Field-level validation errors if applicable.

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Starter.Abstractions.Capabilities;
 using Starter.Module.Workflow.Infrastructure.Services;
 using Xunit;
@@ -9,7 +10,7 @@ namespace Starter.Api.Tests.Workflow;
 public sealed class AutoTransitionEvaluatorTests
 {
     private readonly AutoTransitionEvaluator _sut =
-        new(new ConditionEvaluator());
+        new(new ConditionEvaluator(NullLogger<ConditionEvaluator>.Instance));
 
     [Fact]
     public void Select_MatchingConditionWins_ReturnsConditionalTransition()

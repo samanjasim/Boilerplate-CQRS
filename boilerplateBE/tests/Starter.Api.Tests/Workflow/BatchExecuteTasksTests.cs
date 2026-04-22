@@ -40,7 +40,7 @@ public sealed class BatchExecuteTasksTests : IDisposable
         var ids = new[] { Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid() };
         _workflow
             .Setup(w => w.ExecuteTaskAsync(It.IsAny<Guid>(), "approve", null, _userId, null, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+            .ReturnsAsync(WorkflowTaskResult.Success());
 
         var result = await Handler().Handle(
             new BatchExecuteTasksCommand(ids, "approve"), CancellationToken.None);
@@ -60,8 +60,8 @@ public sealed class BatchExecuteTasksTests : IDisposable
         var fail = Guid.NewGuid();
         var throws = Guid.NewGuid();
 
-        _workflow.Setup(w => w.ExecuteTaskAsync(success, "approve", null, _userId, null, It.IsAny<CancellationToken>())).ReturnsAsync(true);
-        _workflow.Setup(w => w.ExecuteTaskAsync(fail, "approve", null, _userId, null, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _workflow.Setup(w => w.ExecuteTaskAsync(success, "approve", null, _userId, null, It.IsAny<CancellationToken>())).ReturnsAsync(WorkflowTaskResult.Success());
+        _workflow.Setup(w => w.ExecuteTaskAsync(fail, "approve", null, _userId, null, It.IsAny<CancellationToken>())).ReturnsAsync(WorkflowTaskResult.Failure("Workflow.TaskNotFound", $"Approval task '{fail}' not found", WorkflowErrorKind.NotFound));
         _workflow.Setup(w => w.ExecuteTaskAsync(throws, "approve", null, _userId, null, It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("nope"));
 
         var result = await Handler().Handle(
@@ -87,7 +87,7 @@ public sealed class BatchExecuteTasksTests : IDisposable
         _workflow.Setup(w => w.ExecuteTaskAsync(bad, It.IsAny<string>(), null, _userId, null, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception("boom"));
         _workflow.Setup(w => w.ExecuteTaskAsync(good, It.IsAny<string>(), null, _userId, null, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+            .ReturnsAsync(WorkflowTaskResult.Success());
 
         var result = await Handler().Handle(
             new BatchExecuteTasksCommand(new[] { bad, good }, "approve"), CancellationToken.None);
@@ -102,7 +102,7 @@ public sealed class BatchExecuteTasksTests : IDisposable
     {
         var id = Guid.NewGuid();
         _workflow.Setup(w => w.ExecuteTaskAsync(id, "reject", "bulk reject", _userId, null, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+            .ReturnsAsync(WorkflowTaskResult.Success());
 
         var result = await Handler().Handle(
             new BatchExecuteTasksCommand(new[] { id }, "reject", "bulk reject"), CancellationToken.None);

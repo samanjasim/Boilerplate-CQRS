@@ -1,7 +1,7 @@
 using MediatR;
 using Starter.Abstractions.Capabilities;
 using Starter.Application.Common.Interfaces;
-using Starter.Module.Workflow.Domain.Errors;
+using Starter.Module.Workflow.Application.Common;
 using Starter.Shared.Results;
 
 namespace Starter.Module.Workflow.Application.Commands.ExecuteTask;
@@ -12,7 +12,7 @@ internal sealed class ExecuteTaskCommandHandler(
 {
     public async Task<Result<bool>> Handle(ExecuteTaskCommand request, CancellationToken cancellationToken)
     {
-        var success = await workflowService.ExecuteTaskAsync(
+        var wfResult = await workflowService.ExecuteTaskAsync(
             request.TaskId,
             request.Action,
             request.Comment,
@@ -20,9 +20,6 @@ internal sealed class ExecuteTaskCommandHandler(
             request.FormData,
             cancellationToken);
 
-        if (!success)
-            return Result.Failure<bool>(WorkflowErrors.TaskNotFound(request.TaskId));
-
-        return Result.Success(true);
+        return WorkflowTaskResultAdapter.ToResult(wfResult);
     }
 }

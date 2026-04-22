@@ -34,7 +34,7 @@ public sealed class WorkflowEngineTests : IDisposable
 
         _db = new WorkflowDbContext(options);
 
-        var conditionEvaluator = new ConditionEvaluator();
+        var conditionEvaluator = new ConditionEvaluator(NullLogger<ConditionEvaluator>.Instance);
 
         var builtInProvider = new BuiltInAssigneeProvider(
             Mock.Of<IRoleUserReader>());
@@ -207,6 +207,57 @@ public sealed class WorkflowEngineTests : IDisposable
         instanceId.Should().Be(Guid.Empty);
     }
 
+    // ── 3b. StartAsync — tenant-scoped clone wins over global template ───────
+    //
+    // A tenant can clone a template to customize it (e.g. adding conditional
+    // transitions). Clone preserves the Name, so two definitions now share the
+    // same name: the original template (TenantId=null) and the clone
+    // (TenantId=tenant). StartAsync MUST always pick the tenant-scoped clone
+    // when one exists, so the tenant's customizations take effect instead of
+    // falling back to the unmodified template.
+    [Fact]
+    public async Task StartAsync_TenantHasClone_PicksCloneOverTemplate()
+    {
+        // Template (global, no tenant) — no conditions, simple "approve" path
+        var templateStates = new List<WorkflowStateConfig>
+        {
+            new("Draft", "Draft", "Initial"),
+            new("Approved", "Approved", "Terminal"),
+        };
+        var templateTransitions = new List<WorkflowTransitionConfig>
+        {
+            new("Draft", "Approved", "submit"),
+        };
+        var template = WorkflowDefinition.Create(
+            tenantId: null,
+            name: "SharedName",
+            displayName: "Template",
+            entityType: "Order",
+            statesJson: JsonSerializer.Serialize(templateStates),
+            transitionsJson: JsonSerializer.Serialize(templateTransitions),
+            isTemplate: true,
+            sourceModule: "Tests");
+
+        _db.WorkflowDefinitions.Add(template);
+        await _db.SaveChangesAsync();
+
+        // Tenant clone — same name, tenant-scoped, customized display
+        var clone = template.Clone(_tenantId);
+        _db.WorkflowDefinitions.Add(clone);
+        await _db.SaveChangesAsync();
+
+        var instanceId = await _sut.StartAsync(
+            "Order", Guid.NewGuid(), "SharedName",
+            _initiatorId, _tenantId);
+
+        instanceId.Should().NotBe(Guid.Empty);
+
+        var instance = await _db.WorkflowInstances
+            .FirstOrDefaultAsync(i => i.Id == instanceId);
+
+        instance!.DefinitionId.Should().Be(clone.Id, "the tenant-scoped clone must always win over the template");
+    }
+
     // ── 4. ExecuteTaskAsync — approve transitions to next state ──────────────
 
     [Fact]
@@ -255,7 +306,7 @@ public sealed class WorkflowEngineTests : IDisposable
         var result = await _sut.ExecuteTaskAsync(
             approvalTask.Id, "approve", null, _approverUserId);
 
-        result.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue();
 
         var updated = await _db.WorkflowInstances.FirstAsync(i => i.Id == instanceId);
         updated.CurrentState.Should().Be("Approved");
@@ -297,16 +348,16 @@ public sealed class WorkflowEngineTests : IDisposable
         var result = await _sut.ExecuteTaskAsync(
             approvalTask.Id, "reject", "Not acceptable", _approverUserId);
 
-        result.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue();
 
         var updated = await _db.WorkflowInstances.FirstAsync(i => i.Id == instanceId);
         updated.CurrentState.Should().Be("Rejected");
     }
 
-    // ── 6. ExecuteTaskAsync — wrong assignee returns false ───────────────────
+    // ── 6. ExecuteTaskAsync — wrong assignee returns forbidden error ────────
 
     [Fact]
-    public async Task ExecuteTaskAsync_NotAssigned_ReturnsFalse()
+    public async Task ExecuteTaskAsync_NotAssigned_ReturnsForbiddenError()
     {
         await SeedThreeStateDefinitionAsync();
         var entityId = Guid.NewGuid();
@@ -340,7 +391,8 @@ public sealed class WorkflowEngineTests : IDisposable
         var result = await _sut.ExecuteTaskAsync(
             approvalTask.Id, "approve", null, randomUserId);
 
-        result.Should().BeFalse();
+        result.IsFailure.Should().BeTrue();
+        result.ErrorCode.Should().Be("Workflow.TaskNotAssignedToUser");
     }
 
     // ── 7. ExecuteTaskAsync — terminal state completes instance ──────────────
@@ -705,7 +757,7 @@ public sealed class WorkflowEngineTests : IDisposable
         var result = await _sut.ExecuteTaskAsync(
             taskA.Id, "approve", null, _parallelUserA);
 
-        result.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue();
 
         // Workflow should still be Active at ParallelReview
         var instance = await _db.WorkflowInstances.FirstAsync(i => i.Id == instanceId);
@@ -745,7 +797,7 @@ public sealed class WorkflowEngineTests : IDisposable
         var result = await _sut.ExecuteTaskAsync(
             taskB.Id, "approve", null, _parallelUserB);
 
-        result.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue();
 
         var instance = await _db.WorkflowInstances.FirstAsync(i => i.Id == instanceId);
         instance.CurrentState.Should().Be("Approved");
@@ -774,7 +826,7 @@ public sealed class WorkflowEngineTests : IDisposable
         var result = await _sut.ExecuteTaskAsync(
             taskA.Id, "reject", "Not approved", _parallelUserA);
 
-        result.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue();
 
         // Workflow transitions to Rejected
         var instance = await _db.WorkflowInstances.FirstAsync(i => i.Id == instanceId);
@@ -810,7 +862,7 @@ public sealed class WorkflowEngineTests : IDisposable
         var result = await _sut.ExecuteTaskAsync(
             taskA.Id, "approve", null, _parallelUserA);
 
-        result.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue();
 
         // Workflow transitions to Approved
         var instance = await _db.WorkflowInstances.FirstAsync(i => i.Id == instanceId);
@@ -846,7 +898,7 @@ public sealed class WorkflowEngineTests : IDisposable
         var result = await _sut.ExecuteTaskAsync(
             tasks[0].Id, "approve", null, _approverUserId);
 
-        result.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue();
 
         var instance = await _db.WorkflowInstances.FirstAsync(i => i.Id == instanceId);
         instance.CurrentState.Should().Be("Approved");

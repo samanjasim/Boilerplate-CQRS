@@ -45,7 +45,7 @@ internal sealed class BatchExecuteTasksCommandHandler(
 
             try
             {
-                var ok = await workflowService.ExecuteTaskAsync(
+                var wfResult = await workflowService.ExecuteTaskAsync(
                     taskId,
                     request.Action,
                     request.Comment,
@@ -53,9 +53,19 @@ internal sealed class BatchExecuteTasksCommandHandler(
                     formData: null,
                     cancellationToken);
 
-                outcomes.Add(ok
-                    ? new BatchItemOutcome(taskId, "Succeeded", null)
-                    : new BatchItemOutcome(taskId, "Failed", "Task could not be executed (not found, not pending, or unauthorized)."));
+                if (wfResult.IsSuccess)
+                {
+                    outcomes.Add(new BatchItemOutcome(taskId, "Succeeded", null));
+                }
+                else
+                {
+                    outcomes.Add(new BatchItemOutcome(
+                        taskId,
+                        "Failed",
+                        Error: wfResult.ErrorDescription,
+                        ErrorCode: wfResult.ErrorCode,
+                        FieldErrors: wfResult.FieldErrors));
+                }
             }
             catch (Exception ex)
             {

@@ -1,9 +1,5 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging.Abstractions;
-using Moq;
-using Starter.Abstractions.Capabilities;
-using Starter.Abstractions.Readers;
 using Starter.Module.Workflow.Domain.Entities;
 using Starter.Module.Workflow.Infrastructure.Persistence;
 using Starter.Module.Workflow.Infrastructure.Services;
@@ -20,45 +16,8 @@ public sealed class GetPendingTasksPaginationTests : IDisposable
 
     public GetPendingTasksPaginationTests()
     {
-        var options = new DbContextOptionsBuilder<WorkflowDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _db = new WorkflowDbContext(options);
-
-        var userReader = new Mock<IUserReader>();
-        var assigneeResolver = new AssigneeResolverService(
-            new IAssigneeResolverProvider[]
-            {
-                new BuiltInAssigneeProvider(Mock.Of<IRoleUserReader>()),
-            },
-            userReader.Object,
-            NullLogger<AssigneeResolverService>.Instance);
-
-        var hookExecutor = new HookExecutor(
-            Mock.Of<IMessageDispatcher>(),
-            Mock.Of<IActivityService>(),
-            Mock.Of<IWebhookPublisher>(),
-            Mock.Of<INotificationServiceCapability>(),
-            NullLogger<HookExecutor>.Instance);
-
-        var humanTaskFactory = new HumanTaskFactory(_db, assigneeResolver);
-
-        var conditionEvaluator = new ConditionEvaluator();
-        var autoTransitionEvaluator = new AutoTransitionEvaluator(conditionEvaluator);
-
-        var parallelCoordinator = new ParallelApprovalCoordinator(_db);
-
-        _sut = new WorkflowEngine(
-            _db,
-            hookExecutor,
-            Mock.Of<ICommentService>(),
-            userReader.Object,
-            new FormDataValidator(),
-            humanTaskFactory,
-            autoTransitionEvaluator,
-            parallelCoordinator,
-            NullLogger<WorkflowEngine>.Instance);
+        _db = WorkflowEngineTestFactory.CreateDb();
+        _sut = WorkflowEngineTestFactory.Build(_db).Engine;
     }
 
     public void Dispose() => _db.Dispose();

@@ -93,9 +93,14 @@ export const setupErrorInterceptor = (client: AxiosInstance): void => {
       const message = getErrorMessage(error);
 
       const isLoginEndpoint = error.config?.url?.includes('/Auth/login');
-
       const status = error.response?.status;
-      if ((status !== 401 && status !== 403) || isLoginEndpoint) {
+      const hasValidationErrors =
+        !!error.response?.data?.validationErrors &&
+        Object.keys(error.response.data.validationErrors).length > 0;
+      const suppressForInline =
+        error.config?.suppressValidationToast === true && hasValidationErrors;
+
+      if (!suppressForInline && ((status !== 401 && status !== 403) || isLoginEndpoint)) {
         toast.error(message);
       }
 

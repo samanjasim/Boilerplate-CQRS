@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Starter.Abstractions.Capabilities;
 using Starter.Module.Workflow.Infrastructure.Services;
 using Xunit;
@@ -8,7 +9,7 @@ namespace Starter.Api.Tests.Workflow;
 
 public sealed class ConditionEvaluatorTests
 {
-    private readonly IConditionEvaluator _sut = new ConditionEvaluator();
+    private readonly IConditionEvaluator _sut = new ConditionEvaluator(NullLogger<ConditionEvaluator>.Instance);
 
     // Helper: simulate what JsonSerializer.Deserialize<Dictionary<string, object>> produces —
     // values are JsonElement, not C# primitives.

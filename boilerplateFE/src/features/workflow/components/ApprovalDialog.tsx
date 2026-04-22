@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useExecuteTask } from '../api';
 import { DynamicFormRenderer } from './DynamicFormRenderer';
+import { extractValidationErrors } from '../utils/extractValidationErrors';
 import type { FormFieldDefinition } from '@/types/workflow.types';
 
 interface ApprovalDialogProps {
@@ -46,7 +47,7 @@ export function ApprovalDialog({
   const { t } = useTranslation();
   const [comment, setComment] = useState('');
   const [formData, setFormData] = useState<Record<string, unknown>>({});
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [formErrors, setFormErrors] = useState<Record<string, string[]>>({});
   const { mutate: executeTask, isPending } = useExecuteTask();
 
   const hasFormFields = formFields && formFields.length > 0;
@@ -65,12 +66,12 @@ export function ApprovalDialog({
 
   const validateForm = (): boolean => {
     if (!hasFormFields) return true;
-    const errors: Record<string, string> = {};
+    const errors: Record<string, string[]> = {};
     for (const field of formFields) {
       if (field.required) {
         const value = formData[field.name];
         if (value === undefined || value === null || value === '') {
-          errors[field.name] = t('workflow.forms.required');
+          errors[field.name] = [t('workflow.forms.required')];
         }
       }
     }
@@ -96,6 +97,12 @@ export function ApprovalDialog({
           setFormData({});
           setFormErrors({});
           onOpenChange(false);
+        },
+        onError: (err) => {
+          const fieldErrors = extractValidationErrors(err);
+          if (fieldErrors) {
+            setFormErrors(fieldErrors);
+          }
         },
       },
     );
