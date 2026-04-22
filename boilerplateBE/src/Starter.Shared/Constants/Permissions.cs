@@ -93,6 +93,7 @@ public static class Permissions
         public const string Upload = "Files.Upload";
         public const string Delete = "Files.Delete";
         public const string Manage = "Files.Manage";
+        public const string ShareOwn = "Files.ShareOwn";
     }
 
     // ─── FeatureFlags ────────────────────────────────
@@ -181,6 +182,7 @@ public static class Permissions
         yield return (Files.Upload, "Upload new files", "Files");
         yield return (Files.Delete, "Delete files", "Files");
         yield return (Files.Manage, "Manage file metadata", "Files");
+        yield return (Files.ShareOwn, "Share files the user owns", "Files");
 
         // ─── FeatureFlags ───
         yield return (FeatureFlags.View, "View feature flags", "FeatureFlags");

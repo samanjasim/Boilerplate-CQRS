@@ -19,4 +19,28 @@ public interface IFileService
     Task DetachFromEntityAsync(Guid fileId, CancellationToken ct = default);
 
     Task ReplaceEntityFileAsync(Guid? oldFileId, Guid newFileId, Guid entityId, string entityType, CancellationToken ct = default);
+
+    Task<FileMetadata> CreateManagedFileAsync(ManagedFileUpload upload, CancellationToken ct = default);
+
+    Task DeleteManagedFileAsync(Guid fileId, CancellationToken ct = default);
+
+    Task<FileDownloadResult?> ResolveDownloadAsync(Guid fileId, CancellationToken ct = default);
 }
+
+public sealed record ManagedFileUpload(
+    Stream Stream,
+    string FileName,
+    string ContentType,
+    long Size,
+    FileCategory Category,
+    ResourceVisibility Visibility,
+    string? EntityType = null,
+    Guid? EntityId = null,
+    FileOrigin Origin = FileOrigin.UserUpload,
+    string? Description = null,
+    string[]? Tags = null);
+
+public sealed record FileDownloadResult(
+    Stream Stream,
+    string ContentType,
+    string FileName);
