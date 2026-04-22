@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Web;
+using Starter.Module.Workflow.Application.Commands.BatchExecuteTasks;
 using Starter.Module.Workflow.Application.Commands.CancelDelegation;
 using Starter.Module.Workflow.Application.Commands.CancelWorkflow;
 using Starter.Module.Workflow.Application.Commands.CloneDefinition;
@@ -183,6 +184,18 @@ public sealed class WorkflowController(ISender mediator) : BaseApiController(med
         return HandleResult(result);
     }
 
+    [HttpPost("tasks/batch-execute")]
+    [Authorize(Policy = WorkflowPermissions.ActOnTask)]
+    [ProducesResponseType(typeof(ApiResponse<BatchExecuteResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> BatchExecuteTasks(
+        [FromBody] BatchExecuteTasksRequest request, CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(
+            new BatchExecuteTasksCommand(request.TaskIds, request.Action, request.Comment), ct);
+        return HandleResult(result);
+    }
+
     // ── Delegations ─────────────────────────────────────────────────────────
 
     [HttpPost("delegations")]
@@ -229,6 +242,11 @@ public sealed class WorkflowController(ISender mediator) : BaseApiController(med
 public sealed record CancelWorkflowRequest(string? Reason);
 
 public sealed record ExecuteTaskRequest(string Action, string? Comment, Dictionary<string, object>? FormData = null);
+
+public sealed record BatchExecuteTasksRequest(
+    IReadOnlyList<Guid> TaskIds,
+    string Action,
+    string? Comment);
 
 public sealed record TransitionWorkflowRequest(string Trigger);
 
