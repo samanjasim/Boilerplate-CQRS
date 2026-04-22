@@ -12,6 +12,8 @@ internal sealed class GetWorkflowAnalyticsQueryHandler(
     IUserReader userReader)
     : IRequestHandler<GetWorkflowAnalyticsQuery, Result<WorkflowAnalyticsDto>>
 {
+    private readonly IUserReader _userReader = userReader;
+
     public async Task<Result<WorkflowAnalyticsDto>> Handle(
         GetWorkflowAnalyticsQuery request, CancellationToken ct)
     {
