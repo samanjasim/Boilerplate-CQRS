@@ -179,6 +179,7 @@ internal sealed class KeywordAwareFakeKeywordSearchService : IKeywordSearchServi
         Guid tenantId,
         string queryText,
         IReadOnlyCollection<Guid>? documentFilter,
+        AclPayloadFilter? aclFilter,
         int limit,
         CancellationToken ct)
     {

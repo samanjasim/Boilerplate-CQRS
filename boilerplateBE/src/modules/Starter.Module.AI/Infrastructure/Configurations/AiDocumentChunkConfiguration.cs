@@ -68,10 +68,25 @@ internal sealed class AiDocumentChunkConfiguration : IEntityTypeConfiguration<Ai
             .HasDefaultValue(ChunkType.Body)
             .IsRequired();
 
+        builder.Property(c => c.FileId)
+            .HasColumnName("file_id")
+            .IsRequired();
+
+        builder.Property(c => c.Visibility)
+            .HasColumnName("visibility")
+            .HasConversion<int>()
+            .IsRequired();
+
+        builder.Property(c => c.UploadedByUserId)
+            .HasColumnName("uploaded_by_user_id")
+            .IsRequired();
+
         builder.HasIndex(e => e.DocumentId);
         builder.HasIndex(e => e.ParentChunkId);
         builder.HasIndex(e => e.QdrantPointId)
             .IsUnique();
+        // Supports ACL push-down on keyword search (filter by file_id + chunk_level = child).
+        builder.HasIndex(c => new { c.FileId, c.ChunkLevel });
 
         if (IsRelationalProvider(builder))
         {

@@ -270,7 +270,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         {
             var q = effectiveVariants[i];
             var hits = await WithTimeoutAsync(
-                innerCt => _keywordSearch.SearchAsync(tenantId, q, documentFilter, retrievalTopK, innerCt),
+                innerCt => _keywordSearch.SearchAsync(tenantId, q, documentFilter, aclFilter: null, retrievalTopK, innerCt),
                 _settings.StageTimeoutKeywordMs,
                 RagStages.KeywordSearch(i),
                 degraded,

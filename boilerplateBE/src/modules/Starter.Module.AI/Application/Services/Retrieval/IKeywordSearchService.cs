@@ -6,6 +6,7 @@ public interface IKeywordSearchService
         Guid tenantId,
         string queryText,
         IReadOnlyCollection<Guid>? documentFilter,
+        AclPayloadFilter? aclFilter,
         int limit,
         CancellationToken ct);
 }

@@ -44,7 +44,7 @@ public sealed class RagRetrievalServiceTimeoutTests
     private sealed class FakeKw : IKeywordSearchService
     {
         public Task<IReadOnlyList<KeywordSearchHit>> SearchAsync(
-            Guid t, string q, IReadOnlyCollection<Guid>? f, int l, CancellationToken ct)
+            Guid t, string q, IReadOnlyCollection<Guid>? f, AclPayloadFilter? acl, int l, CancellationToken ct)
             => Task.FromResult<IReadOnlyList<KeywordSearchHit>>([]);
     }
 

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Starter.Domain.Common.Access.Enums;
 using Starter.Module.AI.Application.Services.Retrieval;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Settings;
@@ -27,6 +28,7 @@ internal sealed class PostgresKeywordSearchService : IKeywordSearchService
         Guid tenantId,
         string queryText,
         IReadOnlyCollection<Guid>? documentFilter,
+        AclPayloadFilter? aclFilter,
         int limit,
         CancellationToken ct)
     {
@@ -62,6 +64,27 @@ internal sealed class PostgresKeywordSearchService : IKeywordSearchService
         {
             sql += $" AND c.document_id = ANY({{{parameters.Count}}})";
             parameters.Add(documentFilter.ToArray());
+        }
+
+        if (aclFilter is not null)
+        {
+            // ACL push-down: a row is visible when any branch matches.
+            // Visibility numeric values are interpolated from the enum (app-controlled,
+            // not user input) so they can't be SQL-injected.
+            var tenantWide = (int)ResourceVisibility.TenantWide;
+            var publicVis = (int)ResourceVisibility.Public;
+            var userIdParam = parameters.Count;
+            parameters.Add(aclFilter.UserId);
+            var grantedParam = parameters.Count;
+            parameters.Add(aclFilter.GrantedFileIds.ToArray());
+
+            sql += $@"
+              AND (
+                c.visibility = {tenantWide}
+                OR c.visibility = {publicVis}
+                OR c.uploaded_by_user_id = {{{userIdParam}}}
+                OR c.file_id = ANY({{{grantedParam}}}::uuid[])
+              )";
         }
 
         sql += $" ORDER BY \"Score\" DESC LIMIT {{{parameters.Count}}}";

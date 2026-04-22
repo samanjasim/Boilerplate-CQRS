@@ -93,7 +93,10 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
                                 parentChunkId: null,
                                 sectionTitle: parent.SectionTitle,
                                 pageNumber: parent.PageNumber,
-                                chunkType: parent.ChunkType);
+                                chunkType: parent.ChunkType,
+                                fileId: fileMetadata.Id,
+                                visibility: fileMetadata.Visibility,
+                                uploadedByUserId: fileMetadata.UploadedBy);
                             if (!string.IsNullOrEmpty(parent.NormalizedContent))
                                 clonedParent.SetNormalizedContent(parent.NormalizedContent);
                             newParents.Add(clonedParent);
@@ -141,7 +144,10 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
                                 parentChunkId: parentDbId,
                                 sectionTitle: child.SectionTitle,
                                 pageNumber: child.PageNumber,
-                                chunkType: child.ChunkType);
+                                chunkType: child.ChunkType,
+                                fileId: fileMetadata.Id,
+                                visibility: fileMetadata.Visibility,
+                                uploadedByUserId: fileMetadata.UploadedBy);
                             if (!string.IsNullOrEmpty(child.NormalizedContent))
                                 clonedChild.SetNormalizedContent(child.NormalizedContent);
                             newChildren.Add(clonedChild);
@@ -236,7 +242,10 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
                 parentChunkId: null,
                 sectionTitle: p.SectionTitle,
                 pageNumber: p.PageNumber,
-                chunkType: p.ChunkType)).ToList();
+                chunkType: p.ChunkType,
+                fileId: fileMetadata.Id,
+                visibility: fileMetadata.Visibility,
+                uploadedByUserId: fileMetadata.UploadedBy)).ToList();
 
             foreach (var p in parentEntities)
                 p.SetNormalizedContent(BuildNormalized(p.SectionTitle, p.Content));
@@ -265,7 +274,10 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
                     parentChunkId: parentDbId,
                     sectionTitle: draft.SectionTitle,
                     pageNumber: draft.PageNumber,
-                    chunkType: draft.ChunkType);
+                    chunkType: draft.ChunkType,
+                    fileId: fileMetadata.Id,
+                    visibility: fileMetadata.Visibility,
+                    uploadedByUserId: fileMetadata.UploadedBy);
                 childEntity.SetNormalizedContent(BuildNormalized(draft.SectionTitle, draft.Content));
                 childEntities.Add(childEntity);
 

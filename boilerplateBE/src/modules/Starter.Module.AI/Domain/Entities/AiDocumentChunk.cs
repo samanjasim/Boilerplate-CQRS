@@ -1,4 +1,5 @@
 using Starter.Domain.Common;
+using Starter.Domain.Common.Access.Enums;
 using Starter.Module.AI.Domain.Enums;
 
 namespace Starter.Module.AI.Domain.Entities;
@@ -16,6 +17,12 @@ public sealed class AiDocumentChunk : BaseEntity
     public Guid QdrantPointId { get; private set; }
     public ChunkType ChunkType { get; private set; }
 
+    // Denormalized from the parent AiDocument's FileMetadata so keyword-search
+    // can push down the ACL predicate without an extra join.
+    public Guid FileId { get; private set; }
+    public ResourceVisibility Visibility { get; private set; }
+    public Guid UploadedByUserId { get; private set; }
+
     private AiDocumentChunk() { }
 
     private AiDocumentChunk(
@@ -29,7 +36,10 @@ public sealed class AiDocumentChunk : BaseEntity
         int? pageNumber,
         int tokenCount,
         Guid qdrantPointId,
-        ChunkType chunkType) : base(id)
+        ChunkType chunkType,
+        Guid fileId,
+        ResourceVisibility visibility,
+        Guid uploadedByUserId) : base(id)
     {
         DocumentId = documentId;
         ParentChunkId = parentChunkId;
@@ -41,6 +51,9 @@ public sealed class AiDocumentChunk : BaseEntity
         TokenCount = tokenCount;
         QdrantPointId = qdrantPointId;
         ChunkType = chunkType;
+        FileId = fileId;
+        Visibility = visibility;
+        UploadedByUserId = uploadedByUserId;
     }
 
     public string? NormalizedContent { get; private set; }
@@ -61,7 +74,10 @@ public sealed class AiDocumentChunk : BaseEntity
         Guid? parentChunkId = null,
         string? sectionTitle = null,
         int? pageNumber = null,
-        ChunkType chunkType = ChunkType.Body)
+        ChunkType chunkType = ChunkType.Body,
+        Guid fileId = default,
+        ResourceVisibility visibility = ResourceVisibility.Private,
+        Guid uploadedByUserId = default)
     {
         return new AiDocumentChunk(
             Guid.NewGuid(),
@@ -74,6 +90,9 @@ public sealed class AiDocumentChunk : BaseEntity
             pageNumber,
             tokenCount,
             qdrantPointId,
-            chunkType);
+            chunkType,
+            fileId,
+            visibility,
+            uploadedByUserId);
     }
 }

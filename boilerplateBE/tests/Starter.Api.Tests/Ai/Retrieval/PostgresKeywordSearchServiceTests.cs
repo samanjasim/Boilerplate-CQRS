@@ -40,7 +40,7 @@ public sealed class PostgresKeywordSearchServiceTests : IClassFixture<AiPostgres
 
         var svc = new PostgresKeywordSearchService(db, _fixture.Logger<PostgresKeywordSearchService>(), Options.Create(new AiRagSettings()));
 
-        var results = await svc.SearchAsync(tenantA, "photosynthesis", null, 10, CancellationToken.None);
+        var results = await svc.SearchAsync(tenantA, "photosynthesis", null, null, 10, CancellationToken.None);
 
         results.Should().HaveCount(1);
         results[0].ChunkId.Should().Be(chunkA1.QdrantPointId);
@@ -67,7 +67,7 @@ public sealed class PostgresKeywordSearchServiceTests : IClassFixture<AiPostgres
 
         var svc = new PostgresKeywordSearchService(db, _fixture.Logger<PostgresKeywordSearchService>(), Options.Create(new AiRagSettings()));
 
-        var results = await svc.SearchAsync(tenant, "photosynthesis", [docX.Id], 10, CancellationToken.None);
+        var results = await svc.SearchAsync(tenant, "photosynthesis", [docX.Id], null, 10, CancellationToken.None);
 
         results.Should().HaveCount(1);
         results[0].ChunkId.Should().Be(chunkX.QdrantPointId);
@@ -79,7 +79,7 @@ public sealed class PostgresKeywordSearchServiceTests : IClassFixture<AiPostgres
         await using var db = _fixture.CreateDbContext();
         var svc = new PostgresKeywordSearchService(db, _fixture.Logger<PostgresKeywordSearchService>(), Options.Create(new AiRagSettings()));
 
-        var results = await svc.SearchAsync(Guid.NewGuid(), "   ", null, 10, CancellationToken.None);
+        var results = await svc.SearchAsync(Guid.NewGuid(), "   ", null, null, 10, CancellationToken.None);
 
         results.Should().BeEmpty();
     }
@@ -105,7 +105,7 @@ public sealed class PostgresKeywordSearchServiceTests : IClassFixture<AiPostgres
 
         var settings = Options.Create(new AiRagSettings());
         var svc = new PostgresKeywordSearchService(db, _fixture.Logger<PostgresKeywordSearchService>(), settings);
-        var results = await svc.SearchAsync(tenant, "اكاديمي", null, 10, CancellationToken.None);
+        var results = await svc.SearchAsync(tenant, "اكاديمي", null, null, 10, CancellationToken.None);
 
         results.Should().HaveCount(1);
         results[0].ChunkId.Should().Be(chunk.QdrantPointId);
@@ -131,7 +131,7 @@ public sealed class PostgresKeywordSearchServiceTests : IClassFixture<AiPostgres
 
         var settings = Options.Create(new AiRagSettings());
         var svc = new PostgresKeywordSearchService(db, _fixture.Logger<PostgresKeywordSearchService>(), settings);
-        var results = await svc.SearchAsync(tenant, "مؤسسه", null, 10, CancellationToken.None);
+        var results = await svc.SearchAsync(tenant, "مؤسسه", null, null, 10, CancellationToken.None);
 
         results.Should().HaveCount(1);
         results[0].ChunkId.Should().Be(chunk.QdrantPointId);
@@ -157,7 +157,7 @@ public sealed class PostgresKeywordSearchServiceTests : IClassFixture<AiPostgres
 
         var settings = Options.Create(new AiRagSettings());
         var svc = new PostgresKeywordSearchService(db, _fixture.Logger<PostgresKeywordSearchService>(), settings);
-        var results = await svc.SearchAsync(tenant, "photosynthesis", null, 10, CancellationToken.None);
+        var results = await svc.SearchAsync(tenant, "photosynthesis", null, null, 10, CancellationToken.None);
 
         results.Should().HaveCount(1);
         results[0].ChunkId.Should().Be(chunk.QdrantPointId);
@@ -178,7 +178,7 @@ public sealed class PostgresKeywordSearchServiceTests : IClassFixture<AiPostgres
             _fixture.Logger<PostgresKeywordSearchService>(),
             Options.Create(new AiRagSettings()));
 
-        var results = await svc.SearchAsync(tenantId, "Pumps", null, 5, CancellationToken.None);
+        var results = await svc.SearchAsync(tenantId, "Pumps", null, null, 5, CancellationToken.None);
 
         results.Should().ContainSingle();
         results.Single().ChunkId.Should().Be(seeded.Chunk.QdrantPointId);

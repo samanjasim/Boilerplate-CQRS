@@ -21,11 +21,12 @@ internal sealed class CircuitBreakingKeywordSearch : IKeywordSearchService
         Guid tenantId,
         string queryText,
         IReadOnlyCollection<Guid>? documentFilter,
+        AclPayloadFilter? aclFilter,
         int limit,
         CancellationToken ct)
     {
         return await _registry.PostgresFts.ExecuteAsync(
-            async token => await _inner.SearchAsync(tenantId, queryText, documentFilter, limit, token),
+            async token => await _inner.SearchAsync(tenantId, queryText, documentFilter, aclFilter, limit, token),
             ct);
     }
 }

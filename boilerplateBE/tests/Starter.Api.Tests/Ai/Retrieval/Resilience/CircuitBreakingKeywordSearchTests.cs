@@ -17,7 +17,7 @@ public class CircuitBreakingKeywordSearchTests
         var inner = new FixedKeywordSearch(new List<KeywordSearchHit> { new(Guid.NewGuid(), 0.8m) });
         var sut = new CircuitBreakingKeywordSearch(inner, BuildRegistry());
 
-        var hits = await sut.SearchAsync(Guid.NewGuid(), "hello", null, 10, CancellationToken.None);
+        var hits = await sut.SearchAsync(Guid.NewGuid(), "hello", null, null, 10, CancellationToken.None);
 
         hits.Should().HaveCount(1);
     }
@@ -30,11 +30,11 @@ public class CircuitBreakingKeywordSearchTests
 
         for (var i = 0; i < 5; i++)
         {
-            var act = async () => await sut.SearchAsync(Guid.NewGuid(), "x", null, 10, CancellationToken.None);
+            var act = async () => await sut.SearchAsync(Guid.NewGuid(), "x", null, null, 10, CancellationToken.None);
             await act.Should().ThrowAsync<FakeDbException>();
         }
 
-        var tripped = async () => await sut.SearchAsync(Guid.NewGuid(), "x", null, 10, CancellationToken.None);
+        var tripped = async () => await sut.SearchAsync(Guid.NewGuid(), "x", null, null, 10, CancellationToken.None);
         await tripped.Should().ThrowAsync<BrokenCircuitException>();
 
         inner.CallCount.Should().Be(5);
@@ -66,7 +66,7 @@ public class CircuitBreakingKeywordSearchTests
         private readonly IReadOnlyList<KeywordSearchHit> _hits;
         public FixedKeywordSearch(IReadOnlyList<KeywordSearchHit> hits) => _hits = hits;
         public Task<IReadOnlyList<KeywordSearchHit>> SearchAsync(
-            Guid t, string q, IReadOnlyCollection<Guid>? d, int limit, CancellationToken ct)
+            Guid t, string q, IReadOnlyCollection<Guid>? d, AclPayloadFilter? acl, int limit, CancellationToken ct)
             => Task.FromResult(_hits);
     }
 
@@ -76,7 +76,7 @@ public class CircuitBreakingKeywordSearchTests
         public int CallCount { get; private set; }
         public ThrowingKeywordSearch(Exception ex) => _ex = ex;
         public Task<IReadOnlyList<KeywordSearchHit>> SearchAsync(
-            Guid t, string q, IReadOnlyCollection<Guid>? d, int limit, CancellationToken ct)
+            Guid t, string q, IReadOnlyCollection<Guid>? d, AclPayloadFilter? acl, int limit, CancellationToken ct)
         {
             CallCount++;
             throw _ex;
