@@ -35,12 +35,14 @@ internal sealed class FakeVectorStore : IVectorStore
     }
 
     public Dictionary<Guid, float[]> VectorsById { get; } = new();
+    public int GetVectorsByIdsCallCount { get; private set; }
 
     public Task<IReadOnlyDictionary<Guid, float[]>> GetVectorsByIdsAsync(
         Guid tenantId,
         IReadOnlyCollection<Guid> pointIds,
         CancellationToken ct)
     {
+        GetVectorsByIdsCallCount++;
         IReadOnlyDictionary<Guid, float[]> result = pointIds
             .Where(VectorsById.ContainsKey)
             .ToDictionary(id => id, id => VectorsById[id]);
