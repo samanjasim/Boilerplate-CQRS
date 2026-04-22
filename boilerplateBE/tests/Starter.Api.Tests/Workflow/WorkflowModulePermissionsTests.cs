@@ -16,7 +16,7 @@ public sealed class WorkflowModulePermissionsTests
     private readonly WorkflowModule _module = new();
 
     [Fact]
-    public void GetPermissions_ReturnsAllSixPermissions()
+    public void GetPermissions_ReturnsAllSevenPermissions()
     {
         var names = _module.GetPermissions().Select(p => p.Name).ToHashSet();
 
@@ -28,6 +28,7 @@ public sealed class WorkflowModulePermissionsTests
             WorkflowPermissions.ActOnTask,
             WorkflowPermissions.Cancel,
             WorkflowPermissions.ViewAllTasks,
+            WorkflowPermissions.ViewAnalytics,
         });
     }
 
@@ -38,25 +39,27 @@ public sealed class WorkflowModulePermissionsTests
     }
 
     [Fact]
-    public void DefaultRolePermissions_SuperAdmin_GetsAllSix()
+    public void DefaultRolePermissions_SuperAdmin_GetsAllSeven()
     {
         var superAdmin = _module.GetDefaultRolePermissions().Single(r => r.Role == "SuperAdmin");
 
-        superAdmin.Permissions.Should().HaveCount(6);
+        superAdmin.Permissions.Should().HaveCount(7);
         superAdmin.Permissions.Should().Contain(WorkflowPermissions.ManageDefinitions);
         superAdmin.Permissions.Should().Contain(WorkflowPermissions.Cancel);
         superAdmin.Permissions.Should().Contain(WorkflowPermissions.ViewAllTasks);
+        superAdmin.Permissions.Should().Contain(WorkflowPermissions.ViewAnalytics);
     }
 
     [Fact]
-    public void DefaultRolePermissions_Admin_GetsAllSix()
+    public void DefaultRolePermissions_Admin_GetsAllSeven()
     {
         var admin = _module.GetDefaultRolePermissions().Single(r => r.Role == "Admin");
 
-        admin.Permissions.Should().HaveCount(6);
+        admin.Permissions.Should().HaveCount(7);
         admin.Permissions.Should().Contain(WorkflowPermissions.ManageDefinitions);
         admin.Permissions.Should().Contain(WorkflowPermissions.Cancel);
         admin.Permissions.Should().Contain(WorkflowPermissions.ViewAllTasks);
+        admin.Permissions.Should().Contain(WorkflowPermissions.ViewAnalytics);
     }
 
     [Fact]
