@@ -462,7 +462,21 @@
     "permanent": "Permanent",
     "uploading": "Uploading...",
     "uploadComplete": "Upload complete",
-    "invalidFileType": "Invalid file type"
+    "invalidFileType": "Invalid file type",
+    "views": {
+      "all": "All",
+      "mine": "My Files",
+      "shared": "Shared with Me",
+      "public": "Public"
+    },
+    "storageSummary": {
+      "trigger": "Storage",
+      "title": "Storage Summary",
+      "total": "Total Storage",
+      "byCategory": "By Category",
+      "topUploaders": "Top Uploaders",
+      "allTenants": "Show all tenants (platform-wide)"
+    }
   },
   "reports": {
     "title": "Reports",
@@ -922,5 +936,55 @@
     "processing": "Processing",
     "completed": "Completed",
     "partialSuccess": "Partial Success"
+  },
+  "access": {
+    "share": "Share",
+    "sharedWith": "Shared with",
+    "visibility": {
+      "label": "Visibility",
+      "private": "Private",
+      "tenantWide": "Tenant",
+      "public": "Public"
+    },
+    "visibilityUpdated": "Visibility updated",
+    "grantAdded": "Access granted",
+    "grantRevoked": "Access revoked",
+    "ownershipTransferred": "Ownership transferred",
+    "levels": {
+      "viewer": "Viewer",
+      "editor": "Editor",
+      "manager": "Manager"
+    },
+    "shareDialog": {
+      "title": "Share \"{{name}}\"",
+      "visibility": "Visibility",
+      "addPeople": "Add people or roles",
+      "whoHasAccess": "Who has access",
+      "copyLink": "Copy link",
+      "confirmPublic": {
+        "title": "Make this public?",
+        "body": "Anyone with the link will be able to access this resource.",
+        "acknowledge": "I understand this resource will be publicly accessible",
+        "confirm": "Make public"
+      }
+    },
+    "revokeDialog": {
+      "title": "Remove access",
+      "description": "This person or role will no longer have access to this resource."
+    },
+    "transferOwnership": {
+      "action": "Transfer ownership",
+      "title": "Transfer ownership of \"{{name}}\"",
+      "description": "The current owner will be demoted to Manager and retain access.",
+      "confirm": "Transfer"
+    },
+    "subjectPicker": {
+      "search": "Search people or roles...",
+      "users": "Users",
+      "roles": "Roles"
+    },
+    "subjectStack": {
+      "overflow": "+{{count}} more"
+    }
   }
 }
