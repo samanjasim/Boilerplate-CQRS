@@ -36,6 +36,14 @@ API (Controllers) → Application (MediatR CQRS) → Domain (Entities) ← Infra
 - **Result pattern** — All handlers return `Result<T>`. Controllers use `HandleResult()` / `HandlePagedResult()`.
 - **Pipeline behaviors** — `ValidationBehavior`, `LoggingBehavior`, `PerformanceBehavior`, `TracingBehavior` (OpenTelemetry).
 
+### Core vs. Module vs. Shared
+
+- **Core feature** — required by other features or cross-cutting (access control, auth, audit, notifications, files). Lives in `Starter.Domain` / `Starter.Application` / `Starter.Infrastructure`; uses `ApplicationDbContext`.
+- **Module** (`src/modules/Starter.Module.*`) — optional vertical with its own bounded context, DbContext, migrations, and DI module. Modules may depend on core; core must **not** depend on a module.
+- **Shared** (`Starter.Shared`) — constants, permissions, error codes, enums with no behavior. No EF entities, no services.
+
+When in doubt: if more than one module needs it, it's core.
+
 ## Feature Inventory
 
 ### Backend (15 features, 16 controllers)
