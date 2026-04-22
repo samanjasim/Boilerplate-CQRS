@@ -119,7 +119,7 @@ export default function FilesPage() {
         category: uploadCategory,
         description: uploadDescription || undefined,
         tags: uploadTags || undefined,
-        isPublic: uploadIsPublic,
+        visibility: uploadIsPublic ? 'Public' : 'Private',
       },
       {
         onSuccess: () => {

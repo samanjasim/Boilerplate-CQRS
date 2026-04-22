@@ -40,7 +40,7 @@ export const filesApi = {
     if (data.tags) formData.append('tags', data.tags);
     if (data.entityType) formData.append('entityType', data.entityType);
     if (data.entityId) formData.append('entityId', data.entityId);
-    formData.append('isPublic', String(data.isPublic ?? false));
+    formData.append('visibility', data.visibility ?? 'Private');
 
     const response = await apiClient.post<{ data: FileMetadata }>(
       API_ENDPOINTS.FILES.UPLOAD,

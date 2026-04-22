@@ -41,6 +41,7 @@ export const PERMISSIONS = {
     Upload: 'Files.Upload',
     Delete: 'Files.Delete',
     Manage: 'Files.Manage',
+    ShareOwn: 'Files.ShareOwn',
   },
   ApiKeys: {
     View: 'ApiKeys.View',

@@ -67,6 +67,14 @@ export const API_ENDPOINTS = {
     MARK_ALL_READ: '/Notifications/read-all',
     PREFERENCES: '/Notifications/preferences',
   },
+  ACCESS: {
+    GRANTS: (resourceType: string, resourceId: string) => `/${resourceType}s/${resourceId}/grants`,
+    GRANT: (resourceType: string, resourceId: string, grantId: string) =>
+      `/${resourceType}s/${resourceId}/grants/${grantId}`,
+    VISIBILITY: (resourceType: string, resourceId: string) => `/${resourceType}s/${resourceId}/visibility`,
+    TRANSFER_OWNERSHIP: (resourceType: string, resourceId: string) =>
+      `/${resourceType}s/${resourceId}/transfer-ownership`,
+  },
   FILES: {
     LIST: '/Files',
     UPLOAD: '/Files',
@@ -74,6 +82,11 @@ export const API_ENDPOINTS = {
     DETAIL: (id: string) => `/Files/${id}`,
     URL: (id: string) => `/Files/${id}/url`,
     DELETE: (id: string) => `/Files/${id}`,
+    STORAGE_SUMMARY: '/Files/storage-summary',
+    GRANTS: (id: string) => `/Files/${id}/grants`,
+    GRANT: (id: string, grantId: string) => `/Files/${id}/grants/${grantId}`,
+    VISIBILITY: (id: string) => `/Files/${id}/visibility`,
+    TRANSFER_OWNERSHIP: (id: string) => `/Files/${id}/transfer-ownership`,
   },
   REPORTS: {
     LIST: '/Reports',
