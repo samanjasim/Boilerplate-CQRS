@@ -28,14 +28,14 @@ function NotificationItem({
   onRead,
 }: {
   notification: Notification;
-  onRead: (id: string) => void;
+  onRead: (n: Notification) => void;
 }) {
   const timeAgo = formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true });
 
   return (
     <DropdownMenuItem
       className="flex items-start gap-3 p-3 cursor-pointer"
-      onClick={() => onRead(notification.id)}
+      onClick={() => onRead(notification)}
     >
       <NotificationIcon type={notification.type} />
       <div className="flex-1 min-w-0">
@@ -73,8 +73,19 @@ export function NotificationBell() {
 
   const notifications = notificationsData?.data ?? [];
 
-  const handleNotificationClick = (id: string) => {
-    markRead(id);
+  const handleNotificationClick = (notification: Notification) => {
+    markRead(notification.id);
+
+    if (notification.type === 'ResourceShared') {
+      let data: { resourceType?: string; resourceId?: string } = {};
+      try { data = JSON.parse(notification.data ?? '{}'); } catch { /* ignore */ }
+
+      if (data.resourceType === 'AiAssistant' && data.resourceId) {
+        navigate(`/ai/assistants/${data.resourceId}`);
+      } else {
+        navigate(`${ROUTES.FILES}?view=shared`);
+      }
+    }
   };
 
   return (
@@ -118,7 +129,7 @@ export function NotificationBell() {
               <NotificationItem
                 key={notification.id}
                 notification={notification}
-                onRead={handleNotificationClick}
+                onRead={n => handleNotificationClick(n)}
               />
             ))}
             <DropdownMenuSeparator />
