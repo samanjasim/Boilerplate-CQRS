@@ -359,10 +359,12 @@ internal sealed class ChatExecutionService(
             context.AiConversations.Add(conversation);
         }
 
-        // ACL gate — caller must be able to view the assistant. TenantWide visibility,
-        // ownership, explicit grants, and admin bypass all pass through CanAccessAsync.
-        // Not-found is returned instead of Forbidden to avoid leaking existence.
-        var canAccess = await access.CanAccessAsync(
+        // ACL gate — TenantWide assistants are open to any member of the same tenant
+        // (or platform admins whose TenantId is null). Ownership, explicit grants, and
+        // admin bypass pass through CanAccessAsync. Not-found masks existence to avoid leaking.
+        var tenantWideBypass = assistant.Visibility == ResourceVisibility.TenantWide
+            && (currentUser.TenantId == null || currentUser.TenantId == assistant.TenantId);
+        var canAccess = tenantWideBypass || await access.CanAccessAsync(
             currentUser, ResourceTypes.AiAssistant, assistant.Id, AccessLevel.Viewer, ct);
         if (!canAccess)
             return Result.Failure<ChatTurnState>(AiErrors.AssistantNotFound);

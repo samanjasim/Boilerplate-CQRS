@@ -151,7 +151,8 @@ public sealed class ResourceAccessService(
         if (resourceType == ResourceTypes.File && user.HasPermission(Permissions.Files.Manage))
             return true;
 
-        if (resourceType == ResourceTypes.AiAssistant && user.IsInRole(Roles.Admin))
+        if (resourceType == ResourceTypes.AiAssistant &&
+            (user.IsInRole(Roles.Admin) || user.IsInRole(Roles.SuperAdmin)))
             return true;
 
         if (user.UserId is not Guid uid) return false;
@@ -192,7 +193,8 @@ public sealed class ResourceAccessService(
         if (resourceType == ResourceTypes.File && user.HasPermission(Permissions.Files.Manage))
             return new AccessResolution(true, Array.Empty<Guid>());
 
-        if (resourceType == ResourceTypes.AiAssistant && user.IsInRole(Roles.Admin))
+        if (resourceType == ResourceTypes.AiAssistant &&
+            (user.IsInRole(Roles.Admin) || user.IsInRole(Roles.SuperAdmin)))
             return new AccessResolution(true, Array.Empty<Guid>());
 
         if (user.UserId is not Guid uid || user.TenantId is not Guid tid)

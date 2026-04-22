@@ -52,7 +52,8 @@ foreach (var module in orderedModules)
     module.ConfigureServices(builder.Services, builder.Configuration);
 
 // API Configuration
-var mvcBuilder = builder.Services.AddControllers();
+var mvcBuilder = builder.Services.AddControllers()
+    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 foreach (var asm in moduleAssemblies)
     mvcBuilder.AddApplicationPart(asm);
 

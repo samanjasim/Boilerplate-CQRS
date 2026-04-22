@@ -6,6 +6,7 @@ internal static class AiDocumentMappers
 {
     public static AiDocumentDto ToDto(this AiDocument d) => new(
         Id: d.Id,
+        FileMetadataId: d.FileId,
         Name: d.Name,
         FileName: d.FileName,
         ContentType: d.ContentType,

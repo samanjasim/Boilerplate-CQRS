@@ -2,6 +2,7 @@ namespace Starter.Module.AI.Application.DTOs;
 
 public sealed record AiDocumentDto(
     Guid Id,
+    Guid FileMetadataId,
     string Name,
     string FileName,
     string ContentType,
