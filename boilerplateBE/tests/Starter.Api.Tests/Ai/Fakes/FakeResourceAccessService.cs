@@ -37,7 +37,7 @@ public sealed class FakeResourceAccessService : IResourceAccessService
     {
         ResolveCallCount++;
         if (ThrowOnResolve)
-            throw new InvalidOperationException("Simulated acl-resolve failure");
+            throw new TimeoutException("Simulated acl-resolve failure");
         return Task.FromResult(new AccessResolution(ForceAdminBypass, GrantedResourceIds));
     }
 
