@@ -1214,6 +1214,7 @@
       "bulkResultFailed": "Failed",
       "bulkResultSkipped": "Skipped",
       "bulkResultUnknownTask": "Task",
+      "bulkResultRetryFailed": "Retry {{count}} failed",
       "bulkCommentPlaceholder": "Optional comment applied to all tasks",
       "bulkViewDetails": "View details",
       "clearSelection": "Clear selection",

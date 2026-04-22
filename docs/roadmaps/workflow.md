@@ -39,7 +39,15 @@ The following improvements were made after the initial Phase 1 implementation. T
 
 ---
 
-## Phase 2+ Deferred Items
+## Phase 3 Shipped (merged 2026-04-22)
+
+- **WorkflowEngine extraction** — [`WorkflowEngine.cs`](../../boilerplateBE/src/modules/Starter.Module.Workflow/Infrastructure/Services/WorkflowEngine.cs) split into [`HumanTaskFactory`](../../boilerplateBE/src/modules/Starter.Module.Workflow/Infrastructure/Services/HumanTaskFactory.cs), [`AutoTransitionEvaluator`](../../boilerplateBE/src/modules/Starter.Module.Workflow/Infrastructure/Services/AutoTransitionEvaluator.cs), and [`ParallelApprovalCoordinator`](../../boilerplateBE/src/modules/Starter.Module.Workflow/Infrastructure/Services/ParallelApprovalCoordinator.cs). Each collaborator has its own tests (`HumanTaskFactoryTests`, `AutoTransitionEvaluatorTests`, `ParallelApprovalCoordinatorTests`). Unlocks Phase 4a/4c.
+- **Compound conditional expressions** — `ConditionConfig` extended with `Operator: And|Or|Not` + nested `Conditions[]`. `ConditionEvaluator` recurses with short-circuit semantics. Covered in `ConditionEvaluatorTests` (AND/OR/NOT/empty-conditions/threshold combinations).
+- **Bulk operations** — `BatchExecuteTasksCommand` + `POST /api/v1/workflow/tasks/batch-execute`. Per-task try/catch, neutralized error messages (no exception leak), 50-task cap, pre-flight "Skipped" for tasks with required form fields. Inbox UI: row checkboxes, bulk action bar, confirm dialog, result dialog with expandable per-task outcomes, retry-failed action, and stacked overdue/delegated badges. i18n in en/ar/ku.
+
+---
+
+## Phase 4+ Deferred Items
 
 ### AI agent as workflow participant
 
@@ -87,21 +95,6 @@ The following improvements were made after the initial Phase 1 implementation. T
 
 ---
 
-### Bulk operations
-
-**What:** Allow admins to select multiple pending tasks and approve/reject them in batch. Useful when a manager has 20+ pending leave requests or expense approvals.
-
-**Why deferred:** Single-task approval covers the v1 use case. Bulk requires a `BatchExecuteTasksCommand`, UI changes (checkbox selection, batch action bar), and careful concurrency handling (what if some tasks fail and others succeed?).
-
-**Pick this up when:** Admin feedback indicates inbox volume makes individual approval impractical (typically > 10 tasks/day for a single approver).
-
-**Starting points:**
-- Add `BatchExecuteTasksCommand(List<(Guid TaskId, string Action)> Tasks, string? Comment)` 
-- Handler loops with per-task try/catch, returns a result summary (succeeded/failed/skipped counts)
-- Frontend: add checkbox column to inbox table, batch action bar at top
-
----
-
 ### Step data collection (dynamic forms)
 
 **What:** Allow workflow state definitions to declare a form schema so the assignee submits structured data (e.g. "reason for rejection", "revised budget amount") rather than a free-text comment. The submitted values would be stored in `WorkflowStep.MetadataJson` and made available to downstream condition evaluators.
@@ -129,21 +122,6 @@ The following improvements were made after the initial Phase 1 implementation. T
 - Frontend: create `WorkflowDesignerPage` under `boilerplateFE/src/features/workflow/pages/` using a graph library (React Flow recommended).
 - The designer should serialize to the same `WorkflowStateConfig[]` + `WorkflowTransitionConfig[]` format already accepted by `POST /api/v1/workflows/definitions`.
 - Wire a preview/simulation mode that walks through states without persisting.
-
----
-
-### Compound conditional expressions
-
-**What:** Today `ConditionEvaluator` evaluates simple single-field comparisons against `WorkflowInstance.ContextJson`. Support compound expressions with `AND`/`OR`/`NOT` operators and nested groups.
-
-**Why deferred:** The simple evaluator handles all documented use cases (field equals value, field greater than threshold). Compound expressions require a proper expression tree parser and increase the testing surface significantly.
-
-**Pick this up when:** A workflow template requires multi-condition branching (e.g. "amount > 5000 AND department = Engineering").
-
-**Starting points:**
-- Extend `ConditionConfig` in [`Starter.Abstractions/Capabilities/WorkflowConfigRecords.cs`](../../boilerplateBE/src/Starter.Abstractions/Capabilities/WorkflowConfigRecords.cs) to support `Operator: And|Or|Not` with a `Conditions[]` array.
-- Update [`Infrastructure/Services/ConditionEvaluator.cs`](../../boilerplateBE/src/modules/Starter.Module.Workflow/Infrastructure/Services/ConditionEvaluator.cs) to recurse over compound expressions.
-- Add unit tests in [`tests/Starter.Api.Tests/Workflow/`](../../boilerplateBE/tests/Starter.Api.Tests/Workflow/) covering compound AND/OR/NOT evaluation.
 
 ---
 
@@ -191,20 +169,5 @@ The following improvements were made after the initial Phase 1 implementation. T
 - Add `GetWorkflowAnalyticsQuery` under [`Application/Queries/`](../../boilerplateBE/src/modules/Starter.Module.Workflow/Application/Queries/) that groups `WorkflowStep` records by definition + state and computes dwell-time percentiles.
 - Expose via `GET /api/v1/workflows/definitions/{id}/analytics`.
 - Frontend: add an "Analytics" tab to the workflow definition detail page.
-
----
-
-### WorkflowEngine.cs extraction
-
-**What:** Split [`Infrastructure/Services/WorkflowEngine.cs`](../../boilerplateBE/src/modules/Starter.Module.Workflow/Infrastructure/Services/WorkflowEngine.cs) (~1200 lines) into focused collaborators. Candidates: `ParallelApprovalCoordinator`, `AutoTransitionEvaluator`, `HumanTaskFactory`.
-
-**Why deferred:** Pure refactor — no capability added, no bug fixed. Existing tests cover the behavior well. Doing it inline would balloon the cleanup PR.
-
-**Pick this up when:** Phase 2b integration work needs to modify the engine, OR when the file next grows by more than ~200 lines.
-
-**Starting points:**
-- Identify coordinator boundaries by grouping private methods in `WorkflowEngine.cs` — parallel approval, auto-transition, and task creation clusters are already visually distinct.
-- Introduce one collaborator at a time behind a package-internal interface; existing tests should stay green through each extraction.
-- No public-interface change on `IWorkflowService` or the controller.
 
 ---
