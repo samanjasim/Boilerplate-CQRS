@@ -10,6 +10,7 @@ using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Ingestion;
 using Starter.Module.AI.Infrastructure.Observability;
 using Starter.Module.AI.Infrastructure.Persistence;
+using Starter.Module.AI.Infrastructure.Retrieval.Diversification;
 using Starter.Module.AI.Infrastructure.Retrieval.Reranking;
 using Starter.Module.AI.Infrastructure.Retrieval.Resilience;
 using Starter.Module.AI.Infrastructure.Settings;
@@ -374,7 +375,30 @@ internal sealed class RagRetrievalService : IRagRetrievalService
             activity?.SetTag(RagTracingTags.RerankUnusedRatio, rerankResult.UnusedRatio);
         }
 
-        var topKHits = rerankedHits.Take(topK).ToList();
+        // 7b. MMR diversification. Opt-in; only run when the reranked pool has more
+        // candidates than topK (otherwise there is nothing to diversify away). Fetches
+        // embeddings for the pool in one Qdrant round-trip, then picks topK via
+        // λ·relevance − (1−λ)·max cosine-to-selected. Degrades to rerank order on
+        // timeout or Qdrant failure.
+        IReadOnlyList<HybridHit> orderedForTopK = rerankedHits;
+        if (_settings.EnableMmr && rerankedHits.Count > topK)
+        {
+            var mmrResult = await WithTimeoutAsync(
+                async innerCt =>
+                {
+                    var pointIds = rerankedHits.Select(h => h.ChunkId).ToList();
+                    var embeddings = await _vectorStore.GetVectorsByIdsAsync(tenantId, pointIds, innerCt);
+                    return (IReadOnlyList<HybridHit>)MmrDiversifier.Diversify(
+                        rerankedHits, embeddings, _settings.MmrLambda, topK);
+                },
+                _settings.StageTimeoutMmrMs,
+                RagStages.MmrDiversify,
+                degraded,
+                ct);
+            if (mmrResult is { Count: > 0 }) orderedForTopK = mmrResult;
+        }
+
+        var topKHits = orderedForTopK.Take(topK).ToList();
 
         if (topKHits.Count == 0)
             return new RetrievedContext([], [], 0, false, degraded, [], 0, detectedLang);
