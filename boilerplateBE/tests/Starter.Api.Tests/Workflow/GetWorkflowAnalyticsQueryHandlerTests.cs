@@ -189,7 +189,94 @@ public sealed class GetWorkflowAnalyticsQueryHandlerTests : IDisposable
         twoDaysBucket.Started.Should().Be(1);
     }
 
+    [Fact]
+    public async Task Handle_Bottlenecks_OnlyStatesWithThreeOrMoreVisitsAppear_OrderedByMedianDesc()
+    {
+        var def = CreateTenantDefinition();
+        var now = DateTime.UtcNow;
+
+        // Three instances dwell in "AwaitingApproval": 10h, 20h, 30h. Median=20, P95≈29.
+        for (var i = 0; i < 3; i++)
+        {
+            var inst = SeedInstance(def.Id, now.AddDays(-5 - i), InstanceStatus.Active,
+                initialState: "AwaitingApproval");
+            // Enter "AwaitingApproval"
+            SeedStep(inst.Id, "Draft", "AwaitingApproval",
+                StepType.HumanTask, "Submit", actorUserId: null,
+                timestamp: now.AddDays(-5 - i));
+            // Exit "AwaitingApproval" after (10 + 10*i) hours
+            SeedStep(inst.Id, "AwaitingApproval", "Approved",
+                StepType.HumanTask, "approve", actorUserId: Guid.NewGuid(),
+                timestamp: now.AddDays(-5 - i).AddHours(10 + 10 * i));
+        }
+
+        // Two instances dwell in "SeniorReview" (<3) — should be excluded.
+        for (var i = 0; i < 2; i++)
+        {
+            var inst = SeedInstance(def.Id, now.AddDays(-4 - i), InstanceStatus.Active,
+                initialState: "SeniorReview");
+            SeedStep(inst.Id, "Draft", "SeniorReview",
+                StepType.HumanTask, "Escalate", actorUserId: null, timestamp: now.AddDays(-4 - i));
+            SeedStep(inst.Id, "SeniorReview", "Approved",
+                StepType.HumanTask, "approve", actorUserId: Guid.NewGuid(),
+                timestamp: now.AddDays(-4 - i).AddHours(5));
+        }
+
+        var result = await _sut.Handle(
+            new GetWorkflowAnalyticsQuery(def.Id, WindowSelector.ThirtyDays),
+            CancellationToken.None);
+
+        result.Value.StatesByBottleneck.Should().HaveCount(1);
+        var b = result.Value.StatesByBottleneck[0];
+        b.StateName.Should().Be("AwaitingApproval");
+        b.VisitCount.Should().Be(3);
+        b.MedianDwellHours.Should().BeApproximately(20.0, 1.0);
+        b.P95DwellHours.Should().BeGreaterThanOrEqualTo(20.0);
+    }
+
+    [Fact]
+    public async Task Handle_ActionRates_PercentagesWithinStateSumToOne()
+    {
+        var def = CreateTenantDefinition();
+        var now = DateTime.UtcNow;
+
+        // Seed 10 completed human-task steps from "ManagerReview":
+        // 7 approve, 3 reject.
+        var instance = SeedInstance(def.Id, now.AddDays(-5), InstanceStatus.Active);
+        for (var i = 0; i < 7; i++)
+            SeedStep(instance.Id, "ManagerReview", "Approved",
+                StepType.HumanTask, "approve", Guid.NewGuid(), now.AddDays(-5).AddMinutes(i));
+        for (var i = 0; i < 3; i++)
+            SeedStep(instance.Id, "ManagerReview", "Rejected",
+                StepType.HumanTask, "reject", Guid.NewGuid(), now.AddDays(-5).AddMinutes(10 + i));
+
+        // One SystemAction step must be ignored.
+        SeedStep(instance.Id, "ManagerReview", "AutoEscalated",
+            StepType.SystemAction, "autoEscalate", actorUserId: null, now.AddDays(-4));
+
+        var result = await _sut.Handle(
+            new GetWorkflowAnalyticsQuery(def.Id, WindowSelector.ThirtyDays),
+            CancellationToken.None);
+
+        var rates = result.Value.ActionRates.Where(r => r.StateName == "ManagerReview").ToList();
+        rates.Should().HaveCount(2);
+        rates.Single(r => r.Action == "approve").Count.Should().Be(7);
+        rates.Single(r => r.Action == "reject").Count.Should().Be(3);
+        rates.Sum(r => r.Percentage).Should().BeApproximately(1.0, 0.001);
+    }
+
     // ── Fixture helpers ──────────────────────────────────────────────────────
+
+    private void SeedStep(Guid instanceId, string fromState, string toState,
+        StepType stepType, string action, Guid? actorUserId, DateTime timestamp)
+    {
+        var step = WorkflowStep.Create(instanceId, fromState, toState, stepType, action,
+            actorUserId, comment: null, metadataJson: null);
+        _db.WorkflowSteps.Add(step);
+        _db.SaveChanges();
+        _db.Entry(step).Property(nameof(WorkflowStep.Timestamp)).CurrentValue = timestamp;
+        _db.SaveChanges();
+    }
 
     private WorkflowDefinition CreateTenantDefinition()
     {

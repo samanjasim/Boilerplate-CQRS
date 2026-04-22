@@ -37,6 +37,10 @@ internal sealed class GetWorkflowAnalyticsQueryHandler(
         var series = await ComputeInstanceCountSeriesAsync(
             definition.Id, request.Window, windowStart, windowEnd, ct);
 
+        var bottlenecks = await ComputeBottlenecksAsync(definition.Id, windowStart, windowEnd, ct);
+
+        var actionRates = await ComputeActionRatesAsync(definition.Id, windowStart, windowEnd, ct);
+
         var dto = new WorkflowAnalyticsDto(
             DefinitionId: definition.Id,
             DefinitionName: definition.Name,
@@ -45,8 +49,8 @@ internal sealed class GetWorkflowAnalyticsQueryHandler(
             WindowEnd: windowEnd,
             InstancesInWindow: headline.TotalStarted,
             Headline: headline,
-            StatesByBottleneck: Array.Empty<StateMetric>(),
-            ActionRates: Array.Empty<ActionRateMetric>(),
+            StatesByBottleneck: bottlenecks,
+            ActionRates: actionRates,
             InstanceCountSeries: series,
             StuckInstances: Array.Empty<StuckInstanceDto>(),
             ApproverActivity: Array.Empty<ApproverActivityDto>());
@@ -182,6 +186,113 @@ internal sealed class GetWorkflowAnalyticsQueryHandler(
             avgCycleHours = Math.Round(completedWithCycle.Average(), 1);
 
         return new HeadlineMetrics(total, completed, cancelled, avgCycleHours);
+    }
+
+    private async Task<IReadOnlyList<StateMetric>> ComputeBottlenecksAsync(
+        Guid definitionId, DateTime windowStart, DateTime windowEnd, CancellationToken ct)
+    {
+        var instanceIds = await db.WorkflowInstances
+            .AsNoTracking()
+            .Where(i => i.DefinitionId == definitionId
+                     && i.StartedAt >= windowStart
+                     && i.StartedAt <= windowEnd)
+            .Select(i => i.Id)
+            .ToListAsync(ct);
+
+        if (instanceIds.Count == 0) return Array.Empty<StateMetric>();
+
+        var steps = await db.WorkflowSteps
+            .AsNoTracking()
+            .Where(s => instanceIds.Contains(s.InstanceId))
+            .OrderBy(s => s.InstanceId).ThenBy(s => s.Timestamp)
+            .Select(s => new { s.InstanceId, s.FromState, s.ToState, s.Timestamp })
+            .ToListAsync(ct);
+
+        var dwellsByState = new Dictionary<string, List<double>>(StringComparer.Ordinal);
+
+        foreach (var group in steps.GroupBy(s => s.InstanceId))
+        {
+            var ordered = group.ToList();
+            for (var i = 0; i < ordered.Count; i++)
+            {
+                var entry = ordered[i];
+                for (var j = i + 1; j < ordered.Count; j++)
+                {
+                    var exit = ordered[j];
+                    if (exit.FromState == entry.ToState)
+                    {
+                        var hours = (exit.Timestamp - entry.Timestamp).TotalHours;
+                        if (!dwellsByState.TryGetValue(entry.ToState, out var list))
+                        {
+                            list = new List<double>();
+                            dwellsByState[entry.ToState] = list;
+                        }
+                        list.Add(hours);
+                        break;
+                    }
+                }
+            }
+        }
+
+        return dwellsByState
+            .Where(kvp => kvp.Value.Count >= 3)
+            .Select(kvp => new StateMetric(
+                StateName: kvp.Key,
+                MedianDwellHours: Math.Round(Percentile(kvp.Value, 0.5), 2),
+                P95DwellHours: Math.Round(Percentile(kvp.Value, 0.95), 2),
+                VisitCount: kvp.Value.Count))
+            .OrderByDescending(m => m.MedianDwellHours)
+            .ToList();
+    }
+
+    private static double Percentile(List<double> values, double quantile)
+    {
+        if (values.Count == 0) return 0;
+        var sorted = values.OrderBy(v => v).ToList();
+        var rank = quantile * (sorted.Count - 1);
+        var lower = (int)Math.Floor(rank);
+        var upper = (int)Math.Ceiling(rank);
+        if (lower == upper) return sorted[lower];
+        var weight = rank - lower;
+        return sorted[lower] * (1 - weight) + sorted[upper] * weight;
+    }
+
+    private async Task<IReadOnlyList<ActionRateMetric>> ComputeActionRatesAsync(
+        Guid definitionId, DateTime windowStart, DateTime windowEnd, CancellationToken ct)
+    {
+        var instanceIds = await db.WorkflowInstances
+            .AsNoTracking()
+            .Where(i => i.DefinitionId == definitionId
+                     && i.StartedAt >= windowStart
+                     && i.StartedAt <= windowEnd)
+            .Select(i => i.Id)
+            .ToListAsync(ct);
+
+        if (instanceIds.Count == 0) return Array.Empty<ActionRateMetric>();
+
+        var steps = await db.WorkflowSteps
+            .AsNoTracking()
+            .Where(s => instanceIds.Contains(s.InstanceId)
+                     && s.StepType == Domain.Enums.StepType.HumanTask
+                     && s.ActorUserId != null)
+            .Select(s => new { s.FromState, s.Action })
+            .ToListAsync(ct);
+
+        return steps
+            .GroupBy(s => s.FromState)
+            .SelectMany(stateGroup =>
+            {
+                var totalInState = stateGroup.Count();
+                return stateGroup
+                    .GroupBy(s => s.Action)
+                    .Select(actionGroup => new ActionRateMetric(
+                        StateName: stateGroup.Key,
+                        Action: actionGroup.Key,
+                        Count: actionGroup.Count(),
+                        Percentage: Math.Round((double)actionGroup.Count() / totalInState, 4)));
+            })
+            .OrderBy(m => m.StateName).ThenByDescending(m => m.Count)
+            .ToList();
     }
 
     private enum BucketGranularity { Day, Week, Month }
