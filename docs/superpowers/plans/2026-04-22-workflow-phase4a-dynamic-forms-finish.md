@@ -17,6 +17,23 @@
 
 ---
 
+> ### Revised during implementation — capability-boundary result shape
+>
+> Tasks 2–5 below describe the original plan: change `IWorkflowService.ExecuteTaskAsync` from `Task<bool>` to `Task<Result<bool>>`. That would require `using Starter.Shared.Results;` inside `Starter.Abstractions`, which `AbstractionsPurityTests` forbids (Abstractions cannot reference Shared).
+>
+> The shipped design introduces a **capability-boundary DTO** — `WorkflowTaskResult` + `WorkflowErrorKind` in `Starter.Abstractions/Capabilities/` — that mirrors `Result<bool>` field-for-field and carries the same four failure shapes (success / typed failure with kind+code+description / validation with field dictionary). A module-internal adapter (`WorkflowTaskResultAdapter` in `Starter.Module.Workflow/Application/Common/`) translates `WorkflowTaskResult` → `Result<bool>` via an **explicit enum switch** (never a numeric cast) so that re-ordering either enum cannot silently mis-translate an error.
+>
+> Concrete deltas from the original plan:
+> - `IWorkflowService.ExecuteTaskAsync` returns `Task<WorkflowTaskResult>`, not `Task<Result<bool>>`.
+> - `WorkflowErrorKind.None = 0` exists (Success results); `ToErrorType(None)` throws.
+> - `WorkflowEngine.ExecuteTaskAsync` return-site targets become `WorkflowTaskResult.Failure(code, description, kind)` and `WorkflowTaskResult.ValidationFailure(fieldErrors)` — but the **error codes, descriptions, and failure paths are identical** to the original audit table.
+> - `ExecuteTaskCommandHandler` calls `WorkflowTaskResultAdapter.ToResult(wfResult)` instead of propagating `Result<bool>` directly.
+> - Exhaustiveness is pinned at runtime by `WorkflowTaskResultAdapterTests.ToErrorType_CoversEveryKind_ExceptNone` (enumerates `Enum.GetValues<WorkflowErrorKind>()`).
+>
+> Everywhere below that references `Task<Result<bool>>`, `Result.Failure<bool>(WorkflowErrors.X)`, or `Result.ValidationFailure<bool>(...)` in the context of `IWorkflowService` or `WorkflowEngine`, read as `WorkflowTaskResult.Failure(code, desc, kind)` / `WorkflowTaskResult.ValidationFailure(fieldErrors)`. The **command-handler layer** still returns `Result<bool>` to MediatR — nothing outside the workflow module changes shape.
+
+---
+
 ## File Structure
 
 **Backend — modify:**

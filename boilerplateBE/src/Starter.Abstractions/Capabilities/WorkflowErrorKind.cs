@@ -1,17 +1,21 @@
 namespace Starter.Abstractions.Capabilities;
 
 /// <summary>
-/// Classification for a <see cref="WorkflowTaskResult"/> failure. Mirrors the values
-/// of Starter.Shared.Results.ErrorType so the handler boundary can cast directly.
-/// Defined here (inside Starter.Abstractions) because Starter.Abstractions must not
-/// reference Starter.Shared (enforced by AbstractionsPurityTests).
+/// Classification for a <see cref="WorkflowTaskResult"/> outcome. The MediatR
+/// handler adapts this to Starter.Shared.Results.ErrorType at the module
+/// boundary via an explicit mapping — numeric parity is NOT assumed, so
+/// either enum can be re-ordered safely.
+/// Defined here (inside Starter.Abstractions) because Starter.Abstractions
+/// must not reference Starter.Shared (enforced by AbstractionsPurityTests).
 /// </summary>
 public enum WorkflowErrorKind
 {
-    Failure = 0,
-    Validation = 1,
-    NotFound = 2,
-    Conflict = 3,
-    Unauthorized = 4,
-    Forbidden = 5,
+    /// <summary>Used only on <see cref="WorkflowTaskResult.Success"/> — the result carries no error.</summary>
+    None = 0,
+    Failure = 1,
+    Validation = 2,
+    NotFound = 3,
+    Conflict = 4,
+    Unauthorized = 5,
+    Forbidden = 6,
 }

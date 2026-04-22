@@ -67,12 +67,19 @@ export function BulkResultDialog({ result, taskLabels, onRetry, isRetrying, onCl
               <ul className="max-h-64 overflow-auto rounded-xl border p-3 space-y-2">
                 {result.items.map((item) => (
                   <li key={item.taskId} className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="text-sm text-foreground truncate">
                         {taskLabels?.[item.taskId] ?? t('workflow.inbox.bulkResultUnknownTask')}
                       </div>
                       {item.error && (
                         <div className="text-xs text-destructive">{item.error}</div>
+                      )}
+                      {item.fieldErrors && Object.entries(item.fieldErrors).map(([field, messages]) =>
+                        messages.map((msg, i) => (
+                          <div key={`${field}-${i}`} className="text-xs text-destructive">
+                            <span className="font-medium">{field}:</span> {msg}
+                          </div>
+                        )),
                       )}
                     </div>
                     <Badge

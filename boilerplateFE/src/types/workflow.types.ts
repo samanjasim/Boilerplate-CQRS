@@ -195,6 +195,8 @@ export interface BatchItemOutcome {
   taskId: string;
   status: 'Succeeded' | 'Failed' | 'Skipped';
   error: string | null;
+  errorCode?: string | null;
+  fieldErrors?: Record<string, string[]> | null;
 }
 
 export interface BatchExecuteResult {

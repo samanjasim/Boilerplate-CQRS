@@ -18,7 +18,7 @@ namespace Starter.Module.Workflow.Infrastructure.Services;
 /// Coordinates persistence, condition evaluation, assignee resolution,
 /// hook execution, and cross-module capability calls (comments, activity, user reader).
 /// </summary>
-public sealed class WorkflowEngine(
+internal sealed class WorkflowEngine(
     WorkflowDbContext context,
     HookExecutor hookExecutor,
     ICommentService commentService,
@@ -341,14 +341,7 @@ public sealed class WorkflowEngine(
         // Build the eval context = persisted context overlaid with the form
         // data just submitted, so a condition like `amount > 10000` can branch
         // on the same action that carried the value.
-        var instanceContext = instance.ContextJson is not null
-            ? JsonSerializer.Deserialize<Dictionary<string, object>>(instance.ContextJson, JsonOpts) ?? new()
-            : new Dictionary<string, object>();
-        if (formData is not null)
-        {
-            foreach (var (key, value) in formData)
-                instanceContext[key] = value;
-        }
+        var instanceContext = MergeFormDataIntoContext(instance.ContextJson, formData);
 
         // If multiple transitions match, evaluate conditional ones first;
         // fall back to the first matching transition if nothing selected.
@@ -365,17 +358,12 @@ public sealed class WorkflowEngine(
         // Serialize form data into step metadata for history
         var metadataJson = formData is not null ? JsonSerializer.Serialize(formData, JsonOpts) : null;
 
-        // Merge form data into instance context so downstream conditions can reference it
+        // Persist the merged context so downstream conditions can reference
+        // form fields. The merged dict was already built above for transition
+        // eval — reuse it instead of re-deserializing.
         if (formData is not null)
         {
-            var existingContext = instance.ContextJson is not null
-                ? JsonSerializer.Deserialize<Dictionary<string, object>>(instance.ContextJson, JsonOpts) ?? new()
-                : new Dictionary<string, object>();
-
-            foreach (var (key, value) in formData)
-                existingContext[key] = value;
-
-            instance.UpdateContext(JsonSerializer.Serialize(existingContext, JsonOpts));
+            instance.UpdateContext(JsonSerializer.Serialize(instanceContext, JsonOpts));
         }
 
         // Save the comment via ICommentService if provided
@@ -1172,7 +1160,7 @@ public sealed class WorkflowEngine(
         CancellationToken ct,
         bool isStarting = false)
     {
-        if (toStateConfig.Type.Equals("Terminal", StringComparison.OrdinalIgnoreCase))
+        if (toStateConfig.Type.Equals(WorkflowStateTypes.Terminal, StringComparison.OrdinalIgnoreCase))
         {
             instance.Complete();
         }
@@ -1186,7 +1174,7 @@ public sealed class WorkflowEngine(
             await AutoTransitionAsync(instance, definition, states, toStateConfig,
                 actorUserId, ct);
         }
-        else if (toStateConfig.Type.Equals("ConditionalGate", StringComparison.OrdinalIgnoreCase))
+        else if (toStateConfig.Type.Equals(WorkflowStateTypes.ConditionalGate, StringComparison.OrdinalIgnoreCase))
         {
             await HandleConditionalGateAsync(instance, definition, states, toStateConfig,
                 actorUserId, ct);
@@ -1249,6 +1237,36 @@ public sealed class WorkflowEngine(
 
     private static List<WorkflowTransitionConfig> DeserializeTransitions(string json)
         => JsonSerializer.Deserialize<List<WorkflowTransitionConfig>>(json, JsonOpts) ?? [];
+
+    /// <summary>
+    /// Deserializes <paramref name="contextJson"/> and overlays
+    /// <paramref name="formData"/> on top so conditional transitions can branch
+    /// on just-submitted values. Form keys that collide with entity keys
+    /// logically win — the form value is the newer signal from the user.
+    /// </summary>
+    private Dictionary<string, object> MergeFormDataIntoContext(
+        string? contextJson,
+        Dictionary<string, object>? formData)
+    {
+        var merged = contextJson is not null
+            ? JsonSerializer.Deserialize<Dictionary<string, object>>(contextJson, JsonOpts) ?? new()
+            : new Dictionary<string, object>();
+
+        if (formData is null) return merged;
+
+        foreach (var (key, value) in formData)
+        {
+            if (merged.ContainsKey(key))
+            {
+                logger.LogDebug(
+                    "Form field '{Key}' overwrites existing context value during task execution.",
+                    key);
+            }
+            merged[key] = value;
+        }
+
+        return merged;
+    }
 
     private static WorkflowTaskResult ToWorkflowTaskResult(Error error)
         => WorkflowTaskResult.Failure(error.Code, error.Description, MapKind(error.Type));

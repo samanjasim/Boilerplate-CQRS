@@ -34,7 +34,7 @@ public sealed class WorkflowEngineTests : IDisposable
 
         _db = new WorkflowDbContext(options);
 
-        var conditionEvaluator = new ConditionEvaluator();
+        var conditionEvaluator = new ConditionEvaluator(NullLogger<ConditionEvaluator>.Instance);
 
         var builtInProvider = new BuiltInAssigneeProvider(
             Mock.Of<IRoleUserReader>());

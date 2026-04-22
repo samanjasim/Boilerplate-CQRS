@@ -52,11 +52,20 @@ internal sealed class BatchExecuteTasksCommandHandler(
                     userId,
                     formData: null,
                     cancellationToken);
-                var ok = wfResult.IsSuccess;
 
-                outcomes.Add(ok
-                    ? new BatchItemOutcome(taskId, "Succeeded", null)
-                    : new BatchItemOutcome(taskId, "Failed", "Task could not be executed (not found, not pending, or unauthorized)."));
+                if (wfResult.IsSuccess)
+                {
+                    outcomes.Add(new BatchItemOutcome(taskId, "Succeeded", null));
+                }
+                else
+                {
+                    outcomes.Add(new BatchItemOutcome(
+                        taskId,
+                        "Failed",
+                        Error: wfResult.ErrorDescription,
+                        ErrorCode: wfResult.ErrorCode,
+                        FieldErrors: wfResult.FieldErrors));
+                }
             }
             catch (Exception ex)
             {

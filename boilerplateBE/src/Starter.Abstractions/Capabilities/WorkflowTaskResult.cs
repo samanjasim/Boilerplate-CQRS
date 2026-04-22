@@ -5,7 +5,7 @@ namespace Starter.Abstractions.Capabilities;
 /// Defined here (inside Starter.Abstractions) because Starter.Abstractions
 /// must not reference Starter.Shared (which itself references Starter.Abstractions).
 /// The MediatR handler adapts this to Starter.Shared.Results.Result&lt;bool&gt; at the
-/// module boundary, using <see cref="Kind"/> to pick the right ErrorType.
+/// module boundary via an explicit switch on <see cref="Kind"/>.
 /// </summary>
 public sealed class WorkflowTaskResult
 {
@@ -45,7 +45,7 @@ public sealed class WorkflowTaskResult
     public IReadOnlyDictionary<string, string[]>? FieldErrors { get; }
 
     public static WorkflowTaskResult Success() =>
-        new(true, WorkflowErrorKind.Failure, null, null);
+        new(true, WorkflowErrorKind.None, null, null);
 
     public static WorkflowTaskResult Failure(string code, string description, WorkflowErrorKind kind) =>
         new(false, kind, code, description);

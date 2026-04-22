@@ -1,5 +1,4 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { AxiosError } from 'axios';
 import { queryKeys } from '@/lib/query/keys';
 import { commentsActivityApi } from './comments-activity.api';
 import type {
@@ -11,6 +10,9 @@ import type {
 } from '@/types/comments-activity.types';
 import { toast } from 'sonner';
 import i18n from '@/i18n';
+
+// Error toasts come from the global axios interceptor — mutations only add
+// side-effects (cache invalidation, optimistic updates) here.
 
 type PagedResponse<T> = { data: T[]; [key: string]: unknown };
 
@@ -48,14 +50,6 @@ function toggleReactionOnComment(comment: Comment, commentId: string, reactionTy
     reactions = [...comment.reactions, { reactionType, count: 1, userReacted: true }];
   }
   return { ...comment, reactions };
-}
-
-function handleMutationError(error: unknown) {
-  const message =
-    error instanceof AxiosError && error.response?.data?.message
-      ? error.response.data.message
-      : i18n.t('common.error', 'Something went wrong');
-  toast.error(message);
 }
 
 // ── Queries ────────────────────────────────────────────────────────────────
@@ -120,7 +114,6 @@ export function useAddComment() {
       });
       toast.success(i18n.t('commentsActivity.commentAdded', 'Comment added'));
     },
-    onError: handleMutationError,
   });
 }
 
@@ -133,7 +126,6 @@ export function useEditComment() {
       queryClient.invalidateQueries({ queryKey: queryKeys.commentsActivity.comments.all });
       toast.success(i18n.t('commentsActivity.commentEdited', 'Comment updated'));
     },
-    onError: handleMutationError,
   });
 }
 
@@ -146,7 +138,6 @@ export function useDeleteComment() {
       queryClient.invalidateQueries({ queryKey: queryKeys.commentsActivity.comments.all });
       toast.success(i18n.t('commentsActivity.commentDeleted', 'Comment deleted'));
     },
-    onError: handleMutationError,
   });
 }
 
@@ -195,10 +186,9 @@ export function useToggleReaction() {
 
       return { commentSnapshots, timelineSnapshots };
     },
-    onError: (error, _vars, context) => {
+    onError: (_error, _vars, context) => {
       context?.commentSnapshots.forEach(([key, value]) => queryClient.setQueryData(key, value));
       context?.timelineSnapshots.forEach(([key, value]) => queryClient.setQueryData(key, value));
-      handleMutationError(error);
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.commentsActivity.timeline.all });
@@ -217,7 +207,6 @@ export function useWatch() {
       });
       toast.success(i18n.t('commentsActivity.watching', 'You are now watching this item'));
     },
-    onError: handleMutationError,
   });
 }
 
@@ -231,6 +220,5 @@ export function useUnwatch() {
       });
       toast.success(i18n.t('commentsActivity.unwatched', 'You stopped watching this item'));
     },
-    onError: handleMutationError,
   });
 }

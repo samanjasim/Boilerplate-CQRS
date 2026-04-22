@@ -1,18 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { AxiosError } from 'axios';
 import { queryKeys } from '@/lib/query/keys';
 import { workflowApi } from './workflow.api';
 import type { StartWorkflowRequest, ExecuteTaskRequest, UpdateDefinitionRequest, CreateDelegationRequest, BatchExecuteTasksRequest } from '@/types/workflow.types';
 import { toast } from 'sonner';
 import i18n from '@/i18n';
 
-function handleMutationError(error: unknown) {
-  const message =
-    error instanceof AxiosError && error.response?.data?.message
-      ? error.response.data.message
-      : i18n.t('common.error', 'Something went wrong');
-  toast.error(message);
-}
+// Error toasts come from the global axios interceptor — mutations only add
+// side-effects (cache invalidation, state updates, navigation) here.
 
 // ── Queries ────────────────────────────────────────────────────────────────
 
@@ -82,7 +76,6 @@ export function useStartWorkflow() {
       });
       toast.success(i18n.t('workflow.workflowStarted', 'Workflow started'));
     },
-    onError: handleMutationError,
   });
 }
 
@@ -96,7 +89,6 @@ export function useExecuteTask() {
       queryClient.invalidateQueries({ queryKey: queryKeys.workflow.instances.all });
       toast.success(i18n.t('workflow.taskExecuted', 'Task completed'));
     },
-    onError: handleMutationError,
   });
 }
 
@@ -119,7 +111,6 @@ export function useBatchExecuteTasks() {
       else if (result.failed > 0) toast.error(message);
       else toast.success(message);
     },
-    onError: handleMutationError,
   });
 }
 
@@ -132,7 +123,6 @@ export function useCancelWorkflow() {
       queryClient.invalidateQueries({ queryKey: queryKeys.workflow.instances.all });
       toast.success(i18n.t('workflow.workflowCancelled', 'Workflow cancelled'));
     },
-    onError: handleMutationError,
   });
 }
 
@@ -146,7 +136,6 @@ export function useTransitionWorkflow() {
       queryClient.invalidateQueries({ queryKey: queryKeys.workflow.tasks.all });
       toast.success(i18n.t('workflow.resubmitSuccess', 'Workflow resubmitted'));
     },
-    onError: handleMutationError,
   });
 }
 
@@ -158,7 +147,6 @@ export function useCloneDefinition() {
       queryClient.invalidateQueries({ queryKey: queryKeys.workflow.definitions.all });
       toast.success(i18n.t('workflow.definitionCloned', 'Workflow definition cloned'));
     },
-    onError: handleMutationError,
   });
 }
 
@@ -187,7 +175,6 @@ export function useCreateDelegation() {
       queryClient.invalidateQueries({ queryKey: queryKeys.workflow.tasks.all });
       toast.success(i18n.t('workflow.delegation.success'));
     },
-    onError: handleMutationError,
   });
 }
 
@@ -200,7 +187,6 @@ export function useCancelDelegation() {
       queryClient.invalidateQueries({ queryKey: queryKeys.workflow.tasks.all });
       toast.success(i18n.t('workflow.delegation.cancelled'));
     },
-    onError: handleMutationError,
   });
 }
 
@@ -214,6 +200,5 @@ export function useUpdateDefinition() {
       queryClient.invalidateQueries({ queryKey: queryKeys.workflow.definitions.detail(variables.id) });
       toast.success(i18n.t('workflow.definitionUpdated', 'Workflow definition updated'));
     },
-    onError: handleMutationError,
   });
 }

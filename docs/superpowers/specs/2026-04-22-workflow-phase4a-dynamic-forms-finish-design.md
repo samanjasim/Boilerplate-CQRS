@@ -65,6 +65,8 @@ Secondary gaps:
 
 ### BE — validation error contract
 
+> **Revised during implementation.** The section below describes the original plan to return `Task<Result<bool>>` from `IWorkflowService.ExecuteTaskAsync`. That would require `using Starter.Shared.Results;` inside `Starter.Abstractions`, which `AbstractionsPurityTests` forbids (`Starter.Abstractions` must not reference `Starter.Shared`). The implementation introduces a capability-boundary shape — `WorkflowTaskResult` + `WorkflowErrorKind` in `Starter.Abstractions/Capabilities/` — that mirrors `Result<bool>` field-for-field (IsSuccess, ErrorCode, ErrorDescription, FieldErrors, Kind). The MediatR handler adapts it to `Result<bool>` via `WorkflowTaskResultAdapter.ToResult(...)` at the module boundary. Net observable behavior (HTTP statuses, `validationErrors` envelope, error codes) matches the spec. The "Change 1–4" blocks below are kept for historical context; substitute `WorkflowTaskResult` for `Result<bool>` on the engine/capability side.
+
 The codebase already has a first-class validation-error channel — 4a uses it instead of a custom `Error.metadata` payload:
 
 - `Starter.Shared.Results.Result.ValidationFailure<T>(ValidationErrors errors)` — static factory.
