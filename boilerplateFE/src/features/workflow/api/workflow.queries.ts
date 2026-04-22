@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { queryKeys } from '@/lib/query/keys';
 import { workflowApi } from './workflow.api';
-import type { StartWorkflowRequest, ExecuteTaskRequest, UpdateDefinitionRequest, CreateDelegationRequest } from '@/types/workflow.types';
+import type { StartWorkflowRequest, ExecuteTaskRequest, UpdateDefinitionRequest, CreateDelegationRequest, BatchExecuteTasksRequest } from '@/types/workflow.types';
 import { toast } from 'sonner';
 import i18n from '@/i18n';
 
@@ -95,6 +95,29 @@ export function useExecuteTask() {
       queryClient.invalidateQueries({ queryKey: queryKeys.workflow.tasks.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.workflow.instances.all });
       toast.success(i18n.t('workflow.taskExecuted', 'Task completed'));
+    },
+    onError: handleMutationError,
+  });
+}
+
+export function useBatchExecuteTasks() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: BatchExecuteTasksRequest) => workflowApi.batchExecuteTasks(data),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.workflow.tasks.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.workflow.instances.all });
+
+      const summary = {
+        succeeded: result.succeeded,
+        failed: result.failed,
+        skipped: result.skipped,
+      };
+      const message = i18n.t('workflow.inbox.bulkResultSummary', summary);
+
+      if (result.failed > 0 && result.succeeded > 0) toast.warning(message);
+      else if (result.failed > 0) toast.error(message);
+      else toast.success(message);
     },
     onError: handleMutationError,
   });

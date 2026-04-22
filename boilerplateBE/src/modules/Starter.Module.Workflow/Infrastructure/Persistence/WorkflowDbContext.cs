@@ -1,4 +1,6 @@
 using System.Reflection;
+using MassTransit;
+using MassTransit.EntityFrameworkCoreIntegration;
 using Microsoft.EntityFrameworkCore;
 using Starter.Abstractions.Modularity;
 using Starter.Application.Common.Interfaces;
@@ -35,6 +37,19 @@ public sealed class WorkflowDbContext : DbContext, IModuleDbContext
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+
+        // MassTransit transactional outbox tables (OutboxMessage, OutboxState, InboxState).
+        // Bound to WorkflowDbContext so workflow integration events publish atomically
+        // with workflow state changes. See Phase 2b spec.
+        //
+        // The tables are physically owned by ApplicationDbContext's migration. We register
+        // the entity types here only so WorkflowDbContext.SaveChanges can enqueue outbox
+        // messages in the same transaction as workflow state changes, and exclude them
+        // from this context's migrations so the shared tables aren't created twice.
+        modelBuilder.AddTransactionalOutboxEntities();
+        modelBuilder.Entity<InboxState>().ToTable("InboxState", t => t.ExcludeFromMigrations());
+        modelBuilder.Entity<OutboxState>().ToTable("OutboxState", t => t.ExcludeFromMigrations());
+        modelBuilder.Entity<OutboxMessage>().ToTable("OutboxMessage", t => t.ExcludeFromMigrations());
 
         // System templates (TenantId=null) are visible to ALL tenants
         modelBuilder.Entity<WorkflowDefinition>().HasQueryFilter(d =>

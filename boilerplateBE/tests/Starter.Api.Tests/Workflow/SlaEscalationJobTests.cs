@@ -181,15 +181,21 @@ public sealed class SlaEscalationJobTests : IDisposable
         _db.SaveChanges();
 
         var task = ApprovalTask.Create(
-            _tenantId,
-            instance.Id,
-            "PendingApproval",
-            _assigneeId,
-            null,
-            null,
+            tenantId: _tenantId,
+            instanceId: instance.Id,
+            stepName: "PendingApproval",
+            assigneeUserId: _assigneeId,
+            assigneeRole: null,
+            assigneeStrategyJson: null,
             dueDate: null,
             entityType: "Order",
-            entityId: instance.EntityId);
+            entityId: instance.EntityId,
+            definitionName: definition.Name,
+            definitionDisplayName: definition.DisplayName,
+            entityDisplayName: null,
+            formFieldsJson: null,
+            availableActionsJson: "[]",
+            slaReminderAfterHours: null);
 
         _db.ApprovalTasks.Add(task);
         _db.SaveChanges();
@@ -227,15 +233,21 @@ public sealed class SlaEscalationJobTests : IDisposable
         _db.SaveChanges();
 
         var task = ApprovalTask.Create(
-            _tenantId,
-            instance.Id,
-            "PendingApproval",
-            _assigneeId,
-            null,
-            null,
+            tenantId: _tenantId,
+            instanceId: instance.Id,
+            stepName: "PendingApproval",
+            assigneeUserId: _assigneeId,
+            assigneeRole: null,
+            assigneeStrategyJson: null,
             dueDate: null,
             entityType: "Order",
-            entityId: instance.EntityId);
+            entityId: instance.EntityId,
+            definitionName: definition.Name,
+            definitionDisplayName: definition.DisplayName,
+            entityDisplayName: null,
+            formFieldsJson: null,
+            availableActionsJson: "[]",
+            slaReminderAfterHours: null);
 
         _db.ApprovalTasks.Add(task);
         _db.SaveChanges();

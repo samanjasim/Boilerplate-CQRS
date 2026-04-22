@@ -24,7 +24,22 @@ The following improvements were made after the initial Phase 1 implementation. T
 
 ---
 
-## Phase 2 Deferred Items
+## Phase 2 Shipped
+
+### Phase 2a — Engine power (merged)
+
+- **SLA tracking and auto-escalation** — `DueDuration` on `WorkflowStateConfig`, `SlaEscalationJob` escalates overdue tasks via `EscalationStrategy` (Notify / Reassign / AutoApprove / AutoReject). Snapshots configuration at task creation.
+- **Delegation** — `DelegationRule` entity with date-range scoping. `AssigneeResolverService` checks active rules before returning the resolved assignee. `originalAssigneeUserId` tracked on `ApprovalTask`. Frontend delegation management UI + delegated-to-me indicator.
+- **Parallel approvals** — `QuorumConfig` on `WorkflowStateConfig` (AllOf | AnyOf | Threshold). Engine creates N tasks per step and advances only when the quorum condition is satisfied.
+
+### Phase 2b — Operational hardening (merged 2026-04-21)
+
+- **Transactional outbox on WorkflowDbContext** — `AddEntityFrameworkOutbox<WorkflowDbContext>` + `UseBusOutbox()`. `MassTransitMessagePublisher` switched from singleton `IBus` to scoped `IPublishEndpoint` so both the Application and Workflow DbContext outboxes engage for their respective events.
+- **Denormalized inbox** — `DefinitionName`, `DefinitionDisplayName`, `EntityType`, `EntityDisplayName`, `StepName`, `AssigneeDisplayName`, `OriginalAssigneeDisplayName`, `FormFieldsJson` snapshotted onto `ApprovalTask` at creation. `GetPendingTasksAsync` fast-path skips the definition/instance JOIN and the per-row `IUserReader` lookup; legacy pre-migration rows fall back to the JOIN.
+
+---
+
+## Phase 2+ Deferred Items
 
 ### AI agent as workflow participant
 
@@ -72,20 +87,6 @@ The following improvements were made after the initial Phase 1 implementation. T
 
 ---
 
-### Transactional outbox on WorkflowDbContext
-
-**What:** Bind MassTransit's EF outbox to `WorkflowDbContext` so domain events and integration events publish atomically with state changes. Currently events publish via in-memory MediatR dispatch — a crash between SaveChanges and event publishing can lose events.
-
-**Why deferred:** Same reasoning as the Comments and Communication modules' outbox deferral. No at-least-once consumer is demanding guaranteed delivery yet.
-
-**Pick this up when:** A downstream consumer requires at-least-once delivery (e.g., billing module tracking workflow completions for invoicing, or compliance audit requiring every transition to be durably recorded externally).
-
-**Starting points:**
-- Mirror `AddEntityFrameworkOutbox<ApplicationDbContext>` from `Starter.Infrastructure/DependencyInjection.cs` against `WorkflowDbContext`
-- Swap `IPublishEndpoint.Publish` in event handlers for `IBus.Publish` inside the same `SaveChangesAsync` transaction
-
----
-
 ### Bulk operations
 
 **What:** Allow admins to select multiple pending tasks and approve/reject them in batch. Useful when a manager has 20+ pending leave requests or expense approvals.
@@ -100,20 +101,6 @@ The following improvements were made after the initial Phase 1 implementation. T
 - Frontend: add checkbox column to inbox table, batch action bar at top
 
 ---
-
-### Performance optimization — denormalized inbox
-
-**What:** `GetPendingTasksAsync` currently joins `ApprovalTask → WorkflowInstance → WorkflowDefinition` and resolves display names via `IUserReader`. At scale (1000+ tasks), this is slow. Denormalize `DefinitionDisplayName` and `EntityDisplayName` onto `ApprovalTask` at creation time, and add DB-level pagination.
-
-**Why deferred:** Current query performance is acceptable for typical task volumes (< 100 per user). Denormalization adds write-path complexity.
-
-**Pick this up when:** Inbox query latency exceeds 500ms (monitor via OpenTelemetry traces) or a tenant has > 500 pending tasks.
-
-**Starting points:**
-- Add `DefinitionDisplayName` and `EntityDisplayName` columns to `ApprovalTask`
-- Populate in `CreateApprovalTaskAsync` from the instance
-- Remove the join + IUserReader call from `GetPendingTasksAsync`
-- Add server-side pagination parameters to `IWorkflowService.GetPendingTasksAsync`
 
 ### Step data collection (dynamic forms)
 
@@ -142,53 +129,6 @@ The following improvements were made after the initial Phase 1 implementation. T
 - Frontend: create `WorkflowDesignerPage` under `boilerplateFE/src/features/workflow/pages/` using a graph library (React Flow recommended).
 - The designer should serialize to the same `WorkflowStateConfig[]` + `WorkflowTransitionConfig[]` format already accepted by `POST /api/v1/workflows/definitions`.
 - Wire a preview/simulation mode that walks through states without persisting.
-
----
-
-### SLA tracking and auto-escalation
-
-**What:** Each `WorkflowStateConfig` can declare a `DueDuration` (e.g. `PT8H`). When an `ApprovalTask` breaches its due date, a background job escalates — reassigning to a fallback assignee or sending a reminder notification.
-
-**Why deferred:** `ApprovalTask.DueDate` is already persisted and surfaced in `PendingTaskSummary`. The escalation logic (job, strategy config, notification hook) is non-trivial and no tenant is time-boxing approvals yet.
-
-**Pick this up when:** A tenant's SLA policy requires escalation within a defined window, OR HR/Leave module adoption brings headcount pressure on approvers.
-
-**Starting points:**
-- Add `DueDuration` to `WorkflowStateConfig` in [`Starter.Abstractions/Capabilities/WorkflowConfigRecords.cs`](../../boilerplateBE/src/Starter.Abstractions/Capabilities/WorkflowConfigRecords.cs).
-- Populate `ApprovalTask.DueDate` from it in [`Infrastructure/Services/WorkflowEngine.cs`](../../boilerplateBE/src/modules/Starter.Module.Workflow/Infrastructure/Services/WorkflowEngine.cs) `CreateApprovalTaskAsync`.
-- Add `SlaEscalationJob : BackgroundService` that queries overdue tasks and applies the configured escalation strategy.
-- Define `EscalationStrategy` config (reassign to manager, notify, auto-approve/reject) on `WorkflowStateConfig`.
-
----
-
-### Delegation
-
-**What:** Allow an assignee to delegate their pending tasks to another user for a date range (e.g. during leave). The delegatee receives tasks as if they were the original assignee.
-
-**Why deferred:** The assignee model is single-user today. Delegation requires a `DelegationRule` entity, a lookup pass in `AssigneeResolverService`, and a UI for users to manage their delegations.
-
-**Pick this up when:** Leave/Attendance module lands and managers need cover during absences, or HR raises it as a blocker for adoption.
-
-**Starting points:**
-- Add `DelegationRule` entity to `WorkflowDbContext` (from user, to user, start/end date, scope).
-- Extend `AssigneeResolverService.ResolveAsync` to check active delegation rules before returning the resolved assignee.
-- Expose delegation management endpoints in `WorkflowsController`.
-
----
-
-### Parallel approvals
-
-**What:** Allow a step to require approval from multiple assignees simultaneously (all-of or any-of quorum). Today each step has a single assignee and the state machine advances on the first action.
-
-**Why deferred:** Parallel assignment is the most-requested enterprise feature after delegation, but it requires splitting `ApprovalTask` into a task-group model, a quorum evaluator, and UI changes to show multiple pending actors per step.
-
-**Pick this up when:** A procurement or policy module requires multi-party sign-off (e.g. two-of-three department heads).
-
-**Starting points:**
-- Add `QuorumConfig` to `WorkflowStateConfig` (type: AllOf | AnyOf | Threshold, threshold count).
-- Extend `WorkflowEngine.CreateApprovalTaskAsync` to create N tasks when quorum is configured.
-- Add `ApprovalTaskGroup` entity or a `GroupId` column on `ApprovalTask` to track quorum state.
-- Advance the instance only when the quorum condition is satisfied inside `ExecuteTaskAsync`.
 
 ---
 

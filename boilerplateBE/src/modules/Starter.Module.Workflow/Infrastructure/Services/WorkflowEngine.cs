@@ -18,12 +18,13 @@ namespace Starter.Module.Workflow.Infrastructure.Services;
 /// </summary>
 public sealed class WorkflowEngine(
     WorkflowDbContext context,
-    IConditionEvaluator conditionEvaluator,
-    AssigneeResolverService assigneeResolver,
     HookExecutor hookExecutor,
     ICommentService commentService,
     IUserReader userReader,
     IFormDataValidator formDataValidator,
+    HumanTaskFactory humanTaskFactory,
+    AutoTransitionEvaluator autoTransitionEvaluator,
+    ParallelApprovalCoordinator parallelCoordinator,
     ILogger<WorkflowEngine> logger) : IWorkflowService
 {
     private static readonly JsonSerializerOptions JsonOpts = new()
@@ -303,32 +304,13 @@ public sealed class WorkflowEngine(
             return false;
         }
 
-        // If multiple transitions match, evaluate conditional ones first
-        WorkflowTransitionConfig? selectedTransition = null;
-
-        var conditionalTransitions = matchingTransitions
-            .Where(t => t.Condition is not null)
-            .ToList();
-
-        if (conditionalTransitions.Count > 0)
-        {
-            // Parse instance context for condition evaluation
-            var instanceContext = instance.ContextJson is not null
-                ? JsonSerializer.Deserialize<Dictionary<string, object>>(instance.ContextJson, JsonOpts)
-                : null;
-
-            foreach (var ct2 in conditionalTransitions)
-            {
-                if (conditionEvaluator.Evaluate(ct2.Condition!, instanceContext))
-                {
-                    selectedTransition = ct2;
-                    break;
-                }
-            }
-        }
-
-        // If no conditional transition matched, use the default (manual) one
-        selectedTransition ??= matchingTransitions.FirstOrDefault(t => t.Condition is null)
+        // If multiple transitions match, evaluate conditional ones first;
+        // fall back to the first matching transition if nothing selected.
+        var instanceContext = instance.ContextJson is not null
+            ? JsonSerializer.Deserialize<Dictionary<string, object>>(instance.ContextJson, JsonOpts)
+            : null;
+        var selectedTransition = autoTransitionEvaluator.Select(
+                matchingTransitions, instance.CurrentState, instanceContext)
             ?? matchingTransitions[0];
 
         var fromState = instance.CurrentState;
@@ -396,68 +378,39 @@ public sealed class WorkflowEngine(
         // is complete before allowing the workflow to transition.
         if (task.GroupId.HasValue)
         {
-            var siblingTasks = await context.ApprovalTasks
-                .Where(t => t.GroupId == task.GroupId && t.Id != task.Id)
-                .ToListAsync(ct);
-
             var parallelMode = fromStateConfig?.Parallel?.Mode ?? "AllOf";
+            var decision = await parallelCoordinator.EvaluateAsync(task, parallelMode, action, ct);
 
-            if (parallelMode.Equals("AnyOf", StringComparison.OrdinalIgnoreCase))
+            if (!decision.ShouldProceed)
             {
-                // AnyOf: first completion wins — cancel all remaining siblings
-                foreach (var sibling in siblingTasks.Where(t => t.Status == Domain.Enums.TaskStatus.Pending))
-                    sibling.Cancel();
+                // AllOf: not all siblings done yet — stay at current state.
+                var waitStep = WorkflowStep.Create(
+                    instance.Id,
+                    fromState,
+                    fromState, // stays at same state
+                    StepType.HumanTask,
+                    action,
+                    actorUserId,
+                    comment,
+                    metadataJson);
 
-                // Proceed with transition below
-            }
-            else // AllOf
-            {
-                if (action.Equals("reject", StringComparison.OrdinalIgnoreCase))
+                context.WorkflowSteps.Add(waitStep);
+
+                try
                 {
-                    // Any rejection in AllOf: cancel remaining, transition to rejection state
-                    foreach (var sibling in siblingTasks.Where(t => t.Status == Domain.Enums.TaskStatus.Pending))
-                        sibling.Cancel();
-
-                    // Proceed with transition below
+                    await context.SaveChangesAsync(ct);
                 }
-                else
+                catch (DbUpdateConcurrencyException)
                 {
-                    // Check if ALL siblings are also completed
-                    var allSiblingsCompleted = siblingTasks.All(t => t.Status == Domain.Enums.TaskStatus.Completed);
-                    if (!allSiblingsCompleted)
-                    {
-                        // Wait — don't transition yet. Create step record and save.
-                        var waitStep = WorkflowStep.Create(
-                            instance.Id,
-                            fromState,
-                            fromState, // stays at same state
-                            StepType.HumanTask,
-                            action,
-                            actorUserId,
-                            comment,
-                            metadataJson);
-
-                        context.WorkflowSteps.Add(waitStep);
-
-                        try
-                        {
-                            await context.SaveChangesAsync(ct);
-                        }
-                        catch (DbUpdateConcurrencyException)
-                        {
-                            logger.LogWarning("Concurrency conflict on task {TaskId}. Another user may have already acted.", taskId);
-                            return false;
-                        }
-
-                        logger.LogInformation(
-                            "Task {TaskId}: completed (parallel AllOf, waiting for siblings). Instance {InstanceId} stays at '{State}'.",
-                            taskId, instance.Id, fromState);
-
-                        return true;
-                    }
-
-                    // All siblings completed — proceed with transition below
+                    logger.LogWarning("Concurrency conflict on task {TaskId}. Another user may have already acted.", taskId);
+                    return false;
                 }
+
+                logger.LogInformation(
+                    "Task {TaskId}: completed (parallel AllOf, waiting for siblings). Instance {InstanceId} stays at '{State}'.",
+                    taskId, instance.Id, fromState);
+
+                return true;
             }
         }
 
@@ -574,9 +527,9 @@ public sealed class WorkflowEngine(
     public async Task<PaginatedList<PendingTaskSummary>> GetPendingTasksAsync(
         Guid userId, int pageNumber = 1, int pageSize = 20, CancellationToken ct = default)
     {
+        // Single-table query — denormalized columns on ApprovalTask remove the need
+        // to JOIN WorkflowInstances and WorkflowDefinitions. See Phase 2b spec.
         var baseQuery = context.ApprovalTasks
-            .Include(t => t.Instance)
-                .ThenInclude(i => i.Definition)
             .Where(t => t.Status == Domain.Enums.TaskStatus.Pending
                 && (t.AssigneeUserId == userId || t.OriginalAssigneeUserId == userId))
             .OrderByDescending(t => t.CreatedAt);
@@ -588,7 +541,7 @@ public sealed class WorkflowEngine(
             .Take(pageSize)
             .ToListAsync(ct);
 
-        // Resolve display names for original assignees (delegation source)
+        // Resolve display names for original assignees (delegation source) — batched.
         var originalAssigneeIds = tasks
             .Where(t => t.OriginalAssigneeUserId.HasValue)
             .Select(t => t.OriginalAssigneeUserId!.Value)
@@ -603,7 +556,7 @@ public sealed class WorkflowEngine(
                 delegationNameLookup[u.Id] = u.DisplayName;
         }
 
-        // Pre-load parallel group sibling counts to avoid N+1 queries
+        // Pre-load parallel group sibling counts to avoid N+1 queries.
         var groupIds = tasks
             .Where(t => t.GroupId.HasValue)
             .Select(t => t.GroupId!.Value)
@@ -626,50 +579,100 @@ public sealed class WorkflowEngine(
             }
         }
 
+        // Identify legacy rows whose denormalized columns were never populated
+        // (created before the Phase 2b migration). Fall back to a JOIN for these only.
+        // TODO: retire this branch once no pre-Phase-2b pending tasks remain.
+        // Check via: SELECT COUNT(*) FROM workflow_approval_tasks
+        //            WHERE status='Pending' AND (definition_name IS NULL OR definition_name='');
+        var legacyTaskIds = tasks
+            .Where(t => string.IsNullOrEmpty(t.DefinitionName))
+            .Select(t => t.Id)
+            .ToList();
+
+        Dictionary<Guid, LegacyTaskFallback>? legacyLookup = null;
+        if (legacyTaskIds.Count > 0)
+        {
+            var legacyRows = await context.ApprovalTasks
+                .Where(t => legacyTaskIds.Contains(t.Id))
+                .Include(t => t.Instance)
+                    .ThenInclude(i => i.Definition)
+                .Select(t => new
+                {
+                    t.Id,
+                    DefinitionName = t.Instance.Definition.Name,
+                    t.Instance.EntityType,
+                    t.Instance.EntityId,
+                    t.Instance.EntityDisplayName,
+                    t.Instance.Definition.StatesJson,
+                    t.Instance.Definition.TransitionsJson,
+                    CurrentState = t.Instance.CurrentState,
+                })
+                .ToListAsync(ct);
+
+            legacyLookup = legacyRows.ToDictionary(
+                r => r.Id,
+                r => new LegacyTaskFallback(
+                    r.DefinitionName,
+                    r.EntityType,
+                    r.EntityId,
+                    r.EntityDisplayName,
+                    r.StatesJson,
+                    r.TransitionsJson,
+                    r.CurrentState));
+        }
+
         var items = tasks.Select(t =>
         {
-            // Derive available actions from the definition's transitions for
-            // the instance's current state (manual transitions only).
-            List<string>? availableActions = null;
-            List<FormFieldDefinition>? formFields = null;
+            // Resolve denormalized vs legacy values.
+            string definitionName;
+            string entityType;
+            Guid entityId;
+            string? entityDisplayName;
+            List<string>? availableActions;
+            List<FormFieldDefinition>? formFields;
+            int? slaReminderAfterHours;
+
+            if (string.IsNullOrEmpty(t.DefinitionName) && legacyLookup is not null
+                && legacyLookup.TryGetValue(t.Id, out var legacy))
+            {
+                definitionName = legacy.DefinitionName;
+                entityType = legacy.EntityType;
+                entityId = legacy.EntityId;
+                entityDisplayName = legacy.EntityDisplayName;
+                (availableActions, formFields, slaReminderAfterHours) =
+                    DeriveLegacyStateFields(legacy.StatesJson, legacy.TransitionsJson, legacy.CurrentState);
+            }
+            else
+            {
+                definitionName = t.DefinitionName;
+                entityType = t.EntityType;
+                entityId = t.EntityId;
+                entityDisplayName = t.EntityDisplayName;
+                availableActions = DeserializeAvailableActions(t.AvailableActionsJson);
+                formFields = DeserializeFormFields(t.FormFieldsJson);
+                slaReminderAfterHours = t.SlaReminderAfterHours;
+            }
+
+            // Compute overdue from SLA config.
             bool isOverdue = false;
             int? hoursOverdue = null;
-            try
+            if (slaReminderAfterHours.HasValue)
             {
-                var transitions = DeserializeTransitions(t.Instance.Definition.TransitionsJson);
-                availableActions = transitions
-                    .Where(tr => tr.From == t.Instance.CurrentState
-                        && tr.Type.Equals("Manual", StringComparison.OrdinalIgnoreCase))
-                    .Select(tr => tr.Trigger)
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToList();
-
-                var states = DeserializeStates(t.Instance.Definition.StatesJson);
-                var stateConfig = states.FirstOrDefault(s => s.Name == t.Instance.CurrentState);
-                formFields = stateConfig?.FormFields is { Count: > 0 } ? stateConfig.FormFields : null;
-
-                // Compute overdue status from SLA config
-                if (stateConfig?.Sla?.ReminderAfterHours.HasValue == true)
+                var hours = (int)(DateTime.UtcNow - t.CreatedAt).TotalHours;
+                if (hours >= slaReminderAfterHours.Value)
                 {
-                    var hours = (int)(DateTime.UtcNow - t.CreatedAt).TotalHours;
-                    if (hours >= stateConfig.Sla.ReminderAfterHours.Value)
-                    {
-                        isOverdue = true;
-                        hoursOverdue = hours - stateConfig.Sla.ReminderAfterHours.Value;
-                    }
+                    isOverdue = true;
+                    hoursOverdue = hours - slaReminderAfterHours.Value;
                 }
             }
-            catch
-            {
-                // Swallow deserialization errors — fall back to null
-            }
 
-            var isDelegated = t.OriginalAssigneeUserId.HasValue;
+            // Only treat as delegated when the caller is NOT themselves the original assignee —
+            // otherwise a pending reassignment returning to the original would render as "me delegated to me".
+            var isDelegated = t.OriginalAssigneeUserId.HasValue && t.OriginalAssigneeUserId.Value != userId;
             string? delegatedFromDisplayName = null;
             if (isDelegated && delegationNameLookup.TryGetValue(t.OriginalAssigneeUserId!.Value, out var name))
                 delegatedFromDisplayName = name;
 
-            // Parallel group progress
             int? parallelTotal = null;
             int? parallelCompleted = null;
             if (t.GroupId.HasValue && groupCounts.TryGetValue(t.GroupId.Value, out var counts))
@@ -681,15 +684,15 @@ public sealed class WorkflowEngine(
             return new PendingTaskSummary(
                 t.Id,
                 t.InstanceId,
-                t.Instance.Definition.Name,
-                t.Instance.EntityType,
-                t.Instance.EntityId,
+                definitionName,
+                entityType,
+                entityId,
                 t.StepName,
                 t.AssigneeRole,
                 t.CreatedAt,
                 t.DueDate,
                 availableActions,
-                t.Instance.EntityDisplayName,
+                entityDisplayName,
                 FormFields: formFields,
                 GroupId: t.GroupId,
                 ParallelTotal: parallelTotal,
@@ -701,6 +704,64 @@ public sealed class WorkflowEngine(
         }).ToList();
 
         return PaginatedList<PendingTaskSummary>.Create(items, totalCount, pageNumber, pageSize);
+    }
+
+    private sealed record LegacyTaskFallback(
+        string DefinitionName,
+        string EntityType,
+        Guid EntityId,
+        string? EntityDisplayName,
+        string StatesJson,
+        string TransitionsJson,
+        string CurrentState);
+
+    private List<string>? DeserializeAvailableActions(string? json)
+    {
+        if (string.IsNullOrEmpty(json)) return null;
+        try { return JsonSerializer.Deserialize<List<string>>(json, JsonOpts); }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Failed to deserialize AvailableActionsJson");
+            return null;
+        }
+    }
+
+    private List<FormFieldDefinition>? DeserializeFormFields(string? json)
+    {
+        if (string.IsNullOrEmpty(json)) return null;
+        try { return JsonSerializer.Deserialize<List<FormFieldDefinition>>(json, JsonOpts); }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Failed to deserialize FormFieldsJson");
+            return null;
+        }
+    }
+
+    private (List<string>? Actions, List<FormFieldDefinition>? FormFields, int? SlaReminderAfterHours)
+        DeriveLegacyStateFields(string statesJson, string transitionsJson, string currentState)
+    {
+        try
+        {
+            var transitions = DeserializeTransitions(transitionsJson);
+            var actions = transitions
+                .Where(tr => tr.From == currentState
+                    && tr.Type.Equals("Manual", StringComparison.OrdinalIgnoreCase))
+                .Select(tr => tr.Trigger)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var states = DeserializeStates(statesJson);
+            var stateConfig = states.FirstOrDefault(s => s.Name == currentState);
+            var formFields = stateConfig?.FormFields is { Count: > 0 } ? stateConfig.FormFields : null;
+            var sla = stateConfig?.Sla?.ReminderAfterHours;
+
+            return (actions, formFields, sla);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to derive legacy state fields for state {CurrentState}", currentState);
+            return (null, null, null);
+        }
     }
 
     public async Task<int> GetPendingTaskCountAsync(
@@ -930,116 +991,13 @@ public sealed class WorkflowEngine(
 
     // ── Private Helpers ──────────────────────────────────────────────────────
 
-    private async Task CreateApprovalTaskAsync(
+    private Task CreateApprovalTaskAsync(
         WorkflowInstance instance,
         WorkflowStateConfig stateConfig,
         WorkflowDefinition definition,
         Guid initiatorUserId,
         CancellationToken ct)
-    {
-        // Parallel mode: create one task per assignee with a shared GroupId
-        if (stateConfig.Parallel is { Assignees.Count: > 0 })
-        {
-            var groupId = Guid.NewGuid();
-            var assigneeContext = new WorkflowAssigneeContext(
-                instance.EntityType,
-                instance.EntityId,
-                instance.TenantId,
-                initiatorUserId,
-                instance.CurrentState);
-
-            foreach (var assigneeConfig in stateConfig.Parallel.Assignees)
-            {
-                var strategyJson = JsonSerializer.Serialize(assigneeConfig, JsonOpts);
-                var resolveResult = await assigneeResolver.ResolveWithDelegationAsync(
-                    assigneeConfig, assigneeContext, ct);
-
-                Guid? userId = resolveResult.AssigneeIds.Count > 0 ? resolveResult.AssigneeIds[0] : null;
-                string? role = null;
-
-                if (assigneeConfig.Strategy.Equals("Role", StringComparison.OrdinalIgnoreCase)
-                    && assigneeConfig.Parameters is not null
-                    && assigneeConfig.Parameters.TryGetValue("roleName", out var roleObj))
-                {
-                    role = roleObj?.ToString();
-                }
-
-                // If delegated, record the original assignee
-                Guid? originalAssigneeUserId = userId.HasValue
-                    && resolveResult.DelegationMap.TryGetValue(userId.Value, out var origId)
-                        ? origId : null;
-
-                var task = ApprovalTask.Create(
-                    instance.TenantId,
-                    instance.Id,
-                    stateConfig.Name,
-                    userId,
-                    role,
-                    strategyJson,
-                    dueDate: null,
-                    entityType: instance.EntityType,
-                    entityId: instance.EntityId,
-                    groupId: groupId,
-                    originalAssigneeUserId: originalAssigneeUserId);
-
-                context.ApprovalTasks.Add(task);
-            }
-
-            return;
-        }
-
-        // Single-assignee mode
-        Guid? assigneeUserId = null;
-        string? assigneeRole = null;
-        string? assigneeStrategyJson = null;
-        Guid? originalAssignee = null;
-
-        if (stateConfig.Assignee is not null)
-        {
-            assigneeStrategyJson = JsonSerializer.Serialize(stateConfig.Assignee, JsonOpts);
-
-            var assigneeContext = new WorkflowAssigneeContext(
-                instance.EntityType,
-                instance.EntityId,
-                instance.TenantId,
-                initiatorUserId,
-                instance.CurrentState);
-
-            var resolveResult = await assigneeResolver.ResolveWithDelegationAsync(
-                stateConfig.Assignee, assigneeContext, ct);
-
-            if (resolveResult.AssigneeIds.Count > 0)
-            {
-                assigneeUserId = resolveResult.AssigneeIds[0];
-
-                // If delegated, record the original assignee
-                if (resolveResult.DelegationMap.TryGetValue(assigneeUserId.Value, out var origId))
-                    originalAssignee = origId;
-            }
-
-            // Extract role from assignee config parameters if strategy is "Role"
-            if (stateConfig.Assignee.Strategy.Equals("Role", StringComparison.OrdinalIgnoreCase)
-                && stateConfig.Assignee.Parameters is not null
-                && stateConfig.Assignee.Parameters.TryGetValue("roleName", out var roleObj))
-            {
-                assigneeRole = roleObj?.ToString();
-            }
-        }
-
-        var approvalTask = ApprovalTask.Create(
-            instance.TenantId,
-            instance.Id,
-            stateConfig.Name,
-            assigneeUserId,
-            assigneeRole,
-            assigneeStrategyJson,
-            dueDate: null,
-            entityType: instance.EntityType,
-            entityId: instance.EntityId,
-            originalAssigneeUserId: originalAssignee);
-
-        context.ApprovalTasks.Add(approvalTask);
-    }
+        => humanTaskFactory.CreateAsync(instance, stateConfig, definition, initiatorUserId, ct);
 
     private async Task AutoTransitionAsync(
         WorkflowInstance instance,
@@ -1058,22 +1016,12 @@ public sealed class WorkflowEngine(
 
         if (autoTransitions.Count == 0) return;
 
-        // Evaluate conditional transitions first
-        WorkflowTransitionConfig? selected = null;
+        // Evaluate conditional transitions first, falling back to the default unconditional one.
         var instanceContext = instance.ContextJson is not null
             ? JsonSerializer.Deserialize<Dictionary<string, object>>(instance.ContextJson, JsonOpts)
             : null;
-
-        foreach (var t in autoTransitions.Where(t => t.Condition is not null))
-        {
-            if (conditionEvaluator.Evaluate(t.Condition!, instanceContext))
-            {
-                selected = t;
-                break;
-            }
-        }
-
-        selected ??= autoTransitions.FirstOrDefault(t => t.Condition is null);
+        var selected = autoTransitionEvaluator.Select(
+            autoTransitions, currentStateConfig.Name, instanceContext);
 
         if (selected is null) return;
 
@@ -1133,21 +1081,10 @@ public sealed class WorkflowEngine(
 
         var transitions = DeserializeTransitions(definition.TransitionsJson);
         var fromState = instance.CurrentState;
-        var matchingTransitions = transitions.Where(t => t.From == fromState).ToList();
 
-        // Evaluate conditional transitions first
-        string? targetState = null;
-        foreach (var t in matchingTransitions.Where(t => t.Condition is not null))
-        {
-            if (conditionEvaluator.Evaluate(t.Condition!, instanceContext))
-            {
-                targetState = t.To;
-                break;
-            }
-        }
-
-        // Fall back to default (non-conditional) transition
-        targetState ??= matchingTransitions.FirstOrDefault(t => t.Condition is null)?.To;
+        // Evaluate conditional transitions first, falling back to the default unconditional one.
+        var selected = autoTransitionEvaluator.Select(transitions, fromState, instanceContext);
+        var targetState = selected?.To;
 
         if (targetState is null)
         {

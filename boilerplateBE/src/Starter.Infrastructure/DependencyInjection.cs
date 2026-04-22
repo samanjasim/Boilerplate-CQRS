@@ -28,14 +28,15 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration,
-        IReadOnlyList<System.Reflection.Assembly>? moduleAssemblies = null)
+        IReadOnlyList<System.Reflection.Assembly>? moduleAssemblies = null,
+        Action<IBusRegistrationConfigurator>? configureBus = null)
     {
         QuestPDF.Settings.License = LicenseType.Community;
 
         services
             .AddPersistence(configuration)
             .AddCaching(configuration)
-            .AddMessaging(configuration, moduleAssemblies)
+            .AddMessaging(configuration, moduleAssemblies, configureBus)
             .AddServices()
             .AddCapabilities()
             .AddEmailServices(configuration)
@@ -179,7 +180,8 @@ public static class DependencyInjection
     private static IServiceCollection AddMessaging(
         this IServiceCollection services,
         IConfiguration configuration,
-        IReadOnlyList<System.Reflection.Assembly>? moduleAssemblies = null)
+        IReadOnlyList<System.Reflection.Assembly>? moduleAssemblies = null,
+        Action<IBusRegistrationConfigurator>? configureBus = null)
     {
         var rabbitMqEnabled = configuration.GetValue("RabbitMQ:Enabled", true);
 
@@ -208,6 +210,9 @@ public static class DependencyInjection
                 foreach (var asm in moduleAssemblies)
                     busConfigurator.AddConsumers(asm);
             }
+
+            // Module-provided bus extensions (e.g. additional EF outboxes)
+            configureBus?.Invoke(busConfigurator);
 
             if (!rabbitMqEnabled)
             {

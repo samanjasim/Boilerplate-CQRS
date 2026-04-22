@@ -4,6 +4,7 @@ using Starter.Application;
 using Starter.Infrastructure;
 using Starter.Infrastructure.Identity;
 using Starter.Infrastructure.Persistence.Seeds;
+using Starter.Module.Workflow.Infrastructure;
 using Serilog;
 using Serilog.Sinks.OpenTelemetry;
 
@@ -44,7 +45,10 @@ builder.Services.AddSingleton<IReadOnlyList<Starter.Abstractions.Modularity.IMod
 
 // Add layers
 builder.Services.AddApplication(moduleAssemblies);
-builder.Services.AddInfrastructure(builder.Configuration, moduleAssemblies);
+builder.Services.AddInfrastructure(
+    builder.Configuration,
+    moduleAssemblies,
+    configureBus: bus => bus.AddWorkflowOutbox());
 builder.Services.AddIdentityInfrastructure(builder.Configuration);
 
 // Module-specific services

@@ -1,9 +1,7 @@
 using FluentAssertions;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Starter.Abstractions.Capabilities;
-using Starter.Abstractions.Readers;
 using Starter.Module.Workflow.Infrastructure.Services;
 using Xunit;
 
@@ -26,9 +24,6 @@ public sealed class HookExecutorTests
         AssigneeUserId: assigneeUserId,
         AssigneeRole: null,
         DefinitionName: "OrderApproval");
-
-    private static IConfiguration EmptyConfig()
-        => new ConfigurationBuilder().Build();
 
     // ── 1. notify hook calls IMessageDispatcher ──────────────────────────────
 
@@ -266,14 +261,11 @@ public sealed class HookExecutorTests
         IMessageDispatcher? messageDispatcher = null,
         IActivityService? activityService = null,
         IWebhookPublisher? webhookPublisher = null,
-        INotificationServiceCapability? notificationService = null,
-        IUserReader? userReader = null)
+        INotificationServiceCapability? notificationService = null)
         => new(
             messageDispatcher ?? Mock.Of<IMessageDispatcher>(),
             activityService ?? Mock.Of<IActivityService>(),
             webhookPublisher ?? Mock.Of<IWebhookPublisher>(),
             notificationService ?? Mock.Of<INotificationServiceCapability>(),
-            userReader ?? Mock.Of<IUserReader>(),
-            EmptyConfig(),
             NullLogger<HookExecutor>.Instance);
 }

@@ -12,10 +12,24 @@ internal sealed class ConditionEvaluator : IConditionEvaluator
 {
     public bool Evaluate(ConditionConfig condition, Dictionary<string, object>? context)
     {
-        // Compound expression (AND/OR)
-        if (condition.Logic is not null && condition.Conditions is { Count: > 0 })
+        // Compound expression (AND/OR/NOT)
+        if (condition.Logic is not null)
         {
-            return condition.Logic.ToUpperInvariant() switch
+            var op = condition.Logic.ToUpperInvariant();
+
+            // NOT needs explicit handling for the "empty conditions" case — define it
+            // as false (same semantics as an empty AND group) to avoid a misconfigured
+            // workflow accidentally granting permit-all access.
+            if (op == "NOT")
+            {
+                if (condition.Conditions is null or { Count: 0 }) return false;
+                // Multi-child NOT treats its children as implicit AND, then inverts.
+                return !condition.Conditions.All(c => Evaluate(c, context));
+            }
+
+            if (condition.Conditions is null or { Count: 0 }) return false;
+
+            return op switch
             {
                 "OR" => condition.Conditions.Any(c => Evaluate(c, context)),
                 _ => condition.Conditions.All(c => Evaluate(c, context)), // default AND

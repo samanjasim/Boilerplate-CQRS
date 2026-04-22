@@ -1,6 +1,5 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Starter.Abstractions.Capabilities;
@@ -41,18 +40,24 @@ public sealed class GetPendingTasksPaginationTests : IDisposable
             Mock.Of<IActivityService>(),
             Mock.Of<IWebhookPublisher>(),
             Mock.Of<INotificationServiceCapability>(),
-            userReader.Object,
-            new ConfigurationBuilder().Build(),
             NullLogger<HookExecutor>.Instance);
+
+        var humanTaskFactory = new HumanTaskFactory(_db, assigneeResolver);
+
+        var conditionEvaluator = new ConditionEvaluator();
+        var autoTransitionEvaluator = new AutoTransitionEvaluator(conditionEvaluator);
+
+        var parallelCoordinator = new ParallelApprovalCoordinator(_db);
 
         _sut = new WorkflowEngine(
             _db,
-            new ConditionEvaluator(),
-            assigneeResolver,
             hookExecutor,
             Mock.Of<ICommentService>(),
             userReader.Object,
             new FormDataValidator(),
+            humanTaskFactory,
+            autoTransitionEvaluator,
+            parallelCoordinator,
             NullLogger<WorkflowEngine>.Instance);
     }
 
@@ -92,8 +97,21 @@ public sealed class GetPendingTasksPaginationTests : IDisposable
         for (int i = 0; i < count; i++)
         {
             var task = ApprovalTask.Create(
-                _tenantId, instanceId, "PendingApproval",
-                _userId, null, null, null, "Order", Guid.NewGuid());
+                tenantId: _tenantId,
+                instanceId: instanceId,
+                stepName: "PendingApproval",
+                assigneeUserId: _userId,
+                assigneeRole: null,
+                assigneeStrategyJson: null,
+                dueDate: null,
+                entityType: "Order",
+                entityId: Guid.NewGuid(),
+                definitionName: "PaginationTest",
+                definitionDisplayName: "Pagination Test",
+                entityDisplayName: null,
+                formFieldsJson: null,
+                availableActionsJson: "[]",
+                slaReminderAfterHours: null);
             _db.ApprovalTasks.Add(task);
         }
         await _db.SaveChangesAsync();
