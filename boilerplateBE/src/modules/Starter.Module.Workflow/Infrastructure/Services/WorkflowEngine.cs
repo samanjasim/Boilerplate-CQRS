@@ -306,23 +306,12 @@ public sealed class WorkflowEngine(
             return ToWorkflowTaskResult(WorkflowErrors.InvalidTransition(instance.CurrentState, action));
         }
 
-        // If multiple transitions match, evaluate conditional ones first;
-        // fall back to the first matching transition if nothing selected.
-        var instanceContext = instance.ContextJson is not null
-            ? JsonSerializer.Deserialize<Dictionary<string, object>>(instance.ContextJson, JsonOpts)
-            : null;
-        var selectedTransition = autoTransitionEvaluator.Select(
-                matchingTransitions, instance.CurrentState, instanceContext)
-            ?? matchingTransitions[0];
-
         var fromState = instance.CurrentState;
-        var toState = selectedTransition.To;
-
-        // Look up state configs
         var fromStateConfig = states.FirstOrDefault(s => s.Name == fromState);
-        var toStateConfig = states.FirstOrDefault(s => s.Name == toState);
 
-        // Validate form data if the current state has form fields defined
+        // Validate form data first so a conditional transition never sees
+        // data that was rejected. Failure here short-circuits with no state
+        // change and no context merge.
         if (fromStateConfig?.FormFields is { Count: > 0 })
         {
             var fieldErrors = formDataValidator.Validate(fromStateConfig.FormFields, formData);
@@ -338,6 +327,27 @@ public sealed class WorkflowEngine(
                 return WorkflowTaskResult.ValidationFailure(fieldDict);
             }
         }
+
+        // Build the eval context = persisted context overlaid with the form
+        // data just submitted, so a condition like `amount > 10000` can branch
+        // on the same action that carried the value.
+        var instanceContext = instance.ContextJson is not null
+            ? JsonSerializer.Deserialize<Dictionary<string, object>>(instance.ContextJson, JsonOpts) ?? new()
+            : new Dictionary<string, object>();
+        if (formData is not null)
+        {
+            foreach (var (key, value) in formData)
+                instanceContext[key] = value;
+        }
+
+        // If multiple transitions match, evaluate conditional ones first;
+        // fall back to the first matching transition if nothing selected.
+        var selectedTransition = autoTransitionEvaluator.Select(
+                matchingTransitions, instance.CurrentState, instanceContext)
+            ?? matchingTransitions[0];
+
+        var toState = selectedTransition.To;
+        var toStateConfig = states.FirstOrDefault(s => s.Name == toState);
 
         // ── Step 1: Complete the task (always) ──────────────────────────────
         task.Complete(action, comment, actorUserId);
