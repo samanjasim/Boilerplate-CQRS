@@ -32,12 +32,6 @@ internal sealed class GetWorkflowAnalyticsQueryHandler(
         var now = DateTime.UtcNow;
         var (windowStart, windowEnd) = ResolveWindow(request.Window, definition.CreatedAt, now);
 
-        var instancesInWindow = await db.WorkflowInstances
-            .AsNoTracking()
-            .CountAsync(i => i.DefinitionId == definition.Id
-                          && i.StartedAt >= windowStart
-                          && i.StartedAt <= windowEnd, ct);
-
         var headline = await ComputeHeadlineAsync(definition.Id, windowStart, windowEnd, ct);
 
         var series = BuildZeroFilledSeries(request.Window, windowStart, windowEnd);
@@ -48,7 +42,7 @@ internal sealed class GetWorkflowAnalyticsQueryHandler(
             Window: request.Window,
             WindowStart: windowStart,
             WindowEnd: windowEnd,
-            InstancesInWindow: instancesInWindow,
+            InstancesInWindow: headline.TotalStarted,
             Headline: headline,
             StatesByBottleneck: Array.Empty<StateMetric>(),
             ActionRates: Array.Empty<ActionRateMetric>(),
