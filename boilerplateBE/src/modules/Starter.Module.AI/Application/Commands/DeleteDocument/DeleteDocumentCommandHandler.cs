@@ -1,6 +1,8 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Starter.Application.Common.Access;
+using Starter.Application.Common.Access.Contracts;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Services.Ingestion;
 using Starter.Module.AI.Domain.Errors;
@@ -13,6 +15,7 @@ internal sealed class DeleteDocumentCommandHandler(
     AiDbContext db,
     IFileService fileService,
     IVectorStore vectors,
+    IResourceAccessService accessService,
     ILogger<DeleteDocumentCommandHandler> logger) : IRequestHandler<DeleteDocumentCommand, Result>
 {
     public async Task<Result> Handle(DeleteDocumentCommand request, CancellationToken ct)
@@ -36,6 +39,8 @@ internal sealed class DeleteDocumentCommandHandler(
 
         try { await fileService.DeleteManagedFileAsync(doc.FileId, ct); }
         catch (Exception ex) { logger.LogWarning(ex, "Failed to delete managed file {FileId} for document {DocId}", doc.FileId, doc.Id); }
+
+        await accessService.RevokeAllForResourceAsync(ResourceTypes.File, doc.FileId, ct);
 
         db.AiDocuments.Remove(doc);
         await db.SaveChangesAsync(ct);
