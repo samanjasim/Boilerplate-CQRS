@@ -19,6 +19,8 @@ public interface IVectorStore
     /// Retrieve stored embedding vectors for a batch of point-ids. Missing ids are
     /// silently omitted from the result dictionary (eventual consistency between
     /// Qdrant and the relational DB can leave orphan ids).
+    /// Callers should keep batches small (≤ ~100 ids per call); this method does not
+    /// chunk internally and a large batch may exceed the vector store's request size.
     /// </summary>
     Task<IReadOnlyDictionary<Guid, float[]>> GetVectorsByIdsAsync(
         Guid tenantId,
