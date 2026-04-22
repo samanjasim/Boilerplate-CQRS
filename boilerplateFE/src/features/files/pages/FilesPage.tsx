@@ -66,6 +66,7 @@ import {
   OwnershipTransferDialog,
 } from '@/components/common';
 import { useResourceGrants } from '@/features/access/api/access.queries';
+import { StorageSummaryPanel } from '../components/StorageSummaryPanel';
 import { filesApi, useFiles, useUploadFile, useDeleteFile, useUpdateFile } from '../api';
 import { toast } from 'sonner';
 import { usePermissions } from '@/hooks';
@@ -302,6 +303,7 @@ export default function FilesPage() {
                 <List className="h-4 w-4" />
               </Button>
             </div>
+            <StorageSummaryPanel />
             {canExport && <ExportButton reportType="Files" filters={exportFilters} />}
             {canUpload && (
               <Button onClick={() => setUploadDialogOpen(true)}>
