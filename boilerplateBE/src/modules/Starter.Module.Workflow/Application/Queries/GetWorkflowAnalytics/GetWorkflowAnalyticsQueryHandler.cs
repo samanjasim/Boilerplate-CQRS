@@ -38,7 +38,8 @@ internal sealed class GetWorkflowAnalyticsQueryHandler(
                           && i.StartedAt >= windowStart
                           && i.StartedAt <= windowEnd, ct);
 
-        var emptyHeadline = new HeadlineMetrics(0, 0, 0, AvgCycleTimeHours: null);
+        var headline = await ComputeHeadlineAsync(definition.Id, windowStart, windowEnd, ct);
+
         var series = BuildZeroFilledSeries(request.Window, windowStart, windowEnd);
 
         var dto = new WorkflowAnalyticsDto(
@@ -48,7 +49,7 @@ internal sealed class GetWorkflowAnalyticsQueryHandler(
             WindowStart: windowStart,
             WindowEnd: windowEnd,
             InstancesInWindow: instancesInWindow,
-            Headline: emptyHeadline,
+            Headline: headline,
             StatesByBottleneck: Array.Empty<StateMetric>(),
             ActionRates: Array.Empty<ActionRateMetric>(),
             InstanceCountSeries: series,
@@ -65,7 +66,7 @@ internal sealed class GetWorkflowAnalyticsQueryHandler(
             WindowSelector.SevenDays   => (now.AddDays(-7),  now),
             WindowSelector.ThirtyDays  => (now.AddDays(-30), now),
             WindowSelector.NinetyDays  => (now.AddDays(-90), now),
-            WindowSelector.AllTime     => (definitionCreatedAt, now),
+            WindowSelector.AllTime     => (DateTime.SpecifyKind(DateTime.MinValue, DateTimeKind.Utc), now),
             _ => throw new ArgumentOutOfRangeException(nameof(window)),
         };
 
@@ -111,6 +112,37 @@ internal sealed class GetWorkflowAnalyticsQueryHandler(
         BucketGranularity.Month => dt.AddMonths(1),
         _ => dt.AddDays(1),
     };
+
+    private async Task<HeadlineMetrics> ComputeHeadlineAsync(
+        Guid definitionId, DateTime windowStart, DateTime windowEnd, CancellationToken ct)
+    {
+        var rows = await db.WorkflowInstances
+            .AsNoTracking()
+            .Where(i => i.DefinitionId == definitionId
+                     && i.StartedAt >= windowStart
+                     && i.StartedAt <= windowEnd)
+            .Select(i => new
+            {
+                i.Status,
+                i.StartedAt,
+                i.CompletedAt,
+            })
+            .ToListAsync(ct);
+
+        var total = rows.Count;
+        var completed = rows.Count(r => r.Status == Domain.Enums.InstanceStatus.Completed);
+        var cancelled = rows.Count(r => r.Status == Domain.Enums.InstanceStatus.Cancelled);
+
+        double? avgCycleHours = null;
+        var completedWithCycle = rows
+            .Where(r => r.Status == Domain.Enums.InstanceStatus.Completed && r.CompletedAt.HasValue)
+            .Select(r => (r.CompletedAt!.Value - r.StartedAt).TotalHours)
+            .ToList();
+        if (completedWithCycle.Count > 0)
+            avgCycleHours = Math.Round(completedWithCycle.Average(), 1);
+
+        return new HeadlineMetrics(total, completed, cancelled, avgCycleHours);
+    }
 
     private enum BucketGranularity { Day, Week, Month }
 }
