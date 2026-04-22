@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Inbox, Users, X, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -47,12 +47,18 @@ export default function WorkflowInboxPage() {
   const pagination = data?.pagination;
   const hasDelegation = !!activeDelegation?.isActive;
 
-  useEffect(() => {
-    setSelectedIds(new Set());
-  }, [page, pageSize]);
-
   const requiresForm = (task: PendingTaskSummary) =>
     !!task.formFields?.some((f) => f.required);
+
+  const handlePageChange = (next: number) => {
+    setSelectedIds(new Set());
+    setPage(next);
+  };
+
+  const handlePageSizeChange = (next: number) => {
+    setSelectedIds(new Set());
+    setPageSize(next);
+  };
 
   const bulkEligibleIds = tasks.filter((t) => !requiresForm(t)).map((t) => t.taskId);
   const allSelected =
@@ -244,8 +250,8 @@ export default function WorkflowInboxPage() {
           {pagination && (
             <Pagination
               pagination={pagination}
-              onPageChange={setPage}
-              onPageSizeChange={setPageSize}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
             />
           )}
         </>
