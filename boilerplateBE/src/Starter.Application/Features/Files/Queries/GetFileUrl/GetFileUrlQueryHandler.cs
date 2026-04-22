@@ -1,5 +1,6 @@
 using Starter.Application.Common.Interfaces;
 using Starter.Domain.Common;
+using Starter.Domain.Common.Access.Enums;
 using Starter.Domain.Common.Errors;
 using Starter.Shared.Constants;
 using Starter.Shared.Results;
@@ -20,7 +21,9 @@ internal sealed class GetFileUrlQueryHandler(
             .FirstOrDefaultAsync(f => f.Id == request.Id, cancellationToken);
         if (metadata is null)
             return Result.Failure<string>(FileErrors.NotFound(request.Id));
-        if (!metadata.IsPublic && metadata.UploadedBy != currentUserService.UserId && !currentUserService.HasPermission(Starter.Shared.Constants.Permissions.Files.Manage))
+        if (metadata.Visibility != ResourceVisibility.Public
+            && metadata.UploadedBy != currentUserService.UserId
+            && !currentUserService.HasPermission(Starter.Shared.Constants.Permissions.Files.Manage))
             return Result.Failure<string>(FileErrors.AccessDenied());
 
         var url = await fileService.GetUrlAsync(request.Id, cancellationToken);

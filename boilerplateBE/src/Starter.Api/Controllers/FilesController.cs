@@ -11,6 +11,7 @@ using Starter.Application.Features.Files.Commands.UploadFile;
 using Starter.Application.Features.Files.Queries.GetFileById;
 using Starter.Application.Features.Files.Queries.GetFiles;
 using Starter.Application.Features.Files.Queries.GetFileUrl;
+using Starter.Domain.Common.Access.Enums;
 using Starter.Domain.Common.Enums;
 using Starter.Shared.Constants;
 using Starter.Shared.Models;
@@ -39,7 +40,7 @@ public sealed class FilesController(ISender mediator, IFileService fileService, 
         [FromForm] string? tags = null,
         [FromForm] string? entityType = null,
         [FromForm] Guid? entityId = null,
-        [FromForm] bool isPublic = false,
+        [FromForm] ResourceVisibility visibility = ResourceVisibility.Private,
         CancellationToken cancellationToken = default)
     {
         using var stream = file.OpenReadStream();
@@ -56,7 +57,7 @@ public sealed class FilesController(ISender mediator, IFileService fileService, 
             tags?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
             entityType,
             entityId,
-            isPublic);
+            visibility);
         var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }

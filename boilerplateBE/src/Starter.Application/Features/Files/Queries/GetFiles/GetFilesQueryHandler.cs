@@ -54,7 +54,7 @@ internal sealed class GetFilesQueryHandler(
                 f.TenantId,
                 f.UploadedBy,
                 u != null ? u.FullName.FirstName + " " + u.FullName.LastName : null,
-                f.IsPublic,
+                f.Visibility,
                 f.Description,
                 f.EntityType,
                 f.EntityId,

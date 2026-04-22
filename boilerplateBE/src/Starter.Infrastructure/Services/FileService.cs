@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Starter.Application.Common.Interfaces;
 using Starter.Domain.Common;
+using Starter.Domain.Common.Access.Enums;
 using Starter.Domain.Common.Enums;
 using Starter.Application.Common.Constants;
 using Starter.Infrastructure.Settings;
@@ -27,7 +28,7 @@ public sealed class FileService(
         string? entityType = null,
         string? description = null,
         string[]? tags = null,
-        bool isPublic = false,
+        ResourceVisibility visibility = ResourceVisibility.Private,
         CancellationToken ct = default)
     {
         var tenantId = currentUserService.TenantId;
@@ -49,7 +50,7 @@ public sealed class FileService(
             uploadedBy: userId,
             tenantId: tenantId,
             tags: tags is { Length: > 0 } ? string.Join(",", tags) : null,
-            isPublic: isPublic,
+            visibility: visibility,
             description: description,
             entityType: entityType,
             entityId: entityId);
@@ -67,7 +68,7 @@ public sealed class FileService(
             .FirstOrDefaultAsync(f => f.Id == fileId, ct)
             ?? throw new InvalidOperationException($"File with ID {fileId} not found.");
 
-        if (metadata.IsPublic)
+        if (metadata.Visibility == ResourceVisibility.Public)
             return await storageService.GetPublicUrlAsync(metadata.StorageKey, ct);
 
         return await storageService.GetSignedUrlAsync(
