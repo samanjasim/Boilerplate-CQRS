@@ -190,3 +190,22 @@ export interface UpdateDefinitionRequest {
   statesJson?: string;
   transitionsJson?: string;
 }
+
+export interface BatchItemOutcome {
+  taskId: string;
+  status: 'Succeeded' | 'Failed' | 'Skipped';
+  error: string | null;
+}
+
+export interface BatchExecuteResult {
+  succeeded: number;
+  failed: number;
+  skipped: number;
+  items: BatchItemOutcome[];
+}
+
+export interface BatchExecuteTasksRequest {
+  taskIds: string[];
+  action: string;
+  comment?: string;
+}

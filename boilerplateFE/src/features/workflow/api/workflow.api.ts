@@ -13,6 +13,8 @@ import type {
   WorkflowStepRecord,
   PendingTaskSummary,
   DelegationRule,
+  BatchExecuteTasksRequest,
+  BatchExecuteResult,
 } from '@/types/workflow.types';
 
 export const workflowApi = {
@@ -89,6 +91,11 @@ export const workflowApi = {
   executeTask: (taskId: string, data: ExecuteTaskRequest): Promise<boolean> =>
     apiClient
       .post<ApiResponse<boolean>>(API_ENDPOINTS.WORKFLOW.TASK_EXECUTE(taskId), data)
+      .then((r) => r.data.data),
+
+  batchExecuteTasks: (data: BatchExecuteTasksRequest): Promise<BatchExecuteResult> =>
+    apiClient
+      .post<ApiResponse<BatchExecuteResult>>(API_ENDPOINTS.WORKFLOW.TASK_BATCH_EXECUTE, data)
       .then((r) => r.data.data),
 
   // Delegations

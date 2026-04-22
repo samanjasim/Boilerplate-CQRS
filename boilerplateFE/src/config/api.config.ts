@@ -208,6 +208,7 @@ export const API_ENDPOINTS = {
     TASKS: '/workflow/tasks',
     TASKS_COUNT: '/workflow/tasks/count',
     TASK_EXECUTE: (id: string) => `/workflow/tasks/${id}/execute`,
+    TASK_BATCH_EXECUTE: '/workflow/tasks/batch-execute',
     DELEGATIONS: '/workflow/delegations',
     DELEGATION_ACTIVE: '/workflow/delegations/active',
     DELEGATION_CANCEL: (id: string) => `/workflow/delegations/${id}`,
