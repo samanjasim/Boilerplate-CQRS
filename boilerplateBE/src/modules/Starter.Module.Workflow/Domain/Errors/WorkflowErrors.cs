@@ -30,4 +30,10 @@ public static class WorkflowErrors
 
     public static Error CannotEditTemplate() =>
         Error.Validation("Workflow.CannotEditTemplate", "System templates cannot be edited directly. Clone it first.");
+
+    public static Error TaskNotPending(Guid id) =>
+        Error.Conflict("Workflow.TaskNotPending", $"Approval task '{id}' is not in a pending state");
+
+    public static Error Concurrency() =>
+        Error.Conflict("Workflow.Concurrency", "Another user acted on this task concurrently. Please refresh and try again.");
 }
