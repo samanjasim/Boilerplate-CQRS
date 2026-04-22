@@ -290,6 +290,66 @@ All events use existing `IAuditLogService`:
 - `ResourceOwnershipTransferred`
 - `AssistantAccessModeChanged`
 
+### 5.9 Frontend / UI-UX
+
+**Scope boundary:** Files + ACL frontend is in scope for 4b-8. Assistant-sharing UI defers to the later AI frontend phase — components are built generic on `resourceType` so assistants drop them in with no rework.
+
+**Pages:**
+
+- `FilesPage` — adds view tabs (**All · My files · Shared with me · Public**, URL-synced `?view=`), new columns (**Visibility** badge, **Shared with** avatar/role stack), row actions (**Share**, **Change visibility**, **Transfer ownership**, existing Delete), header action **Storage summary**. Filter state (`?q=&visibility=&view=`) mirrored into TanStack Query keys.
+- `StorageSummaryPanel` — side panel with total bytes + breakdowns (category, entity type, top uploaders). Platform admin (`TenantId=null`) sees all-tenants toggle.
+
+**Shared components** (all in `src/components/common/`, all keyed on `resourceType` for reuse):
+
+| Component | Purpose |
+|---|---|
+| `ResourceShareDialog` | Visibility segmented control + subject picker + existing grants list w/ level dropdowns + inline revoke + Copy-link when `Public` |
+| `OwnershipTransferDialog` | User picker + demotion copy + confirm |
+| `VisibilityBadge` | Icon + tooltip + i18n label |
+| `SubjectPicker` | Recipient autocomplete w/ User/Role tabs (reuses `useSearchUsers`, `useRoles`) |
+| `SubjectStack` | Avatar stack for users + chips for roles, +N overflow |
+
+**Generic access hooks** — `src/features/access/api/` (new feature folder):
+
+```ts
+useResourceGrants(resourceType, id)
+useGrantResourceAccess(resourceType, id)
+useRevokeResourceGrant(resourceType, id, grantId)
+useSetResourceVisibility(resourceType, id)
+useTransferResourceOwnership(resourceType, id)
+```
+
+Files feature (`src/features/files/api/`) consumes generics + adds file-specific thin wrappers + `useStorageSummary(params)`.
+
+**Type change:** `file.types.ts` — `isPublic: boolean` → `visibility: 'Private' | 'TenantWide' | 'Public'`.
+
+**UX flows (each Playwright-covered):**
+
+1. Owner shares — Files list → row menu → Share → add user/role → pick level → Save → toast
+2. Grantee discovers — "Shared with me" tab shows the file; existing `Notification` system extended with `ResourceShared` type (no new infra — reuses notifications pipeline)
+3. Visibility → `Public` — admin-only, confirm dialog with "I understand" checkbox, audit event fires
+4. Revoke — trash icon → inline confirm → toast
+5. Transfer ownership — row menu → dialog → pick new owner → copy "Old owner stays as Manager" → confirm
+6. Storage summary — header button → side panel with charts
+7. Public link copy — share dialog (when `Public`) → Copy link → toast (reuses existing `GetPublicUrl`)
+
+**Permissions UI guards** (mirrored from backend):
+
+- Share button: `user.id === file.ownerId || hasPermission('Files.ShareOwn') || hasPermission('Files.Manage')`
+- `Public` toggle enabled: `Files.Manage` only
+- Transfer ownership: owner or `Files.Manage`
+- All-tenants storage toggle: `TenantId=null` (platform admin)
+
+Add `Files.ShareOwn` to `src/constants/permissions.ts` (mirrors backend addition).
+
+**i18n:**
+
+- `public/locales/{en,ar}/files.json` — extended
+- `public/locales/{en,ar}/access.json` — new (share dialog labels, level names, error copy for all §6 codes)
+- RTL verified for share dialog and side panel layout
+
+**Conventions honored:** no hardcoded primary shades; reuses shadcn `Dialog`; `STATUS_BADGE_VARIANT` extended for visibility; tables un-wrapped; `useBackNavigation`; `getPersistedPageSize`.
+
 ## 6. Error codes
 
 All returned via existing `Result<T>` / `HandleResult` pipeline.
@@ -378,6 +438,18 @@ Single Plan 4b-8 with phased internal tasks — no broken intermediate states. S
 19. Performance-guard tests (§7.4).
 20. `CLAUDE.md` update with Core/Module/Shared layering block.
 
+**Phase F — Frontend (§5.9)**
+
+21. Types + generic access API hooks (`src/features/access/api/{access.api.ts,access.queries.ts}`, updated `files.types.ts` swapping `isPublic` → `visibility`).
+22. Files API hooks (`files.api.ts`/`files.queries.ts` — `useStorageSummary`, thin wrappers over generic access hooks for files).
+23. Shared components — `VisibilityBadge`, `SubjectPicker`, `SubjectStack`, `OwnershipTransferDialog`, `ResourceShareDialog` (in `src/components/common/`).
+24. `FilesPage` extensions — view tabs, visibility column, shared-with stack, row actions wiring, URL-synced filters.
+25. `StorageSummaryPanel` component + header button on `FilesPage`.
+26. Notification type wiring — extend existing notifications consumer with `ResourceShared` type (backend emission is stamped in Task 14).
+27. Permissions mirror — add `Files.ShareOwn` to `src/constants/permissions.ts`.
+28. i18n — extended `files.json` + new `access.json` (EN + AR); RTL layout verification.
+29. Playwright scenarios for the seven UX flows in §5.9 (added to §12 rename-app testing matrix).
+
 ## 9. Risks & mitigations
 
 | Risk | Mitigation |
@@ -413,6 +485,10 @@ Single Plan 4b-8 with phased internal tasks — no broken intermediate states. S
 - AI upload creates a `FileMetadata` row with `EntityType="AiDocument"` and `Visibility=Private`.
 - Storage summary endpoint reports per-category + per-entity-type bytes.
 - Ownership transfer demotes old owner to `Manager` grant.
+- `FilesPage` renders four view tabs (`All / My files / Shared with me / Public`) with URL-synced filters.
+- `ResourceShareDialog` component handles all share/visibility/grant operations for files (and is ready to accept `resourceType=AiAssistant` without code change).
+- `Public` visibility toggle is guarded to `Files.Manage` and requires explicit confirm.
+- Grantee receives a `ResourceShared` notification in the existing notifications inbox when granted explicit access.
 
 ## 12. Post-implementation verification (post-feature-testing skill)
 
@@ -420,7 +496,7 @@ Standard rename-app flow:
 
 1. `scripts/rename.ps1 -Name "_testAcl"` → `_testAcl/` on ports 5100/3100.
 2. Database reset; fresh seed with a default `TenantWide` assistant.
-3. Playwright scenarios:
+3. Playwright scenarios — backend + API:
    - Upload a doc as User A — other users can't see it.
    - Grant User B `Viewer` — B sees it.
    - Change visibility to `TenantWide` — everyone sees it.
@@ -428,4 +504,12 @@ Standard rename-app flow:
    - Chat with a `Private` assistant — 403 for non-grantees.
    - Admin sets `AccessMode=AssistantPrincipal` on a curated-knowledge assistant — non-admin chatters see curated docs regardless of doc ACL.
    - Transfer ownership — original owner demoted to Manager, new owner has full rights.
-4. Regression tests on Users/Roles/Files untouched surfaces.
+4. Playwright scenarios — frontend UX flows (§5.9):
+   - Owner shares a file from row menu → toast + grant appears in dialog on re-open.
+   - Grantee sees the file in "Shared with me" tab and in notifications inbox.
+   - Admin flips visibility to `Public` → confirm checkbox required; audit row created.
+   - Revoke grant inline in share dialog → toast + grant disappears.
+   - Transfer ownership → old owner demoted to Manager and retains file in "Shared with me".
+   - Storage summary panel renders category/entity-type breakdowns; platform-admin toggle switches to all-tenants.
+   - Non-`Files.Manage` user cannot toggle `Public` (control disabled with tooltip).
+5. Regression tests on Users/Roles/Files untouched surfaces.
