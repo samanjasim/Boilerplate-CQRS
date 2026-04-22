@@ -48,6 +48,13 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
             doc.MarkProcessing();
             await db.SaveChangesAsync(ct);
 
+            var fileMetadata = await appDb.Set<FileMetadata>()
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(f => f.Id == doc.FileId, ct)
+                ?? throw new InvalidOperationException(
+                    $"FileMetadata {doc.FileId} for AiDocument {doc.Id} not found.");
+
             if (!string.IsNullOrEmpty(doc.ContentHash))
             {
                 var match = await db.AiDocuments
@@ -151,6 +158,9 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
                                     PageNumber: child.PageNumber,
                                     ParentChunkId: parentDbId,
                                     TenantId: cloneTenantId,
+                                    FileId: fileMetadata.Id,
+                                    Visibility: fileMetadata.Visibility,
+                                    UploadedByUserId: fileMetadata.UploadedBy,
                                     ChunkType: child.ChunkType)));
                         }
 
@@ -167,13 +177,6 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
             var extractor = extractors.Resolve(doc.ContentType)
                 ?? throw new InvalidOperationException(
                     $"No extractor registered for content type '{doc.ContentType}'.");
-
-            var fileMetadata = await appDb.Set<FileMetadata>()
-                .IgnoreQueryFilters()
-                .AsNoTracking()
-                .FirstOrDefaultAsync(f => f.Id == doc.FileId, ct)
-                ?? throw new InvalidOperationException(
-                    $"FileMetadata {doc.FileId} for AiDocument {doc.Id} not found.");
 
             await using var fileStream = await storage.DownloadAsync(fileMetadata.StorageKey, ct);
             using var buffered = new MemoryStream();
@@ -278,6 +281,9 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
                         PageNumber: draft.PageNumber,
                         ParentChunkId: parentDbId,
                         TenantId: tenantId,
+                        FileId: fileMetadata.Id,
+                        Visibility: fileMetadata.Visibility,
+                        UploadedByUserId: fileMetadata.UploadedBy,
                         ChunkType: draft.ChunkType)));
             }
 

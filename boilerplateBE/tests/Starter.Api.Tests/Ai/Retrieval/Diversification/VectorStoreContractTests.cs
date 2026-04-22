@@ -27,7 +27,7 @@ public class VectorStoreContractTests
         public Task UpsertAsync(Guid t, IReadOnlyList<VectorPoint> p, CancellationToken ct) => Task.CompletedTask;
         public Task DeleteByDocumentAsync(Guid t, Guid d, CancellationToken ct) => Task.CompletedTask;
         public Task DropCollectionAsync(Guid t, CancellationToken ct) => Task.CompletedTask;
-        public Task<IReadOnlyList<VectorSearchHit>> SearchAsync(Guid t, float[] v, IReadOnlyCollection<Guid>? d, int limit, CancellationToken ct)
+        public Task<IReadOnlyList<VectorSearchHit>> SearchAsync(Guid t, float[] v, IReadOnlyCollection<Guid>? d, AclPayloadFilter? acl, int limit, CancellationToken ct)
             => Task.FromResult<IReadOnlyList<VectorSearchHit>>(Array.Empty<VectorSearchHit>());
 
         public Task<IReadOnlyDictionary<Guid, float[]>> GetVectorsByIdsAsync(

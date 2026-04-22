@@ -37,11 +37,12 @@ internal sealed class CircuitBreakingVectorStore : IVectorStore
         Guid tenantId,
         float[] queryVector,
         IReadOnlyCollection<Guid>? documentFilter,
+        AclPayloadFilter? aclFilter,
         int limit,
         CancellationToken ct)
     {
         return await _registry.Qdrant.ExecuteAsync(
-            async token => await _inner.SearchAsync(tenantId, queryVector, documentFilter, limit, token),
+            async token => await _inner.SearchAsync(tenantId, queryVector, documentFilter, aclFilter, limit, token),
             ct);
     }
 

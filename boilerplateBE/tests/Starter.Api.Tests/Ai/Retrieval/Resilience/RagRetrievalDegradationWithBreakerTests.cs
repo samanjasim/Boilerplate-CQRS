@@ -79,7 +79,7 @@ public class RagRetrievalDegradationWithBreakerTests
         {
             try
             {
-                await breaker.SearchAsync(tenantId, Array.Empty<float>(), null, 1, CancellationToken.None);
+                await breaker.SearchAsync(tenantId, Array.Empty<float>(), null, null, 1, CancellationToken.None);
             }
             catch (TimeoutException) { /* expected */ }
         }
@@ -117,7 +117,7 @@ public class RagRetrievalDegradationWithBreakerTests
         public Task DeleteByDocumentAsync(Guid t, Guid d, CancellationToken ct) => Task.CompletedTask;
         public Task DropCollectionAsync(Guid t, CancellationToken ct) => Task.CompletedTask;
         public Task<IReadOnlyList<VectorSearchHit>> SearchAsync(
-            Guid t, float[] v, IReadOnlyCollection<Guid>? d, int limit, CancellationToken ct)
+            Guid t, float[] v, IReadOnlyCollection<Guid>? d, AclPayloadFilter? acl, int limit, CancellationToken ct)
             => throw new TimeoutException("simulated qdrant outage");
         public Task<IReadOnlyDictionary<Guid, float[]>> GetVectorsByIdsAsync(
             Guid tenantId, IReadOnlyCollection<Guid> pointIds, CancellationToken ct)

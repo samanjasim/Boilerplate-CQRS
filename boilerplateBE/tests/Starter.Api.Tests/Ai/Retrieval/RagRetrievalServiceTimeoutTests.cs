@@ -31,7 +31,7 @@ public sealed class RagRetrievalServiceTimeoutTests
         public Task DeleteByDocumentAsync(Guid t, Guid d, CancellationToken ct) => Task.CompletedTask;
         public Task DropCollectionAsync(Guid t, CancellationToken ct) => Task.CompletedTask;
         public async Task<IReadOnlyList<VectorSearchHit>> SearchAsync(
-            Guid t, float[] q, IReadOnlyCollection<Guid>? filter, int limit, CancellationToken ct)
+            Guid t, float[] q, IReadOnlyCollection<Guid>? filter, AclPayloadFilter? acl, int limit, CancellationToken ct)
         {
             await Task.Delay(TimeSpan.FromSeconds(10), ct);
             return [];

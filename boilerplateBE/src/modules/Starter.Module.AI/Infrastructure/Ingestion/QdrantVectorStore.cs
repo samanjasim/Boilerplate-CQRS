@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
+using Starter.Domain.Common.Access.Enums;
 using Starter.Module.AI.Application.Services.Ingestion;
 using Starter.Module.AI.Application.Services.Retrieval;
 using Starter.Module.AI.Infrastructure.Settings;
@@ -63,15 +64,18 @@ internal sealed class QdrantVectorStore : IVectorStore
             Vectors = p.Vector,
             Payload =
             {
-                ["document_id"]     = p.Payload.DocumentId.ToString(),
-                ["document_name"]   = p.Payload.DocumentName,
-                ["chunk_level"]     = p.Payload.ChunkLevel,
-                ["chunk_index"]     = p.Payload.ChunkIndex,
-                ["section_title"]   = p.Payload.SectionTitle ?? string.Empty,
-                ["page_number"]     = p.Payload.PageNumber ?? 0,
-                ["parent_chunk_id"] = p.Payload.ParentChunkId?.ToString() ?? string.Empty,
-                ["tenant_id"]       = p.Payload.TenantId.ToString(),
-                ["chunk_type"]      = (int)p.Payload.ChunkType,
+                ["document_id"]         = p.Payload.DocumentId.ToString(),
+                ["document_name"]       = p.Payload.DocumentName,
+                ["chunk_level"]         = p.Payload.ChunkLevel,
+                ["chunk_index"]         = p.Payload.ChunkIndex,
+                ["section_title"]       = p.Payload.SectionTitle ?? string.Empty,
+                ["page_number"]         = p.Payload.PageNumber ?? 0,
+                ["parent_chunk_id"]     = p.Payload.ParentChunkId?.ToString() ?? string.Empty,
+                ["tenant_id"]           = p.Payload.TenantId.ToString(),
+                ["chunk_type"]          = (int)p.Payload.ChunkType,
+                ["file_id"]             = p.Payload.FileId.ToString(),
+                ["visibility"]          = (int)p.Payload.Visibility,
+                ["uploaded_by_user_id"] = p.Payload.UploadedByUserId.ToString(),
             }
         }).ToList();
 
@@ -108,6 +112,7 @@ internal sealed class QdrantVectorStore : IVectorStore
         Guid tenantId,
         float[] queryVector,
         IReadOnlyCollection<Guid>? documentFilter,
+        AclPayloadFilter? aclFilter,
         int limit,
         CancellationToken ct)
     {
@@ -142,6 +147,54 @@ internal sealed class QdrantVectorStore : IVectorStore
                     Match = new Match { Keywords = keywords }
                 }
             });
+        }
+
+        if (aclFilter is not null)
+        {
+            var shouldConds = new List<Condition>
+            {
+                new()
+                {
+                    Field = new FieldCondition
+                    {
+                        Key = "visibility",
+                        Match = new Match { Integer = (long)ResourceVisibility.TenantWide }
+                    }
+                },
+                new()
+                {
+                    Field = new FieldCondition
+                    {
+                        Key = "visibility",
+                        Match = new Match { Integer = (long)ResourceVisibility.Public }
+                    }
+                },
+                new()
+                {
+                    Field = new FieldCondition
+                    {
+                        Key = "uploaded_by_user_id",
+                        Match = new Match { Keyword = aclFilter.UserId.ToString() }
+                    }
+                },
+            };
+            if (aclFilter.GrantedFileIds.Count > 0)
+            {
+                var kws = new RepeatedStrings();
+                foreach (var id in aclFilter.GrantedFileIds) kws.Strings.Add(id.ToString());
+                shouldConds.Add(new Condition
+                {
+                    Field = new FieldCondition
+                    {
+                        Key = "file_id",
+                        Match = new Match { Keywords = kws }
+                    }
+                });
+            }
+
+            var minShould = new MinShould { MinCount = 1 };
+            minShould.Conditions.AddRange(shouldConds);
+            filter.MinShould = minShould;
         }
 
         var results = await _client.SearchAsync(

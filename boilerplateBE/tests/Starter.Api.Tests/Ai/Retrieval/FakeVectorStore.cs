@@ -21,15 +21,19 @@ internal sealed class FakeVectorStore : IVectorStore
     public Task DropCollectionAsync(Guid tenantId, CancellationToken ct)
         => Task.CompletedTask;
 
+    public AclPayloadFilter? LastAclFilter { get; private set; }
+
     public Task<IReadOnlyList<VectorSearchHit>> SearchAsync(
         Guid tenantId,
         float[] queryVector,
         IReadOnlyCollection<Guid>? documentFilter,
+        AclPayloadFilter? aclFilter,
         int limit,
         CancellationToken ct)
     {
         LastTenantId = tenantId;
         LastDocFilter = documentFilter;
+        LastAclFilter = aclFilter;
         IReadOnlyList<VectorSearchHit> result = HitsToReturn.Take(limit).ToList();
         return Task.FromResult(result);
     }

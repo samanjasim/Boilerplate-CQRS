@@ -1,3 +1,4 @@
+using Starter.Domain.Common.Access.Enums;
 using Starter.Module.AI.Domain.Enums;
 
 namespace Starter.Module.AI.Application.Services.Ingestion;
@@ -11,4 +12,7 @@ public sealed record VectorPayload(
     int? PageNumber,
     Guid? ParentChunkId,
     Guid TenantId,
+    Guid FileId,
+    ResourceVisibility Visibility,
+    Guid UploadedByUserId,
     ChunkType ChunkType = ChunkType.Body);

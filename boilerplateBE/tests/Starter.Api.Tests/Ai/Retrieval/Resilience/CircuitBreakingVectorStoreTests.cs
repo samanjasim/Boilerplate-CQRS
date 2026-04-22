@@ -20,7 +20,7 @@ public class CircuitBreakingVectorStoreTests
         inner.HitsToReturn = new List<VectorSearchHit> { new(Guid.NewGuid(), 0.9m) };
         var sut = new CircuitBreakingVectorStore(inner, BuildRegistry());
 
-        var hits = await sut.SearchAsync(Guid.NewGuid(), new float[] { 0.1f }, null, 10, CancellationToken.None);
+        var hits = await sut.SearchAsync(Guid.NewGuid(), new float[] { 0.1f }, null, null, 10, CancellationToken.None);
 
         hits.Should().HaveCount(1);
     }
@@ -34,11 +34,11 @@ public class CircuitBreakingVectorStoreTests
         // Trip the breaker.
         for (var i = 0; i < 5; i++)
         {
-            var act = async () => await sut.SearchAsync(Guid.NewGuid(), Array.Empty<float>(), null, 10, CancellationToken.None);
+            var act = async () => await sut.SearchAsync(Guid.NewGuid(), Array.Empty<float>(), null, null, 10, CancellationToken.None);
             await act.Should().ThrowAsync<TimeoutException>();
         }
 
-        var tripped = async () => await sut.SearchAsync(Guid.NewGuid(), Array.Empty<float>(), null, 10, CancellationToken.None);
+        var tripped = async () => await sut.SearchAsync(Guid.NewGuid(), Array.Empty<float>(), null, null, 10, CancellationToken.None);
         await tripped.Should().ThrowAsync<BrokenCircuitException>();
 
         inner.CallCount.Should().Be(5, "further calls short-circuit before the inner store is touched");
@@ -90,7 +90,7 @@ public class CircuitBreakingVectorStoreTests
         public Task DeleteByDocumentAsync(Guid t, Guid d, CancellationToken ct) => Task.CompletedTask;
         public Task DropCollectionAsync(Guid t, CancellationToken ct) => Task.CompletedTask;
         public Task<IReadOnlyList<VectorSearchHit>> SearchAsync(
-            Guid t, float[] v, IReadOnlyCollection<Guid>? d, int limit, CancellationToken ct)
+            Guid t, float[] v, IReadOnlyCollection<Guid>? d, AclPayloadFilter? acl, int limit, CancellationToken ct)
         {
             CallCount++;
             throw _ex;

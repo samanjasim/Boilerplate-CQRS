@@ -209,8 +209,8 @@ public sealed class MmrIntegrationTests
         public Task DropCollectionAsync(Guid t, CancellationToken ct) => Task.CompletedTask;
 
         public Task<IReadOnlyList<VectorSearchHit>> SearchAsync(
-            Guid t, float[] q, IReadOnlyCollection<Guid>? f, int l, CancellationToken ct)
-            => _inner.SearchAsync(t, q, f, l, ct);
+            Guid t, float[] q, IReadOnlyCollection<Guid>? f, AclPayloadFilter? acl, int l, CancellationToken ct)
+            => _inner.SearchAsync(t, q, f, acl, l, ct);
 
         public Task<IReadOnlyDictionary<Guid, float[]>> GetVectorsByIdsAsync(
             Guid t, IReadOnlyCollection<Guid> ids, CancellationToken ct)

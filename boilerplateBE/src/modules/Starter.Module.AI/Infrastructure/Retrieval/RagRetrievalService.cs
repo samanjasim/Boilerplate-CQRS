@@ -256,7 +256,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         {
             var v = vectors[i];
             var hits = await WithTimeoutAsync(
-                innerCt => _vectorStore.SearchAsync(tenantId, v, documentFilter, retrievalTopK, innerCt),
+                innerCt => _vectorStore.SearchAsync(tenantId, v, documentFilter, aclFilter: null, retrievalTopK, innerCt),
                 _settings.StageTimeoutVectorMs,
                 RagStages.VectorSearch(i),
                 degraded,

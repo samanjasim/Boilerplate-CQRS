@@ -197,6 +197,7 @@ public sealed class ReprocessDocumentCommandHandlerTests
             Guid tenantId,
             float[] queryVector,
             IReadOnlyCollection<Guid>? documentFilter,
+            Starter.Module.AI.Application.Services.Retrieval.AclPayloadFilter? aclFilter,
             int limit,
             CancellationToken ct)
         {

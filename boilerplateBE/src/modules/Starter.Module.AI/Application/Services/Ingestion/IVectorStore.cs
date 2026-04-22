@@ -12,6 +12,7 @@ public interface IVectorStore
         Guid tenantId,
         float[] queryVector,
         IReadOnlyCollection<Guid>? documentFilter,
+        AclPayloadFilter? aclFilter,
         int limit,
         CancellationToken ct);
 
