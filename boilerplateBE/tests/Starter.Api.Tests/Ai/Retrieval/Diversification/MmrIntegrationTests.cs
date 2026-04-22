@@ -154,6 +154,50 @@ public sealed class MmrIntegrationTests
         ctx.DegradedStages.Should().NotContain(RagStages.MmrDiversify);
     }
 
+    [Fact]
+    public async Task EnableMmr_true_degrades_when_all_embeddings_missing()
+    {
+        await using var db = CreateDb();
+        var chunks = await SeedChunksAsync(db, 4);
+
+        // Search returns 4 reranked hits, but VectorsById is empty — simulates
+        // eventual consistency between DB and Qdrant (point ids exist in the chunk
+        // table but aren't yet in the vector store). MMR must surface this as a
+        // degraded stage even though GetVectorsByIdsAsync did not throw.
+        var vs = new FakeVectorStore
+        {
+            HitsToReturn =
+            [
+                new VectorSearchHit(chunks[0].QdrantPointId, 0.99m),
+                new VectorSearchHit(chunks[1].QdrantPointId, 0.98m),
+                new VectorSearchHit(chunks[2].QdrantPointId, 0.97m),
+                new VectorSearchHit(chunks[3].QdrantPointId, 0.96m),
+            ]
+        };
+
+        var settings = new AiRagSettings
+        {
+            TopK = 2,
+            RetrievalTopK = 20,
+            EnableMmr = true,
+            MmrLambda = 0.5,
+            IncludeParentContext = false,
+        };
+
+        var svc = BuildService(db, vs, settings);
+
+        var assistant = AiAssistant.Create(Guid.NewGuid(), "A", null, "p");
+        assistant.SetRagScope(AiRagScope.AllTenantDocuments);
+
+        var ctx = await svc.RetrieveForTurnAsync(
+            assistant, "query", Array.Empty<RagHistoryMessage>(), CancellationToken.None);
+
+        ctx.DegradedStages.Should().Contain(RagStages.MmrDiversify);
+        ctx.Children.Should().HaveCount(2);
+        ctx.Children[0].ChunkId.Should().Be(chunks[0].Id);
+        ctx.Children[1].ChunkId.Should().Be(chunks[1].Id);
+    }
+
     private sealed class FailingVectorStore : IVectorStore
     {
         private readonly FakeVectorStore _inner;

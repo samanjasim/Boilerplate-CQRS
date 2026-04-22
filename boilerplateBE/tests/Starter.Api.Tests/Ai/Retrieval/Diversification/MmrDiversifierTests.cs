@@ -10,6 +10,12 @@ public class MmrDiversifierTests
     [Fact]
     public void Lambda_one_is_pure_relevance_and_short_circuits()
     {
+        // Adversarial embeddings: if the full MMR algorithm were applied at λ=1.0,
+        // it would still pick id1 then id2 — but id2's embedding is a near-duplicate
+        // of id1's, while id3 is orthogonal. A diversifier that silently applied
+        // MMR with any λ < 1 would prefer id1, id3. The short-circuit is proven by
+        // output matching pure relevance order despite the diversity signal being
+        // available.
         var id1 = Guid.NewGuid(); var id2 = Guid.NewGuid(); var id3 = Guid.NewGuid();
         var hits = new[]
         {
@@ -19,7 +25,9 @@ public class MmrDiversifierTests
         };
         var embeddings = new Dictionary<Guid, float[]>
         {
-            [id1] = new[] { 1f, 0f }, [id2] = new[] { 1f, 0f }, [id3] = new[] { 1f, 0f }
+            [id1] = new[] { 1f, 0f },
+            [id2] = new[] { 1f, 0f },
+            [id3] = new[] { 0f, 1f },
         };
 
         var result = MmrDiversifier.Diversify(hits, embeddings, lambda: 1.0, topK: 2);
@@ -122,6 +130,36 @@ public class MmrDiversifierTests
         var result = MmrDiversifier.Diversify(hits, embeddings, lambda: 0.0, topK: 2);
 
         result.Select(h => h.ChunkId).Should().ContainInOrder(a, c);
+    }
+
+    [Fact]
+    public void All_missing_embeddings_returns_empty()
+    {
+        var id1 = Guid.NewGuid(); var id2 = Guid.NewGuid();
+        var hits = new[]
+        {
+            new HybridHit(id1, 0m, 0m, 0.9m),
+            new HybridHit(id2, 0m, 0m, 0.8m),
+        };
+
+        var result = MmrDiversifier.Diversify(
+            hits, new Dictionary<Guid, float[]>(), lambda: 0.5, topK: 2);
+
+        result.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-3)]
+    public void Non_positive_topK_returns_empty(int topK)
+    {
+        var id1 = Guid.NewGuid();
+        var hits = new[] { new HybridHit(id1, 0m, 0m, 0.9m) };
+        var embeddings = new Dictionary<Guid, float[]> { [id1] = new[] { 1f, 0f } };
+
+        var result = MmrDiversifier.Diversify(hits, embeddings, lambda: 0.5, topK: topK);
+
+        result.Should().BeEmpty();
     }
 
     [Fact]
