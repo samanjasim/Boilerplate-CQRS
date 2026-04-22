@@ -1124,6 +1124,7 @@
       "bulkResultFailed": "شکستخواردوو",
       "bulkResultSkipped": "بەسەرچوو",
       "bulkResultUnknownTask": "ئەرک",
+      "bulkResultRetryFailed": "دووبارەکردنەوە ({{count}} شکستخواردوو)",
       "bulkCommentPlaceholder": "لێدوانێکی ئارەزوومەندانە بۆ هەموو ئەرکەکان",
       "bulkViewDetails": "بینینی وردەکاری",
       "clearSelection": "پاککردنەوەی دیاریکراو",

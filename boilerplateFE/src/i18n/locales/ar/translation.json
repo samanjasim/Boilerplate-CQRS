@@ -1170,6 +1170,7 @@
       "bulkResultFailed": "فاشلة",
       "bulkResultSkipped": "متخطّاة",
       "bulkResultUnknownTask": "مهمة",
+      "bulkResultRetryFailed": "إعادة المحاولة ({{count}} فاشلة)",
       "bulkCommentPlaceholder": "تعليق اختياري مطبق على جميع المهام",
       "bulkViewDetails": "عرض التفاصيل",
       "clearSelection": "مسح التحديد",

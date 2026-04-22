@@ -9,20 +9,24 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import { ChevronDown, ChevronRight, RotateCw } from 'lucide-react';
 import type { BatchExecuteResult } from '@/types/workflow.types';
 
 interface Props {
   result: BatchExecuteResult | null;
   taskLabels?: Record<string, string>;
+  onRetry?: () => void;
+  isRetrying?: boolean;
   onClose: () => void;
 }
 
-export function BulkResultDialog({ result, taskLabels, onClose }: Props) {
+export function BulkResultDialog({ result, taskLabels, onRetry, isRetrying, onClose }: Props) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
 
   const open = result !== null;
+  const canRetry = !!onRetry && (result?.failed ?? 0) > 0;
 
   return (
     <Dialog
@@ -90,7 +94,25 @@ export function BulkResultDialog({ result, taskLabels, onClose }: Props) {
         )}
 
         <DialogFooter>
-          <Button onClick={onClose}>{t('common.close', 'Close')}</Button>
+          {canRetry && (
+            <Button
+              variant="outline"
+              onClick={onRetry}
+              disabled={isRetrying}
+            >
+              {isRetrying ? (
+                <Spinner size="sm" className="ltr:mr-2 rtl:ml-2" />
+              ) : (
+                <RotateCw className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+              )}
+              {t('workflow.inbox.bulkResultRetryFailed', {
+                count: result?.failed ?? 0,
+              })}
+            </Button>
+          )}
+          <Button onClick={onClose} disabled={isRetrying}>
+            {t('common.close', 'Close')}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
