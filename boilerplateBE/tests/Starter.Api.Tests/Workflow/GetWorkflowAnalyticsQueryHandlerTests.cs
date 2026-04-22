@@ -348,6 +348,56 @@ public sealed class GetWorkflowAnalyticsQueryHandlerTests : IDisposable
         activity[1].Returns.Should().Be(1);
     }
 
+    [Fact]
+    public async Task Handle_ApproverActivity_AvgResponseTimeHours_WhenMatchedTask()
+    {
+        var def = CreateTenantDefinition();
+        var now = DateTime.UtcNow;
+        var alice = Guid.NewGuid();
+
+        var inst = SeedInstance(def.Id, now.AddDays(-3), InstanceStatus.Active);
+
+        // Seed a step for alice
+        var stepTime = now.AddDays(-2);
+        SeedStep(inst.Id, "Review", "Approved", StepType.HumanTask, "approve", alice, stepTime);
+
+        // Seed a matching completed ApprovalTask:
+        // - created 2 hours before the step timestamp
+        // - completed exactly at the step timestamp
+        var task = ApprovalTask.Create(
+            tenantId: _tenantId,
+            instanceId: inst.Id,
+            stepName: "Review",
+            assigneeUserId: alice,
+            assigneeRole: null,
+            assigneeStrategyJson: null,
+            entityType: "Order",
+            entityId: inst.Id,
+            definitionName: "analytics-test",
+            availableActionsJson: "[]");
+        _db.ApprovalTasks.Add(task);
+        _db.SaveChanges();
+
+        // Backdate CreatedAt 2 hours before stepTime
+        _db.Entry(task).Property("CreatedAt").CurrentValue = stepTime.AddHours(-2);
+        // Backdate CompletedAt to match stepTime exactly
+        _db.Entry(task).Property("CompletedAt").CurrentValue = stepTime;
+        _db.Entry(task).Property("CompletedByUserId").CurrentValue = alice;
+        _db.Entry(task).Property("Status").CurrentValue = Starter.Module.Workflow.Domain.Enums.TaskStatus.Completed;
+        _db.SaveChanges();
+
+        var result = await _sut.Handle(
+            new GetWorkflowAnalyticsQuery(def.Id, WindowSelector.ThirtyDays),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        var activity = result.Value.ApproverActivity;
+        activity.Should().HaveCount(1);
+        activity[0].UserId.Should().Be(alice);
+        activity[0].AvgResponseTimeHours.Should().NotBeNull();
+        activity[0].AvgResponseTimeHours.Should().BeApproximately(2.0, 0.1);
+    }
+
     // ── Fixture helpers ──────────────────────────────────────────────────────
 
     private void SeedPendingTask(Guid instanceId, string stepName, Guid assigneeUserId)

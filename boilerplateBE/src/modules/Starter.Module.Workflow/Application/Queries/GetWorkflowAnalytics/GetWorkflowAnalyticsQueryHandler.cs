@@ -302,6 +302,8 @@ internal sealed class GetWorkflowAnalyticsQueryHandler(
     private async Task<IReadOnlyList<StuckInstanceDto>> ComputeStuckInstancesAsync(
         Guid definitionId, DateTime windowStart, DateTime windowEnd, DateTime now, CancellationToken ct)
     {
+        // "Stuck" is scoped to instances that started within the analytics window and are
+        // still Active. Instances predating the window are intentionally excluded.
         var activeRows = await db.WorkflowInstances
             .AsNoTracking()
             .Where(i => i.DefinitionId == definitionId
@@ -414,7 +416,10 @@ internal sealed class GetWorkflowAnalyticsQueryHandler(
                 {
                     var matchedTask = completedTasks.FirstOrDefault(t =>
                         t.UserId == userId &&
-                        Math.Abs((t.CompletedAt - step.Timestamp).TotalSeconds) < 1.0);
+                        // Heuristic join: ApprovalTask.CompletedAt and WorkflowStep.Timestamp are both
+                        // written in the same command handler and are typically within milliseconds.
+                        // 60-second window guards against thread-switch or retry delays.
+                        Math.Abs((t.CompletedAt - step.Timestamp).TotalSeconds) < 60.0);
                     if (matchedTask != null)
                         samples.Add((matchedTask.CompletedAt - matchedTask.CreatedAt).TotalHours);
                 }
@@ -443,7 +448,7 @@ internal sealed class GetWorkflowAnalyticsQueryHandler(
 
         return grouped.Select(x => new ApproverActivityDto(
             UserId: x.UserId,
-            UserDisplayName: displayNameLookup.TryGetValue(x.UserId, out var name) ? name : x.UserId.ToString(),
+            UserDisplayName: displayNameLookup.TryGetValue(x.UserId, out var name) ? name : null,
             Approvals: x.Approvals,
             Rejections: x.Rejections,
             Returns: x.Returns,
