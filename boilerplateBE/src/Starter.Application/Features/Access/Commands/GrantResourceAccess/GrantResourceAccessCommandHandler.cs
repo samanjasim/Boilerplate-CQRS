@@ -15,6 +15,7 @@ internal sealed class GrantResourceAccessCommandHandler(
     IResourceAccessService access,
     IResourceOwnershipProbe probe,
     IApplicationDbContext db,
+    INotificationService notifications,
     ICurrentUserService currentUser)
     : IRequestHandler<GrantResourceAccessCommand, Result<Guid>>
 {
@@ -57,6 +58,26 @@ internal sealed class GrantResourceAccessCommandHandler(
             TenantId = currentUser.TenantId
         });
         await db.SaveChangesAsync(ct);
+
+        if (request.SubjectType == GrantSubjectType.User)
+        {
+            var nameResult = await probe.GetResourceDisplayNameAsync(request.ResourceType, request.ResourceId, ct);
+            var resourceName = nameResult.IsSuccess ? nameResult.Value : request.ResourceType;
+            var data = JsonSerializer.Serialize(new
+            {
+                request.ResourceType,
+                request.ResourceId,
+                Level = request.Level.ToString()
+            });
+            await notifications.CreateAsync(
+                userId: request.SubjectId,
+                tenantId: currentUser.TenantId,
+                type: "ResourceShared",
+                title: $"Shared with you: {resourceName}",
+                message: $"{currentUser.Email} gave you {request.Level} access to {resourceName}.",
+                data: data,
+                ct: ct);
+        }
 
         return Result.Success(id);
     }

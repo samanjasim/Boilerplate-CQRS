@@ -28,6 +28,16 @@ public sealed class AiAssistantOwnershipHandler(
             : Result.Success(assistant.CreatedByUserId);
     }
 
+    public async Task<Result<string>> GetDisplayNameAsync(Guid resourceId, CancellationToken ct)
+    {
+        var assistant = await db.AiAssistants
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(a => a.Id == resourceId, ct);
+        return assistant is null
+            ? Result.Failure<string>(AccessErrors.ResourceNotFound)
+            : Result.Success(assistant.Name);
+    }
+
     public async Task<Result> SetVisibilityAsync(Guid resourceId, ResourceVisibility visibility, CancellationToken ct)
     {
         var assistant = await db.AiAssistants

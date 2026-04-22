@@ -25,6 +25,14 @@ public sealed class FileOwnershipHandler(
             : Result.Success(file.UploadedBy);
     }
 
+    public async Task<Result<string>> GetDisplayNameAsync(Guid resourceId, CancellationToken ct)
+    {
+        var file = await db.Set<FileMetadata>().FirstOrDefaultAsync(f => f.Id == resourceId, ct);
+        return file is null
+            ? Result.Failure<string>(AccessErrors.ResourceNotFound)
+            : Result.Success(file.FileName);
+    }
+
     public async Task<Result> SetVisibilityAsync(Guid resourceId, ResourceVisibility visibility, CancellationToken ct)
     {
         var file = await db.Set<FileMetadata>().FirstOrDefaultAsync(f => f.Id == resourceId, ct);

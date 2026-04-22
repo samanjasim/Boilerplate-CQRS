@@ -56,6 +56,11 @@ public sealed class ResourceOwnershipProbe(
             ? h.GetOwnerAsync(resourceId, ct)
             : Task.FromResult(Result.Failure<Guid>(AccessErrors.ResourceNotFound));
 
+    public Task<Result<string>> GetResourceDisplayNameAsync(string resourceType, Guid resourceId, CancellationToken ct) =>
+        _handlers.TryGetValue(resourceType, out var h)
+            ? h.GetDisplayNameAsync(resourceId, ct)
+            : Task.FromResult(Result.Failure<string>(AccessErrors.ResourceNotFound));
+
     public Task<Result> SetVisibilityAsync(string resourceType, Guid resourceId, ResourceVisibility visibility, CancellationToken ct) =>
         _handlers.TryGetValue(resourceType, out var h)
             ? h.SetVisibilityAsync(resourceId, visibility, ct)
