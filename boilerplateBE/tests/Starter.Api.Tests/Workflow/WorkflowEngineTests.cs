@@ -207,6 +207,57 @@ public sealed class WorkflowEngineTests : IDisposable
         instanceId.Should().Be(Guid.Empty);
     }
 
+    // ── 3b. StartAsync — tenant-scoped clone wins over global template ───────
+    //
+    // A tenant can clone a template to customize it (e.g. adding conditional
+    // transitions). Clone preserves the Name, so two definitions now share the
+    // same name: the original template (TenantId=null) and the clone
+    // (TenantId=tenant). StartAsync MUST always pick the tenant-scoped clone
+    // when one exists, so the tenant's customizations take effect instead of
+    // falling back to the unmodified template.
+    [Fact]
+    public async Task StartAsync_TenantHasClone_PicksCloneOverTemplate()
+    {
+        // Template (global, no tenant) — no conditions, simple "approve" path
+        var templateStates = new List<WorkflowStateConfig>
+        {
+            new("Draft", "Draft", "Initial"),
+            new("Approved", "Approved", "Terminal"),
+        };
+        var templateTransitions = new List<WorkflowTransitionConfig>
+        {
+            new("Draft", "Approved", "submit"),
+        };
+        var template = WorkflowDefinition.Create(
+            tenantId: null,
+            name: "SharedName",
+            displayName: "Template",
+            entityType: "Order",
+            statesJson: JsonSerializer.Serialize(templateStates),
+            transitionsJson: JsonSerializer.Serialize(templateTransitions),
+            isTemplate: true,
+            sourceModule: "Tests");
+
+        _db.WorkflowDefinitions.Add(template);
+        await _db.SaveChangesAsync();
+
+        // Tenant clone — same name, tenant-scoped, customized display
+        var clone = template.Clone(_tenantId);
+        _db.WorkflowDefinitions.Add(clone);
+        await _db.SaveChangesAsync();
+
+        var instanceId = await _sut.StartAsync(
+            "Order", Guid.NewGuid(), "SharedName",
+            _initiatorId, _tenantId);
+
+        instanceId.Should().NotBe(Guid.Empty);
+
+        var instance = await _db.WorkflowInstances
+            .FirstOrDefaultAsync(i => i.Id == instanceId);
+
+        instance!.DefinitionId.Should().Be(clone.Id, "the tenant-scoped clone must always win over the template");
+    }
+
     // ── 4. ExecuteTaskAsync — approve transitions to next state ──────────────
 
     [Fact]

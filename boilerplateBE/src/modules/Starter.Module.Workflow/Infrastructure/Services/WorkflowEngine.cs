@@ -41,11 +41,21 @@ public sealed class WorkflowEngine(
         Guid initiatorUserId, Guid? tenantId, string? entityDisplayName = null,
         CancellationToken ct = default)
     {
+        // Resolve with a total ordering so the same call always picks the
+        // same row: tenant-scoped definitions beat global templates, and
+        // within the same scope the highest Version wins (tie-broken by Id
+        // to keep the result deterministic even in a same-version race).
+        // A tenant's clone of a template must always take precedence — the
+        // clone is where the tenant's customizations live.
         var definition = await context.WorkflowDefinitions
-            .FirstOrDefaultAsync(d =>
+            .Where(d =>
                 d.Name == definitionName
                 && d.IsActive
-                && (d.TenantId == null || d.TenantId == tenantId), ct);
+                && (d.TenantId == null || d.TenantId == tenantId))
+            .OrderBy(d => d.TenantId == null ? 1 : 0)
+            .ThenByDescending(d => d.Version)
+            .ThenBy(d => d.Id)
+            .FirstOrDefaultAsync(ct);
 
         if (definition is null)
         {
