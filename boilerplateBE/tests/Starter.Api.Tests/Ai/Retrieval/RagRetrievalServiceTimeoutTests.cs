@@ -78,7 +78,7 @@ public sealed class RagRetrievalServiceTimeoutTests
             NullLogger<RagRetrievalService>.Instance);
 
         var tenantId = Guid.NewGuid();
-        var assistant = AiAssistant.Create(tenantId, "A", null, "p");
+        var assistant = AiAssistant.Create(tenantId, "A", null, "p", createdByUserId: Guid.NewGuid());
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
         var ctx = await svc.RetrieveForTurnAsync(assistant, "query", Array.Empty<RagHistoryMessage>(), CancellationToken.None);
@@ -110,7 +110,7 @@ public sealed class RagRetrievalServiceTimeoutTests
             NullLogger<RagRetrievalService>.Instance);
 
         var tenantId = Guid.NewGuid();
-        var assistant = AiAssistant.Create(tenantId, "A", null, "p");
+        var assistant = AiAssistant.Create(tenantId, "A", null, "p", createdByUserId: Guid.NewGuid());
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
         using var callerCts = new CancellationTokenSource();

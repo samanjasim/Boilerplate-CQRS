@@ -7,7 +7,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Starter.Abstractions.Capabilities;
+using Starter.Application.Common.Access;
+using Starter.Application.Common.Access.Contracts;
+using Starter.Application.Common.Access.DTOs;
 using Starter.Application.Common.Interfaces;
+using Starter.Domain.Common.Access.Enums;
 using Starter.Module.AI.Application.DTOs;
 using Starter.Module.AI.Application.Services;
 using Starter.Module.AI.Application.Services.Retrieval;
@@ -137,6 +141,7 @@ internal sealed class ChatExecutionTestFixture
         services.AddSingleton<ISender, NullSender>();
 
         services.AddSingleton<IAiProviderFactory>(new ScriptedProviderFactory(FakeProvider));
+        services.AddSingleton<IResourceAccessService>(new StubResourceAccessService());
 
         services.AddScoped<IChatExecutionService, ChatExecutionService>();
 
@@ -152,6 +157,7 @@ internal sealed class ChatExecutionTestFixture
             name: $"A-{Guid.NewGuid():N}",
             description: null,
             systemPrompt: "You are a helpful assistant.",
+            createdByUserId: Guid.NewGuid(),
             provider: AiProviderType.Anthropic,
             model: "claude-sonnet-4",
             maxAgentSteps: 1);
@@ -373,6 +379,29 @@ internal sealed class RecordingWebhookPublisher : IWebhookPublisher
 }
 
 internal sealed record RecordedEvent(string EventType, Guid? TenantId, object Data);
+
+internal sealed class StubResourceAccessService : IResourceAccessService
+{
+    public Task<Guid> GrantAsync(string resourceType, Guid resourceId, GrantSubjectType subjectType, Guid subjectId, AccessLevel level, CancellationToken ct) =>
+        Task.FromResult(Guid.NewGuid());
+
+    public Task RevokeAsync(Guid grantId, CancellationToken ct) => Task.CompletedTask;
+
+    public Task RevokeAllForResourceAsync(string resourceType, Guid resourceId, CancellationToken ct) => Task.CompletedTask;
+
+    public Task<IReadOnlyList<ResourceGrantDto>> ListGrantsAsync(string resourceType, Guid resourceId, CancellationToken ct) =>
+        Task.FromResult<IReadOnlyList<ResourceGrantDto>>([]);
+
+    public Task<bool> CanAccessAsync(ICurrentUserService user, string resourceType, Guid resourceId, AccessLevel minLevel, CancellationToken ct) =>
+        Task.FromResult(true);
+
+    public Task<AccessResolution> ResolveAccessibleResourcesAsync(ICurrentUserService user, string resourceType, CancellationToken ct) =>
+        Task.FromResult(new AccessResolution(IsAdminBypass: true, ExplicitGrantedResourceIds: []));
+
+    public Task InvalidateUserAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
+
+    public Task InvalidateRoleMembersAsync(Guid roleId, CancellationToken ct) => Task.CompletedTask;
+}
 
 internal sealed class StubAiToolRegistry : IAiToolRegistry
 {

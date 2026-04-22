@@ -99,7 +99,7 @@ public class RagRetrievalDegradationWithBreakerTests
             Options.Create(settings),
             NullLogger<RagRetrievalService>.Instance);
 
-        var assistant = AiAssistant.Create(tenantId, "t", null, "x");
+        var assistant = AiAssistant.Create(tenantId, "t", null, "x", createdByUserId: Guid.NewGuid());
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
         var ctx = await svc.RetrieveForTurnAsync(

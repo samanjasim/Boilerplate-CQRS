@@ -1,7 +1,7 @@
 using Starter.Domain.Common.Access.Enums;
 using Starter.Shared.Results;
 
-namespace Starter.Infrastructure.Services.Access;
+namespace Starter.Application.Common.Access;
 
 public interface IResourceOwnershipHandler
 {

@@ -2,8 +2,16 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Starter.Application.Common.Access.Contracts;
+using Starter.Application.Features.Access.Commands.GrantResourceAccess;
+using Starter.Application.Features.Access.Commands.RevokeResourceAccess;
+using Starter.Application.Features.Access.Commands.SetResourceVisibility;
+using Starter.Application.Features.Access.Commands.TransferResourceOwnership;
+using Starter.Application.Features.Access.Queries.ListResourceGrants;
+using Starter.Domain.Common.Access.Enums;
 using Starter.Module.AI.Application.Commands.CreateAssistant;
 using Starter.Module.AI.Application.Commands.DeleteAssistant;
+using Starter.Module.AI.Application.Commands.SetAssistantAccessMode;
 using Starter.Module.AI.Application.Commands.UpdateAssistant;
 using Starter.Module.AI.Application.DTOs;
 using Starter.Module.AI.Application.Queries.GetAssistantById;
@@ -82,4 +90,99 @@ public sealed class AiAssistantsController(ISender mediator)
         var result = await Mediator.Send(new DeleteAssistantCommand(id), ct);
         return HandleResult(result);
     }
+
+    [HttpGet("{id:guid}/grants")]
+    [Authorize(Policy = AiPermissions.ViewConversations)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ListGrants(Guid id, CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(new ListResourceGrantsQuery(ResourceTypes.AiAssistant, id), ct);
+        return HandleResult(result);
+    }
+
+    [HttpPost("{id:guid}/grants")]
+    [Authorize(Policy = AiPermissions.ManageAssistants)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GrantAccess(
+        Guid id,
+        [FromBody] GrantAssistantAccessRequest request,
+        CancellationToken ct = default)
+    {
+        var command = new GrantResourceAccessCommand(
+            ResourceTypes.AiAssistant,
+            id,
+            request.SubjectType,
+            request.SubjectId,
+            request.Level);
+        var result = await Mediator.Send(command, ct);
+        return HandleResult(result);
+    }
+
+    [HttpDelete("{id:guid}/grants/{grantId:guid}")]
+    [Authorize(Policy = AiPermissions.ManageAssistants)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RevokeGrant(Guid id, Guid grantId, CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(new RevokeResourceAccessCommand(grantId), ct);
+        return HandleResult(result);
+    }
+
+    [HttpPut("{id:guid}/visibility")]
+    [Authorize(Policy = AiPermissions.ManageAssistants)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SetVisibility(
+        Guid id,
+        [FromBody] SetAssistantVisibilityRequest request,
+        CancellationToken ct = default)
+    {
+        var command = new SetResourceVisibilityCommand(ResourceTypes.AiAssistant, id, request.Visibility);
+        var result = await Mediator.Send(command, ct);
+        return HandleResult(result);
+    }
+
+    [HttpPut("{id:guid}/access-mode")]
+    [Authorize(Policy = AiPermissions.ManageAssistants)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SetAccessMode(
+        Guid id,
+        [FromBody] SetAssistantAccessModeRequest request,
+        CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(
+            new SetAssistantAccessModeCommand(id, request.AccessMode), ct);
+        return HandleResult(result);
+    }
+
+    [HttpPost("{id:guid}/transfer-ownership")]
+    [Authorize(Policy = AiPermissions.ManageAssistants)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> TransferOwnership(
+        Guid id,
+        [FromBody] TransferAssistantOwnershipRequest request,
+        CancellationToken ct = default)
+    {
+        var command = new TransferResourceOwnershipCommand(
+            ResourceTypes.AiAssistant, id, request.NewOwnerId);
+        var result = await Mediator.Send(command, ct);
+        return HandleResult(result);
+    }
 }
+
+public sealed record GrantAssistantAccessRequest(
+    GrantSubjectType SubjectType,
+    Guid SubjectId,
+    AccessLevel Level);
+
+public sealed record SetAssistantVisibilityRequest(ResourceVisibility Visibility);
+
+public sealed record SetAssistantAccessModeRequest(AssistantAccessMode AccessMode);
+
+public sealed record TransferAssistantOwnershipRequest(Guid NewOwnerId);

@@ -110,6 +110,7 @@ public sealed class AiToolRegistryServiceTests
             name: "Test Assistant",
             description: null,
             systemPrompt: "system",
+            createdByUserId: Guid.NewGuid(),
             provider: null,
             model: null,
             temperature: 0.2,

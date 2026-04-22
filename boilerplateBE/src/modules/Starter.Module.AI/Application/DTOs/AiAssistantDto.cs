@@ -1,3 +1,4 @@
+using Starter.Domain.Common.Access.Enums;
 using Starter.Module.AI.Domain.Enums;
 
 namespace Starter.Module.AI.Application.DTOs;
@@ -18,4 +19,7 @@ public sealed record AiAssistantDto(
     bool IsActive,
     DateTime CreatedAt,
     DateTime? ModifiedAt,
-    AiRagScope RagScope);
+    AiRagScope RagScope,
+    ResourceVisibility Visibility,
+    AssistantAccessMode AccessMode,
+    Guid CreatedByUserId);

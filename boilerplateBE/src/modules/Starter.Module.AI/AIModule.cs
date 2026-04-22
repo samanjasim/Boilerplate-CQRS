@@ -3,12 +3,16 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Modularity;
+using Starter.Application.Common.Access;
+using Starter.Application.Common.Interfaces;
+using Starter.Domain.Common.Access.Enums;
 using Starter.Module.AI.Application.Services;
 using Starter.Module.AI.Application.Services.Ingestion;
 using Starter.Module.AI.Application.Services.Retrieval;
 using Starter.Module.AI.Constants;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Module.AI.Domain.Enums;
+using Starter.Module.AI.Infrastructure.Access;
 using Starter.Module.AI.Infrastructure.Ingestion;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Providers;
@@ -111,6 +115,8 @@ public sealed class AIModule : IModule
         services.AddSingleton<IAiToolDefinition, Infrastructure.Tools.ListMyConversationsAiTool>();
         services.AddHostedService<AiToolRegistrySyncHostedService>();
 
+        services.AddScoped<IResourceOwnershipHandler, AiAssistantOwnershipHandler>();
+
         return services;
     }
 
@@ -187,6 +193,14 @@ public sealed class AIModule : IModule
         if (exists)
             return;
 
+        var appDb = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
+        var ownerId = await appDb.Users
+            .OrderBy(u => u.CreatedAt)
+            .Select(u => u.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (ownerId == Guid.Empty)
+            return;
+
         var sample = AiAssistant.Create(
             tenantId: null,
             name: SampleName,
@@ -194,6 +208,7 @@ public sealed class AIModule : IModule
             systemPrompt:
                 "You are a friendly assistant. When the user asks about their own " +
                 "conversations, call the list_my_conversations tool and summarise the results.",
+            createdByUserId: ownerId,
             provider: null,
             model: null,
             temperature: 0.2,
@@ -202,6 +217,7 @@ public sealed class AIModule : IModule
             maxAgentSteps: 5,
             isActive: true);
         sample.SetEnabledTools(new[] { "list_my_conversations" });
+        sample.SetVisibility(ResourceVisibility.TenantWide);
         context.AiAssistants.Add(sample);
         await context.SaveChangesAsync(cancellationToken);
     }

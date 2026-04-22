@@ -36,6 +36,7 @@ internal sealed class CreateAssistantCommandHandler(
             name: normalized,
             description: request.Description,
             systemPrompt: request.SystemPrompt,
+            createdByUserId: currentUser.UserId!.Value,
             provider: request.Provider,
             model: request.Model,
             temperature: request.Temperature,

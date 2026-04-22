@@ -96,7 +96,7 @@ public sealed class MmrIntegrationTests
 
         var svc = BuildService(db, vs, settings);
 
-        var assistant = AiAssistant.Create(Guid.NewGuid(), "A", null, "p");
+        var assistant = AiAssistant.Create(Guid.NewGuid(), "A", null, "p", createdByUserId: Guid.NewGuid());
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
         var ctx = await svc.RetrieveForTurnAsync(
@@ -140,7 +140,7 @@ public sealed class MmrIntegrationTests
 
         var svc = BuildService(db, vs, settings);
 
-        var assistant = AiAssistant.Create(Guid.NewGuid(), "A", null, "p");
+        var assistant = AiAssistant.Create(Guid.NewGuid(), "A", null, "p", createdByUserId: Guid.NewGuid());
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
         var ctx = await svc.RetrieveForTurnAsync(
@@ -186,7 +186,7 @@ public sealed class MmrIntegrationTests
 
         var svc = BuildService(db, vs, settings);
 
-        var assistant = AiAssistant.Create(Guid.NewGuid(), "A", null, "p");
+        var assistant = AiAssistant.Create(Guid.NewGuid(), "A", null, "p", createdByUserId: Guid.NewGuid());
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
         var ctx = await svc.RetrieveForTurnAsync(
@@ -261,7 +261,7 @@ public sealed class MmrIntegrationTests
             Options.Create(settings),
             NullLogger<RagRetrievalService>.Instance);
 
-        var assistant = AiAssistant.Create(Guid.NewGuid(), "A", null, "p");
+        var assistant = AiAssistant.Create(Guid.NewGuid(), "A", null, "p", createdByUserId: Guid.NewGuid());
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
         var ctx = await svc.RetrieveForTurnAsync(

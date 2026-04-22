@@ -14,7 +14,8 @@ public sealed class AiAssistantRagScopeTests
             tenantId: Guid.NewGuid(),
             name: "Test Assistant",
             description: null,
-            systemPrompt: "You are a helpful assistant.");
+            systemPrompt: "You are a helpful assistant.",
+            createdByUserId: Guid.NewGuid());
 
     [Fact]
     public void SetRagScope_None_IsDefault()

@@ -5,7 +5,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Starter.Abstractions.Capabilities;
+using Starter.Application.Common.Access;
+using Starter.Application.Common.Access.Contracts;
 using Starter.Application.Common.Interfaces;
+using Starter.Domain.Common.Access.Enums;
 using Starter.Module.AI.Application.DTOs;
 using Starter.Module.AI.Application.Services.Retrieval;
 using Starter.Module.AI.Domain.Entities;
@@ -30,6 +33,7 @@ internal sealed class ChatExecutionService(
     IRagRetrievalService retrievalService,
     ISender sender,
     IConfiguration configuration,
+    IResourceAccessService access,
     ILogger<ChatExecutionService> logger) : IChatExecutionService
 {
     private const string AiTokensMetric = "ai_tokens";
@@ -354,6 +358,14 @@ internal sealed class ChatExecutionService(
             conversation = AiConversation.Create(currentUser.TenantId, assistant.Id, userId);
             context.AiConversations.Add(conversation);
         }
+
+        // ACL gate — caller must be able to view the assistant. TenantWide visibility,
+        // ownership, explicit grants, and admin bypass all pass through CanAccessAsync.
+        // Not-found is returned instead of Forbidden to avoid leaking existence.
+        var canAccess = await access.CanAccessAsync(
+            currentUser, ResourceTypes.AiAssistant, assistant.Id, AccessLevel.Viewer, ct);
+        if (!canAccess)
+            return Result.Failure<ChatTurnState>(AiErrors.AssistantNotFound);
 
         // Pre-flight quota gate: increments by 1 to block tenants already at their limit.
         // Concurrent requests can pass simultaneously before any real usage lands;

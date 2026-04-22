@@ -113,7 +113,7 @@ public class RagRetrievalMetricsTests
             NullLogger<RagRetrievalService>.Instance);
 
         var tenantId = Guid.NewGuid();
-        var assistant = AiAssistant.Create(tenantId, "A", null, "p");
+        var assistant = AiAssistant.Create(tenantId, "A", null, "p", createdByUserId: Guid.NewGuid());
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
         _ = await svc.RetrieveForTurnAsync(assistant, "hello world", Array.Empty<RagHistoryMessage>(), CancellationToken.None);
@@ -157,7 +157,7 @@ public class RagRetrievalMetricsTests
             NullLogger<RagRetrievalService>.Instance);
 
         var tenantId = Guid.NewGuid();
-        var assistant = AiAssistant.Create(tenantId, "A", null, "p");
+        var assistant = AiAssistant.Create(tenantId, "A", null, "p", createdByUserId: Guid.NewGuid());
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
         _ = await svc.RetrieveForTurnAsync(assistant, "centrifugal pumps move fluid through impeller rotation", Array.Empty<RagHistoryMessage>(), CancellationToken.None);
@@ -197,7 +197,7 @@ public class RagRetrievalMetricsTests
             NullLogger<RagRetrievalService>.Instance);
 
         var tenantId = Guid.NewGuid();
-        var assistant = AiAssistant.Create(tenantId, "A", null, "p");
+        var assistant = AiAssistant.Create(tenantId, "A", null, "p", createdByUserId: Guid.NewGuid());
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
         _ = await svc.RetrieveForTurnAsync(assistant, "centrifugal pumps move fluid through impeller rotation", Array.Empty<RagHistoryMessage>(), CancellationToken.None);
@@ -232,7 +232,7 @@ public class RagRetrievalMetricsTests
             NullLogger<RagRetrievalService>.Instance);
 
         var tenantId = Guid.NewGuid();
-        var assistant = AiAssistant.Create(tenantId, "A", null, "p");
+        var assistant = AiAssistant.Create(tenantId, "A", null, "p", createdByUserId: Guid.NewGuid());
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
         _ = await svc.RetrieveForTurnAsync(assistant, "ما هي المضخة الطاردة المركزية وكيف تعمل", Array.Empty<RagHistoryMessage>(), CancellationToken.None);
@@ -346,7 +346,7 @@ public class RagRetrievalMetricsTests
                 NullLogger<RagRetrievalService>.Instance);
 
             var tenantId = Guid.NewGuid();
-            var assistant = AiAssistant.Create(tenantId, "A", null, "p");
+            var assistant = AiAssistant.Create(tenantId, "A", null, "p", createdByUserId: Guid.NewGuid());
             assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
             // Mixed Arabic+English query ensures language detector fires and tags keyword hits
@@ -431,7 +431,7 @@ public class RagRetrievalMetricsTests
             NullLogger<RagRetrievalService>.Instance);
 
         var tenantId = Guid.NewGuid();
-        var assistant = AiAssistant.Create(tenantId, "A", null, "p");
+        var assistant = AiAssistant.Create(tenantId, "A", null, "p", createdByUserId: Guid.NewGuid());
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
         var history = new[]
@@ -480,7 +480,7 @@ public class RagRetrievalMetricsTests
             NullLogger<RagRetrievalService>.Instance);
 
         var tenantId = Guid.NewGuid();
-        var assistant = AiAssistant.Create(tenantId, "A", null, "p");
+        var assistant = AiAssistant.Create(tenantId, "A", null, "p", createdByUserId: Guid.NewGuid());
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
         _ = await svc.RetrieveForTurnAsync(assistant, "what is qdrant?", Array.Empty<RagHistoryMessage>(), CancellationToken.None);

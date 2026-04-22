@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Starter.Domain.Common.Access.Enums;
 using Starter.Module.AI.Domain.Entities;
 
 namespace Starter.Module.AI.Infrastructure.Configurations;
@@ -99,6 +100,22 @@ internal sealed class AiAssistantConfiguration : IEntityTypeConfiguration<AiAssi
             .HasColumnName("is_active")
             .IsRequired();
 
+        builder.Property(e => e.Visibility)
+            .HasColumnName("visibility")
+            .HasConversion<int>()
+            .HasDefaultValue(ResourceVisibility.Private)
+            .IsRequired();
+
+        builder.Property(e => e.AccessMode)
+            .HasColumnName("access_mode")
+            .HasConversion<int>()
+            .HasDefaultValue(AssistantAccessMode.CallerPrincipal)
+            .IsRequired();
+
+        builder.Property(e => e.CreatedByUserId)
+            .HasColumnName("created_by_user_id")
+            .IsRequired();
+
         builder.Property(e => e.CreatedAt)
             .HasColumnName("created_at")
             .IsRequired();
@@ -114,5 +131,8 @@ internal sealed class AiAssistantConfiguration : IEntityTypeConfiguration<AiAssi
 
         builder.HasIndex(e => new { e.TenantId, e.Name })
             .IsUnique();
+
+        builder.HasIndex(e => new { e.TenantId, e.CreatedByUserId });
+        builder.HasIndex(e => new { e.TenantId, e.Visibility });
     }
 }

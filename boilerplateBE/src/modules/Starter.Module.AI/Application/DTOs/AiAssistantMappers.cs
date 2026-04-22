@@ -21,5 +21,8 @@ internal static class AiAssistantMappers
             a.IsActive,
             a.CreatedAt,
             a.ModifiedAt,
-            a.RagScope);
+            a.RagScope,
+            a.Visibility,
+            a.AccessMode,
+            a.CreatedByUserId);
 }

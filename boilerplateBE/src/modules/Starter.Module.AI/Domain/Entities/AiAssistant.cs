@@ -1,11 +1,14 @@
 using Starter.Domain.Common;
+using Starter.Domain.Common.Access;
+using Starter.Domain.Common.Access.Enums;
+using Starter.Domain.Common.Access.Errors;
 using Starter.Domain.Exceptions;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Domain.Errors;
 
 namespace Starter.Module.AI.Domain.Entities;
 
-public sealed class AiAssistant : AggregateRoot, ITenantEntity
+public sealed class AiAssistant : AggregateRoot, ITenantEntity, IShareable
 {
     private List<string> _enabledToolNames = new();
     private List<Guid> _knowledgeBaseDocIds = new();
@@ -38,6 +41,10 @@ public sealed class AiAssistant : AggregateRoot, ITenantEntity
     public bool IsActive { get; private set; }
     public AiRagScope RagScope { get; private set; } = AiRagScope.None;
 
+    public ResourceVisibility Visibility { get; private set; } = ResourceVisibility.Private;
+    public AssistantAccessMode AccessMode { get; private set; } = AssistantAccessMode.CallerPrincipal;
+    public Guid CreatedByUserId { get; private set; }
+
     private AiAssistant() { }
 
     private AiAssistant(
@@ -52,7 +59,8 @@ public sealed class AiAssistant : AggregateRoot, ITenantEntity
         int maxTokens,
         AssistantExecutionMode executionMode,
         int maxAgentSteps,
-        bool isActive) : base(id)
+        bool isActive,
+        Guid createdByUserId) : base(id)
     {
         TenantId = tenantId;
         Name = name;
@@ -65,6 +73,7 @@ public sealed class AiAssistant : AggregateRoot, ITenantEntity
         ExecutionMode = executionMode;
         MaxAgentSteps = maxAgentSteps;
         IsActive = isActive;
+        CreatedByUserId = createdByUserId;
     }
 
     public static AiAssistant Create(
@@ -72,6 +81,7 @@ public sealed class AiAssistant : AggregateRoot, ITenantEntity
         string name,
         string? description,
         string systemPrompt,
+        Guid createdByUserId,
         AiProviderType? provider = null,
         string? model = null,
         double temperature = 0.7,
@@ -92,7 +102,31 @@ public sealed class AiAssistant : AggregateRoot, ITenantEntity
             maxTokens,
             executionMode,
             maxAgentSteps,
-            isActive);
+            isActive,
+            createdByUserId);
+    }
+
+    public void SetVisibility(ResourceVisibility visibility)
+    {
+        if ((int)visibility > (int)ResourceVisibility.TenantWide)
+            throw new DomainException(
+                AccessErrors.VisibilityNotAllowedForResourceType.Description,
+                AccessErrors.VisibilityNotAllowedForResourceType.Code);
+
+        Visibility = visibility;
+        ModifiedAt = DateTime.UtcNow;
+    }
+
+    public void SetAccessMode(AssistantAccessMode accessMode)
+    {
+        AccessMode = accessMode;
+        ModifiedAt = DateTime.UtcNow;
+    }
+
+    public void TransferOwnership(Guid newOwnerUserId)
+    {
+        CreatedByUserId = newOwnerUserId;
+        ModifiedAt = DateTime.UtcNow;
     }
 
     public void Update(

@@ -102,7 +102,7 @@ public sealed class RagRetrievalServiceTests
         var svc = BuildService(db);
 
         var tenantId = Guid.NewGuid();
-        var assistant = AiAssistant.Create(tenantId, "A", null, "p");
+        var assistant = AiAssistant.Create(tenantId, "A", null, "p", createdByUserId: Guid.NewGuid());
         // RagScope defaults to None — do not call SetRagScope
 
         var act = async () =>
@@ -122,7 +122,7 @@ public sealed class RagRetrievalServiceTests
         var tenantId = Guid.NewGuid();
         var docId = Guid.NewGuid();
 
-        var assistant = AiAssistant.Create(tenantId, "A", null, "p");
+        var assistant = AiAssistant.Create(tenantId, "A", null, "p", createdByUserId: Guid.NewGuid());
         assistant.SetKnowledgeBase([docId]);
         assistant.SetRagScope(AiRagScope.SelectedDocuments);
 
@@ -141,7 +141,7 @@ public sealed class RagRetrievalServiceTests
         var svc = BuildService(db, vs: fakeVs);
 
         var tenantId = Guid.NewGuid();
-        var assistant = AiAssistant.Create(tenantId, "A", null, "p");
+        var assistant = AiAssistant.Create(tenantId, "A", null, "p", createdByUserId: Guid.NewGuid());
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
         await svc.RetrieveForTurnAsync(assistant, "query", Array.Empty<RagHistoryMessage>(), CancellationToken.None);
@@ -156,7 +156,7 @@ public sealed class RagRetrievalServiceTests
         var svc = BuildService(db);
 
         var tenantId = Guid.NewGuid();
-        var assistant = AiAssistant.Create(tenantId, "A", null, "p");
+        var assistant = AiAssistant.Create(tenantId, "A", null, "p", createdByUserId: Guid.NewGuid());
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
         var ctx = await svc.RetrieveForTurnAsync(assistant, "query", Array.Empty<RagHistoryMessage>(), CancellationToken.None);
@@ -225,7 +225,7 @@ public sealed class RagRetrievalServiceTests
         var svc = BuildService(db, vs: fakeVs, settings: settings, reranker: reranker);
 
         var tenantId = Guid.NewGuid();
-        var assistant = AiAssistant.Create(tenantId, "A", null, "p");
+        var assistant = AiAssistant.Create(tenantId, "A", null, "p", createdByUserId: Guid.NewGuid());
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
         var ctx = await svc.RetrieveForTurnAsync(assistant, "query", Array.Empty<RagHistoryMessage>(), CancellationToken.None);
@@ -269,7 +269,7 @@ public sealed class RagRetrievalServiceTests
         var svc = BuildService(db, vs: fakeVs, settings: settings);
 
         var tenantId = Guid.NewGuid();
-        var assistant = AiAssistant.Create(tenantId, "A", null, "p");
+        var assistant = AiAssistant.Create(tenantId, "A", null, "p", createdByUserId: Guid.NewGuid());
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
         var ctx = await svc.RetrieveForTurnAsync(assistant, "query", Array.Empty<RagHistoryMessage>(), CancellationToken.None);

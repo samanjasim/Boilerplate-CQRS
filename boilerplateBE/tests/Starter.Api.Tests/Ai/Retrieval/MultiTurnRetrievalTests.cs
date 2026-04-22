@@ -80,7 +80,7 @@ public sealed class MultiTurnRetrievalTests
         var keywordSearch = new KeywordAwareFakeKeywordSearchService();
         var svc = Build(db, provider, keywordSearch, settings);
 
-        var assistant = AiAssistant.Create(Guid.NewGuid(), "A", null, "p");
+        var assistant = AiAssistant.Create(Guid.NewGuid(), "A", null, "p", createdByUserId: Guid.NewGuid());
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
         var history = History(
@@ -102,7 +102,7 @@ public sealed class MultiTurnRetrievalTests
         var keywordSearch = new KeywordAwareFakeKeywordSearchService();
         var svc = Build(db, provider, keywordSearch, settings);
 
-        var assistant = AiAssistant.Create(Guid.NewGuid(), "A", null, "p");
+        var assistant = AiAssistant.Create(Guid.NewGuid(), "A", null, "p", createdByUserId: Guid.NewGuid());
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
         var history = History(
@@ -129,7 +129,7 @@ public sealed class MultiTurnRetrievalTests
         var keywordSearch = new KeywordAwareFakeKeywordSearchService();
         var svc = Build(db, provider, keywordSearch, settings);
 
-        var assistant = AiAssistant.Create(Guid.NewGuid(), "A", null, "p");
+        var assistant = AiAssistant.Create(Guid.NewGuid(), "A", null, "p", createdByUserId: Guid.NewGuid());
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
         await svc.RetrieveForTurnAsync(
@@ -154,7 +154,7 @@ public sealed class MultiTurnRetrievalTests
         var keywordSearch = new KeywordAwareFakeKeywordSearchService();
         var svc = Build(db, provider, keywordSearch, settings);
 
-        var assistant = AiAssistant.Create(Guid.NewGuid(), "A", null, "p");
+        var assistant = AiAssistant.Create(Guid.NewGuid(), "A", null, "p", createdByUserId: Guid.NewGuid());
         assistant.SetRagScope(AiRagScope.AllTenantDocuments);
 
         var history = History(
