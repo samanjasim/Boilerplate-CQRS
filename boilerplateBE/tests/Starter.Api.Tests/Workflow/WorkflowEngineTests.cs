@@ -255,7 +255,7 @@ public sealed class WorkflowEngineTests : IDisposable
         var result = await _sut.ExecuteTaskAsync(
             approvalTask.Id, "approve", null, _approverUserId);
 
-        result.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue();
 
         var updated = await _db.WorkflowInstances.FirstAsync(i => i.Id == instanceId);
         updated.CurrentState.Should().Be("Approved");
@@ -297,16 +297,16 @@ public sealed class WorkflowEngineTests : IDisposable
         var result = await _sut.ExecuteTaskAsync(
             approvalTask.Id, "reject", "Not acceptable", _approverUserId);
 
-        result.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue();
 
         var updated = await _db.WorkflowInstances.FirstAsync(i => i.Id == instanceId);
         updated.CurrentState.Should().Be("Rejected");
     }
 
-    // ── 6. ExecuteTaskAsync — wrong assignee returns false ───────────────────
+    // ── 6. ExecuteTaskAsync — wrong assignee returns forbidden error ────────
 
     [Fact]
-    public async Task ExecuteTaskAsync_NotAssigned_ReturnsFalse()
+    public async Task ExecuteTaskAsync_NotAssigned_ReturnsForbiddenError()
     {
         await SeedThreeStateDefinitionAsync();
         var entityId = Guid.NewGuid();
@@ -340,7 +340,8 @@ public sealed class WorkflowEngineTests : IDisposable
         var result = await _sut.ExecuteTaskAsync(
             approvalTask.Id, "approve", null, randomUserId);
 
-        result.Should().BeFalse();
+        result.IsFailure.Should().BeTrue();
+        result.ErrorCode.Should().Be("Error.Forbidden");
     }
 
     // ── 7. ExecuteTaskAsync — terminal state completes instance ──────────────
@@ -705,7 +706,7 @@ public sealed class WorkflowEngineTests : IDisposable
         var result = await _sut.ExecuteTaskAsync(
             taskA.Id, "approve", null, _parallelUserA);
 
-        result.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue();
 
         // Workflow should still be Active at ParallelReview
         var instance = await _db.WorkflowInstances.FirstAsync(i => i.Id == instanceId);
@@ -745,7 +746,7 @@ public sealed class WorkflowEngineTests : IDisposable
         var result = await _sut.ExecuteTaskAsync(
             taskB.Id, "approve", null, _parallelUserB);
 
-        result.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue();
 
         var instance = await _db.WorkflowInstances.FirstAsync(i => i.Id == instanceId);
         instance.CurrentState.Should().Be("Approved");
@@ -774,7 +775,7 @@ public sealed class WorkflowEngineTests : IDisposable
         var result = await _sut.ExecuteTaskAsync(
             taskA.Id, "reject", "Not approved", _parallelUserA);
 
-        result.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue();
 
         // Workflow transitions to Rejected
         var instance = await _db.WorkflowInstances.FirstAsync(i => i.Id == instanceId);
@@ -810,7 +811,7 @@ public sealed class WorkflowEngineTests : IDisposable
         var result = await _sut.ExecuteTaskAsync(
             taskA.Id, "approve", null, _parallelUserA);
 
-        result.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue();
 
         // Workflow transitions to Approved
         var instance = await _db.WorkflowInstances.FirstAsync(i => i.Id == instanceId);
@@ -846,7 +847,7 @@ public sealed class WorkflowEngineTests : IDisposable
         var result = await _sut.ExecuteTaskAsync(
             tasks[0].Id, "approve", null, _approverUserId);
 
-        result.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue();
 
         var instance = await _db.WorkflowInstances.FirstAsync(i => i.Id == instanceId);
         instance.CurrentState.Should().Be("Approved");

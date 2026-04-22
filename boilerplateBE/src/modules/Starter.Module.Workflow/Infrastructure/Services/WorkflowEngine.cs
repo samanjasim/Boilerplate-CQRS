@@ -7,7 +7,9 @@ using Starter.Abstractions.Readers;
 using Starter.Module.Workflow.Domain.Constants;
 using Starter.Module.Workflow.Domain.Entities;
 using Starter.Module.Workflow.Domain.Enums;
+using Starter.Module.Workflow.Domain.Errors;
 using Starter.Module.Workflow.Infrastructure.Persistence;
+using Starter.Shared.Results;
 
 namespace Starter.Module.Workflow.Infrastructure.Services;
 
@@ -247,7 +249,7 @@ public sealed class WorkflowEngine(
 
     // ── Task Actions ─────────────────────────────────────────────────────────
 
-    public async Task<bool> ExecuteTaskAsync(
+    public async Task<WorkflowTaskResult> ExecuteTaskAsync(
         Guid taskId, string action, string? comment,
         Guid actorUserId, Dictionary<string, object>? formData = null,
         CancellationToken ct = default)
@@ -260,20 +262,22 @@ public sealed class WorkflowEngine(
         if (task is null)
         {
             logger.LogWarning("Approval task {TaskId} not found.", taskId);
-            return false;
+            var e1 = WorkflowErrors.TaskNotFound(taskId);
+            return WorkflowTaskResult.Failure(e1.Code, e1.Description);
         }
 
         // Idempotent: if already completed with the same action, return success
         if (task.Status == Domain.Enums.TaskStatus.Completed && task.Action == action)
         {
             logger.LogDebug("Task {TaskId} already completed with action {Action} — idempotent success.", taskId, action);
-            return true;
+            return WorkflowTaskResult.Success();
         }
 
         if (task.Status != Domain.Enums.TaskStatus.Pending)
         {
             logger.LogWarning("Task {TaskId} is not pending (status: {Status}).", taskId, task.Status);
-            return false;
+            var e2 = WorkflowErrors.TaskNotPending(taskId);
+            return WorkflowTaskResult.Failure(e2.Code, e2.Description);
         }
 
         // Verify the actor is the assigned user (or task has no specific assignee)
@@ -282,7 +286,8 @@ public sealed class WorkflowEngine(
             logger.LogWarning(
                 "Actor {ActorId} is not assigned to task {TaskId} (assigned to {AssigneeId}).",
                 actorUserId, taskId, task.AssigneeUserId);
-            return false;
+            var e3 = WorkflowErrors.TaskNotAssignedToUser(taskId, actorUserId);
+            return WorkflowTaskResult.Failure(e3.Code, e3.Description);
         }
 
         var instance = task.Instance;
@@ -301,7 +306,8 @@ public sealed class WorkflowEngine(
             logger.LogWarning(
                 "No transition from '{FromState}' with trigger '{Action}' in definition '{DefName}'.",
                 instance.CurrentState, action, definition.Name);
-            return false;
+            var e4 = WorkflowErrors.InvalidTransition(instance.CurrentState, action);
+            return WorkflowTaskResult.Failure(e4.Code, e4.Description);
         }
 
         // If multiple transitions match, evaluate conditional ones first;
@@ -323,13 +329,17 @@ public sealed class WorkflowEngine(
         // Validate form data if the current state has form fields defined
         if (fromStateConfig?.FormFields is { Count: > 0 })
         {
-            var validationErrors = formDataValidator.Validate(fromStateConfig.FormFields, formData);
-            if (validationErrors.Count > 0)
+            var fieldErrors = formDataValidator.Validate(fromStateConfig.FormFields, formData);
+            if (fieldErrors.Count > 0)
             {
                 logger.LogWarning(
                     "Form data validation failed for task {TaskId}: {Errors}",
-                    taskId, string.Join(", ", validationErrors.Select(e => $"{e.FieldName}: {e.Message}")));
-                return false;
+                    taskId, string.Join(", ", fieldErrors.Select(e => $"{e.FieldName}: {e.Message}")));
+
+                var fieldDict = fieldErrors
+                    .GroupBy(e => e.FieldName)
+                    .ToDictionary(g => g.Key, g => g.Select(e => e.Message).ToArray());
+                return WorkflowTaskResult.ValidationFailure(fieldDict);
             }
         }
 
@@ -403,14 +413,15 @@ public sealed class WorkflowEngine(
                 catch (DbUpdateConcurrencyException)
                 {
                     logger.LogWarning("Concurrency conflict on task {TaskId}. Another user may have already acted.", taskId);
-                    return false;
+                    var ec = WorkflowErrors.Concurrency();
+                    return WorkflowTaskResult.Failure(ec.Code, ec.Description);
                 }
 
                 logger.LogInformation(
                     "Task {TaskId}: completed (parallel AllOf, waiting for siblings). Instance {InstanceId} stays at '{State}'.",
                     taskId, instance.Id, fromState);
 
-                return true;
+                return WorkflowTaskResult.Success();
             }
         }
 
@@ -463,14 +474,15 @@ public sealed class WorkflowEngine(
         catch (DbUpdateConcurrencyException)
         {
             logger.LogWarning("Concurrency conflict on task {TaskId}. Another user may have already acted.", taskId);
-            return false;
+            var ec2 = WorkflowErrors.Concurrency();
+            return WorkflowTaskResult.Failure(ec2.Code, ec2.Description);
         }
 
         logger.LogInformation(
             "Task {TaskId}: transitioned instance {InstanceId} from '{From}' to '{To}' via '{Action}'.",
             taskId, instance.Id, fromState, toState, action);
 
-        return true;
+        return WorkflowTaskResult.Success();
     }
 
     // ── Query: Status ────────────────────────────────────────────────────────

@@ -45,13 +45,14 @@ internal sealed class BatchExecuteTasksCommandHandler(
 
             try
             {
-                var ok = await workflowService.ExecuteTaskAsync(
+                var wfResult = await workflowService.ExecuteTaskAsync(
                     taskId,
                     request.Action,
                     request.Comment,
                     userId,
                     formData: null,
                     cancellationToken);
+                var ok = wfResult.IsSuccess;
 
                 outcomes.Add(ok
                     ? new BatchItemOutcome(taskId, "Succeeded", null)
