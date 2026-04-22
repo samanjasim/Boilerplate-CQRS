@@ -58,6 +58,8 @@ public sealed class WorkflowEngineTests : IDisposable
         var humanTaskFactory = new HumanTaskFactory(
             _db, assigneeResolver, NullLogger<HumanTaskFactory>.Instance);
 
+        var autoTransitionEvaluator = new AutoTransitionEvaluator(conditionEvaluator);
+
         _sut = new WorkflowEngine(
             _db,
             conditionEvaluator,
@@ -67,6 +69,7 @@ public sealed class WorkflowEngineTests : IDisposable
             _userReader.Object,
             new FormDataValidator(),
             humanTaskFactory,
+            autoTransitionEvaluator,
             NullLogger<WorkflowEngine>.Instance);
     }
 

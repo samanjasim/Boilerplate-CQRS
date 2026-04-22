@@ -25,6 +25,7 @@ public sealed class WorkflowEngine(
     IUserReader userReader,
     IFormDataValidator formDataValidator,
     HumanTaskFactory humanTaskFactory,
+    AutoTransitionEvaluator autoTransitionEvaluator,
     ILogger<WorkflowEngine> logger) : IWorkflowService
 {
     private static readonly JsonSerializerOptions JsonOpts = new()
@@ -304,32 +305,13 @@ public sealed class WorkflowEngine(
             return false;
         }
 
-        // If multiple transitions match, evaluate conditional ones first
-        WorkflowTransitionConfig? selectedTransition = null;
-
-        var conditionalTransitions = matchingTransitions
-            .Where(t => t.Condition is not null)
-            .ToList();
-
-        if (conditionalTransitions.Count > 0)
-        {
-            // Parse instance context for condition evaluation
-            var instanceContext = instance.ContextJson is not null
-                ? JsonSerializer.Deserialize<Dictionary<string, object>>(instance.ContextJson, JsonOpts)
-                : null;
-
-            foreach (var ct2 in conditionalTransitions)
-            {
-                if (conditionEvaluator.Evaluate(ct2.Condition!, instanceContext))
-                {
-                    selectedTransition = ct2;
-                    break;
-                }
-            }
-        }
-
-        // If no conditional transition matched, use the default (manual) one
-        selectedTransition ??= matchingTransitions.FirstOrDefault(t => t.Condition is null)
+        // If multiple transitions match, evaluate conditional ones first;
+        // fall back to the first matching transition if nothing selected.
+        var instanceContext = instance.ContextJson is not null
+            ? JsonSerializer.Deserialize<Dictionary<string, object>>(instance.ContextJson, JsonOpts)
+            : null;
+        var selectedTransition = autoTransitionEvaluator.Select(
+                matchingTransitions, instance.CurrentState, instanceContext)
             ?? matchingTransitions[0];
 
         var fromState = instance.CurrentState;
@@ -1064,22 +1046,12 @@ public sealed class WorkflowEngine(
 
         if (autoTransitions.Count == 0) return;
 
-        // Evaluate conditional transitions first
-        WorkflowTransitionConfig? selected = null;
+        // Evaluate conditional transitions first, falling back to the default unconditional one.
         var instanceContext = instance.ContextJson is not null
             ? JsonSerializer.Deserialize<Dictionary<string, object>>(instance.ContextJson, JsonOpts)
             : null;
-
-        foreach (var t in autoTransitions.Where(t => t.Condition is not null))
-        {
-            if (conditionEvaluator.Evaluate(t.Condition!, instanceContext))
-            {
-                selected = t;
-                break;
-            }
-        }
-
-        selected ??= autoTransitions.FirstOrDefault(t => t.Condition is null);
+        var selected = autoTransitionEvaluator.Select(
+            autoTransitions, currentStateConfig.Name, instanceContext);
 
         if (selected is null) return;
 
@@ -1139,21 +1111,10 @@ public sealed class WorkflowEngine(
 
         var transitions = DeserializeTransitions(definition.TransitionsJson);
         var fromState = instance.CurrentState;
-        var matchingTransitions = transitions.Where(t => t.From == fromState).ToList();
 
-        // Evaluate conditional transitions first
-        string? targetState = null;
-        foreach (var t in matchingTransitions.Where(t => t.Condition is not null))
-        {
-            if (conditionEvaluator.Evaluate(t.Condition!, instanceContext))
-            {
-                targetState = t.To;
-                break;
-            }
-        }
-
-        // Fall back to default (non-conditional) transition
-        targetState ??= matchingTransitions.FirstOrDefault(t => t.Condition is null)?.To;
+        // Evaluate conditional transitions first, falling back to the default unconditional one.
+        var selected = autoTransitionEvaluator.Select(transitions, fromState, instanceContext);
+        var targetState = selected?.To;
 
         if (targetState is null)
         {

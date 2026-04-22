@@ -46,15 +46,19 @@ public sealed class PendingTasksDenormalizationTests : IDisposable
         var humanTaskFactory = new HumanTaskFactory(
             _db, assigneeResolver, NullLogger<HumanTaskFactory>.Instance);
 
+        var conditionEvaluator = new ConditionEvaluator();
+        var autoTransitionEvaluator = new AutoTransitionEvaluator(conditionEvaluator);
+
         _sut = new WorkflowEngine(
             _db,
-            new ConditionEvaluator(),
+            conditionEvaluator,
             assigneeResolver,
             hookExecutor,
             Mock.Of<ICommentService>(),
             userReader.Object,
             new FormDataValidator(),
             humanTaskFactory,
+            autoTransitionEvaluator,
             NullLogger<WorkflowEngine>.Instance);
     }
 
