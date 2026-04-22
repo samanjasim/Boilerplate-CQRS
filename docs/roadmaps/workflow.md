@@ -47,6 +47,22 @@ The following improvements were made after the initial Phase 1 implementation. T
 
 ---
 
+## Phase 4a Shipped (merged YYYY-MM-DD)
+
+**Dynamic forms — step data collection.** State definitions can declare `FormFields` whose submitted values merge into `WorkflowInstance.ContextJson` and become available to conditional transitions. Supported field types: `text`, `textarea`, `number`, `date`, `select`, `checkbox`.
+
+Shipped components:
+- `FormFieldDefinition` record on `WorkflowStateConfig` in `Starter.Abstractions.Capabilities`.
+- `FormFieldsJson` denormalized on `ApprovalTask` for inbox rendering without definition joins.
+- `IFormDataValidator` with type-specific validation (min/max, maxLength, required, select option membership, date parse).
+- `WorkflowEngine.ExecuteTaskAsync` merges submitted values into `ContextJson`; returns `Result<Result<bool>>` surfacing `ValidationErrors` via the standard API envelope.
+- FE: `DynamicFormRenderer` component rendering all 6 types; `ApprovalDialog` submits `formData` and renders inline field errors; `WorkflowStepTimeline` displays submitted data in instance history.
+- Documentation: `docs/features/workflow-forms.md`.
+
+See `docs/superpowers/specs/2026-04-22-workflow-phase4a-dynamic-forms-finish-design.md` for the finish-line design.
+
+---
+
 ## Phase 4+ Deferred Items
 
 ### AI agent as workflow participant
@@ -95,18 +111,15 @@ The following improvements were made after the initial Phase 1 implementation. T
 
 ---
 
-### Step data collection (dynamic forms)
+### Forms (deferred from Phase 4a)
 
-**What:** Allow workflow state definitions to declare a form schema so the assignee submits structured data (e.g. "reason for rejection", "revised budget amount") rather than a free-text comment. The submitted values would be stored in `WorkflowStep.MetadataJson` and made available to downstream condition evaluators.
-
-**Why deferred:** The current comment field covers the P0 use case (reviewer notes). Dynamic form schemas require a JSON-schema render pass on the frontend, a validation layer in `ExecuteTaskCommandHandler`, and a decision on whether form fields are part of the condition expression language.
-
-**Pick this up when:** A domain module (e.g. Expenses, Purchase Orders) needs structured data at an approval step to drive a condition or populate a downstream record.
-
-**Starting points:**
-- Add `FormSchema` property to `WorkflowStateConfig` in [`Starter.Abstractions/Capabilities/WorkflowConfigRecords.cs`](../../boilerplateBE/src/Starter.Abstractions/Capabilities/WorkflowConfigRecords.cs).
-- Validate submitted form data against the schema in [`Application/Commands/ExecuteTask/ExecuteTaskCommandHandler.cs`](../../boilerplateBE/src/modules/Starter.Module.Workflow/Application/Commands/ExecuteTask/ExecuteTaskCommandHandler.cs).
-- Merge form data into `WorkflowInstance.ContextJson` so `IConditionEvaluator` can reference it.
+- **Multiselect field type** — `type: "multiselect"` with `options[]` and multi-value persistence.
+- **File upload field type** — requires signed-URL plumbing into `ContextJson`, retention policy, quota enforcement, and virus-scan hook design before it can ship.
+- **Array-of-object field type** — repeating fieldsets (e.g. "list of line items"), each rendered as a nested `FormFieldDefinition[]`.
+- **Conditional field visibility** — show/hide a field based on another field's value (e.g. show `rejectionReason` only when `approved == false`).
+- **Default values / server-computed placeholders** — e.g. pre-populate `reviewerName` with the current user's display name.
+- **Multi-step forms within a single task** — today one form per task; step-by-step wizards are an authoring concern.
+- **Admin authoring UX** — planned to ship with the Phase 4c visual workflow designer.
 
 ---
 
