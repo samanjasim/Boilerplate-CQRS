@@ -7,5 +7,7 @@ public enum AuditEntityType
     Permission = 3,
     Tenant = 4,
     File = 5,
-    ApiKey = 6
+    ApiKey = 6,
+    ResourceGrant = 7,
+    AiAssistant = 8
 }

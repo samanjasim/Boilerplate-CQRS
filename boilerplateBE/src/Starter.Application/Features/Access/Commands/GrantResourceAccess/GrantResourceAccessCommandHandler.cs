@@ -1,9 +1,12 @@
+using System.Text.Json;
 using MediatR;
 using Starter.Application.Common.Access;
 using Starter.Application.Common.Access.Contracts;
 using Starter.Application.Common.Interfaces;
+using Starter.Domain.Common;
 using Starter.Domain.Common.Access.Enums;
 using Starter.Domain.Common.Access.Errors;
+using Starter.Domain.Common.Enums;
 using Starter.Shared.Results;
 
 namespace Starter.Application.Features.Access.Commands.GrantResourceAccess;
@@ -11,6 +14,7 @@ namespace Starter.Application.Features.Access.Commands.GrantResourceAccess;
 internal sealed class GrantResourceAccessCommandHandler(
     IResourceAccessService access,
     IResourceOwnershipProbe probe,
+    IApplicationDbContext db,
     ICurrentUserService currentUser)
     : IRequestHandler<GrantResourceAccessCommand, Result<Guid>>
 {
@@ -31,6 +35,28 @@ internal sealed class GrantResourceAccessCommandHandler(
         var id = await access.GrantAsync(
             request.ResourceType, request.ResourceId,
             request.SubjectType, request.SubjectId, request.Level, ct);
+
+        db.AuditLogs.Add(new AuditLog
+        {
+            Id = Guid.NewGuid(),
+            EntityType = AuditEntityType.ResourceGrant,
+            EntityId = id,
+            Action = AuditAction.Created,
+            Changes = JsonSerializer.Serialize(new
+            {
+                Event = "ResourceGrantCreated",
+                request.ResourceType,
+                request.ResourceId,
+                SubjectType = request.SubjectType.ToString(),
+                request.SubjectId,
+                Level = request.Level.ToString()
+            }),
+            PerformedBy = currentUser.UserId,
+            PerformedByName = currentUser.Email,
+            PerformedAt = DateTime.UtcNow,
+            TenantId = currentUser.TenantId
+        });
+        await db.SaveChangesAsync(ct);
 
         return Result.Success(id);
     }
