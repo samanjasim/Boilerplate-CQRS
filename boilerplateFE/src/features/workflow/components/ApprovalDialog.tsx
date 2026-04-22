@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useExecuteTask } from '../api';
 import { DynamicFormRenderer } from './DynamicFormRenderer';
+import { extractValidationErrors } from '../utils/extractValidationErrors';
 import type { FormFieldDefinition } from '@/types/workflow.types';
 
 interface ApprovalDialogProps {
@@ -96,6 +97,12 @@ export function ApprovalDialog({
           setFormData({});
           setFormErrors({});
           onOpenChange(false);
+        },
+        onError: (err) => {
+          const fieldErrors = extractValidationErrors(err);
+          if (fieldErrors) {
+            setFormErrors(fieldErrors);
+          }
         },
       },
     );
