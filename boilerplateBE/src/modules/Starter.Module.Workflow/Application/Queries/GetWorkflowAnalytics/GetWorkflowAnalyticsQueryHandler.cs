@@ -66,7 +66,7 @@ internal sealed class GetWorkflowAnalyticsQueryHandler(
             WindowSelector.SevenDays   => (now.AddDays(-7),  now),
             WindowSelector.ThirtyDays  => (now.AddDays(-30), now),
             WindowSelector.NinetyDays  => (now.AddDays(-90), now),
-            WindowSelector.AllTime     => (DateTime.SpecifyKind(DateTime.MinValue, DateTimeKind.Utc), now),
+            WindowSelector.AllTime     => (definitionCreatedAt, now),
             _ => throw new ArgumentOutOfRangeException(nameof(window)),
         };
 

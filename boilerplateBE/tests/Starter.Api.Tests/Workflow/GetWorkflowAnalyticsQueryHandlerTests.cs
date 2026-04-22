@@ -140,6 +140,11 @@ public sealed class GetWorkflowAnalyticsQueryHandlerTests : IDisposable
         var def = CreateTenantDefinition();
         var now = DateTime.UtcNow;
 
+        // Backdate the definition so instances started 200 days ago fall within AllTime window.
+        var defEntry = _db.Entry(def);
+        defEntry.Property(nameof(WorkflowDefinition.CreatedAt)).CurrentValue = now.AddDays(-210);
+        _db.SaveChanges();
+
         SeedInstance(def.Id, now.AddDays(-200), InstanceStatus.Completed,
             completedAt: now.AddDays(-199));
 
@@ -147,7 +152,7 @@ public sealed class GetWorkflowAnalyticsQueryHandlerTests : IDisposable
             new GetWorkflowAnalyticsQuery(def.Id, WindowSelector.AllTime),
             CancellationToken.None);
 
-        result.Value.WindowStart.Should().BeOnOrBefore(def.CreatedAt.AddSeconds(1));
+        result.Value.WindowStart.Should().BeOnOrBefore(now.AddDays(-200));
         result.Value.InstancesInWindow.Should().Be(1);
         result.Value.Headline.TotalCompleted.Should().Be(1);
     }
