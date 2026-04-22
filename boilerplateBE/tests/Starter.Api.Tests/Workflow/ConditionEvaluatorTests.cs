@@ -225,4 +225,125 @@ public sealed class ConditionEvaluatorTests
 
         _sut.Evaluate(condition, context).Should().BeTrue();
     }
+
+    // --- NOT operator ---
+
+    [Fact]
+    public void Evaluate_NotGroup_SingleFalseChild_ReturnsTrue()
+    {
+        var condition = new ConditionConfig(
+            Logic: "not",
+            Conditions:
+            [
+                new ConditionConfig(Field: "status", Operator: "equals", Value: "Active"),
+            ]);
+        var context = MakeContext(new() { ["status"] = "Inactive" });
+
+        _sut.Evaluate(condition, context).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Evaluate_NotGroup_SingleTrueChild_ReturnsFalse()
+    {
+        var condition = new ConditionConfig(
+            Logic: "not",
+            Conditions:
+            [
+                new ConditionConfig(Field: "status", Operator: "equals", Value: "Active"),
+            ]);
+        var context = MakeContext(new() { ["status"] = "Active" });
+
+        _sut.Evaluate(condition, context).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Evaluate_NotGroup_EmptyConditions_ReturnsFalse()
+    {
+        // NOT over empty is ambiguous; we choose false (same as empty AND) to
+        // prevent accidental permit-all semantics in misconfigured workflows.
+        var condition = new ConditionConfig(Logic: "not", Conditions: []);
+        _sut.Evaluate(condition, MakeContext(new() { ["x"] = "y" })).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Evaluate_NestedAndOrNot_EvaluatesCorrectly()
+    {
+        // AND [ equals("status", "Active"), NOT [ equals("role", "Guest") ] ]
+        // status=Active, role=Admin => true && !false => true
+        var condition = new ConditionConfig(
+            Logic: "and",
+            Conditions:
+            [
+                new ConditionConfig(Field: "status", Operator: "equals", Value: "Active"),
+                new ConditionConfig(
+                    Logic: "not",
+                    Conditions: [ new ConditionConfig(Field: "role", Operator: "equals", Value: "Guest") ]),
+            ]);
+        var context = MakeContext(new() { ["status"] = "Active", ["role"] = "Admin" });
+
+        _sut.Evaluate(condition, context).Should().BeTrue();
+    }
+
+    // --- Short-circuit semantics (documents intended behavior) ---
+
+    [Fact]
+    public void Evaluate_ShortCircuit_AndStopsOnFirstFalse()
+    {
+        var condition = new ConditionConfig(
+            Logic: "and",
+            Conditions:
+            [
+                new ConditionConfig(Field: "alwaysFalse", Operator: "equals", Value: "never"),
+                new ConditionConfig(Field: "amount", Operator: "greaterThan", Value: 10),
+            ]);
+        var context = MakeContext(new() { ["alwaysFalse"] = "other", ["amount"] = 100 });
+
+        _sut.Evaluate(condition, context).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Evaluate_ShortCircuit_OrStopsOnFirstTrue()
+    {
+        var condition = new ConditionConfig(
+            Logic: "or",
+            Conditions:
+            [
+                new ConditionConfig(Field: "status", Operator: "equals", Value: "Active"),
+                new ConditionConfig(Field: "status", Operator: "equals", Value: "Closed"),
+            ]);
+        var context = MakeContext(new() { ["status"] = "Active" });
+
+        _sut.Evaluate(condition, context).Should().BeTrue();
+    }
+
+    // --- JSON round-trip (engine reads StatesJson/TransitionsJson and must preserve structure) ---
+
+    [Fact]
+    public void Evaluate_JsonRoundTrip_PreservesStructure_AndEvaluatesCorrectly()
+    {
+        var original = new ConditionConfig(
+            Logic: "or",
+            Conditions:
+            [
+                new ConditionConfig(Field: "department", Operator: "equals", Value: "Finance"),
+                new ConditionConfig(
+                    Logic: "and",
+                    Conditions:
+                    [
+                        new ConditionConfig(Field: "department", Operator: "equals", Value: "HR"),
+                        new ConditionConfig(
+                            Logic: "not",
+                            Conditions: [ new ConditionConfig(Field: "role", Operator: "equals", Value: "Guest") ]),
+                    ]),
+            ]);
+
+        var json = JsonSerializer.Serialize(original);
+        var rehydrated = JsonSerializer.Deserialize<ConditionConfig>(json,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        rehydrated.Should().NotBeNull();
+
+        var context = MakeContext(new() { ["department"] = "HR", ["role"] = "Admin" });
+        _sut.Evaluate(rehydrated!, context).Should().BeTrue();
+    }
 }
