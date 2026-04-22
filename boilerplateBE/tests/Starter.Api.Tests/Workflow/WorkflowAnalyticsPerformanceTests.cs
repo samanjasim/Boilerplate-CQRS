@@ -27,7 +27,6 @@ public sealed class WorkflowAnalyticsPerformanceTests : IDisposable
         _db.WorkflowDefinitions.Add(def);
         await _db.SaveChangesAsync();
 
-        var now = DateTime.UtcNow;
         for (var i = 0; i < 10_000; i++)
         {
             var inst = WorkflowInstance.Create(
