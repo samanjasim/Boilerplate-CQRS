@@ -3,6 +3,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using Starter.Application.Common.Interfaces;
 using Starter.Domain.Common;
+using Starter.Domain.Common.Access;
 using Starter.Domain.FeatureFlags.Entities;
 using Starter.Domain.Identity.Entities;
 using Starter.Domain.Tenants.Entities;
@@ -27,6 +28,7 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<LoginHistory> LoginHistory => Set<LoginHistory>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
+    public DbSet<ResourceGrant> ResourceGrants => Set<ResourceGrant>();
 
     // EF Core evaluates this per-query via the expression tree.
     // Must be a property (not a method) for EF to parameterize it.
