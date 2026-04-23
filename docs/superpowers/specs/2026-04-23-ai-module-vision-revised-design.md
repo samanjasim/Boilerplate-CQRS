@@ -134,7 +134,9 @@ Agents act via dedicated service accounts with role assignments. They never impe
 Domain modules extend agents by decorating MediatR commands and queries with `[AiTool]`. The DI container auto-discovers decorated handlers and registers them in the tool catalog, grouped by module. Agents access system operations exclusively through this catalog — no direct repository or DbContext access from agent code. No custom retrieval hooks or orchestration contracts beyond Tools + Templates.
 
 ### Decision 4 — Provider-native runtimes with explicit loop commitment (updated)
-We delegate reasoning loops to provider-native runtimes (OpenAI Agents, Anthropic, Ollama). The runtime wrapper explicitly commits to multi-step agentic loop support: configurable `MaxSteps` cap, loop-break safety on repeated identical tool calls, and normalised step events for audit. Single-step chat completion is `MaxSteps=1`.
+We delegate reasoning loops to provider-native runtimes (OpenAI Agents, Anthropic, Google Gemini, Ollama). The runtime wrapper explicitly commits to multi-step agentic loop support: configurable `MaxSteps` cap, loop-break safety on repeated identical tool calls, and normalised step events for audit. Single-step chat completion is `MaxSteps=1`.
+
+Provider coverage is staged. 5a ships OpenAI, Anthropic, and Ollama. Google Gemini support is a follow-on adapter (Plan 5g) added against the same `IAiAgentRuntime` seam so downstream callers are unaffected.
 
 ### Decision 5 — Embedded AI surfaces: Insights, Actions, Automations
 The `<AiSurfaceSlot />` registry and slot-based placement system ships as designed. Domain modules register insights and actions onto pages without the AI module needing to know about them. All slots carry a `persona` filter — a slot registered for the `Teacher` persona only renders in teacher-context pages.
@@ -156,6 +158,9 @@ Image, video, and audio generation are deferred to Plan 10. No feature enters th
 
 ### Decision 11 — End-customer surfaces: architecture-first, UI-deferred
 The `anonymous` persona, public API scoping, and per-widget API key design are built into the foundation (Plans 5b and 5f). Public portals and embeddable widgets ship in dedicated phases when flagship needs surface them. No architectural rework later.
+
+### Decision 12 — Multi-vendor model coverage including Google
+Provider coverage targets the three dominant cloud families plus a self-hosted option: OpenAI, Anthropic, Google (Gemini for text + agent, Nano Banana / Gemini image model for multi-modal), and Ollama. Google support is scheduled — 5g for the text/agent runtime, Plan 10 for the image model. The `IAiAgentRuntime` abstraction introduced in 5a is the seam that lets any of these arrive without breaking callers. No tenant should be locked to a single vendor for contractual, compliance, or cost reasons.
 
 ---
 
@@ -183,6 +188,7 @@ Plan 4 is complete when 4b-9 ships.
 | 5d | Agent Identity + Safety + Content Moderation. Service-account creation, role assignment, cost caps, rate limits, `[DangerousAction]` human-approval pause. Input/output moderation pipeline with three presets: `Standard`, `ChildSafe`, `ProfessionalModerated`. Configurable per agent; inherited from persona default. | L |
 | 5e | Bundled Platform Agents. `Platform Insights Agent` + `Support Copilot` as before. Adds: `Teacher Tutor` starter template (Student persona, ChildSafe) and `Brand Content Agent` starter template (Editor persona, Standard). | S |
 | **5f** | **Admin AI Settings backend.** Per-tenant AI config API + data model: provider key management (platform-default fallback), model selection per agent class, tenant-level cost caps, default safety preset, brand/persona config (tone, name, avatar), per-widget API keys (origin-pinned, public quota bucket). No UI — surfaces in Plan 7b. | M |
+| 5g | **Google Gemini provider adapter.** `GoogleGeminiAgentRuntime` implementing `IAiAgentRuntime`. Text + tool-call parity with OpenAI and Anthropic. Gemini embeddings endpoint. Uses the 5a adapter seam — caller code unchanged. Credentials surfaced through 5f's provider-key management. | S |
 
 ---
 
@@ -214,7 +220,7 @@ Plan 4 is complete when 4b-9 ships.
 | Plan | Scope | Size |
 |---|---|---|
 | 9 | Mobile chat client (Flutter). Persona-aware — agents surface per the authenticated user's persona. | L |
-| 10 | Multi-modal. `IAiImageGenerator`, `IAiVideoGenerator`, `IAiAudioGenerator` abstractions; provider adapters; content moderation on generated assets; MinIO storage. | L |
+| 10 | Multi-modal. `IAiImageGenerator`, `IAiVideoGenerator`, `IAiAudioGenerator` abstractions; provider adapters (OpenAI DALL·E / gpt-image-1, Google Nano Banana (Gemini image model), Stability, ElevenLabs audio, etc.); content moderation on generated assets; MinIO storage. | L |
 | 11 | Marketplace + Cost Governance. Superadmin template publishing across tenants, per-tenant budgets, billing integration, opt-in/opt-out, enforcement. | M |
 
 ---
@@ -247,7 +253,7 @@ Multi-tenant chat with streaming, inline citations, English + Arabic, quota trac
 Two-axis identity: Role (permissions) × Persona (AI experience). Tenants define audiences — Teacher, Student, Editor, Client — and agents target them. The `anonymous` persona is system-reserved for public surfaces. Content moderation pipeline with `Standard`, `ChildSafe`, and `ProfessionalModerated` presets, applied per agent and inherited from persona defaults. Agent service accounts with role assignment, cost caps, rate limits, and `[DangerousAction]` human-approval pause.
 
 **Operational agents.**
-Multi-step agentic runtime (OpenAI / Anthropic / Ollama) with configurable `MaxSteps` and loop-break safety. Domain modules expose operations as agent tools via `[AiTool]` on MediatR commands — no separate ceremony. Operational agents get service-account identity, live system access via the tool catalog, event and cron triggers, and a full run-trace audit log.
+Multi-step agentic runtime (OpenAI / Anthropic / Google Gemini / Ollama) with configurable `MaxSteps` and loop-break safety. Domain modules expose operations as agent tools via `[AiTool]` on MediatR commands — no separate ceremony. Operational agents get service-account identity, live system access via the tool catalog, event and cron triggers, and a full run-trace audit log.
 
 **Embedded AI surfaces.**
 Insight cards inline on domain pages, one-click actions bound to records, event/cron automations — all persona-aware and slot-registered without touching the AI module. Admin run-trace dashboard and end-user outcome inbox.
