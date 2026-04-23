@@ -29,6 +29,9 @@
 
   <ItemGroup>
     <None Include="Ai/fixtures/**" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Ai\Eval\fixtures\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

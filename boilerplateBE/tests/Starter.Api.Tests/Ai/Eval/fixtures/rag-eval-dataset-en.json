@@ -1,0 +1,75 @@
+{
+  "name": "boilerplate-core-en-v1",
+  "language": "en",
+  "description": "Seed eval set covering common factual Q&A patterns on synthetic company documentation.",
+  "documents": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "file_name": "invoicing-policy.md",
+      "language": "en",
+      "content": "# Invoicing Policy\n\nCustomers are billed monthly on the 1st of each month. Payment is due within 30 days of the invoice date.\n\n## Late Fees\n\nA 2% late fee applies to unpaid balances after 15 days past the due date. After 45 days, the account is suspended.\n\n## Invoice Format\n\nInvoices are sent via email as PDF attachments. Paper invoices are available on request for an additional $5 fee.\n"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "file_name": "refund-policy.md",
+      "language": "en",
+      "content": "# Refund Policy\n\nAll purchases are eligible for a full refund within 14 days of the transaction date, provided the product has not been used.\n\n## Exceptions\n\n- Digital goods are non-refundable after download.\n- Custom orders are non-refundable.\n- Gift cards are final sale.\n\n## Processing Time\n\nApproved refunds are processed within 5 business days and returned to the original payment method.\n"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000003",
+      "file_name": "shipping-policy.md",
+      "language": "en",
+      "content": "# Shipping Policy\n\nStandard shipping takes 3-5 business days within the continental United States. Express shipping takes 1-2 business days for an additional $15 charge.\n\n## International\n\nInternational orders ship via DHL and arrive within 7-14 business days. Customs duties are the recipient's responsibility.\n\n## Free Shipping\n\nOrders over $75 qualify for free standard shipping within the US.\n"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000004",
+      "file_name": "security-policy.md",
+      "language": "en",
+      "content": "# Security Policy\n\nAll data is encrypted at rest using AES-256 and in transit via TLS 1.3.\n\n## Authentication\n\nWe require multi-factor authentication (MFA) for all administrative accounts. Session tokens expire after 60 minutes of inactivity.\n\n## Incident Response\n\nSecurity incidents are reported to security@example.com and investigated within 4 hours of receipt.\n"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000005",
+      "file_name": "vacation-policy.md",
+      "language": "en",
+      "content": "# Vacation Policy\n\nFull-time employees receive 20 days of paid vacation per calendar year, accrued monthly.\n\n## Rollover\n\nUp to 5 unused vacation days can be rolled over to the next calendar year. Days beyond 5 are forfeited on January 1st.\n\n## Requesting Time Off\n\nVacation requests must be submitted at least 2 weeks in advance through the HR portal.\n"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000006",
+      "file_name": "support-tiers.md",
+      "language": "en",
+      "content": "# Support Tiers\n\n## Basic\n\nEmail support with 48-hour response SLA. Included with all plans.\n\n## Priority\n\nEmail + chat support with 4-hour response SLA. $99/month.\n\n## Enterprise\n\n24/7 phone support with 15-minute response SLA and a dedicated account manager. Custom pricing.\n"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000007",
+      "file_name": "api-rate-limits.md",
+      "language": "en",
+      "content": "# API Rate Limits\n\nThe API enforces a default limit of 1,000 requests per hour per API key.\n\n## Upgrades\n\nEnterprise customers can request limits up to 100,000 requests per hour. Contact sales@example.com to upgrade.\n\n## Rate-Limited Responses\n\nRate-limited requests return HTTP 429 with a Retry-After header indicating when the next request is allowed.\n"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000008",
+      "file_name": "product-warranty.md",
+      "language": "en",
+      "content": "# Product Warranty\n\nAll hardware products include a 1-year limited warranty covering manufacturing defects.\n\n## Extended Warranty\n\nA 3-year extended warranty is available for 15% of the product price at time of purchase.\n\n## Claims\n\nWarranty claims require the original receipt and a description of the defect. Submit via the support portal.\n"
+    }
+  ],
+  "questions": [
+    {"id":"q001","query":"When are customers billed?","relevant_document_ids":["00000000-0000-4000-8000-000000000001"],"relevant_chunk_ids":null,"expected_answer_snippet":"monthly on the 1st","tags":["factual","single-doc"]},
+    {"id":"q002","query":"What is the late fee?","relevant_document_ids":["00000000-0000-4000-8000-000000000001"],"relevant_chunk_ids":null,"expected_answer_snippet":"2% late fee","tags":["factual","single-doc"]},
+    {"id":"q003","query":"How long is the refund window?","relevant_document_ids":["00000000-0000-4000-8000-000000000002"],"relevant_chunk_ids":null,"expected_answer_snippet":"14 days","tags":["factual","single-doc"]},
+    {"id":"q004","query":"Can I return digital goods?","relevant_document_ids":["00000000-0000-4000-8000-000000000002"],"relevant_chunk_ids":null,"expected_answer_snippet":"non-refundable after download","tags":["negation","single-doc"]},
+    {"id":"q005","query":"How long does express shipping take?","relevant_document_ids":["00000000-0000-4000-8000-000000000003"],"relevant_chunk_ids":null,"expected_answer_snippet":"1-2 business days","tags":["factual","single-doc"]},
+    {"id":"q006","query":"Is shipping free?","relevant_document_ids":["00000000-0000-4000-8000-000000000003"],"relevant_chunk_ids":null,"expected_answer_snippet":"over $75","tags":["factual","single-doc"]},
+    {"id":"q007","query":"What encryption does the platform use?","relevant_document_ids":["00000000-0000-4000-8000-000000000004"],"relevant_chunk_ids":null,"expected_answer_snippet":"AES-256","tags":["factual","single-doc"]},
+    {"id":"q008","query":"How long is a session valid?","relevant_document_ids":["00000000-0000-4000-8000-000000000004"],"relevant_chunk_ids":null,"expected_answer_snippet":"60 minutes","tags":["factual","single-doc"]},
+    {"id":"q009","query":"How much vacation do I get?","relevant_document_ids":["00000000-0000-4000-8000-000000000005"],"relevant_chunk_ids":null,"expected_answer_snippet":"20 days","tags":["factual","single-doc"]},
+    {"id":"q010","query":"Can I carry vacation days forward?","relevant_document_ids":["00000000-0000-4000-8000-000000000005"],"relevant_chunk_ids":null,"expected_answer_snippet":"5 unused vacation days","tags":["factual","single-doc"]},
+    {"id":"q011","query":"What is the SLA for Priority support?","relevant_document_ids":["00000000-0000-4000-8000-000000000006"],"relevant_chunk_ids":null,"expected_answer_snippet":"4-hour response","tags":["factual","comparative"]},
+    {"id":"q012","query":"Which support tier gives phone support?","relevant_document_ids":["00000000-0000-4000-8000-000000000006"],"relevant_chunk_ids":null,"expected_answer_snippet":"Enterprise","tags":["comparative","single-doc"]},
+    {"id":"q013","query":"What is the default API request rate?","relevant_document_ids":["00000000-0000-4000-8000-000000000007"],"relevant_chunk_ids":null,"expected_answer_snippet":"1,000 requests per hour","tags":["factual","single-doc"]},
+    {"id":"q014","query":"What status code means rate-limited?","relevant_document_ids":["00000000-0000-4000-8000-000000000007"],"relevant_chunk_ids":null,"expected_answer_snippet":"429","tags":["factual","single-doc"]},
+    {"id":"q015","query":"How long is the standard product warranty?","relevant_document_ids":["00000000-0000-4000-8000-000000000008"],"relevant_chunk_ids":null,"expected_answer_snippet":"1-year","tags":["factual","single-doc"]},
+    {"id":"q016","query":"Compare invoicing and refund timelines.","relevant_document_ids":["00000000-0000-4000-8000-000000000001","00000000-0000-4000-8000-000000000002"],"relevant_chunk_ids":null,"expected_answer_snippet":null,"tags":["comparative","multi-doc"]},
+    {"id":"q017","query":"What happens if my account is unpaid?","relevant_document_ids":["00000000-0000-4000-8000-000000000001"],"relevant_chunk_ids":null,"expected_answer_snippet":"suspended","tags":["factual","single-doc"]},
+    {"id":"q018","query":"Are gift cards refundable?","relevant_document_ids":["00000000-0000-4000-8000-000000000002"],"relevant_chunk_ids":null,"expected_answer_snippet":"final sale","tags":["negation","single-doc"]}
+  ]
+}

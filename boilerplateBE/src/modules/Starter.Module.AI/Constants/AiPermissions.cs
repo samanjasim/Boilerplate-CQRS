@@ -13,4 +13,5 @@ public static class AiPermissions
     public const string RunAgentTasks = "Ai.RunAgentTasks";
     public const string ManageSettings = "Ai.ManageSettings";
     public const string SearchKnowledgeBase = "Ai.SearchKnowledgeBase";
+    public const string RunEval = "Ai.RunEval";
 }

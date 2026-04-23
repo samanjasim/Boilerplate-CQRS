@@ -41,7 +41,7 @@ TestResult.xml
 
 # dotnet tool
 .dotnet/
-tools/
+# tools/ is intentionally NOT ignored — src tools like EvalCacheWarmup live here
 
 # JetBrains Rider
 .idea/

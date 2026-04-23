@@ -17,6 +17,11 @@ using Starter.Module.AI.Infrastructure.Ingestion;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Services;
+using Starter.Module.AI.Application.Eval;
+using Starter.Module.AI.Application.Eval.Faithfulness;
+using Starter.Module.AI.Infrastructure.Eval;
+using Starter.Module.AI.Infrastructure.Eval.Faithfulness;
+using Starter.Module.AI.Infrastructure.Eval.Fixtures;
 using Starter.Module.AI.Infrastructure.Retrieval;
 using Starter.Module.AI.Infrastructure.Retrieval.Classification;
 using Starter.Module.AI.Infrastructure.Retrieval.Resilience;
@@ -41,6 +46,8 @@ public sealed class AIModule : IModule
             .ValidateOnStart();
         services.Configure<AiQdrantSettings>(configuration.GetSection(AiQdrantSettings.SectionName));
         services.Configure<AiOcrSettings>(configuration.GetSection(AiOcrSettings.SectionName));
+        services.Configure<AiRagEvalSettings>(
+            configuration.GetSection(AiRagEvalSettings.SectionName));
 
         services.AddDbContext<AiDbContext>(options =>
         {
@@ -117,6 +124,10 @@ public sealed class AIModule : IModule
 
         services.AddScoped<IResourceOwnershipHandler, AiAssistantOwnershipHandler>();
 
+        services.AddScoped<EvalFixtureIngester>();
+        services.AddScoped<IFaithfulnessJudge, LlmJudgeFaithfulness>();
+        services.AddScoped<IRagEvalHarness, RagEvalHarness>();
+
         return services;
     }
 
@@ -133,6 +144,7 @@ public sealed class AIModule : IModule
         yield return (AiPermissions.RunAgentTasks, "Execute AI agent tasks", "AI");
         yield return (AiPermissions.ManageSettings, "Manage AI module settings", "AI");
         yield return (AiPermissions.SearchKnowledgeBase, "Search knowledge base content directly", "AI");
+        yield return (AiPermissions.RunEval, "Run RAG evaluation harness", "AI");
     }
 
     public IEnumerable<(string Role, string[] Permissions)> GetDefaultRolePermissions()
@@ -148,7 +160,8 @@ public sealed class AIModule : IModule
             AiPermissions.ViewUsage,
             AiPermissions.RunAgentTasks,
             AiPermissions.ManageSettings,
-            AiPermissions.SearchKnowledgeBase
+            AiPermissions.SearchKnowledgeBase,
+            AiPermissions.RunEval
         ]);
 
         yield return ("Admin", [

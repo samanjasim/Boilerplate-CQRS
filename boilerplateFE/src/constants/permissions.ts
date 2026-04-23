@@ -121,6 +121,7 @@ export const PERMISSIONS = {
     RunAgentTasks: 'Ai.RunAgentTasks',
     ManageSettings: 'Ai.ManageSettings',
     SearchKnowledgeBase: 'Ai.SearchKnowledgeBase',
+    RunEval: 'Ai.RunEval',
   },
   Workflows: {
     View: 'Workflows.View',
