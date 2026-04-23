@@ -102,6 +102,52 @@ public sealed class ChatExecutionRagInjectionTests
         doneIdx.Should().BeGreaterThan(citationIdx, "citations must come before done");
     }
 
+    /// <summary>
+    /// Regression sentinel for streaming-path cancellation behavior (Task 11 follow-up).
+    ///
+    /// When the caller's CancellationToken is pre-cancelled, <see cref="IChatExecutionService.ExecuteStreamAsync"/>
+    /// throws <see cref="OperationCanceledException"/> from the very first awaited DB call inside
+    /// <c>PrepareTurnAsync</c> — before any <c>yield</c> executes. This is asymmetric with the
+    /// non-streaming path (Task 10) which explicitly calls <c>FailTurnAsync</c> and then rethrows;
+    /// the streaming path skips <c>FailTurnAsync</c> because cancellation fires before any state
+    /// has been established. The test pins this legacy behavior so future refactors don't silently
+    /// change it.
+    /// </summary>
+    [Fact]
+    public async Task Streaming_Cancelled_Token_Does_Not_Persist_Final_Row_Or_Publish_Completion_Webhook()
+    {
+        var recordingPublisher = new RecordingWebhookPublisher();
+        var fx = new ChatExecutionTestFixture(webhookPublisher: recordingPublisher);
+        var assistant = fx.SeedAssistantWithRagScope(AiRagScope.None);
+        fx.FakeProvider.ScriptedResponse = "unreachable"; // provider won't be reached with pre-cancelled ct
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        // With a pre-cancelled token the first awaited DB call inside PrepareTurnAsync fires
+        // OperationCanceledException before any yield executes, so enumerating the stream throws.
+        Func<Task> act = async () =>
+        {
+            await foreach (var _ in fx.Service.ExecuteStreamAsync(
+                conversationId: null, assistantId: assistant.Id, userMessage: "hi", ct: cts.Token))
+            {
+                // no-op — we expect to never reach here
+            }
+        };
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+
+        // No ai.chat.completed webhook for a cancelled turn (FinalizeTurnAsync was never reached).
+        recordingPublisher.Events.Should().NotContain(
+            e => e.EventType == "ai.chat.completed",
+            "completing a cancelled turn would misrepresent usage");
+
+        // No assistant message row persisted — FinalizeTurnAsync was never called.
+        var msgs = await fx.GetAllMessagesAsync();
+        msgs.Where(m => m.Role == MessageRole.Assistant).Should().BeEmpty(
+            "a cancelled streaming turn must not persist an assistant reply row");
+    }
+
     [Fact]
     public async Task Cancelled_Token_Does_Not_Persist_Final_Row_Or_Publish_Completion_Webhook()
     {
@@ -141,6 +187,10 @@ internal sealed class ChatExecutionTestFixture
     public Guid TenantId { get; } = Guid.NewGuid();
     public Guid UserId { get; } = Guid.NewGuid();
     public int RetrievalCallCount => _retrieval.CallCount;
+
+    /// <summary>Exposes the underlying <see cref="IChatExecutionService"/> for tests that
+    /// need to call streaming overloads directly (e.g. the streaming cancellation regression).</summary>
+    public IChatExecutionService Service => _chat;
 
     private readonly FakeRetrieval _retrieval = new();
     private readonly IChatExecutionService _chat;
