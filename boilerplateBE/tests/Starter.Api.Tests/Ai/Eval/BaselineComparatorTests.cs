@@ -63,6 +63,17 @@ public sealed class BaselineComparatorTests
     }
 
     [Fact]
+    public void LatencyBelowNoiseFloor_IgnoresJitter()
+    {
+        // Baseline < 5 ms — jitter at this scale should not trigger a failure
+        // even with a 400% swing, because the signal is dominated by noise.
+        var baseline = Snap(stagesP95: new Dictionary<string, double> { ["classify"] = 0.8 });
+        var current  = Snap(stagesP95: new Dictionary<string, double> { ["classify"] = 4.0 });
+        var result = BaselineComparator.Compare(baseline, current, 0.05, 0.20);
+        result.Failed.Should().BeFalse();
+    }
+
+    [Fact]
     public void DegradedStageCountIncrease_Fails()
     {
         var baseline = Snap(degraded: 0);

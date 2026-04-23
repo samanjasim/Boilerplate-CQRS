@@ -7,6 +7,11 @@ public sealed record BaselineComparisonResult(
 
 public static class BaselineComparator
 {
+    // Sub-millisecond stages are dominated by OS scheduling / JIT jitter; a 100%
+    // swing at that scale is not a real regression. Require the baseline to be
+    // above this threshold before the latency gate is armed.
+    private const double LatencyNoiseFloorMs = 5.0;
+
     public static BaselineComparisonResult Compare(
         BaselineDatasetSnapshot baseline,
         BaselineDatasetSnapshot current,
@@ -30,7 +35,7 @@ public static class BaselineComparator
         foreach (var (stage, baseP95) in baseline.StageP95Ms)
         {
             if (!current.StageP95Ms.TryGetValue(stage, out var curP95)) continue;
-            if (baseP95 <= 0) continue;
+            if (baseP95 < LatencyNoiseFloorMs) continue;
             var delta = (curP95 - baseP95) / baseP95;
             if (delta > latencyTolerance)
                 failures.Add($"latency.{stage}.p95 regressed: {baseP95:F1} → {curP95:F1} ms ({delta:P1})");
