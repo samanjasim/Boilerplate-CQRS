@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label';
 import { X } from 'lucide-react';
 import { useDesignerStore } from './hooks/useDesignerStore';
 import type { WorkflowStateConfig } from '@/types/workflow.types';
+import { JsonBlockField } from './JsonBlockField';
 
 const STATE_TYPES = ['Initial', 'HumanTask', 'SystemAction', 'Terminal'] as const;
 const BUILTIN_STRATEGIES = ['SpecificUser', 'Role', 'EntityCreator'] as const;
@@ -149,7 +150,54 @@ export function StateEditor({ stateName, readOnly = false }: Props) {
         </section>
       )}
 
-      {/* Advanced (JSON blocks) wired in Task 13 */}
+      {/* Advanced (JSON blocks) */}
+      <section className="space-y-2">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {t('workflow.designer.state.advanced')}
+        </h4>
+        <JsonBlockField
+          label={t('workflow.designer.state.fallbackAssignee')}
+          value={state.assignee?.fallback ?? null}
+          onChange={v => patch({ assignee: { ...(state.assignee ?? { strategy: '' }), fallback: v as WorkflowStateConfig['assignee'] } })}
+          placeholder='{ "strategy": "Role", "parameters": { "roleName": "SuperAdmin" } }'
+          disabled={readOnly}
+        />
+        <JsonBlockField
+          label={t('workflow.designer.state.customParameters')}
+          value={state.assignee?.parameters ?? null}
+          onChange={v => patch({ assignee: { ...(state.assignee ?? { strategy: '' }), parameters: v as Record<string, unknown> | null } })}
+          placeholder='{ "custom": "value" }'
+          disabled={readOnly}
+        />
+        <JsonBlockField
+          label={t('workflow.designer.state.onEnterHooks')}
+          value={state.onEnter ?? null}
+          onChange={v => patch({ onEnter: v as WorkflowStateConfig['onEnter'] })}
+          placeholder='[ { "type": "notify", "template": "workflow.task-assigned", "to": "assignee" } ]'
+          disabled={readOnly}
+        />
+        <JsonBlockField
+          label={t('workflow.designer.state.onExitHooks')}
+          value={state.onExit ?? null}
+          onChange={v => patch({ onExit: v as WorkflowStateConfig['onExit'] })}
+          placeholder='[ { "type": "activity", "action": "workflow_transition" } ]'
+          disabled={readOnly}
+        />
+        <JsonBlockField
+          label={t('workflow.designer.state.formFields')}
+          value={state.formFields ?? null}
+          onChange={v => patch({ formFields: v as WorkflowStateConfig['formFields'] })}
+          placeholder='[ { "name": "amount", "label": "Amount", "type": "number", "required": true } ]'
+          disabled={readOnly}
+        />
+        <JsonBlockField
+          label={t('workflow.designer.state.parallel')}
+          value={state.parallel ?? null}
+          onChange={v => patch({ parallel: v as WorkflowStateConfig['parallel'] })}
+          placeholder='{ "mode": "AllOf", "assignees": [ { "strategy": "Role", "parameters": { "roleName": "Admin" } } ] }'
+          disabled={readOnly}
+        />
+      </section>
     </div>
   );
 }
