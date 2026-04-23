@@ -24,6 +24,11 @@ public sealed partial class UpdateDefinitionCommandValidator : AbstractValidator
             RuleFor(x => x.StatesJson!)
                 .Custom((statesJson, ctx) => ValidateStates(statesJson, ctx));
         });
+
+        When(x => x.StatesJson is not null && x.TransitionsJson is not null, () =>
+        {
+            RuleFor(x => x).Custom((cmd, ctx) => ValidateTransitions(cmd.StatesJson!, cmd.TransitionsJson!, ctx));
+        });
     }
 
     private static void ValidateStates(string statesJson, ValidationContext<UpdateDefinitionCommand> ctx)
@@ -105,6 +110,73 @@ public sealed partial class UpdateDefinitionCommandValidator : AbstractValidator
             ctx.AddFailure(nameof(UpdateDefinitionCommand.StatesJson),
                 "A definition must have at least one Terminal state.");
     }
+
+    private static void ValidateTransitions(
+        string statesJson,
+        string transitionsJson,
+        ValidationContext<UpdateDefinitionCommand> ctx)
+    {
+        List<WorkflowStateConfig>? states;
+        List<WorkflowTransitionConfig>? transitions;
+
+        try
+        {
+            states = JsonSerializer.Deserialize<List<WorkflowStateConfig>>(statesJson, JsonOpts);
+            transitions = JsonSerializer.Deserialize<List<WorkflowTransitionConfig>>(transitionsJson, JsonOpts);
+        }
+        catch (JsonException ex)
+        {
+            ctx.AddFailure(nameof(UpdateDefinitionCommand.TransitionsJson),
+                $"TransitionsJson is not valid JSON: {ex.Message}");
+            return;
+        }
+
+        if (states is null || transitions is null) return;
+
+        // Build lookup defensively — duplicate state names are caught by ValidateStates; skip them here.
+        var stateByName = states
+            .GroupBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (t, index) in transitions.Select((t, i) => (t, i)))
+        {
+            var prefix = $"transitions[{index}]";
+
+            if (string.IsNullOrWhiteSpace(t.Trigger))
+                ctx.AddFailure($"{prefix}.trigger", "Transition trigger is required.");
+
+            if (!stateByName.TryGetValue(t.From, out var fromState))
+                ctx.AddFailure($"{prefix}.from",
+                    $"Transition from '{t.From}' references an unknown state.");
+            else if (fromState.Type.Equals("Terminal", StringComparison.OrdinalIgnoreCase))
+                ctx.AddFailure($"{prefix}.from",
+                    $"Transition cannot originate from Terminal state '{t.From}'.");
+
+            if (!stateByName.ContainsKey(t.To))
+                ctx.AddFailure($"{prefix}.to",
+                    $"Transition to '{t.To}' references an unknown state.");
+        }
+
+        // Duplicate (from, trigger) pairs
+        var duplicates = transitions
+            .Where(t => !string.IsNullOrWhiteSpace(t.Trigger))
+            .GroupBy(t => (t.From, t.Trigger), TupleEqualityComparer)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
+
+        foreach (var (from, trigger) in duplicates)
+            ctx.AddFailure(nameof(UpdateDefinitionCommand.TransitionsJson),
+                $"Transitions have duplicate (from='{from}', trigger='{trigger}') pair.");
+    }
+
+    private static readonly IEqualityComparer<(string From, string Trigger)> TupleEqualityComparer =
+        EqualityComparer<(string From, string Trigger)>.Create(
+            (a, b) => StringComparer.OrdinalIgnoreCase.Equals(a.From, b.From)
+                      && StringComparer.OrdinalIgnoreCase.Equals(a.Trigger, b.Trigger),
+            t => HashCode.Combine(
+                StringComparer.OrdinalIgnoreCase.GetHashCode(t.From),
+                StringComparer.OrdinalIgnoreCase.GetHashCode(t.Trigger)));
 
     [GeneratedRegex(@"^[A-Za-z][A-Za-z0-9_]*$", RegexOptions.CultureInvariant)]
     private static partial Regex SlugRegex();

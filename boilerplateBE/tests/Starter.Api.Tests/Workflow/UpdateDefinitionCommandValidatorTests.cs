@@ -201,4 +201,83 @@ public sealed class UpdateDefinitionCommandValidatorTests
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.ErrorMessage.Contains("120 characters"));
     }
+
+    [Fact]
+    public void Fails_when_transition_from_references_unknown_state()
+    {
+        var cmd = new UpdateDefinitionCommand(Guid.NewGuid(), "ok", null,
+            StatesJson(
+                new("Start", "Start", "Initial"),
+                new("Done", "Done", "Terminal")),
+            TransitionsJson(new WorkflowTransitionConfig("Ghost", "Done", "Go")));
+
+        var result = _sut.Validate(cmd);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.ErrorMessage.Contains("from") && e.ErrorMessage.Contains("Ghost"));
+    }
+
+    [Fact]
+    public void Fails_when_transition_to_references_unknown_state()
+    {
+        var cmd = new UpdateDefinitionCommand(Guid.NewGuid(), "ok", null,
+            StatesJson(
+                new("Start", "Start", "Initial"),
+                new("Done", "Done", "Terminal")),
+            TransitionsJson(new WorkflowTransitionConfig("Start", "Ghost", "Go")));
+
+        var result = _sut.Validate(cmd);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.ErrorMessage.Contains("to") && e.ErrorMessage.Contains("Ghost"));
+    }
+
+    [Fact]
+    public void Fails_when_trigger_is_empty()
+    {
+        var cmd = new UpdateDefinitionCommand(Guid.NewGuid(), "ok", null,
+            StatesJson(
+                new("Start", "Start", "Initial"),
+                new("Done", "Done", "Terminal")),
+            TransitionsJson(new WorkflowTransitionConfig("Start", "Done", "")));
+
+        var result = _sut.Validate(cmd);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.ErrorMessage.Contains("trigger"));
+    }
+
+    [Fact]
+    public void Fails_when_transition_originates_from_a_terminal_state()
+    {
+        var cmd = new UpdateDefinitionCommand(Guid.NewGuid(), "ok", null,
+            StatesJson(
+                new("Start", "Start", "Initial"),
+                new("Done", "Done", "Terminal"),
+                new("AlsoDone", "AlsoDone", "Terminal")),
+            TransitionsJson(new WorkflowTransitionConfig("Done", "AlsoDone", "X")));
+
+        var result = _sut.Validate(cmd);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.ErrorMessage.Contains("Terminal"));
+    }
+
+    [Fact]
+    public void Fails_when_same_from_and_trigger_pair_appears_twice()
+    {
+        var cmd = new UpdateDefinitionCommand(Guid.NewGuid(), "ok", null,
+            StatesJson(
+                new("Start", "Start", "Initial"),
+                new("A", "A", "Terminal"),
+                new("B", "B", "Terminal")),
+            TransitionsJson(
+                new WorkflowTransitionConfig("Start", "A", "Go"),
+                new WorkflowTransitionConfig("Start", "B", "Go")));
+
+        var result = _sut.Validate(cmd);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.ErrorMessage.Contains("duplicate"));
+    }
 }
