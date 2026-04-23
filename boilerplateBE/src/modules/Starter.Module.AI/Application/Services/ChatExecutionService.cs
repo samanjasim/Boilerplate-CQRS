@@ -11,6 +11,7 @@ using Starter.Application.Common.Interfaces;
 using Starter.Domain.Common.Access.Enums;
 using Starter.Module.AI.Application.DTOs;
 using Starter.Module.AI.Application.Services.Retrieval;
+using Starter.Module.AI.Application.Services.Runtime;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Domain.Errors;
@@ -31,10 +32,13 @@ internal sealed class ChatExecutionService(
     IWebhookPublisher webhookPublisher,
     IAiToolRegistry toolRegistry,
     IRagRetrievalService retrievalService,
-    ISender sender,
+    IAiAgentRuntimeFactory agentRuntimeFactory,
     IConfiguration configuration,
     IResourceAccessService access,
-    ILogger<ChatExecutionService> logger) : IChatExecutionService
+    ILogger<ChatExecutionService> logger,
+    // TODO(Task-11): ISender is only needed by the legacy streaming tool-dispatch path.
+    // Remove once ExecuteStreamAsync is refactored to delegate to IAiAgentRuntime.
+    ISender sender) : IChatExecutionService
 {
     private const string AiTokensMetric = "ai_tokens";
     private const int MaxTitleLength = 80;
@@ -54,78 +58,65 @@ internal sealed class ChatExecutionService(
             return Result.Failure<AiChatReplyDto>(stateResult.Error);
 
         var state = stateResult.Value;
-        var retrieved = await RetrieveContextSafelyAsync(state.Assistant, userMessage, state.ProviderMessages, ct);
+        var retrieved = await RetrieveContextSafelyAsync(
+            state.Assistant, userMessage, state.ProviderMessages, ct);
         var effectiveSystemPrompt = ResolveSystemPrompt(state.Assistant, retrieved);
 
-        var provider = providerFactory.Create(ResolveProvider(state.Assistant));
-        var chatOptions = BuildChatOptions(state.Assistant, effectiveSystemPrompt, state.Tools.ProviderTools);
-
-        var messages = new List<AiChatMessage>(state.ProviderMessages);
-        var totalInput = 0;
-        var totalOutput = 0;
+        var provider = ResolveProvider(state.Assistant);
         var stepBudget = Math.Clamp(state.Assistant.MaxAgentSteps, 1, 20);
-        var nextOrder = state.NextOrder;
+        var ctx = new AgentRunContext(
+            Messages: state.ProviderMessages,
+            SystemPrompt: effectiveSystemPrompt,
+            ModelConfig: new AgentModelConfig(
+                Provider: provider,
+                Model: state.Assistant.Model ?? "",
+                Temperature: state.Assistant.Temperature,
+                MaxTokens: state.Assistant.MaxTokens),
+            Tools: state.Tools,
+            MaxSteps: stepBudget,
+            LoopBreak: LoopBreakPolicy.Default,
+            Streaming: false);
 
+        var sink = new ChatAgentRunSink(context, state.Conversation.Id, state.NextOrder, streamWriter: null);
+
+        AgentRunResult runResult;
         try
         {
-            for (var step = 0; step < stepBudget; step++)
-            {
-                var completion = await provider.ChatAsync(messages, chatOptions, ct);
-                totalInput += completion.InputTokens;
-                totalOutput += completion.OutputTokens;
-
-                if (completion.ToolCalls is null || completion.ToolCalls.Count == 0)
-                {
-                    var citations = CitationParser.Parse(completion.Content, retrieved.Children);
-                    var finalMessage = await FinalizeTurnAsync(
-                        state, completion.Content, totalInput, totalOutput, nextOrder, citations, ct);
-                    return Result.Success(new AiChatReplyDto(
-                        state.Conversation.Id,
-                        state.UserMessage.ToDto(),
-                        finalMessage.ToDto()));
-                }
-
-                var toolCallsJson = System.Text.Json.JsonSerializer.Serialize(
-                    completion.ToolCalls, SerializerOptions);
-
-                var assistantCallMsg = AiMessage.CreateAssistantMessage(
-                    state.Conversation.Id,
-                    completion.Content ?? "",
-                    nextOrder++,
-                    completion.InputTokens,
-                    completion.OutputTokens,
-                    toolCalls: toolCallsJson);
-                context.AiMessages.Add(assistantCallMsg);
-                messages.Add(new AiChatMessage(
-                    "assistant", completion.Content, ToolCalls: completion.ToolCalls));
-
-                foreach (var call in completion.ToolCalls)
-                {
-                    var dispatch = await DispatchToolAsync(call, state.Tools, ct);
-
-                    var toolResultMsg = AiMessage.CreateToolResultMessage(
-                        state.Conversation.Id, call.Id, dispatch.Json, nextOrder++);
-                    context.AiMessages.Add(toolResultMsg);
-                    messages.Add(new AiChatMessage("tool", dispatch.Json, ToolCallId: call.Id));
-                }
-
-                await context.SaveChangesAsync(ct);
-            }
-
-            var hitLimitMsg = await FinalizeTurnAsync(
-                state,
-                "I couldn't fully complete the task within my step budget. Please narrow the request.",
-                totalInput, totalOutput, nextOrder, [], ct);
-            return Result.Success(new AiChatReplyDto(
-                state.Conversation.Id,
-                state.UserMessage.ToDto(),
-                hitLimitMsg.ToDto()));
+            var runtime = agentRuntimeFactory.Create(provider);
+            runResult = await runtime.RunAsync(ctx, sink, ct);
         }
         catch (Exception ex)
         {
             await FailTurnAsync(state);
             return Result.Failure<AiChatReplyDto>(AiErrors.ProviderError(ex.Message));
         }
+
+        if (runResult.Status == AgentRunStatus.ProviderError)
+        {
+            await FailTurnAsync(state);
+            return Result.Failure<AiChatReplyDto>(AiErrors.ProviderError(runResult.TerminationReason ?? "provider error"));
+        }
+
+        var finalContent = runResult.Status switch
+        {
+            AgentRunStatus.Completed => runResult.FinalContent ?? "",
+            AgentRunStatus.MaxStepsExceeded => "I couldn't fully complete the task within my step budget. Please narrow the request.",
+            AgentRunStatus.LoopBreak => "I couldn't fully complete the task within my step budget. Please narrow the request.",
+            AgentRunStatus.Cancelled => "",
+            _ => ""
+        };
+
+        var citations = CitationParser.Parse(finalContent, retrieved.Children);
+        var finalOrder = sink.NextOrder;
+        var finalMessage = await FinalizeTurnAsync(
+            state, finalContent,
+            runResult.TotalInputTokens, runResult.TotalOutputTokens,
+            finalOrder, citations, ct);
+
+        return Result.Success(new AiChatReplyDto(
+            state.Conversation.Id,
+            state.UserMessage.ToDto(),
+            finalMessage.ToDto()));
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -822,6 +813,8 @@ internal sealed class ChatExecutionService(
         }
     }
 
+    // TODO(Task-11): Remove DispatchToolAsync and ToolDispatchResult once ExecuteStreamAsync
+    // is refactored to delegate to IAiAgentRuntime. Until then the streaming path still uses them.
     private async Task<ToolDispatchResult> DispatchToolAsync(
         AiToolCall call,
         ToolResolutionResult tools,
@@ -902,6 +895,7 @@ internal sealed class ChatExecutionService(
 
     private sealed record ChunkOrError(AiChatChunk? Chunk, string? Error);
 
+    // TODO(Task-11): Remove once ExecuteStreamAsync is refactored to use IAiAgentRuntime.
     private sealed record ToolDispatchResult(string Json, bool IsError);
 
     private sealed class ToolCallBuilder(string id, string name)

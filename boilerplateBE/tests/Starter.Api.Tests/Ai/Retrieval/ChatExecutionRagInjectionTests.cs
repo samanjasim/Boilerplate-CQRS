@@ -15,10 +15,12 @@ using Starter.Domain.Common.Access.Enums;
 using Starter.Module.AI.Application.DTOs;
 using Starter.Module.AI.Application.Services;
 using Starter.Module.AI.Application.Services.Retrieval;
+using Starter.Module.AI.Application.Services.Runtime;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Providers;
+using Starter.Module.AI.Infrastructure.Runtime;
 using Xunit;
 
 namespace Starter.Api.Tests.Ai.Retrieval;
@@ -142,6 +144,13 @@ internal sealed class ChatExecutionTestFixture
 
         services.AddSingleton<IAiProviderFactory>(new ScriptedProviderFactory(FakeProvider));
         services.AddSingleton<IResourceAccessService>(new StubResourceAccessService());
+
+        // Agent runtime factory (Task 10 — ChatExecutionService.ExecuteAsync now delegates here)
+        services.AddScoped<IAgentToolDispatcher, AgentToolDispatcher>();
+        services.AddScoped<AnthropicAgentRuntime>();
+        services.AddScoped<OpenAiAgentRuntime>();
+        services.AddScoped<OllamaAgentRuntime>();
+        services.AddScoped<IAiAgentRuntimeFactory, AiAgentRuntimeFactory>();
 
         services.AddScoped<IChatExecutionService, ChatExecutionService>();
 
