@@ -2,6 +2,8 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Readers;
+using Starter.Application.Common.Interfaces;
+using Starter.Module.Workflow.Constants;
 using Starter.Module.Workflow.Domain.Constants;
 using Starter.Module.Workflow.Domain.Enums;
 using Starter.Module.Workflow.Domain.Errors;
@@ -12,7 +14,8 @@ namespace Starter.Module.Workflow.Application.Queries.GetWorkflowInstanceById;
 
 internal sealed class GetWorkflowInstanceByIdQueryHandler(
     WorkflowDbContext db,
-    IUserReader userReader) : IRequestHandler<GetWorkflowInstanceByIdQuery, Result<WorkflowInstanceSummary>>
+    IUserReader userReader,
+    ICurrentUserService currentUser) : IRequestHandler<GetWorkflowInstanceByIdQuery, Result<WorkflowInstanceSummary>>
 {
     private readonly IUserReader _userReader = userReader;
 
@@ -26,6 +29,15 @@ internal sealed class GetWorkflowInstanceByIdQueryHandler(
 
         if (instance is null)
             return Result.Failure<WorkflowInstanceSummary>(WorkflowErrors.InstanceNotFound(request.InstanceId));
+
+        // Mirror the server-side scoping used by GetWorkflowInstances: users without
+        // ViewAllTasks can only see instances they started. Return NotFound (not Forbid)
+        // to avoid leaking existence of instances belonging to other users.
+        if (!currentUser.HasPermission(WorkflowPermissions.ViewAllTasks)
+            && instance.StartedByUserId != currentUser.UserId)
+        {
+            return Result.Failure<WorkflowInstanceSummary>(WorkflowErrors.InstanceNotFound(request.InstanceId));
+        }
 
         var users = await _userReader.GetManyAsync([instance.StartedByUserId], cancellationToken);
         var displayName = users.FirstOrDefault(u => u.Id == instance.StartedByUserId)?.DisplayName;

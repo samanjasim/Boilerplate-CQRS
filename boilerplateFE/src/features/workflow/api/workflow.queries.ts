@@ -52,7 +52,7 @@ export function useWorkflowHistory(instanceId: string) {
 
 export function useWorkflowInstanceById(instanceId: string | undefined) {
   return useQuery({
-    queryKey: ['workflow', 'instances', 'byId', instanceId],
+    queryKey: queryKeys.workflow.instances.byId(instanceId),
     queryFn: () => workflowApi.getInstanceById(instanceId!),
     enabled: !!instanceId,
   });
