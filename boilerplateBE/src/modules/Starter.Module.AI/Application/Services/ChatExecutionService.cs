@@ -1,6 +1,5 @@
 using System.Runtime.CompilerServices;
-using System.Text;
-using MediatR;
+using System.Threading.Channels;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -35,10 +34,7 @@ internal sealed class ChatExecutionService(
     IAiAgentRuntimeFactory agentRuntimeFactory,
     IConfiguration configuration,
     IResourceAccessService access,
-    ILogger<ChatExecutionService> logger,
-    // TODO(Task-11): ISender is only needed by the legacy streaming tool-dispatch path.
-    // Remove once ExecuteStreamAsync is refactored to delegate to IAiAgentRuntime.
-    ISender sender) : IChatExecutionService
+    ILogger<ChatExecutionService> logger) : IChatExecutionService
 {
     private const string AiTokensMetric = "ai_tokens";
     private const int MaxTitleLength = 80;
@@ -156,130 +152,103 @@ internal sealed class ChatExecutionService(
             UserMessageId = state.UserMessage.Id
         });
 
-        var retrieved = await RetrieveContextSafelyAsync(state.Assistant, userMessage, state.ProviderMessages, ct);
+        var retrieved = await RetrieveContextSafelyAsync(
+            state.Assistant, userMessage, state.ProviderMessages, ct);
         var effectiveSystemPrompt = ResolveSystemPrompt(state.Assistant, retrieved);
 
-        var provider = providerFactory.Create(ResolveProvider(state.Assistant));
-        var chatOptions = BuildChatOptions(state.Assistant, effectiveSystemPrompt, state.Tools.ProviderTools);
-
-        var messages = new List<AiChatMessage>(state.ProviderMessages);
-        var totalInput = 0;
-        var totalOutput = 0;
+        var provider = ResolveProvider(state.Assistant);
         var stepBudget = Math.Clamp(state.Assistant.MaxAgentSteps, 1, 20);
-        var nextOrder = state.NextOrder;
+        var ctx = new AgentRunContext(
+            Messages: state.ProviderMessages,
+            SystemPrompt: effectiveSystemPrompt,
+            ModelConfig: new AgentModelConfig(
+                Provider: provider,
+                Model: state.Assistant.Model ?? "",
+                Temperature: state.Assistant.Temperature,
+                MaxTokens: state.Assistant.MaxTokens),
+            Tools: state.Tools,
+            MaxSteps: stepBudget,
+            LoopBreak: LoopBreakPolicy.Default,
+            Streaming: true);
 
-        var finalContentBuilder = new StringBuilder();
-        var finishReason = "stop";
-        var priorPromptChars = 0;
-
-        for (var step = 0; step < stepBudget; step++)
+        var channel = Channel.CreateUnbounded<ChatStreamEvent>(new UnboundedChannelOptions
         {
-            // Count only the chars added to the prompt since the previous round so the
-            // fallback estimate grows linearly with conversation size instead of O(N^2).
-            var currentPromptChars = messages.Sum(m => m.Content?.Length ?? 0);
-            var newPromptChars = currentPromptChars - priorPromptChars;
-            priorPromptChars = currentPromptChars;
+            SingleReader = true,
+            SingleWriter = true
+        });
+        var sink = new ChatAgentRunSink(context, state.Conversation.Id, state.NextOrder, channel.Writer);
 
-            var roundContent = new StringBuilder();
-            var toolCallBuilders = new Dictionary<string, ToolCallBuilder>(StringComparer.Ordinal);
-            int? roundInput = null;
-            int? roundOutput = null;
-            string? roundFinish = null;
+        AgentRunResult? runResult = null;
+        Exception? runException = null;
 
-            await foreach (var chunkOrError in EnumerateSafelyAsync(
-                provider.StreamChatAsync(messages, chatOptions, ct), ct))
+        var runTask = Task.Run(async () =>
+        {
+            try
             {
-                if (chunkOrError.Error is not null)
-                {
-                    await FailTurnAsync(state);
-                    yield return new ChatStreamEvent("error", new
-                    {
-                        Code = "Ai.ProviderError",
-                        Message = chunkOrError.Error
-                    });
-                    yield break;
-                }
-
-                var chunk = chunkOrError.Chunk!;
-
-                if (chunk.FinishReason is not null) roundFinish = chunk.FinishReason;
-                if (chunk.InputTokens is int ci && ci > 0) roundInput = ci;
-                if (chunk.OutputTokens is int co && co > 0) roundOutput = co;
-
-                if (chunk.ContentDelta is { Length: > 0 } delta)
-                {
-                    roundContent.Append(delta);
-                    yield return new ChatStreamEvent("delta", new { Content = delta });
-                }
-
-                if (chunk.ToolCallDelta is { } tc)
-                {
-                    if (!toolCallBuilders.TryGetValue(tc.Id, out var builder))
-                    {
-                        builder = new ToolCallBuilder(tc.Id, tc.Name);
-                        toolCallBuilders[tc.Id] = builder;
-                    }
-                    builder.AppendArguments(tc.ArgumentsJson);
-                }
+                var runtime = agentRuntimeFactory.Create(provider);
+                runResult = await runtime.RunAsync(ctx, sink, ct);
             }
-
-            totalInput += roundInput ?? EstimateTokens(newPromptChars);
-            totalOutput += roundOutput ?? EstimateTokens(roundContent.Length);
-            if (roundFinish is not null) finishReason = roundFinish;
-
-            if (toolCallBuilders.Count == 0)
+            catch (Exception ex)
             {
-                finalContentBuilder.Append(roundContent);
-                break;
+                runException = ex;
             }
-
-            var assembledCalls = toolCallBuilders.Values.Select(b => b.Build()).ToList();
-            var toolCallsJson = System.Text.Json.JsonSerializer.Serialize(
-                assembledCalls, SerializerOptions);
-
-            var assistantCallMsg = AiMessage.CreateAssistantMessage(
-                state.Conversation.Id,
-                roundContent.ToString(),
-                nextOrder++,
-                roundInput ?? 0,
-                roundOutput ?? 0,
-                toolCalls: toolCallsJson);
-            context.AiMessages.Add(assistantCallMsg);
-            messages.Add(new AiChatMessage(
-                "assistant",
-                roundContent.Length == 0 ? null : roundContent.ToString(),
-                ToolCalls: assembledCalls));
-
-            foreach (var call in assembledCalls)
+            finally
             {
-                yield return new ChatStreamEvent("tool_call", new
-                {
-                    CallId = call.Id,
-                    Name = call.Name,
-                    ArgumentsJson = call.ArgumentsJson
-                });
-
-                var dispatch = await DispatchToolAsync(call, state.Tools, ct);
-
-                var toolResultMsg = AiMessage.CreateToolResultMessage(
-                    state.Conversation.Id, call.Id, dispatch.Json, nextOrder++);
-                context.AiMessages.Add(toolResultMsg);
-                messages.Add(new AiChatMessage("tool", dispatch.Json, ToolCallId: call.Id));
-
-                yield return new ChatStreamEvent("tool_result", new
-                {
-                    CallId = call.Id,
-                    IsError = dispatch.IsError,
-                    Content = dispatch.Json
-                });
+                channel.Writer.TryComplete();
             }
+        }, ct);
 
-            await context.SaveChangesAsync(ct);
+        await foreach (var frame in channel.Reader.ReadAllAsync(ct))
+            yield return frame;
+
+        await runTask;
+
+        if (runException is not null)
+        {
+            await FailTurnAsync(state);
+            yield return new ChatStreamEvent("error", new
+            {
+                Code = "Ai.ProviderError",
+                Message = runException.Message
+            });
+            yield break;
         }
 
-        var finalContent = finalContentBuilder.ToString();
-        var citations = CitationParser.Parse(finalContent, retrieved.Children);
+        if (runResult is null)
+            yield break;
 
+        if (runResult.Status == AgentRunStatus.Cancelled)
+        {
+            await FailTurnAsync(state);
+            ct.ThrowIfCancellationRequested();
+            yield return new ChatStreamEvent("error", new
+            {
+                Code = "Ai.ProviderError",
+                Message = "cancelled"
+            });
+            yield break;
+        }
+
+        if (runResult.Status == AgentRunStatus.ProviderError)
+        {
+            await FailTurnAsync(state);
+            yield return new ChatStreamEvent("error", new
+            {
+                Code = "Ai.ProviderError",
+                Message = runResult.TerminationReason ?? "provider error"
+            });
+            yield break;
+        }
+
+        var finalContent = runResult.Status switch
+        {
+            AgentRunStatus.Completed => runResult.FinalContent ?? "",
+            AgentRunStatus.MaxStepsExceeded => "I couldn't fully complete the task within my step budget. Please narrow the request.",
+            AgentRunStatus.LoopBreak => "I couldn't fully complete the task within my step budget. Please narrow the request.",
+            _ => ""
+        };
+
+        var citations = CitationParser.Parse(finalContent, retrieved.Children);
         if (citations.Count > 0)
         {
             yield return new ChatStreamEvent("citations", new
@@ -297,15 +266,18 @@ internal sealed class ChatExecutionService(
             });
         }
 
+        var finalOrder = sink.NextOrder;
         var assistantMessage = await FinalizeTurnAsync(
-            state, finalContent, totalInput, totalOutput, nextOrder, citations, ct);
+            state, finalContent,
+            runResult.TotalInputTokens, runResult.TotalOutputTokens,
+            finalOrder, citations, ct);
 
         yield return new ChatStreamEvent("done", new
         {
             MessageId = assistantMessage.Id,
-            InputTokens = totalInput,
-            OutputTokens = totalOutput,
-            FinishReason = finishReason
+            InputTokens = runResult.TotalInputTokens,
+            OutputTokens = runResult.TotalOutputTokens,
+            FinishReason = runResult.Status == AgentRunStatus.Completed ? "stop" : runResult.Status.ToString()
         });
     }
 
@@ -599,17 +571,6 @@ internal sealed class ChatExecutionService(
     private AiProviderType ResolveProvider(AiAssistant assistant) =>
         assistant.Provider ?? providerFactory.GetDefaultProviderType();
 
-    private static AiChatOptions BuildChatOptions(
-        AiAssistant assistant,
-        string systemPrompt,
-        IReadOnlyList<AiToolDefinitionDto> tools) =>
-        new(
-            Model: assistant.Model ?? "",
-            Temperature: assistant.Temperature,
-            MaxTokens: assistant.MaxTokens,
-            SystemPrompt: systemPrompt,
-            Tools: tools.Count == 0 ? null : tools);
-
     private async Task<RetrievedContext> RetrieveContextSafelyAsync(
         AiAssistant assistant, string userMessage, IReadOnlyList<AiChatMessage> providerMessages, CancellationToken ct)
     {
@@ -754,11 +715,6 @@ internal sealed class ChatExecutionService(
         return result;
     }
 
-    /// <summary>
-    /// 4 chars per token is a widely used rough heuristic (GPT tokenizer averages ~3.5-4).
-    /// </summary>
-    private static int EstimateTokens(int charCount) => Math.Max(1, charCount / 4);
-
     private decimal EstimateCost(AiProviderType provider, int inputTokens, int outputTokens)
     {
         var section = configuration.GetSection($"AI:Providers:{provider}");
@@ -767,163 +723,9 @@ internal sealed class ChatExecutionService(
         return inputTokens * inRate + outputTokens * outRate;
     }
 
-    /// <summary>
-    /// Wraps MoveNextAsync in a try/catch so that a provider exception mid-stream
-    /// is surfaced as a ChunkOrError rather than propagating through the caller's
-    /// yield state machine (which would suppress the "done" event).
-    /// OperationCanceledException is re-thrown — callers should stop on cancellation.
-    /// C# does not allow yield inside catch; errors are staged in a local and yielded after.
-    /// </summary>
-    private static async IAsyncEnumerable<ChunkOrError> EnumerateSafelyAsync(
-        IAsyncEnumerable<AiChatChunk> source,
-        [EnumeratorCancellation] CancellationToken ct)
-    {
-        var enumerator = source.GetAsyncEnumerator(ct);
-        try
-        {
-            while (true)
-            {
-                bool hasNext;
-                AiChatChunk? current = null;
-                string? iterationError = null;
-
-                try
-                {
-                    hasNext = await enumerator.MoveNextAsync();
-                    if (hasNext)
-                        current = enumerator.Current;
-                }
-                catch (OperationCanceledException)
-                {
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    hasNext = false;
-                    iterationError = ex.Message;
-                }
-
-                // Yield error outside the catch to satisfy the C# compiler
-                if (iterationError is not null)
-                {
-                    yield return new ChunkOrError(null, iterationError);
-                    yield break;
-                }
-
-                if (!hasNext) break;
-
-                yield return new ChunkOrError(current!, null);
-            }
-        }
-        finally
-        {
-            await enumerator.DisposeAsync();
-        }
-    }
-
-    // TODO(Task-11): Remove DispatchToolAsync and ToolDispatchResult once ExecuteStreamAsync
-    // is refactored to delegate to IAiAgentRuntime. Until then the streaming path still uses them.
-    private async Task<ToolDispatchResult> DispatchToolAsync(
-        AiToolCall call,
-        ToolResolutionResult tools,
-        CancellationToken ct)
-    {
-        if (!tools.DefinitionsByName.TryGetValue(call.Name, out var def))
-            return Failure(AiErrors.ToolNotFound);
-
-        if (!currentUser.HasPermission(def.RequiredPermission))
-            return Failure(AiErrors.ToolPermissionDenied(call.Name));
-
-        object? command;
-        try
-        {
-            command = System.Text.Json.JsonSerializer.Deserialize(
-                call.ArgumentsJson,
-                def.CommandType,
-                SerializerOptions);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Failed to deserialize args for tool {Tool}.", call.Name);
-            return Failure(AiErrors.ToolArgumentsInvalid(call.Name, ex.Message));
-        }
-
-        if (command is null)
-            return Failure(AiErrors.ToolArgumentsInvalid(call.Name, "Deserialized arguments were null."));
-
-        object? rawResult;
-        try
-        {
-            rawResult = await sender.Send(command, ct);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Tool {Tool} threw during dispatch.", call.Name);
-            return Failure(AiErrors.ToolExecutionFailed(call.Name, ex.Message));
-        }
-
-        // Commands that return Result / Result<T> surface failure through Error rather than throwing.
-        if (rawResult is Result r)
-        {
-            if (r.IsFailure)
-                return Failure(r.Error);
-
-            var resultType = rawResult.GetType();
-            if (resultType.IsGenericType && resultType.GetGenericTypeDefinition() == typeof(Result<>))
-            {
-                var value = resultType.GetProperty("Value")!.GetValue(rawResult);
-                return Success(value);
-            }
-
-            return Success(null);
-        }
-
-        return Success(rawResult);
-
-        static ToolDispatchResult Success(object? value) => new(
-            System.Text.Json.JsonSerializer.Serialize(new { ok = true, value }, SerializerOptions),
-            IsError: false);
-
-        static ToolDispatchResult Failure(Error error) => new(
-            System.Text.Json.JsonSerializer.Serialize(
-                new { ok = false, error = new { code = error.Code, message = error.Description } },
-                SerializerOptions),
-            IsError: true);
-    }
-
-    private static readonly System.Text.Json.JsonSerializerOptions SerializerOptions =
-        new(System.Text.Json.JsonSerializerDefaults.Web)
-        {
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-        };
-
     // ──────────────────────────────────────────────────────────────
     // Private types
     // ──────────────────────────────────────────────────────────────
-
-    private sealed record ChunkOrError(AiChatChunk? Chunk, string? Error);
-
-    // TODO(Task-11): Remove once ExecuteStreamAsync is refactored to use IAiAgentRuntime.
-    private sealed record ToolDispatchResult(string Json, bool IsError);
-
-    private sealed class ToolCallBuilder(string id, string name)
-    {
-        private readonly StringBuilder _args = new();
-
-        public string Id { get; } = id;
-        public string Name { get; } = name;
-
-        public void AppendArguments(string fragment)
-        {
-            if (!string.IsNullOrEmpty(fragment)) _args.Append(fragment);
-        }
-
-        public AiToolCall Build()
-        {
-            var json = _args.Length == 0 ? "{}" : _args.ToString();
-            return new AiToolCall(Id, Name, json);
-        }
-    }
 
     private sealed record ChatTurnState(
         AiConversation Conversation,
