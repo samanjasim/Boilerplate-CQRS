@@ -178,10 +178,16 @@ All labels, validation messages, and JSON-block placeholders live under `workflo
 
 ## Testing
 
-- **Unit (Vitest, FE):** serialization round-trips (nodes ↔ `WorkflowStateConfig[]`), every zod rule, dagre wrapper, `JsonBlockField` parse/error paths.
-- **Component (Vitest + React Testing Library):** `StateNode` renders fields; `SidePanel` saves update store; dirty-flag lifecycle; template read-only mode.
-- **Backend:** `UpdateDefinitionCommandValidatorTests` — one test per rule above. Parity test asserting every FE-rule name has a BE counterpart.
-- **Manual QA via Playwright MCP** inside a rename'd test app per the project's post-feature-testing workflow.
+The project has no FE unit-test infrastructure today (no vitest, no existing test files in `boilerplateFE`). Introducing it is out of scope for 4c. FE correctness is validated as it has been for every prior FE phase of this project:
+
+- **TypeScript build** (`npm run build`) — catches type drift in the designer schema and types.
+- **ESLint** (`npm run lint`) — catches react-refresh / hooks-rules violations.
+- **Manual QA via Playwright MCP / Chrome DevTools MCP** inside a rename'd test app per the project's post-feature-testing workflow (`.claude/skills/post-feature-testing.md`). Covers: opening the designer, creating and editing a definition, template read-only mode, auto-layout, save/dirty, JSON-block edit + error, navigate-away warning.
+
+Backend:
+- **`UpdateDefinitionCommandValidatorTests`** — one xUnit test per validation rule in the spec (required fields, slug pattern, uniqueness, type membership, exactly-one-initial, at-least-one-terminal, assignee-required-for-humantask, sla ordering, transition from/to existence, no-from-terminal, no-duplicate-from-trigger).
+
+FE/BE validation parity is a **best-effort mirror**: the BE validator is the source of truth; FE zod mirrors the rules 1:1 for better UX. If they drift, the BE's returned `ValidationErrors` still surface through the existing axios interceptor. Enforced by code review, not by a cross-process test.
 
 ## File structure
 
@@ -216,7 +222,6 @@ src/features/workflow/components/designer/validation/designerSchema.ts
 - `Starter.Abstractions/Capabilities/WorkflowConfigRecords.cs` — add `UiPosition` record; add optional `UiPosition` to `WorkflowStateConfig`.
 - `Starter.Module.Workflow/Application/Commands/UpdateDefinition/UpdateDefinitionCommandValidator.cs` — new file.
 - `tests/Starter.Api.Tests/Workflow/UpdateDefinitionCommandValidatorTests.cs` — new file.
-- `tests/Starter.Api.Tests/Workflow/DesignerValidatorParityTests.cs` — new file (table-driven parity vs FE schema names).
 
 **Docs (touched):**
 
