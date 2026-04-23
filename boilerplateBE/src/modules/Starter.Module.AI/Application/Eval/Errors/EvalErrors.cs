@@ -18,7 +18,4 @@ public static class EvalErrors
 
     public static readonly Error AssistantNotFound = Error.NotFound(
         "Ai.Eval.AssistantNotFound", "Assistant not found or not accessible.");
-
-    public static readonly Error JudgeModelUnavailable = Error.Failure(
-        "Ai.Eval.JudgeModelUnavailable", "The configured faithfulness judge model is unavailable.");
 }
