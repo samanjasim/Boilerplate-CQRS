@@ -8,6 +8,10 @@ namespace Starter.Module.Workflow.Application.Commands.UpdateDefinition;
 public sealed partial class UpdateDefinitionCommandValidator : AbstractValidator<UpdateDefinitionCommand>
 {
     private static readonly string[] KnownTypes = ["Initial", "HumanTask", "SystemAction", "Terminal"];
+    private static readonly JsonSerializerOptions JsonOpts = new()
+    {
+        PropertyNameCaseInsensitive = true,
+    };
 
     public UpdateDefinitionCommandValidator()
     {
@@ -27,8 +31,7 @@ public sealed partial class UpdateDefinitionCommandValidator : AbstractValidator
         List<WorkflowStateConfig>? states;
         try
         {
-            states = JsonSerializer.Deserialize<List<WorkflowStateConfig>>(statesJson,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            states = JsonSerializer.Deserialize<List<WorkflowStateConfig>>(statesJson, JsonOpts);
         }
         catch (JsonException ex)
         {

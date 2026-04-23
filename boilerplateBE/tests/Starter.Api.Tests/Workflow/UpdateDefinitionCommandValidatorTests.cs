@@ -169,4 +169,36 @@ public sealed class UpdateDefinitionCommandValidatorTests
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.PropertyName == "DisplayName");
     }
+
+    [Fact]
+    public void Fails_when_state_name_exceeds_80_chars()
+    {
+        var longName = "A" + new string('a', 80); // 81 chars, all valid slug chars
+        var cmd = new UpdateDefinitionCommand(Guid.NewGuid(), "ok", null,
+            StatesJson(
+                new(longName, "Long", "Initial"),
+                new("Done", "Done", "Terminal")),
+            TransitionsJson());
+
+        var result = _sut.Validate(cmd);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.ErrorMessage.Contains("80 characters"));
+    }
+
+    [Fact]
+    public void Fails_when_state_displayName_exceeds_120_chars()
+    {
+        var longDisplay = new string('a', 121);
+        var cmd = new UpdateDefinitionCommand(Guid.NewGuid(), "ok", null,
+            StatesJson(
+                new("Start", longDisplay, "Initial"),
+                new("Done", "Done", "Terminal")),
+            TransitionsJson());
+
+        var result = _sut.Validate(cmd);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.ErrorMessage.Contains("120 characters"));
+    }
 }
