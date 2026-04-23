@@ -230,6 +230,35 @@ public sealed class AgentRuntimeBaseTests
         result.Steps[0].Kind.Should().Be(AgentStepKind.ToolCall);
         sink.ToolCalls.Should().HaveCount(1);
     }
+
+    [Fact]
+    public async Task Streaming_Three_Identical_Tool_Calls_Trip_LoopBreak()
+    {
+        var provider = new FakeAiProvider();
+        // Enqueue 5 streams, each with the same tool call
+        for (var i = 0; i < 5; i++)
+        {
+            provider.EnqueueStreamChunks(new[]
+            {
+                new AiChatChunk(ContentDelta: null,
+                    ToolCallDelta: new AiToolCall($"call-{i}", "search", """{"q":"x"}"""),
+                    FinishReason: null),
+                new AiChatChunk(ContentDelta: null, ToolCallDelta: null,
+                    FinishReason: "tool_calls", InputTokens: 5, OutputTokens: 2)
+            });
+        }
+
+        var dispatcher = new Mock<IAgentToolDispatcher>();
+        dispatcher
+            .Setup(d => d.DispatchAsync(It.IsAny<AiToolCall>(), It.IsAny<ToolResolutionResult>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AgentToolDispatchResult("""{"ok":true,"value":null}""", false));
+
+        var ctx = BuildCtx() with { Streaming = true };
+        var result = await BuildRuntime(provider, dispatcher.Object).RunAsync(ctx, new RecordingSink(), CancellationToken.None);
+
+        result.Status.Should().Be(AgentRunStatus.LoopBreak);
+        result.TerminationReason.Should().Contain("search");
+    }
 }
 
 internal sealed class TestAgentRuntime : AgentRuntimeBase

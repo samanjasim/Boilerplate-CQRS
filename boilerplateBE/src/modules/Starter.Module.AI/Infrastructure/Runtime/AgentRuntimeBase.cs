@@ -168,6 +168,7 @@ internal abstract class AgentRuntimeBase(
         var detector = new LoopBreakDetector(ctx.LoopBreak);
         var totalInput = 0;
         var totalOutput = 0;
+        var priorPromptChars = 0;
 
         for (var stepIndex = 0; stepIndex < ctx.MaxSteps; stepIndex++)
         {
@@ -177,6 +178,10 @@ internal abstract class AgentRuntimeBase(
 
             await sink.OnStepStartedAsync(stepIndex, ct);
             var startedAt = DateTimeOffset.UtcNow;
+
+            var currentPromptChars = messages.Sum(m => m.Content?.Length ?? 0);
+            var newPromptChars = currentPromptChars - priorPromptChars;
+            priorPromptChars = currentPromptChars;
 
             var content = new StringBuilder();
             var toolBuilders = new Dictionary<string, ToolCallAccumulator>(StringComparer.Ordinal);
@@ -218,7 +223,7 @@ internal abstract class AgentRuntimeBase(
                     ex.Message, steps, totalInput, totalOutput, ct);
             }
 
-            var stepIn = roundIn ?? EstimateTokens(content.Length);
+            var stepIn = roundIn ?? EstimateTokens(newPromptChars);
             var stepOut = roundOut ?? EstimateTokens(content.Length);
             totalInput += stepIn;
             totalOutput += stepOut;
