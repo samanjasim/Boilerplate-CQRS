@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using FluentAssertions;
 using MediatR;
@@ -263,6 +264,27 @@ internal sealed class ChatExecutionTestFixture
         return a;
     }
 
+    /// <summary>
+    /// Seeds a minimal assistant with a given MaxAgentSteps budget. Useful for tests that
+    /// need the runtime to iterate more than once (e.g. loop-break E2E tests).
+    /// </summary>
+    public AiAssistant SeedAssistantWithMaxSteps(int maxAgentSteps)
+    {
+        var a = AiAssistant.Create(
+            tenantId: TenantId,
+            name: $"A-{Guid.NewGuid():N}",
+            description: null,
+            systemPrompt: "You are a helpful assistant.",
+            createdByUserId: Guid.NewGuid(),
+            provider: AiProviderType.Anthropic,
+            model: "claude-sonnet-4",
+            maxAgentSteps: maxAgentSteps);
+
+        Db.AiAssistants.Add(a);
+        Db.SaveChanges();
+        return a;
+    }
+
     public Guid SeedTwoRetrievedChunks()
     {
         var docId = Guid.NewGuid();
@@ -356,8 +378,25 @@ internal sealed class ScriptedProviderFactory(ScriptedAiProvider provider) : IAi
 
 internal sealed class ScriptedAiProvider : IAiProvider
 {
+    private readonly ConcurrentQueue<AiChatCompletion> _queue = new();
+
     public string ScriptedResponse { get; set; } = "";
     public string? LastSystemPrompt { get; private set; }
+
+    /// <summary>
+    /// Enqueues a tool-call completion. When the queue is non-empty, ChatAsync dequeues
+    /// from it before falling back to <see cref="ScriptedResponse"/>.
+    /// </summary>
+    public void EnqueueToolCall(string name, string argsJson, int inputTokens = 10, int outputTokens = 5)
+    {
+        var id = Guid.NewGuid().ToString();
+        _queue.Enqueue(new AiChatCompletion(
+            Content: null,
+            ToolCalls: new[] { new AiToolCall(id, name, argsJson) },
+            InputTokens: inputTokens,
+            OutputTokens: outputTokens,
+            FinishReason: "tool_calls"));
+    }
 
     public Task<AiChatCompletion> ChatAsync(
         IReadOnlyList<AiChatMessage> messages,
@@ -365,6 +404,8 @@ internal sealed class ScriptedAiProvider : IAiProvider
         CancellationToken ct = default)
     {
         LastSystemPrompt = options.SystemPrompt;
+        if (_queue.TryDequeue(out var queued))
+            return Task.FromResult(queued);
         return Task.FromResult(new AiChatCompletion(
             Content: ScriptedResponse,
             ToolCalls: null,
