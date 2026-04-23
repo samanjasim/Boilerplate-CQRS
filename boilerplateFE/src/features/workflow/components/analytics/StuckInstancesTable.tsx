@@ -26,41 +26,39 @@ export function StuckInstancesTable({ rows }: Props) {
   }
 
   return (
-    <Card>
-      <CardContent className="py-5">
-        <h3 className="mb-3 text-sm font-semibold text-foreground">{t('workflow.analytics.stuck.title')}</h3>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t('workflow.analytics.stuck.currentState')}</TableHead>
-              <TableHead>{t('workflow.analytics.stuck.startedAt')}</TableHead>
-              <TableHead>{t('workflow.analytics.stuck.daysSince')}</TableHead>
-              <TableHead>{t('workflow.analytics.stuck.assignee')}</TableHead>
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold text-foreground">{t('workflow.analytics.stuck.title')}</h3>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{t('workflow.analytics.stuck.currentState')}</TableHead>
+            <TableHead>{t('workflow.analytics.stuck.startedAt')}</TableHead>
+            <TableHead>{t('workflow.analytics.stuck.daysSince')}</TableHead>
+            <TableHead>{t('workflow.analytics.stuck.assignee')}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((r) => (
+            <TableRow
+              key={r.instanceId}
+              className="cursor-pointer"
+              onClick={() => navigate(`/workflows/instances/${r.instanceId}`)}
+            >
+              <TableCell>
+                <div className="flex flex-col">
+                  <span className="font-medium">{r.entityDisplayName ?? r.instanceId.slice(0, 8)}</span>
+                  <span className="text-xs text-muted-foreground">{r.currentState}</span>
+                </div>
+              </TableCell>
+              <TableCell>{new Date(r.startedAt).toLocaleDateString()}</TableCell>
+              <TableCell>
+                {`${r.daysSinceStarted}${t('workflow.analytics.daysShort')}`}
+              </TableCell>
+              <TableCell>{r.currentAssigneeDisplayName ?? '—'}</TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((r) => (
-              <TableRow
-                key={r.instanceId}
-                className="cursor-pointer"
-                onClick={() => navigate(`/workflows/instances/${r.instanceId}`)}
-              >
-                <TableCell>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{r.entityDisplayName ?? r.instanceId.slice(0, 8)}</span>
-                    <span className="text-xs text-muted-foreground">{r.currentState}</span>
-                  </div>
-                </TableCell>
-                <TableCell>{new Date(r.startedAt).toLocaleDateString()}</TableCell>
-                <TableCell>
-                  {r.daysSinceStarted}{t('workflow.analytics.daysShort')}
-                </TableCell>
-                <TableCell>{r.currentAssigneeDisplayName ?? '—'}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }

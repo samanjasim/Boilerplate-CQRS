@@ -24,32 +24,30 @@ export function ApproverActivityTable({ rows }: Props) {
   }
 
   return (
-    <Card>
-      <CardContent className="py-5">
-        <h3 className="mb-3 text-sm font-semibold text-foreground">{t('workflow.analytics.approverActivity.title')}</h3>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t('workflow.analytics.approverActivity.user')}</TableHead>
-              <TableHead>{t('workflow.analytics.approverActivity.approvals')}</TableHead>
-              <TableHead>{t('workflow.analytics.approverActivity.rejections')}</TableHead>
-              <TableHead>{t('workflow.analytics.approverActivity.returns')}</TableHead>
-              <TableHead>{t('workflow.analytics.approverActivity.avgResponse')}</TableHead>
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold text-foreground">{t('workflow.analytics.approverActivity.title')}</h3>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{t('workflow.analytics.approverActivity.user')}</TableHead>
+            <TableHead>{t('workflow.analytics.approverActivity.approvals')}</TableHead>
+            <TableHead>{t('workflow.analytics.approverActivity.rejections')}</TableHead>
+            <TableHead>{t('workflow.analytics.approverActivity.returns')}</TableHead>
+            <TableHead>{t('workflow.analytics.approverActivity.avgResponse')}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((r) => (
+            <TableRow key={r.userId}>
+              <TableCell>{r.userDisplayName ?? r.userId}</TableCell>
+              <TableCell>{r.approvals}</TableCell>
+              <TableCell>{r.rejections}</TableCell>
+              <TableCell>{r.returns}</TableCell>
+              <TableCell>{r.avgResponseTimeHours !== null ? r.avgResponseTimeHours.toFixed(1) : '—'}</TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((r) => (
-              <TableRow key={r.userId}>
-                <TableCell>{r.userDisplayName ?? r.userId}</TableCell>
-                <TableCell>{r.approvals}</TableCell>
-                <TableCell>{r.rejections}</TableCell>
-                <TableCell>{r.returns}</TableCell>
-                <TableCell>{r.avgResponseTimeHours !== null ? r.avgResponseTimeHours.toFixed(1) : '—'}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }

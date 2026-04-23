@@ -10,6 +10,8 @@ interface Props {
   rates: ActionRateMetric[];
 }
 
+const palette = ['var(--primary)', 'var(--destructive)', 'var(--chart-2, #10b981)', 'var(--chart-3, #f59e0b)'];
+
 export function ActionRatesChart({ rates }: Props) {
   const { t } = useTranslation();
 
@@ -24,8 +26,6 @@ export function ActionRatesChart({ rates }: Props) {
     }
     return { data: Array.from(stateMap.values()), actions: Array.from(actionSet) };
   }, [rates]);
-
-  const palette = ['var(--primary)', 'var(--destructive)', 'var(--chart-2, #10b981)', 'var(--chart-3, #f59e0b)'];
 
   return (
     <Card>
