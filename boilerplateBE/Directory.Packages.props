@@ -71,6 +71,8 @@
     <!-- Template Engine -->
     <PackageVersion Include="Stubble.Core" Version="1.10.8" />
     <!-- Utils -->
+    <PackageVersion Include="MessagePack" Version="2.5.187" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
     <!-- AI Module -->
     <PackageVersion Include="Anthropic.SDK" Version="4.4.0" />
