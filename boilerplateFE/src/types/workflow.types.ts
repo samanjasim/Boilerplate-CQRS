@@ -211,3 +211,68 @@ export interface BatchExecuteTasksRequest {
   action: string;
   comment?: string;
 }
+
+// ── Analytics ──────────────────────────────────────────────────────────────
+
+export type AnalyticsWindow = 'SevenDays' | 'ThirtyDays' | 'NinetyDays' | 'AllTime';
+
+export interface HeadlineMetrics {
+  totalStarted: number;
+  totalCompleted: number;
+  totalCancelled: number;
+  avgCycleTimeHours: number | null;
+}
+
+export interface StateMetric {
+  stateName: string;
+  medianDwellHours: number;
+  p95DwellHours: number;
+  visitCount: number;
+}
+
+export interface ActionRateMetric {
+  stateName: string;
+  action: string;
+  count: number;
+  percentage: number;
+}
+
+export interface InstanceCountPoint {
+  bucket: string;
+  started: number;
+  completed: number;
+  cancelled: number;
+}
+
+export interface StuckInstance {
+  instanceId: string;
+  entityDisplayName: string | null;
+  currentState: string;
+  startedAt: string;
+  daysSinceStarted: number;
+  currentAssigneeDisplayName: string | null;
+}
+
+export interface ApproverActivity {
+  userId: string;
+  userDisplayName: string | null;
+  approvals: number;
+  rejections: number;
+  returns: number;
+  avgResponseTimeHours: number | null;
+}
+
+export interface WorkflowAnalytics {
+  definitionId: string;
+  definitionName: string;
+  window: AnalyticsWindow;
+  windowStart: string;
+  windowEnd: string;
+  instancesInWindow: number;
+  headline: HeadlineMetrics;
+  statesByBottleneck: StateMetric[];
+  actionRates: ActionRateMetric[];
+  instanceCountSeries: InstanceCountPoint[];
+  stuckInstances: StuckInstance[];
+  approverActivity: ApproverActivity[];
+}
