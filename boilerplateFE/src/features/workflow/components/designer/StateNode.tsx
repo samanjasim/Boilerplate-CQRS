@@ -13,7 +13,14 @@ const TYPE_COLOR: Record<string, string> = {
 };
 
 function StateNodeInner({ data, id, selected }: NodeProps<StateNodeType>) {
-  const hasError = useDesignerStore(s => s.issues.some(i => i.path.startsWith(`states[`) && i.path.includes(id)));
+  // Match issue paths shaped like `states[<index>].*` against this node's index
+  // in the store (issue paths are indexed, not named).
+  const hasError = useDesignerStore(s => {
+    const index = s.nodes.findIndex(n => n.id === id);
+    if (index < 0) return false;
+    const prefix = `states[${index}]`;
+    return s.issues.some(i => i.path.startsWith(prefix));
+  });
   const color = TYPE_COLOR[data.type] ?? 'bg-muted';
 
   return (

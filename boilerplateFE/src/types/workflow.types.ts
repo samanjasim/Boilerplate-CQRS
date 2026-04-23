@@ -67,9 +67,11 @@ export interface HookConfig {
 }
 
 export interface ConditionConfig {
-  field: string;
-  operator: string;
-  value: unknown;
+  field?: string | null;
+  operator?: string | null;
+  value?: unknown;
+  logic?: string | null;
+  conditions?: ConditionConfig[] | null;
 }
 
 export interface WorkflowStatusSummary {
