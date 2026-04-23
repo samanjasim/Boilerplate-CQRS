@@ -171,6 +171,19 @@ public sealed class UpdateDefinitionCommandValidatorTests
     }
 
     [Fact]
+    public void Passes_when_displayName_is_null_partial_update()
+    {
+        // Designer only sends statesJson/transitionsJson; the handler preserves the existing displayName.
+        var cmd = new UpdateDefinitionCommand(Guid.NewGuid(), null, null,
+            StatesJson(new("A", "A", "Initial"), new("Done", "Done", "Terminal")),
+            TransitionsJson(new WorkflowTransitionConfig("A", "Done", "go")));
+
+        var result = _sut.Validate(cmd);
+
+        result.IsValid.Should().BeTrue(because: string.Join(", ", result.Errors.Select(e => e.ErrorMessage)));
+    }
+
+    [Fact]
     public void Fails_when_state_name_exceeds_80_chars()
     {
         var longName = "A" + new string('a', 80); // 81 chars, all valid slug chars

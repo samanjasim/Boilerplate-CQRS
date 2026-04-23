@@ -15,9 +15,12 @@ public sealed partial class UpdateDefinitionCommandValidator : AbstractValidator
 
     public UpdateDefinitionCommandValidator()
     {
-        RuleFor(x => x.DisplayName)
-            .NotEmpty().WithMessage("DisplayName is required.")
-            .MaximumLength(120);
+        When(x => x.DisplayName is not null, () =>
+        {
+            RuleFor(x => x.DisplayName!)
+                .NotEmpty().WithMessage("DisplayName cannot be empty when provided.")
+                .MaximumLength(120);
+        });
 
         When(x => x.StatesJson is not null, () =>
         {
