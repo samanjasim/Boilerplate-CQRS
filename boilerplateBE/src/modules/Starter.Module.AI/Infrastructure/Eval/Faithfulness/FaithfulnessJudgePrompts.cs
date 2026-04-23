@@ -28,4 +28,7 @@ internal static class FaithfulnessJudgePrompts
         السياق: {context}
         الإجابة: {answer}
         """;
+
+    public const string RetryNudgeEnglish = "\n\nYour last response was not valid JSON. Output only the JSON object.";
+    public const string RetryNudgeArabic = "\n\nردّك الأخير لم يكن JSON صالحاً. أخرِج كائن JSON فقط.";
 }

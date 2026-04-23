@@ -34,8 +34,10 @@ public sealed class LlmJudgeFaithfulness(IAiService ai) : IFaithfulnessJudge
 
         if (parsed is null)
         {
-            var retryPrompt = prompt + "\n\nYour last response was not valid JSON. Output only the JSON object.";
-            var retryResponse = await ai.CompleteAsync(retryPrompt, options, ct);
+            var nudge = detectedLang == "ar"
+                ? FaithfulnessJudgePrompts.RetryNudgeArabic
+                : FaithfulnessJudgePrompts.RetryNudgeEnglish;
+            var retryResponse = await ai.CompleteAsync(prompt + nudge, options, ct);
             parsed = TryParse(retryResponse?.Content);
         }
 
@@ -62,8 +64,8 @@ public sealed class LlmJudgeFaithfulness(IAiService ai) : IFaithfulnessJudge
             var result = new List<ClaimVerdict>();
             foreach (var item in claimsEl.EnumerateArray())
             {
-                var claim = item.GetProperty("text").GetString() ?? "";
-                var verdict = item.GetProperty("verdict").GetString() ?? "UNSUPPORTED";
+                var claim = item.TryGetProperty("text", out var t) ? t.GetString() ?? "" : "";
+                var verdict = item.TryGetProperty("verdict", out var v) ? v.GetString() ?? "UNSUPPORTED" : "UNSUPPORTED";
                 result.Add(new ClaimVerdict(claim, verdict));
             }
             return result;
