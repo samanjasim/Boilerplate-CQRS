@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Starter.Abstractions.Capabilities;
 using Starter.Application.Common.Interfaces;
@@ -21,26 +22,30 @@ public sealed class RagEvalHarness(
     IAiService ai,
     IFaithfulnessJudge judge,
     ICurrentUserService currentUser,
-    IOptions<AiRagSettings> ragSettings) : IRagEvalHarness
+    IOptions<AiRagSettings> ragSettings,
+    ILogger<RagEvalHarness> logger) : IRagEvalHarness
 {
     public async Task<EvalReport> RunAsync(
         EvalDataset dataset,
         EvalRunOptions options,
         CancellationToken ct)
     {
-        // Synthetic tenantId per run so each eval run gets its own isolated Qdrant collection
         var syntheticTenantId = Guid.NewGuid();
         var uploaderId = currentUser.UserId ?? Guid.NewGuid();
+
+        logger.LogInformation(
+            "RAG eval run starting: dataset={Dataset} lang={Lang} questions={Questions} syntheticTenant={Tenant}",
+            dataset.Name, dataset.Language, dataset.Questions.Count, syntheticTenantId);
 
         IReadOnlyDictionary<Guid, Guid> idMap;
         try
         {
             idMap = await ingester.IngestAsync(syntheticTenantId, uploaderId, dataset, ct);
         }
-        catch
+        catch (Exception ex)
         {
-            // Clean up even if ingest partially succeeded
-            try { await vectors.DropCollectionAsync(syntheticTenantId, CancellationToken.None); } catch { }
+            logger.LogError(ex, "RAG eval ingest failed for dataset={Dataset}", dataset.Name);
+            await TryDropCollectionAsync(syntheticTenantId);
             throw;
         }
 
@@ -48,7 +53,6 @@ public sealed class RagEvalHarness(
 
         try
         {
-            // Warmup queries (cache pre-warming)
             for (var i = 0; i < options.WarmupQueries && i < dataset.Questions.Count; i++)
                 await retrieval.RetrieveForQueryAsync(
                     syntheticTenantId, dataset.Questions[i].Query, null,
@@ -77,15 +81,21 @@ public sealed class RagEvalHarness(
                         perStageDurations[stage] = bucket = [];
                     bucket.AddRange(arr);
                 }
-                if (!perStageDurations.ContainsKey("total"))
-                    perStageDurations["total"] = [];
-                perStageDurations["total"].Add(sw.Elapsed.TotalMilliseconds);
+                if (!perStageDurations.TryGetValue("total", out var totalBucket))
+                    perStageDurations["total"] = totalBucket = [];
+                totalBucket.Add(sw.Elapsed.TotalMilliseconds);
                 foreach (var d in context.DegradedStages) aggregateDegraded.Add(d);
 
-                var retrievedFixtureIds = context.Children
-                    .Select(c => reverseMap.TryGetValue(c.DocumentId, out var fid) ? fid : Guid.Empty)
-                    .Where(g => g != Guid.Empty)
-                    .ToList();
+                // Dedupe at document granularity: multiple chunks from the same doc collapse to
+                // one hit. Classical Recall@K / Precision@K / NDCG@K assume each id in the list
+                // is distinct; without this step a doc with N chunks inflates metrics by N.
+                var seen = new HashSet<Guid>();
+                var retrievedFixtureIds = new List<Guid>();
+                foreach (var child in context.Children)
+                {
+                    if (!reverseMap.TryGetValue(child.DocumentId, out var fid)) continue;
+                    if (seen.Add(fid)) retrievedFixtureIds.Add(fid);
+                }
                 var relevantSet = new HashSet<Guid>(question.RelevantDocumentIds);
 
                 perQuestion.Add(new PerQuestionResult(
@@ -102,9 +112,24 @@ public sealed class RagEvalHarness(
                 if (faithfulnessResults is not null)
                 {
                     var ctx = string.Join("\n---\n", context.Children.Select(c => c.Content));
-                    var answer = await ai.CompleteAsync(
-                        $"Answer the question using only this context.\n\nContext:\n{ctx}\n\nQuestion: {question.Query}",
-                        new AiCompletionOptions(Model: options.JudgeModelOverride), ct);
+                    // Answer generation uses the ASSISTANT'S system prompt + model so faithfulness
+                    // scores reflect what a real user of that assistant would see. The judge model
+                    // override is a separate concern and only applies to the judge call below.
+                    var answerPrompt = BuildAnswerPrompt(options.AssistantSystemPrompt, ctx, question.Query);
+                    AiCompletionResult? answer;
+                    try
+                    {
+                        answer = await ai.CompleteAsync(
+                            answerPrompt,
+                            new AiCompletionOptions(Model: options.AssistantModel),
+                            ct);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogWarning(ex,
+                            "Faithfulness answer generation failed for question={QuestionId}", question.Id);
+                        answer = null;
+                    }
                     var judgement = await judge.JudgeAsync(
                         question, ctx, answer?.Content ?? "", options.JudgeModelOverride, ct);
                     faithfulnessResults.Add(judgement);
@@ -114,6 +139,11 @@ public sealed class RagEvalHarness(
             var metrics = BuildMetrics(dataset, perQuestion, options.KValues);
             var latency = StageLatencyAggregator.Aggregate(perStageDurations);
             var faithfulness = faithfulnessResults is null ? null : BuildFaithfulness(faithfulnessResults);
+
+            logger.LogInformation(
+                "RAG eval run complete: dataset={Dataset} recall@5={R5:F3} mrr={Mrr:F3} degradedStages={Deg}",
+                dataset.Name, metrics.Aggregate.RecallAtK.GetValueOrDefault(5),
+                metrics.Aggregate.Mrr, aggregateDegraded.Count);
 
             return new EvalReport(
                 RunAt: DateTime.UtcNow,
@@ -128,8 +158,30 @@ public sealed class RagEvalHarness(
         }
         finally
         {
-            try { await vectors.DropCollectionAsync(syntheticTenantId, CancellationToken.None); } catch { }
+            await TryDropCollectionAsync(syntheticTenantId);
         }
+    }
+
+    private async Task TryDropCollectionAsync(Guid syntheticTenantId)
+    {
+        try
+        {
+            await vectors.DropCollectionAsync(syntheticTenantId, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Failed to drop Qdrant collection for syntheticTenant={Tenant} — manual cleanup may be needed",
+                syntheticTenantId);
+        }
+    }
+
+    private static string BuildAnswerPrompt(string? systemPrompt, string context, string query)
+    {
+        var header = string.IsNullOrWhiteSpace(systemPrompt)
+            ? "Answer the question using only this context."
+            : systemPrompt!.Trim();
+        return $"{header}\n\nContext:\n{context}\n\nQuestion: {query}";
     }
 
     private static EvalMetrics BuildMetrics(

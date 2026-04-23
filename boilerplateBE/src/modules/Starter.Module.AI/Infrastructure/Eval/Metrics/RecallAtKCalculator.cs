@@ -2,6 +2,8 @@ namespace Starter.Module.AI.Infrastructure.Eval.Metrics;
 
 public static class RecallAtKCalculator
 {
+    // `retrieved` must be deduplicated by the caller at the granularity being measured
+    // (document or chunk). Duplicates inflate the result past 1.0.
     public static double Compute(
         IReadOnlyList<Guid> retrieved,
         ISet<Guid> relevant,

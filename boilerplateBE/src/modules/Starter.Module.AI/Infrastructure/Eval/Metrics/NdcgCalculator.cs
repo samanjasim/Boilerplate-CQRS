@@ -2,6 +2,7 @@ namespace Starter.Module.AI.Infrastructure.Eval.Metrics;
 
 public static class NdcgCalculator
 {
+    // `retrieved` must be deduplicated by the caller; see RecallAtKCalculator.
     public static double Compute(
         IReadOnlyList<Guid> retrieved,
         ISet<Guid> relevant,
