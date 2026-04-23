@@ -1,40 +1,66 @@
 import { memo } from 'react';
 import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath, type EdgeProps } from '@xyflow/react';
-import type { TransitionEdge as TransitionEdgeType } from './hooks/useDesignerStore';
+import type { StateNode, TransitionEdge as TransitionEdgeType } from './hooks/useDesignerStore';
 import { useDesignerStore } from './hooks/useDesignerStore';
 
-// Quadratic bezier curving to one side of the source→target line, so two
-// opposing edges between the same nodes don't render on top of each other.
+// Must match the rendered StateNode width and approximate height. Used only
+// for bidirectional-edge routing — the non-counter path still uses React
+// Flow's own handle-derived endpoints.
+const NODE_W = 220;
+const NODE_H = 184;
+
+// Route a counter-edge pair as two curves that each enter/exit from the short
+// side of the node. React Flow only exposes a Bottom source handle and a Top
+// target handle on StateNode, so an upward edge would otherwise wrap around
+// both nodes (Bottom → Top) — visually disconnected from the return meaning.
+// Here we re-attach the endpoints to the shortest vertical span (bottom→top
+// going down, top→bottom going up) and curve to one side of center.
 function bidirectionalPath(
-  sourceX: number, sourceY: number, targetX: number, targetY: number, side: 1 | -1,
+  srcPos: { x: number; y: number },
+  tgtPos: { x: number; y: number },
+  side: 1 | -1,
 ): [string, number, number] {
-  const midX = (sourceX + targetX) / 2;
-  const midY = (sourceY + targetY) / 2;
-  const dx = targetX - sourceX;
-  const dy = targetY - sourceY;
-  const len = Math.hypot(dx, dy) || 1;
-  const curvature = 60;
-  const cx = midX + (-dy / len) * curvature * side;
-  const cy = midY + (dx / len) * curvature * side;
-  const path = `M ${sourceX},${sourceY} Q ${cx},${cy} ${targetX},${targetY}`;
-  // Approximate midpoint of the quadratic for label placement.
-  const lx = 0.25 * sourceX + 0.5 * cx + 0.25 * targetX;
-  const ly = 0.25 * sourceY + 0.5 * cy + 0.25 * targetY;
+  const goingDown = srcPos.y < tgtPos.y;
+  // Anchor each endpoint off-center horizontally so a counter-pair enters/
+  // exits opposite sides of both nodes. The arrow markers then point cleanly
+  // down (forward) or up (return) rather than at an oblique angle.
+  const ANCHOR_SHIFT = 55;
+  const sx = srcPos.x + NODE_W / 2 + side * ANCHOR_SHIFT;
+  const sy = goingDown ? srcPos.y + NODE_H : srcPos.y;
+  const tx = tgtPos.x + NODE_W / 2 + side * ANCHOR_SHIFT;
+  const ty = goingDown ? tgtPos.y : tgtPos.y + NODE_H;
+
+  // Gentle outward bow so the edge reads as a distinct curve, not a stiff
+  // vertical. The bow is absolute (not perpendicular-to-travel), so the pair
+  // visibly splits left/right regardless of travel direction.
+  const BOW = 24;
+  const cx = (sx + tx) / 2 + side * BOW;
+  const cy = (sy + ty) / 2;
+  const path = `M ${sx},${sy} Q ${cx},${cy} ${tx},${ty}`;
+  const lx = 0.25 * sx + 0.5 * cx + 0.25 * tx;
+  const ly = 0.25 * sy + 0.5 * cy + 0.25 * ty;
   return [path, lx, ly];
 }
+
+const findNodePos = (nodes: StateNode[], id: string) =>
+  nodes.find(n => n.id === id)?.position ?? null;
 
 function TransitionEdgeInner({
   id, source, target, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data, selected,
 }: EdgeProps<TransitionEdgeType>) {
   // When an opposing edge exists between the same two states, render both
   // as curved beziers on opposite sides so paths and labels are distinct.
+  // Each selector returns a primitive/stable reference so Zustand's default
+  // Object.is equality keeps the component from re-rendering in a loop.
   // Deterministic: the lexicographically smaller source curves to the right.
   const hasCounter = useDesignerStore(s =>
     s.edges.some(e => e.source === target && e.target === source),
   );
+  const srcPos = useDesignerStore(s => (hasCounter ? findNodePos(s.nodes, source) : null));
+  const tgtPos = useDesignerStore(s => (hasCounter ? findNodePos(s.nodes, target) : null));
 
-  const [path, labelX, labelY] = hasCounter
-    ? bidirectionalPath(sourceX, sourceY, targetX, targetY, source < target ? 1 : -1)
+  const [path, labelX, labelY] = hasCounter && srcPos && tgtPos
+    ? bidirectionalPath(srcPos, tgtPos, source < target ? 1 : -1)
     : getSmoothStepPath({
         sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition,
       });
