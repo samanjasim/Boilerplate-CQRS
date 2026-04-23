@@ -182,6 +182,54 @@ public sealed class AgentRuntimeBaseTests
         sink.StepsCompleted.Should().BeEmpty();
         sink.RunCompleted.Should().BeTrue();   // OnRunCompletedAsync still fires once.
     }
+
+    [Fact]
+    public async Task Streaming_Single_Step_Emits_Delta_Events_And_Completes()
+    {
+        var provider = new FakeAiProvider();
+        provider.EnqueueStreamedContent("hello world", inputTokens: 7, outputTokens: 3);
+        var sink = new RecordingSink();
+
+        var ctx = BuildCtx() with { Streaming = true };
+        var result = await BuildRuntime(provider).RunAsync(ctx, sink, CancellationToken.None);
+
+        result.Status.Should().Be(AgentRunStatus.Completed);
+        result.FinalContent.Should().Be("hello world");
+        sink.Deltas.Should().ContainInOrder(new[] { "hello world" });
+        result.TotalInputTokens.Should().Be(7);
+        result.TotalOutputTokens.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task Streaming_Tool_Call_Step_Then_Content_Completes()
+    {
+        var provider = new FakeAiProvider();
+        var id = "call-1";
+        provider.EnqueueStreamChunks(new[]
+        {
+            new AiChatChunk(ContentDelta: null,
+                ToolCallDelta: new AiToolCall(id, "search", """{"q":"x"}"""),
+                FinishReason: null),
+            new AiChatChunk(ContentDelta: null, ToolCallDelta: null,
+                FinishReason: "tool_calls", InputTokens: 5, OutputTokens: 2)
+        });
+        provider.EnqueueStreamedContent("done");
+
+        var dispatcher = new Mock<IAgentToolDispatcher>();
+        dispatcher
+            .Setup(d => d.DispatchAsync(It.IsAny<AiToolCall>(), It.IsAny<ToolResolutionResult>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AgentToolDispatchResult("""{"ok":true,"value":"ok"}""", false));
+
+        var sink = new RecordingSink();
+        var ctx = BuildCtx() with { Streaming = true };
+        var result = await BuildRuntime(provider, dispatcher.Object).RunAsync(ctx, sink, CancellationToken.None);
+
+        result.Status.Should().Be(AgentRunStatus.Completed);
+        result.FinalContent.Should().Be("done");
+        result.Steps.Should().HaveCount(2);
+        result.Steps[0].Kind.Should().Be(AgentStepKind.ToolCall);
+        sink.ToolCalls.Should().HaveCount(1);
+    }
 }
 
 internal sealed class TestAgentRuntime : AgentRuntimeBase
