@@ -25,6 +25,15 @@ export function useWorkflowDefinition(id: string) {
   });
 }
 
+export function useWorkflowAnalytics(id: string, window: string) {
+  return useQuery({
+    queryKey: queryKeys.workflow.definitions.analytics(id, window),
+    queryFn: () => workflowApi.getAnalytics(id, window),
+    enabled: !!id && !!window,
+    staleTime: 60_000,
+  });
+}
+
 export function useWorkflowStatus(entityType: string, entityId: string) {
   return useQuery({
     queryKey: queryKeys.workflow.instances.status(entityType, entityId),

@@ -15,6 +15,7 @@ import type {
   DelegationRule,
   BatchExecuteTasksRequest,
   BatchExecuteResult,
+  WorkflowAnalytics,
 } from '@/types/workflow.types';
 
 export const workflowApi = {
@@ -36,6 +37,13 @@ export const workflowApi = {
 
   updateDefinition: (id: string, data: UpdateDefinitionRequest): Promise<void> =>
     apiClient.put(API_ENDPOINTS.WORKFLOW.DEFINITION_DETAIL(id), data).then(() => undefined),
+
+  getAnalytics: (id: string, window: string): Promise<WorkflowAnalytics> =>
+    apiClient
+      .get<ApiResponse<WorkflowAnalytics>>(API_ENDPOINTS.WORKFLOW.DEFINITION_ANALYTICS(id), {
+        params: { window },
+      })
+      .then((r) => r.data.data),
 
   // Instances
   startWorkflow: (data: StartWorkflowRequest): Promise<string> =>
