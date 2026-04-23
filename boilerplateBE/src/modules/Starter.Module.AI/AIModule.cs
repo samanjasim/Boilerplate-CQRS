@@ -160,7 +160,8 @@ public sealed class AIModule : IModule
             AiPermissions.ViewUsage,
             AiPermissions.RunAgentTasks,
             AiPermissions.ManageSettings,
-            AiPermissions.SearchKnowledgeBase
+            AiPermissions.SearchKnowledgeBase,
+            AiPermissions.RunEval
         ]);
 
         yield return ("Admin", [
