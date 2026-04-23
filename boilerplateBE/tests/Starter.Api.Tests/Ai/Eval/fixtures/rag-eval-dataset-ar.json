@@ -1,0 +1,73 @@
+{
+  "name": "boilerplate-core-ar-v1",
+  "language": "ar",
+  "description": "مجموعة تقييم أولية تغطي أنماط الأسئلة الشائعة على وثائق اصطناعية.",
+  "documents": [
+    {
+      "id": "00000000-0000-4000-8000-000000000101",
+      "file_name": "invoicing-policy.md",
+      "language": "ar",
+      "content": "# سياسة الفوترة\n\nيتم إصدار فواتير العملاء شهرياً في اليوم الأول من كل شهر. استحقاق الدفع خلال 30 يوماً من تاريخ الفاتورة.\n\n## الرسوم المتأخرة\n\nتُطبَّق رسوم تأخير بنسبة 2% على الأرصدة غير المدفوعة بعد 15 يوماً من تاريخ الاستحقاق. بعد 45 يوماً يتم تعليق الحساب.\n"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000102",
+      "file_name": "refund-policy.md",
+      "language": "ar",
+      "content": "# سياسة الاسترجاع\n\nجميع المشتريات مؤهلة لاسترداد كامل خلال 14 يوماً من تاريخ المعاملة، شرط عدم استخدام المنتج.\n\n## الاستثناءات\n\n- المنتجات الرقمية غير قابلة للاسترداد بعد التنزيل.\n- الطلبات المخصصة غير قابلة للاسترداد.\n- بطاقات الهدايا نهائية.\n"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000103",
+      "file_name": "shipping-policy.md",
+      "language": "ar",
+      "content": "# سياسة الشحن\n\nيستغرق الشحن القياسي من 3 إلى 5 أيام عمل داخل الولايات المتحدة. الشحن السريع يستغرق 1-2 يوم عمل مقابل رسم إضافي 15 دولاراً.\n\n## الشحن الدولي\n\nتُشحن الطلبات الدولية عبر DHL وتصل خلال 7-14 يوم عمل.\n"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000104",
+      "file_name": "security-policy.md",
+      "language": "ar",
+      "content": "# سياسة الأمان\n\nجميع البيانات مشفرة أثناء التخزين باستخدام AES-256 وأثناء النقل عبر TLS 1.3.\n\n## المصادقة\n\nنطلب المصادقة متعددة العوامل (MFA) لجميع حسابات الإدارة. تنتهي صلاحية رموز الجلسة بعد 60 دقيقة من عدم النشاط.\n"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000105",
+      "file_name": "vacation-policy.md",
+      "language": "ar",
+      "content": "# سياسة الإجازات\n\nيحصل الموظفون بدوام كامل على 20 يوماً من الإجازة المدفوعة سنوياً، تُستحق شهرياً.\n\n## الترحيل\n\nيمكن ترحيل ما يصل إلى 5 أيام إجازة غير مستخدمة إلى السنة التقويمية التالية. تُفقد الأيام الزائدة عن 5 في الأول من يناير.\n"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000106",
+      "file_name": "support-tiers.md",
+      "language": "ar",
+      "content": "# مستويات الدعم\n\n## أساسي\n\nدعم عبر البريد الإلكتروني مع اتفاقية استجابة 48 ساعة. متضمن في جميع الخطط.\n\n## أولوية\n\nدعم بريد إلكتروني ومحادثة مع اتفاقية استجابة 4 ساعات. 99 دولار شهرياً.\n\n## مؤسسي\n\nدعم هاتفي 24/7 مع استجابة خلال 15 دقيقة ومدير حساب مخصص.\n"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000107",
+      "file_name": "api-rate-limits.md",
+      "language": "ar",
+      "content": "# حدود معدل واجهة API\n\nتفرض الواجهة حداً افتراضياً قدره 1000 طلب في الساعة لكل مفتاح API.\n\n## الترقيات\n\nيمكن لعملاء المؤسسات طلب حدود تصل إلى 100000 طلب في الساعة.\n\n## استجابة التجاوز\n\nتُرجع الطلبات المتجاوزة للحد رمز HTTP 429 مع ترويسة Retry-After.\n"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000108",
+      "file_name": "product-warranty.md",
+      "language": "ar",
+      "content": "# ضمان المنتج\n\nتتضمن جميع منتجات الأجهزة ضماناً محدوداً لمدة سنة واحدة يغطي عيوب التصنيع.\n\n## الضمان الممتد\n\nيتوفر ضمان ممتد لمدة 3 سنوات مقابل 15% من سعر المنتج وقت الشراء.\n"
+    }
+  ],
+  "questions": [
+    {"id":"q001","query":"متى يتم إصدار فواتير العملاء؟","relevant_document_ids":["00000000-0000-4000-8000-000000000101"],"relevant_chunk_ids":null,"expected_answer_snippet":"شهرياً في اليوم الأول","tags":["factual","single-doc"]},
+    {"id":"q002","query":"ما هي نسبة رسوم التأخير؟","relevant_document_ids":["00000000-0000-4000-8000-000000000101"],"relevant_chunk_ids":null,"expected_answer_snippet":"2%","tags":["factual","single-doc"]},
+    {"id":"q003","query":"ما هي مدة نافذة الاسترجاع؟","relevant_document_ids":["00000000-0000-4000-8000-000000000102"],"relevant_chunk_ids":null,"expected_answer_snippet":"14 يوماً","tags":["factual","single-doc"]},
+    {"id":"q004","query":"هل يمكن استرداد المنتجات الرقمية؟","relevant_document_ids":["00000000-0000-4000-8000-000000000102"],"relevant_chunk_ids":null,"expected_answer_snippet":"غير قابلة للاسترداد","tags":["negation","single-doc"]},
+    {"id":"q005","query":"كم يستغرق الشحن السريع؟","relevant_document_ids":["00000000-0000-4000-8000-000000000103"],"relevant_chunk_ids":null,"expected_answer_snippet":"1-2 يوم","tags":["factual","single-doc"]},
+    {"id":"q006","query":"ما هي خوارزمية التشفير المستخدمة؟","relevant_document_ids":["00000000-0000-4000-8000-000000000104"],"relevant_chunk_ids":null,"expected_answer_snippet":"AES-256","tags":["factual","single-doc"]},
+    {"id":"q007","query":"متى تنتهي صلاحية الجلسة؟","relevant_document_ids":["00000000-0000-4000-8000-000000000104"],"relevant_chunk_ids":null,"expected_answer_snippet":"60 دقيقة","tags":["factual","single-doc"]},
+    {"id":"q008","query":"كم يوم إجازة سنوياً للموظفين بدوام كامل؟","relevant_document_ids":["00000000-0000-4000-8000-000000000105"],"relevant_chunk_ids":null,"expected_answer_snippet":"20 يوماً","tags":["factual","single-doc"]},
+    {"id":"q009","query":"كم يوم يمكن ترحيله من الإجازة؟","relevant_document_ids":["00000000-0000-4000-8000-000000000105"],"relevant_chunk_ids":null,"expected_answer_snippet":"5 أيام","tags":["factual","single-doc"]},
+    {"id":"q010","query":"ما هي اتفاقية استجابة دعم الأولوية؟","relevant_document_ids":["00000000-0000-4000-8000-000000000106"],"relevant_chunk_ids":null,"expected_answer_snippet":"4 ساعات","tags":["factual","comparative"]},
+    {"id":"q011","query":"أي مستوى دعم يتضمن دعماً هاتفياً؟","relevant_document_ids":["00000000-0000-4000-8000-000000000106"],"relevant_chunk_ids":null,"expected_answer_snippet":"مؤسسي","tags":["comparative","single-doc"]},
+    {"id":"q012","query":"ما هو الحد الافتراضي للطلبات في الساعة؟","relevant_document_ids":["00000000-0000-4000-8000-000000000107"],"relevant_chunk_ids":null,"expected_answer_snippet":"1000 طلب","tags":["factual","single-doc"]},
+    {"id":"q013","query":"ما رمز الحالة الذي يعني تجاوز الحد؟","relevant_document_ids":["00000000-0000-4000-8000-000000000107"],"relevant_chunk_ids":null,"expected_answer_snippet":"429","tags":["factual","single-doc"]},
+    {"id":"q014","query":"ما هي مدة الضمان القياسي؟","relevant_document_ids":["00000000-0000-4000-8000-000000000108"],"relevant_chunk_ids":null,"expected_answer_snippet":"سنة واحدة","tags":["factual","single-doc"]},
+    {"id":"q015","query":"قارن بين الفوترة وسياسة الاسترجاع.","relevant_document_ids":["00000000-0000-4000-8000-000000000101","00000000-0000-4000-8000-000000000102"],"relevant_chunk_ids":null,"expected_answer_snippet":null,"tags":["comparative","multi-doc"]},
+    {"id":"q016","query":"ماذا يحدث إذا لم أدفع الفاتورة؟","relevant_document_ids":["00000000-0000-4000-8000-000000000101"],"relevant_chunk_ids":null,"expected_answer_snippet":"تعليق","tags":["factual","single-doc"]}
+  ]
+}

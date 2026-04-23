@@ -111,4 +111,14 @@ public sealed class EvalFixtureLoaderTests
         result.Value.Questions.Should().Contain(q => q.Tags.Contains("negation"));
         result.Value.Questions.Should().Contain(q => q.Tags.Contains("comparative"));
     }
+
+    [Fact]
+    public void LoadFromFile_SeedArFixture_Parses()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "Ai", "Eval", "fixtures", "rag-eval-dataset-ar.json");
+        var result = EvalFixtureLoader.LoadFromFile(path);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Language.Should().Be("ar");
+        result.Value.Questions.Should().HaveCountGreaterOrEqualTo(15);
+    }
 }
