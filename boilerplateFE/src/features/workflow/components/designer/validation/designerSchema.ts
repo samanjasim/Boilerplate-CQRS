@@ -61,10 +61,14 @@ export function validateDefinition(
         });
       }
     }
-    // HumanTask requires assignee strategy
+    // HumanTask requires an assignee strategy OR a populated parallel.assignees list
+    // (parallel mode creates one task per assignee via HumanTaskFactory, so it's a
+    // valid alternative to single-assignee routing).
     if (state.type === 'HumanTask') {
-      const a = state.assignee;
-      if (!a || !(a as { strategy?: string }).strategy) {
+      const a = state.assignee as { strategy?: string } | null | undefined;
+      const p = state.parallel as { assignees?: unknown[] } | null | undefined;
+      const hasParallel = Array.isArray(p?.assignees) && p.assignees.length > 0;
+      if ((!a || !a.strategy) && !hasParallel) {
         issues.push({
           path: `states[${i}].assignee`,
           messageKey: 'assigneeRequiredForHumanTask',

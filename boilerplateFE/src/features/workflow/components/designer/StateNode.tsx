@@ -5,11 +5,14 @@ import { Badge } from '@/components/ui/badge';
 import type { StateNode as StateNodeType } from './hooks/useDesignerStore';
 import { useDesignerStore } from './hooks/useDesignerStore';
 
+// Terminal covers every end-state — Approved, Rejected, Cancelled, etc. A
+// green accent implies success and is misleading on Rejected; use a neutral
+// slate tone so the state's name carries the outcome semantics.
 const TYPE_COLOR: Record<string, string> = {
   Initial: 'bg-blue-500',
   HumanTask: 'bg-amber-500',
   SystemAction: 'bg-purple-500',
-  Terminal: 'bg-emerald-500',
+  Terminal: 'bg-slate-500',
 };
 
 function StateNodeInner({ data, id, selected }: NodeProps<StateNodeType>) {

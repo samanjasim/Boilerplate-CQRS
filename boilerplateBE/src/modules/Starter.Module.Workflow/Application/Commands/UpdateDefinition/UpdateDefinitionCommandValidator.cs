@@ -77,10 +77,11 @@ public sealed partial class UpdateDefinitionCommandValidator : AbstractValidator
                     $"State type '{state.Type}' is not one of Initial, HumanTask, SystemAction, Terminal.");
 
             if (state.Type.Equals("HumanTask", StringComparison.OrdinalIgnoreCase)
-                && (state.Assignee is null || string.IsNullOrWhiteSpace(state.Assignee.Strategy)))
+                && (state.Assignee is null || string.IsNullOrWhiteSpace(state.Assignee.Strategy))
+                && !(state.Parallel?.Assignees is { Count: > 0 }))
             {
                 ctx.AddFailure($"{prefix}.assignee",
-                    $"State '{state.Name}' is HumanTask but has no assignee strategy.");
+                    $"State '{state.Name}' is HumanTask but has no assignee strategy or parallel.assignees.");
             }
 
             if (state.Sla is { ReminderAfterHours: { } reminder, EscalateAfterHours: { } escalate }

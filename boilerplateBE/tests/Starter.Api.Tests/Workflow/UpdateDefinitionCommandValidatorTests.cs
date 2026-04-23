@@ -142,6 +142,51 @@ public sealed class UpdateDefinitionCommandValidatorTests
     }
 
     [Fact]
+    public void Passes_when_humantask_uses_parallel_assignees_without_single_assignee()
+    {
+        // Parallel mode is a valid alternative to single-assignee routing: HumanTaskFactory
+        // creates one ApprovalTask per parallel.assignees entry with a shared GroupId.
+        var cmd = new UpdateDefinitionCommand(Guid.NewGuid(), "ok", null,
+            StatesJson(
+                new("Start", "Start", "Initial"),
+                new("BoardVote", "Board Vote", "HumanTask",
+                    Parallel: new ParallelConfig(
+                        Mode: "AllMustApprove",
+                        Assignees: new List<AssigneeConfig>
+                        {
+                            new("Role", new() { ["roleName"] = "BoardMember" }),
+                            new("Role", new() { ["roleName"] = "BoardChair" }),
+                        })),
+                new("Passed", "Passed", "Terminal"),
+                new("Failed", "Failed", "Terminal")),
+            TransitionsJson(
+                new WorkflowTransitionConfig("Start", "BoardVote", "Submit"),
+                new WorkflowTransitionConfig("BoardVote", "Passed", "Approve"),
+                new WorkflowTransitionConfig("BoardVote", "Failed", "Reject")));
+
+        var result = _sut.Validate(cmd);
+
+        result.IsValid.Should().BeTrue(because: string.Join(", ", result.Errors.Select(e => e.ErrorMessage)));
+    }
+
+    [Fact]
+    public void Fails_when_humantask_has_empty_parallel_assignees_and_no_single_assignee()
+    {
+        var cmd = new UpdateDefinitionCommand(Guid.NewGuid(), "ok", null,
+            StatesJson(
+                new("Start", "Start", "Initial"),
+                new("BoardVote", "Board Vote", "HumanTask",
+                    Parallel: new ParallelConfig("AllMustApprove", new List<AssigneeConfig>())),
+                new("Done", "Done", "Terminal")),
+            TransitionsJson());
+
+        var result = _sut.Validate(cmd);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.ErrorMessage.Contains("assignee"));
+    }
+
+    [Fact]
     public void Fails_when_sla_reminder_ge_escalate()
     {
         var cmd = new UpdateDefinitionCommand(Guid.NewGuid(), "ok", null,
