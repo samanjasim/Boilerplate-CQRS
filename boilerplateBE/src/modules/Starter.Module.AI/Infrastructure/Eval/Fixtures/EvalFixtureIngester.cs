@@ -40,13 +40,14 @@ public sealed class EvalFixtureIngester(
             // stored in the file-storage service; the FileId column just needs a
             // stable non-default Guid so that ACL payload filters work correctly.
             var syntheticFileId = doc.Id;
+            var contentType = InferContentType(doc.FileName);
 
             var entity = AiDocument.Create(
                 tenantId: tenantId,
                 name: doc.FileName,
                 fileName: doc.FileName,
                 fileId: syntheticFileId,
-                contentType: "text/plain",
+                contentType: contentType,
                 sizeBytes: System.Text.Encoding.UTF8.GetByteCount(doc.Content),
                 uploadedByUserId: uploaderUserId);
 
@@ -64,7 +65,7 @@ public sealed class EvalFixtureIngester(
                 ChildTokens: _rag.ChunkSize,
                 ChildOverlapTokens: _rag.ChunkOverlap)
             {
-                ContentType = "text/plain"
+                ContentType = contentType
             });
 
             // Persist parent chunks first (mirrors ProcessDocumentConsumer ordering).
@@ -155,5 +156,16 @@ public sealed class EvalFixtureIngester(
         }
 
         return idMap;
+    }
+
+    private static string InferContentType(string fileName)
+    {
+        var ext = Path.GetExtension(fileName).ToLowerInvariant();
+        return ext switch
+        {
+            ".md" or ".markdown" => "text/markdown",
+            ".html" or ".htm" => "text/html",
+            _ => "text/plain",
+        };
     }
 }
