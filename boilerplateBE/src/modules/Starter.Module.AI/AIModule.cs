@@ -25,6 +25,8 @@ using Starter.Module.AI.Infrastructure.Eval.Fixtures;
 using Starter.Module.AI.Infrastructure.Retrieval;
 using Starter.Module.AI.Infrastructure.Retrieval.Classification;
 using Starter.Module.AI.Infrastructure.Retrieval.Resilience;
+using Starter.Module.AI.Application.Services.Runtime;
+using Starter.Module.AI.Infrastructure.Runtime;
 using Starter.Module.AI.Infrastructure.Settings;
 
 namespace Starter.Module.AI;
@@ -72,6 +74,13 @@ public sealed class AIModule : IModule
         services.AddScoped<IAiService, AiService>();
         services.AddScoped<IUsageMetricCalculator, AiUsageMetricCalculator>();
         services.AddScoped<IChatExecutionService, ChatExecutionService>();
+
+        // Agent runtime (Plan 5a)
+        services.AddScoped<IAgentToolDispatcher, AgentToolDispatcher>();
+        services.AddScoped<OpenAiAgentRuntime>();
+        services.AddScoped<AnthropicAgentRuntime>();
+        services.AddScoped<OllamaAgentRuntime>();
+        services.AddScoped<IAiAgentRuntimeFactory, AiAgentRuntimeFactory>();
 
         services.AddSingleton<TokenCounter>();
 

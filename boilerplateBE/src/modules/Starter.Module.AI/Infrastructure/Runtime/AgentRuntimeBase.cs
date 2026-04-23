@@ -15,7 +15,7 @@ internal abstract class AgentRuntimeBase(
     IAgentToolDispatcher toolDispatcher,
     ILogger<AgentRuntimeBase> logger) : IAiAgentRuntime
 {
-    public async Task<AgentRunResult> RunAsync(
+    public virtual async Task<AgentRunResult> RunAsync(
         AgentRunContext ctx,
         IAgentRunSink sink,
         CancellationToken ct = default)
