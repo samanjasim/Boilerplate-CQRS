@@ -561,7 +561,6 @@
     "pollingIntervalSeconds": "ماوەی پشکنین (چرکە)",
     "cacheDurationMinutes": "ماوەی کاشی ڕاپۆرت (خولەک)",
     "otpExpirationMinutes": "بەسەرچوونی OTP (خولەک)",
-    "otpMaxAttempts": "زۆرترین هەوڵی OTP",
     "accessTokenExpirationMinutes": "ماوەی تۆکنی دەستگەیشتن (خولەک)",
     "refreshTokenExpirationDays": "ماوەی تۆکنی نوێکردنەوە (ڕۆژ)",
     "files": "فایلەکان",
@@ -1289,6 +1288,84 @@
         "returns": "Returns",
         "avgResponse": "Avg. response (h)",
         "empty": "No approver actions in this window."
+      }
+    },
+    "designer": {
+      "title": "Designer",
+      "openDesigner": "Open Designer",
+      "save": "Save",
+      "saving": "Saving...",
+      "addState": "Add State",
+      "autoLayout": "Auto-layout",
+      "undo": "Undo",
+      "redo": "Redo",
+      "unsavedChanges": "You have unsaved changes.",
+      "unsavedWarningTitle": "Discard unsaved changes?",
+      "unsavedWarningBody": "Your edits to this definition will be lost.",
+      "discard": "Discard",
+      "stay": "Stay",
+      "emptySelection": "Click a state to edit, drag between states to connect, press Delete to remove.",
+      "state": {
+        "identity": "Identity",
+        "name": "Name",
+        "nameSlugHelp": "Slug: letters, digits, underscore; starts with a letter.",
+        "displayName": "Display name",
+        "type": "Type",
+        "actions": "Actions",
+        "actionPlaceholder": "Add action, press Enter",
+        "assignee": "Assignee",
+        "strategy": "Strategy",
+        "strategySpecificUser": "Specific user",
+        "strategyRole": "Role",
+        "strategyEntityCreator": "Entity creator",
+        "userId": "User ID",
+        "roleName": "Role name",
+        "sla": "SLA",
+        "reminderAfterHours": "Remind after (hours)",
+        "escalateAfterHours": "Escalate after (hours)",
+        "advanced": "Advanced",
+        "fallbackAssignee": "Fallback assignee",
+        "customParameters": "Custom parameters",
+        "onEnterHooks": "OnEnter hooks",
+        "onExitHooks": "OnExit hooks",
+        "formFields": "Form fields",
+        "parallel": "Parallel / quorum"
+      },
+      "transition": {
+        "trigger": "Trigger",
+        "from": "From",
+        "to": "To",
+        "type": "Type",
+        "typeManual": "Manual",
+        "typeAuto": "Auto",
+        "condition": "Condition"
+      },
+      "template": {
+        "readOnlyTitle": "This is a system template",
+        "readOnlyBody": "Clone this template to make edits.",
+        "cloneToEdit": "Clone to edit"
+      },
+      "json": {
+        "format": "Format",
+        "reset": "Reset",
+        "parseError": "Invalid JSON: {{message}}",
+        "hintPlaceholder": "Paste JSON matching the shape shown above."
+      },
+      "errors": {
+        "nameRequired": "Name is required.",
+        "nameSlug": "Name must be a slug (letters, digits, underscore; starts with a letter).",
+        "nameUnique": "State name must be unique.",
+        "displayNameRequired": "Display name is required.",
+        "typeUnknown": "Type must be Initial, HumanTask, SystemAction, or Terminal.",
+        "exactlyOneInitial": "Exactly one Initial state is required (found {{count}}).",
+        "atLeastOneTerminal": "At least one Terminal state is required.",
+        "assigneeRequiredForHumanTask": "HumanTask requires an assignee strategy.",
+        "slaOrder": "Reminder hours must be less than escalate hours.",
+        "triggerRequired": "Trigger is required.",
+        "fromUnknown": "Transition 'from' references an unknown state.",
+        "toUnknown": "Transition 'to' references an unknown state.",
+        "fromTerminal": "Transitions cannot originate from Terminal state.",
+        "duplicateFromTrigger": "Another transition already has this (from, trigger) pair."
       }
     }
   }

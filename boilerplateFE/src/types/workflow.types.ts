@@ -31,6 +31,7 @@ export interface WorkflowStateConfig {
   formFields?: FormFieldDefinition[] | null;
   parallel?: ParallelConfig | null;
   sla?: SlaConfig | null;
+  uiPosition?: { x: number; y: number } | null;
 }
 
 export interface ParallelConfig {
