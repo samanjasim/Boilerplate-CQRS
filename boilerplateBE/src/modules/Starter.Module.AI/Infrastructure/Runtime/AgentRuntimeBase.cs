@@ -275,7 +275,7 @@ internal abstract class AgentRuntimeBase(
             }
 
             await sink.OnAssistantMessageAsync(new AgentAssistantMessage(
-                stepIndex, roundContent, assembledCalls, stepIn, stepOut), ct);
+                stepIndex, roundContent, assembledCalls, roundIn ?? 0, roundOut ?? 0), ct);
 
             messages.Add(new AiChatMessage("assistant", roundContent, ToolCalls: assembledCalls));
 
