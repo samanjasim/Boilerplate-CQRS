@@ -47,6 +47,19 @@ public sealed class ChatAgentRunSinkTests
             OutputTokens: 2),
             CancellationToken.None);
 
+        await sink.OnStepCompletedAsync(
+            new AgentStepEvent(
+                StepIndex: 0,
+                Kind: AgentStepKind.ToolCall,
+                AssistantContent: null,
+                ToolInvocations: Array.Empty<AgentToolInvocation>(),
+                InputTokens: 0,
+                OutputTokens: 0,
+                FinishReason: "stop",
+                StartedAt: DateTimeOffset.UtcNow,
+                CompletedAt: DateTimeOffset.UtcNow),
+            CancellationToken.None);
+
         var rows = await db.AiMessages.Where(m => m.ConversationId == conv.Id).ToListAsync();
         rows.Should().HaveCount(1);
         rows[0].Role.Should().Be(MessageRole.Assistant);
@@ -68,6 +81,19 @@ public sealed class ChatAgentRunSinkTests
             OutputTokens: 2),
             CancellationToken.None);
 
+        await sink.OnStepCompletedAsync(
+            new AgentStepEvent(
+                StepIndex: 0,
+                Kind: AgentStepKind.Final,
+                AssistantContent: null,
+                ToolInvocations: Array.Empty<AgentToolInvocation>(),
+                InputTokens: 0,
+                OutputTokens: 0,
+                FinishReason: "stop",
+                StartedAt: DateTimeOffset.UtcNow,
+                CompletedAt: DateTimeOffset.UtcNow),
+            CancellationToken.None);
+
         var rows = await db.AiMessages.Where(m => m.ConversationId == conv.Id).ToListAsync();
         rows.Should().BeEmpty();
     }
@@ -84,6 +110,19 @@ public sealed class ChatAgentRunSinkTests
                 ResultJson: """{"ok":true,"value":"hi"}""", IsError: false),
             CancellationToken.None);
 
+        await sink.OnStepCompletedAsync(
+            new AgentStepEvent(
+                StepIndex: 0,
+                Kind: AgentStepKind.ToolCall,
+                AssistantContent: null,
+                ToolInvocations: Array.Empty<AgentToolInvocation>(),
+                InputTokens: 0,
+                OutputTokens: 0,
+                FinishReason: "stop",
+                StartedAt: DateTimeOffset.UtcNow,
+                CompletedAt: DateTimeOffset.UtcNow),
+            CancellationToken.None);
+
         var rows = await db.AiMessages.Where(m => m.ConversationId == conv.Id).ToListAsync();
         rows.Should().HaveCount(1);
         rows[0].Role.Should().Be(MessageRole.ToolResult);
@@ -96,12 +135,39 @@ public sealed class ChatAgentRunSinkTests
         var conv = SeedConversation(db);
         var sink = new ChatAgentRunSink(db, conv.Id, startingOrder: 10, streamWriter: null);
 
+        // Step 0: assistant tool-call message + tool result
         await sink.OnAssistantMessageAsync(new AgentAssistantMessage(
             0, "t1", new[] { new AiToolCall("c1", "s", "{}") }, 1, 1), CancellationToken.None);
         await sink.OnToolResultAsync(new AgentToolResultEvent(0, "c1", """{"ok":true}""", false), CancellationToken.None);
+        await sink.OnStepCompletedAsync(
+            new AgentStepEvent(
+                StepIndex: 0,
+                Kind: AgentStepKind.ToolCall,
+                AssistantContent: null,
+                ToolInvocations: Array.Empty<AgentToolInvocation>(),
+                InputTokens: 0,
+                OutputTokens: 0,
+                FinishReason: "stop",
+                StartedAt: DateTimeOffset.UtcNow,
+                CompletedAt: DateTimeOffset.UtcNow),
+            CancellationToken.None);
+
+        // Step 1: assistant tool-call message + tool result
         await sink.OnAssistantMessageAsync(new AgentAssistantMessage(
             1, "t2", new[] { new AiToolCall("c2", "s", "{}") }, 1, 1), CancellationToken.None);
         await sink.OnToolResultAsync(new AgentToolResultEvent(1, "c2", """{"ok":true}""", false), CancellationToken.None);
+        await sink.OnStepCompletedAsync(
+            new AgentStepEvent(
+                StepIndex: 1,
+                Kind: AgentStepKind.ToolCall,
+                AssistantContent: null,
+                ToolInvocations: Array.Empty<AgentToolInvocation>(),
+                InputTokens: 0,
+                OutputTokens: 0,
+                FinishReason: "stop",
+                StartedAt: DateTimeOffset.UtcNow,
+                CompletedAt: DateTimeOffset.UtcNow),
+            CancellationToken.None);
 
         var orders = await db.AiMessages.Where(m => m.ConversationId == conv.Id)
             .OrderBy(m => m.Order).Select(m => m.Order).ToListAsync();

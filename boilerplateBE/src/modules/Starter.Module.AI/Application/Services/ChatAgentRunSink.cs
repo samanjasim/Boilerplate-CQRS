@@ -65,7 +65,6 @@ internal sealed class ChatAgentRunSink : IAgentRunSink
             toolCalls: json);
 
         _db.AiMessages.Add(row);
-        await _db.SaveChangesAsync(ct);
     }
 
     public async Task OnToolCallAsync(AgentToolCallEvent call, CancellationToken ct)
@@ -83,7 +82,6 @@ internal sealed class ChatAgentRunSink : IAgentRunSink
     {
         var row = AiMessage.CreateToolResultMessage(_conversationId, r.CallId, r.ResultJson, _order++);
         _db.AiMessages.Add(row);
-        await _db.SaveChangesAsync(ct);
 
         if (_streamWriter is not null)
         {
@@ -102,7 +100,13 @@ internal sealed class ChatAgentRunSink : IAgentRunSink
         await _streamWriter.WriteAsync(new ChatStreamEvent("delta", new { Content = d }), ct);
     }
 
-    public Task OnStepCompletedAsync(AgentStepEvent step, CancellationToken ct) => Task.CompletedTask;
+    public async Task OnStepCompletedAsync(AgentStepEvent step, CancellationToken ct)
+    {
+        // Persist all rows added during this step in a single SaveChanges — matches
+        // legacy ChatExecutionService's per-step batching so FailTurnAsync can cleanly
+        // detach and partial-run observability matches the previous behavior.
+        await _db.SaveChangesAsync(ct);
+    }
 
     public Task OnRunCompletedAsync(AgentRunResult result, CancellationToken ct) => Task.CompletedTask;
 }
