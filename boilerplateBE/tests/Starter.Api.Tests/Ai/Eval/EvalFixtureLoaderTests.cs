@@ -98,4 +98,17 @@ public sealed class EvalFixtureLoaderTests
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Ai.Eval.FixtureInvalid");
     }
+
+    [Fact]
+    public void LoadFromFile_SeedEnFixture_Parses()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "Ai", "Eval", "fixtures", "rag-eval-dataset-en.json");
+        var result = EvalFixtureLoader.LoadFromFile(path);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Questions.Should().HaveCountGreaterOrEqualTo(15);
+        result.Value.Questions.Should().Contain(q => q.Tags.Contains("factual"));
+        result.Value.Questions.Should().Contain(q => q.Tags.Contains("multi-doc"));
+        result.Value.Questions.Should().Contain(q => q.Tags.Contains("negation"));
+        result.Value.Questions.Should().Contain(q => q.Tags.Contains("comparative"));
+    }
 }
