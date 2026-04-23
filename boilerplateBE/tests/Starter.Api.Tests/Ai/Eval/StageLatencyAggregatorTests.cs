@@ -1,5 +1,6 @@
 using System.Diagnostics.Metrics;
 using FluentAssertions;
+using Starter.Api.Tests.Ai.Observability;
 using Starter.Module.AI.Application.Eval.Contracts;
 using Starter.Module.AI.Infrastructure.Eval.Latency;
 using Starter.Module.AI.Infrastructure.Observability;
@@ -7,6 +8,9 @@ using Xunit;
 
 namespace Starter.Api.Tests.Ai.Eval;
 
+// Shares the process-global AiRagMetrics meter with tests in the Observability collection;
+// must be serialized against them to avoid cross-test measurement pollution.
+[Collection(ObservabilityTestCollection.Name)]
 public sealed class StageLatencyAggregatorTests
 {
     [Fact]
