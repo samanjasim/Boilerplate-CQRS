@@ -38,11 +38,13 @@ public static class OpenTelemetryConfiguration
                 .AddEntityFrameworkCoreInstrumentation()
                 .AddSource("MassTransit")
                 .AddSource("Starter.Api")
-                .AddSource("Starter.Module.AI"))
+                .AddSource("Starter.Module.AI")
+                .AddSource("Starter.Ai.Agent"))
             .WithMetrics(metrics => metrics
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
-                .AddMeter("Starter.Module.AI.Rag"))
+                .AddMeter("Starter.Module.AI.Rag")
+                .AddMeter("Starter.Ai.Agent"))
             .UseOtlpExporter(OtlpExportProtocol.HttpProtobuf, new Uri(otlpEndpoint));
 
         return services;

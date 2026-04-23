@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.Extensions.Logging;
 using Starter.Module.AI.Application.Services;
 using Starter.Module.AI.Application.Services.Runtime;
+using Starter.Module.AI.Infrastructure.Observability;
 using Starter.Module.AI.Infrastructure.Providers;
 
 namespace Starter.Module.AI.Infrastructure.Runtime;
@@ -18,14 +19,39 @@ internal abstract class AgentRuntimeBase(
 {
     protected ILogger<AgentRuntimeBase> Logger { get; } = logger;
 
-    public virtual Task<AgentRunResult> RunAsync(
+    public virtual async Task<AgentRunResult> RunAsync(
         AgentRunContext ctx,
         IAgentRunSink sink,
         CancellationToken ct = default)
     {
-        return ctx.Streaming
-            ? RunStreamingAsync(ctx, sink, ct)
-            : RunNonStreamingAsync(ctx, sink, ct);
+        using var activity = AiAgentMetrics.Source.StartActivity("ai.agent.run");
+        activity?.SetTag("ai.provider", ctx.ModelConfig.Provider.ToString());
+        activity?.SetTag("ai.model", ctx.ModelConfig.Model);
+        activity?.SetTag("ai.max_steps", ctx.MaxSteps);
+        activity?.SetTag("ai.streaming", ctx.Streaming);
+
+        var result = ctx.Streaming
+            ? await RunStreamingAsync(ctx, sink, ct)
+            : await RunNonStreamingAsync(ctx, sink, ct);
+
+        activity?.SetTag("ai.run_status", result.Status.ToString());
+        activity?.SetTag("ai.step_count", result.Steps.Count);
+        activity?.SetTag("ai.input_tokens", result.TotalInputTokens);
+        activity?.SetTag("ai.output_tokens", result.TotalOutputTokens);
+
+        AiAgentMetrics.StepCount.Record(result.Steps.Count,
+            new KeyValuePair<string, object?>("provider", ctx.ModelConfig.Provider.ToString()),
+            new KeyValuePair<string, object?>("status", result.Status.ToString()));
+
+        if (result.Status == AgentRunStatus.LoopBreak)
+            AiAgentMetrics.LoopBreaks.Add(1,
+                new KeyValuePair<string, object?>("provider", ctx.ModelConfig.Provider.ToString()));
+
+        if (result.Status == AgentRunStatus.MaxStepsExceeded)
+            AiAgentMetrics.MaxStepsExceeded.Add(1,
+                new KeyValuePair<string, object?>("provider", ctx.ModelConfig.Provider.ToString()));
+
+        return result;
     }
 
     private async Task<AgentRunResult> RunNonStreamingAsync(
