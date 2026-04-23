@@ -370,3 +370,48 @@ See `.claude/skills/post-feature-testing.md` for full details.
 - **Health checks** — `/health` endpoint for all external services.
 - **API versioning** — URL path (`/api/v1/`). Swagger per version.
 - **CORS** — Explicit origin whitelist in `appsettings.Development.json` → `Cors:AllowedOrigins`.
+
+## Running the RAG eval harness
+
+The AI module ships with an offline evaluation harness covering retrieval quality and stage latency.
+
+**When to run it:** Before merging any change to the retrieval pipeline (`RagRetrievalService`, chunking, embedding, reranker, vector store). A nightly Jenkins job also runs it against main.
+
+**Prerequisites:** Live Postgres + Qdrant (docker-compose up); live provider API key (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `OLLAMA_URL` set in `appsettings.Test.json`).
+
+**Run the harness:**
+
+```bash
+AI_EVAL_ENABLED=1 dotnet test boilerplateBE/tests/Starter.Api.Tests/Starter.Api.Tests.csproj \
+  --filter "FullyQualifiedName~RagEvalHarnessTests"
+```
+
+**Update the baseline** (when an intentional improvement is expected):
+
+```bash
+AI_EVAL_ENABLED=1 UPDATE_EVAL_BASELINE=1 dotnet test boilerplateBE/tests/Starter.Api.Tests/Starter.Api.Tests.csproj \
+  --filter "FullyQualifiedName~RagEvalHarnessTests"
+```
+
+Commit `boilerplateBE/tests/Starter.Api.Tests/Ai/Eval/fixtures/rag-eval-baseline.json` alongside your change so reviewers see the before/after metric drift explicitly.
+
+**Warm the rerank cache blob** (required when adding new questions to a fixture):
+
+```bash
+dotnet run --project boilerplateBE/tools/EvalCacheWarmup -- \
+  --fixture boilerplateBE/tests/Starter.Api.Tests/Ai/Eval/fixtures/rag-eval-dataset-en.json \
+  --out boilerplateBE/tests/Starter.Api.Tests/Ai/Eval/fixtures/eval-rerank-cache-en.bin
+```
+
+Commit the updated blob alongside the fixture change.
+
+**Faithfulness spot-check (superadmin):**
+
+```bash
+curl -H "Authorization: Bearer <superadmin-token>" \
+  -F datasetName=en \
+  -F assistantId=<assistant-guid> \
+  http://localhost:5000/api/v1/ai/eval/faithfulness
+```
+
+Returns a `FaithfulnessReport` with per-question SUPPORTED/UNSUPPORTED claim breakdowns. Only superadmins (`Ai.RunEval`) can invoke this endpoint.
