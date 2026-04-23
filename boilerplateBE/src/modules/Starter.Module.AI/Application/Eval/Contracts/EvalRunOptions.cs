@@ -5,4 +5,6 @@ public sealed record EvalRunOptions(
     bool IncludeFaithfulness = false,
     string? JudgeModelOverride = null,
     int WarmupQueries = 2,
-    Guid? AssistantId = null);
+    Guid? AssistantId = null,
+    string? AssistantSystemPrompt = null,
+    string? AssistantModel = null);

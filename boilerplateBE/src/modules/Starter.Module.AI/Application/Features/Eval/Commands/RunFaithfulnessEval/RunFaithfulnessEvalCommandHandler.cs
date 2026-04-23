@@ -47,7 +47,9 @@ internal sealed class RunFaithfulnessEvalCommandHandler(
                 IncludeFaithfulness: true,
                 JudgeModelOverride: request.JudgeModelOverride ?? settings.Value.JudgeModel,
                 WarmupQueries: settings.Value.WarmupQueries,
-                AssistantId: request.AssistantId),
+                AssistantId: request.AssistantId,
+                AssistantSystemPrompt: assistant.SystemPrompt,
+                AssistantModel: assistant.Model),
             ct);
 
         return Result.Success(report);
