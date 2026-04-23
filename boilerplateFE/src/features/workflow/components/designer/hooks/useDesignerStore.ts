@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { applyNodeChanges, applyEdgeChanges, type Node, type Edge, type NodeChange, type EdgeChange, type Connection } from '@xyflow/react';
+import { applyNodeChanges, applyEdgeChanges, MarkerType, type Node, type Edge, type NodeChange, type EdgeChange, type Connection } from '@xyflow/react';
 import type { WorkflowStateConfig, WorkflowTransitionConfig } from '@/types/workflow.types';
 import { validateDefinition, type ValidationIssue } from '../validation/designerSchema';
 
@@ -87,6 +87,7 @@ export const useDesignerStore = create<DesignerStore>((set, get) => ({
       source: t.from,
       target: t.to,
       type: 'transition',
+      markerEnd: { type: MarkerType.ArrowClosed },
       data: { trigger: t.trigger, type: t.type ?? 'Manual', condition: t.condition ?? null },
     }));
     set({
@@ -128,6 +129,7 @@ export const useDesignerStore = create<DesignerStore>((set, get) => ({
       source: connection.source,
       target: connection.target,
       type: 'transition',
+      markerEnd: { type: MarkerType.ArrowClosed },
       data: { trigger, type: 'Manual', condition: null },
     };
     const edges = [...get().edges, newEdge];
