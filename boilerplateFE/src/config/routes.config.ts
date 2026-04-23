@@ -112,6 +112,8 @@ export const ROUTES = {
     DEFINITIONS: '/workflows/definitions',
     DEFINITION_DETAIL: '/workflows/definitions/:id',
     getDefinitionDetail: (id: string) => `/workflows/definitions/${id}`,
+    DEFINITION_DESIGNER: '/workflows/definitions/:id/designer',
+    getDefinitionDesigner: (id: string) => `/workflows/definitions/${id}/designer`,
   },
 
   // Billing

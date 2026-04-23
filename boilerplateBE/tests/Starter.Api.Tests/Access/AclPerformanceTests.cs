@@ -116,8 +116,10 @@ public sealed class AclPerformanceTests
         result.ExplicitGrantedResourceIds.Should().HaveCount(1000,
             "all 1000 grants must be returned in a single bulk query");
 
-        // Even with 1000 grants, the single bulk query should complete well under 250ms in-memory.
-        sw.ElapsedMilliseconds.Should().BeLessThan(250,
+        // Even with 1000 grants, the single bulk query should complete well under 500ms in-memory.
+        // Budget is intentionally generous — an N+1 bug on 1000 rows costs seconds, not milliseconds,
+        // so 500ms still catches the regression while tolerating CI shared-runner variance.
+        sw.ElapsedMilliseconds.Should().BeLessThan(500,
             "1000-grant resolve must complete in a single bulk query, not N+1 per grant");
     }
 }

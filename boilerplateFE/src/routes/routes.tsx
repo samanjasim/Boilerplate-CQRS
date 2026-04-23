@@ -58,6 +58,7 @@ const WorkflowInstancesPage = activeModules.workflow ? lazy(() => import('@/feat
 const WorkflowInstanceDetailPage = activeModules.workflow ? lazy(() => import('@/features/workflow/pages/WorkflowInstanceDetailPage')) : NullPage;
 const WorkflowDefinitionsPage = activeModules.workflow ? lazy(() => import('@/features/workflow/pages/WorkflowDefinitionsPage')) : NullPage;
 const WorkflowDefinitionDetailPage = activeModules.workflow ? lazy(() => import('@/features/workflow/pages/WorkflowDefinitionDetailPage')) : NullPage;
+const WorkflowDefinitionDesignerPage = activeModules.workflow ? lazy(() => import('@/features/workflow/pages/WorkflowDefinitionDesignerPage')) : NullPage;
 const ChannelsPage = activeModules.communication ? lazy(() => import('@/features/communication/pages/ChannelsPage')) : NullPage;
 const TemplatesPage = activeModules.communication ? lazy(() => import('@/features/communication/pages/TemplatesPage')) : NullPage;
 const TriggerRulesPage = activeModules.communication ? lazy(() => import('@/features/communication/pages/TriggerRulesPage')) : NullPage;
@@ -273,6 +274,7 @@ export const routes: RouteObject[] = [
               children: [
                 { path: ROUTES.WORKFLOWS.DEFINITIONS, element: <WorkflowDefinitionsPage /> },
                 { path: ROUTES.WORKFLOWS.DEFINITION_DETAIL, element: <WorkflowDefinitionDetailPage /> },
+                { path: ROUTES.WORKFLOWS.DEFINITION_DESIGNER, element: <WorkflowDefinitionDesignerPage /> },
               ],
             },
           ] : []),
