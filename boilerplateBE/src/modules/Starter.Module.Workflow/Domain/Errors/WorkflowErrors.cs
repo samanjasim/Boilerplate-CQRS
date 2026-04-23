@@ -36,4 +36,14 @@ public static class WorkflowErrors
 
     public static Error Concurrency() =>
         Error.Conflict("Workflow.Concurrency", "Another user acted on this task concurrently. Please refresh and try again.");
+
+    public static Error AnalyticsNotAvailableOnTemplate() =>
+        Error.NotFound(
+            "Workflow.AnalyticsNotAvailableOnTemplate",
+            "Analytics are not available for system templates. Clone the definition to view analytics for your tenant's flow.");
+
+    public static Error InvalidAnalyticsWindow(string? raw) =>
+        Error.Validation(
+            "Workflow.InvalidAnalyticsWindow",
+            $"Invalid analytics window '{raw}'. Supported values: 7d, 30d, 90d, all.");
 }

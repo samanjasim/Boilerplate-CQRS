@@ -129,6 +129,7 @@ export const PERMISSIONS = {
     ActOnTask: 'Workflows.ActOnTask',
     Cancel: 'Workflows.Cancel',
     ViewAllTasks: 'Workflows.ViewAllTasks',
+    ViewAnalytics: 'Workflows.ViewAnalytics',
   },
 } as const;
 

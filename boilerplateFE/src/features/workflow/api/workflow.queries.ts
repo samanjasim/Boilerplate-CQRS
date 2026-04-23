@@ -25,6 +25,15 @@ export function useWorkflowDefinition(id: string) {
   });
 }
 
+export function useWorkflowAnalytics(id: string, window: string) {
+  return useQuery({
+    queryKey: queryKeys.workflow.definitions.analytics(id, window),
+    queryFn: () => workflowApi.getAnalytics(id, window),
+    enabled: !!id && !!window,
+    staleTime: 60_000,
+  });
+}
+
 export function useWorkflowStatus(entityType: string, entityId: string) {
   return useQuery({
     queryKey: queryKeys.workflow.instances.status(entityType, entityId),
@@ -37,6 +46,14 @@ export function useWorkflowHistory(instanceId: string) {
   return useQuery({
     queryKey: queryKeys.workflow.instances.history(instanceId),
     queryFn: () => workflowApi.getHistory(instanceId),
+    enabled: !!instanceId,
+  });
+}
+
+export function useWorkflowInstanceById(instanceId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.workflow.instances.byId(instanceId),
+    queryFn: () => workflowApi.getInstanceById(instanceId!),
     enabled: !!instanceId,
   });
 }

@@ -75,6 +75,7 @@ public sealed class WorkflowModule : IModule
         yield return (WorkflowPermissions.ActOnTask, "Approve/reject/return assigned tasks", "Workflow");
         yield return (WorkflowPermissions.Cancel, "Cancel an active workflow instance", "Workflow");
         yield return (WorkflowPermissions.ViewAllTasks, "See all pending tasks across users", "Workflow");
+        yield return (WorkflowPermissions.ViewAnalytics, "View workflow analytics dashboards per definition", "Workflow");
     }
 
     public IEnumerable<(string Role, string[] Permissions)> GetDefaultRolePermissions()
@@ -85,14 +86,16 @@ public sealed class WorkflowModule : IModule
             WorkflowPermissions.Start,
             WorkflowPermissions.ActOnTask,
             WorkflowPermissions.Cancel,
-            WorkflowPermissions.ViewAllTasks]);
+            WorkflowPermissions.ViewAllTasks,
+            WorkflowPermissions.ViewAnalytics]);
         yield return ("Admin", [
             WorkflowPermissions.View,
             WorkflowPermissions.ManageDefinitions,
             WorkflowPermissions.Start,
             WorkflowPermissions.ActOnTask,
             WorkflowPermissions.Cancel,
-            WorkflowPermissions.ViewAllTasks]);
+            WorkflowPermissions.ViewAllTasks,
+            WorkflowPermissions.ViewAnalytics]);
         yield return ("User", [
             WorkflowPermissions.View,
             WorkflowPermissions.Start,

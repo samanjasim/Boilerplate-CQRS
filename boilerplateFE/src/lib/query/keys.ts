@@ -199,10 +199,13 @@ export const queryKeys = {
       all: ['workflow', 'definitions'] as const,
       list: (entityType?: string) => ['workflow', 'definitions', 'list', entityType] as const,
       detail: (id: string) => ['workflow', 'definitions', 'detail', id] as const,
+      analytics: (id: string, window: string) =>
+        ['workflow', 'definitions', 'analytics', id, window] as const,
     },
     instances: {
       all: ['workflow', 'instances'] as const,
       list: (params?: Record<string, unknown>) => ['workflow', 'instances', 'list', params] as const,
+      byId: (instanceId: string | undefined) => ['workflow', 'instances', 'byId', instanceId] as const,
       status: (entityType: string, entityId: string) =>
         ['workflow', 'instances', 'status', entityType, entityId] as const,
       history: (instanceId: string) => ['workflow', 'instances', 'history', instanceId] as const,

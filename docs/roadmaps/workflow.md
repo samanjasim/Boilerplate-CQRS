@@ -63,6 +63,26 @@ See `docs/superpowers/specs/2026-04-22-workflow-phase4a-dynamic-forms-finish-des
 
 ---
 
+## Phase 4b Shipped (merged 2026-04-22)
+
+**Analytics dashboard — per-definition operator metrics.** Six metric panels computed from existing `WorkflowInstances`, `WorkflowSteps`, and `ApprovalTasks` tables with no new database tables.
+
+Shipped components:
+- `GetWorkflowAnalyticsQuery` + `GetWorkflowAnalyticsQueryHandler` under `Application/Queries/` — computes headline counts, bottleneck states (median + p95 dwell time, ≥ 3 visits threshold), action rates, instance count series, stuck instances, and approver activity.
+- `WorkflowAnalyticsDto` in `Starter.Abstractions` — typed result envelope for all six panels.
+- `GET /api/v1/workflows/definitions/{id}/analytics?window={7d|30d|90d|all}` — returns 400 for missing/invalid window; 404 for template definitions.
+- `Workflows.ViewAnalytics` permission added to `Starter.Shared/Constants/Permissions.cs` and mirrored in `boilerplateFE/src/constants/permissions.ts`.
+- FE: `WorkflowAnalyticsTab` component with headline strip, bottleneck table, action-rate table, instance count chart, stuck-instances table, and approver-activity table. Low-data banner when fewer than 5 instances exist in the window.
+- Documentation: `docs/features/workflow-analytics.md`.
+
+### Analytics follow-ups (deferred)
+
+- Snapshot/materialized view for analytics at scale (>100k instances)
+- Explicit `WorkflowStepId` FK on `ApprovalTask` for exact response-time join
+- Post-merge translations for ar/ku analytics keys
+
+---
+
 ## Phase 4+ Deferred Items
 
 ### AI agent as workflow participant
@@ -167,20 +187,5 @@ See `docs/superpowers/specs/2026-04-22-workflow-phase4a-dynamic-forms-finish-des
 - The Comments module's `GetCommentsQueryHandler` and `AddCommentCommandHandler` call `IEntityAccessChecker.CanAccessAsync()` before proceeding.
 - The Workflow module registers a checker that validates the user is a workflow participant.
 - Consider: should the checker be AND-ed (all checkers must approve) or OR-ed (any checker can approve)?
-
----
-
-### Workflow analytics
-
-**What:** Aggregate metrics per definition — average cycle time, bottleneck states (steps with the longest median dwell time), approval rate per step, and volume over time. Expose via a read-model query and a dashboard card.
-
-**Why deferred:** `WorkflowStep` already captures timestamps; the raw data is there. But building a fast aggregate query layer (or a pre-computed projection) requires a design decision on whether analytics live in the module's own read-model or in a future analytics module.
-
-**Pick this up when:** Tenant admins start asking "why does our purchase approval take 3 days?" — i.e., when the workflow catalog is large enough that visibility creates value.
-
-**Starting points:**
-- Add `GetWorkflowAnalyticsQuery` under [`Application/Queries/`](../../boilerplateBE/src/modules/Starter.Module.Workflow/Application/Queries/) that groups `WorkflowStep` records by definition + state and computes dwell-time percentiles.
-- Expose via `GET /api/v1/workflows/definitions/{id}/analytics`.
-- Frontend: add an "Analytics" tab to the workflow definition detail page.
 
 ---

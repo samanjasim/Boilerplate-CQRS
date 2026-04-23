@@ -1395,6 +1395,55 @@
       "requestNamePlaceholder": "e.g., Q3 Budget Increase — Engineering Dept",
       "submit": "Submit Request",
       "success": "Request submitted successfully"
+    },
+    "analytics": {
+      "tabLabel": "Analytics",
+      "overviewTabLabel": "Overview",
+      "windowLabel": "Window",
+      "window": {
+        "7d": "Last 7 days",
+        "30d": "Last 30 days",
+        "90d": "Last 90 days",
+        "all": "All time"
+      },
+      "lowDataBanner": "Based on {{count}} run(s) — metrics may not be representative.",
+      "headline": {
+        "started": "Started",
+        "completed": "Completed",
+        "cancelled": "Cancelled",
+        "avgCycleTime": "Avg. cycle time"
+      },
+      "hoursShort": "h",
+      "daysShort": "d",
+      "bottleneck": {
+        "title": "Bottleneck states",
+        "subtitle": "Median dwell time per state",
+        "empty": "Not enough visits yet (need at least 3 per state)."
+      },
+      "actionRates": {
+        "title": "Action rates",
+        "empty": "No user actions recorded in this window."
+      },
+      "instanceSeries": {
+        "title": "Instances over time"
+      },
+      "stuck": {
+        "title": "Currently stuck",
+        "currentState": "State",
+        "startedAt": "Started",
+        "daysSince": "Days since",
+        "assignee": "Assignee",
+        "empty": "No active instances."
+      },
+      "approverActivity": {
+        "title": "Approver activity",
+        "user": "User",
+        "approvals": "Approvals",
+        "rejections": "Rejections",
+        "returns": "Returns",
+        "avgResponse": "Avg. response (h)",
+        "empty": "No approver actions in this window."
+      }
     }
   }
 }

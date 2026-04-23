@@ -17,6 +17,7 @@ import { ROUTES } from '@/config';
 import { formatDateTime } from '@/utils/format';
 import {
   useWorkflowHistory,
+  useWorkflowInstanceById,
   useWorkflowDefinition,
   useCancelWorkflow,
   usePendingTasks,
@@ -35,7 +36,9 @@ export default function WorkflowInstanceDetailPage() {
 
   useBackNavigation(ROUTES.WORKFLOWS.INSTANCES, t('workflow.instances.title'));
 
-  const instance = (location.state as { instance?: WorkflowInstanceSummary })?.instance;
+  const stateInstance = (location.state as { instance?: WorkflowInstanceSummary })?.instance;
+  const { data: fetchedInstance } = useWorkflowInstanceById(stateInstance ? undefined : instanceId);
+  const instance = stateInstance ?? fetchedInstance;
 
   const { data: history, isLoading: historyLoading, error: historyError } = useWorkflowHistory(instanceId!);
   const { data: definition } = useWorkflowDefinition(instance?.definitionId ?? '');

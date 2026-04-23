@@ -8,4 +8,5 @@ public static class WorkflowPermissions
     public const string ActOnTask = "Workflows.ActOnTask";
     public const string Cancel = "Workflows.Cancel";
     public const string ViewAllTasks = "Workflows.ViewAllTasks";
+    public const string ViewAnalytics = "Workflows.ViewAnalytics";
 }

@@ -21,10 +21,14 @@ using Starter.Module.Workflow.Application.Queries.GetPendingTasks;
 using Starter.Module.Workflow.Application.Queries.GetWorkflowDefinitionDetail;
 using Starter.Module.Workflow.Application.Queries.GetWorkflowDefinitions;
 using Starter.Module.Workflow.Application.Queries.GetWorkflowHistory;
+using Starter.Module.Workflow.Application.Queries.GetWorkflowInstanceById;
 using Starter.Module.Workflow.Application.Queries.GetWorkflowInstances;
+using Starter.Module.Workflow.Application.Queries.GetWorkflowAnalytics;
 using Starter.Module.Workflow.Application.Queries.GetWorkflowStatus;
 using Starter.Module.Workflow.Constants;
+using Starter.Module.Workflow.Domain.Errors;
 using Starter.Shared.Models;
+using Starter.Shared.Results;
 
 namespace Starter.Module.Workflow.Controllers;
 
@@ -75,6 +79,24 @@ public sealed class WorkflowController(ISender mediator) : BaseApiController(med
         return HandleResult(result);
     }
 
+    [HttpGet("definitions/{id:guid}/analytics")]
+    [Authorize(Policy = WorkflowPermissions.ViewAnalytics)]
+    [ProducesResponseType(typeof(ApiResponse<WorkflowAnalyticsDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetDefinitionAnalytics(
+        Guid id,
+        [FromQuery(Name = "window")] string? window,
+        CancellationToken ct = default)
+    {
+        if (!WindowSelectorParser.TryParse(window ?? "30d", out var selector))
+            return HandleResult(Result.Failure<WorkflowAnalyticsDto>(
+                WorkflowErrors.InvalidAnalyticsWindow(window)));
+
+        var result = await Mediator.Send(new GetWorkflowAnalyticsQuery(id, selector), ct);
+        return HandleResult(result);
+    }
+
     // ── Instances ────────────────────────────────────────────────────────────
 
     [HttpPost("instances")]
@@ -102,6 +124,16 @@ public sealed class WorkflowController(ISender mediator) : BaseApiController(med
     {
         var result = await Mediator.Send(
             new GetWorkflowInstancesQuery(entityType, state, startedByUserId, status, page, pageSize), ct);
+        return HandleResult(result);
+    }
+
+    [HttpGet("instances/{instanceId:guid}")]
+    [Authorize(Policy = WorkflowPermissions.View)]
+    [ProducesResponseType(typeof(ApiResponse<WorkflowInstanceSummary>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetInstanceById(Guid instanceId, CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(new GetWorkflowInstanceByIdQuery(instanceId), ct);
         return HandleResult(result);
     }
 
