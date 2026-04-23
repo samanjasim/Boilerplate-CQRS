@@ -28,7 +28,10 @@ jobs:
         run: dotnet build --no-restore -c Release
 
       - name: Test
-        run: dotnet test --no-build -c Release --verbosity normal
+        # Exclude [Trait("perf", "true")] tests — wall-clock budget assertions
+        # (e.g., 10k-instance analytics under 1s) are flaky on shared GitHub
+        # runners. They still run locally for manual perf verification.
+        run: dotnet test --no-build -c Release --verbosity normal --filter "perf!=true"
 
   frontend:
     name: Frontend Build & Lint
