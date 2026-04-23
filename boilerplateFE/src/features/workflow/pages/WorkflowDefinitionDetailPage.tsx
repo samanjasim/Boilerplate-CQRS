@@ -7,9 +7,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageHeader } from '@/components/common';
-import { useBackNavigation } from '@/hooks';
+import { useBackNavigation, usePermissions } from '@/hooks';
+import { PERMISSIONS } from '@/constants';
 import { useWorkflowDefinition, useCloneDefinition, useUpdateDefinition } from '../api';
+import { WorkflowAnalyticsTab } from '../components/analytics/WorkflowAnalyticsTab';
 
 export default function WorkflowDefinitionDetailPage() {
   const { t } = useTranslation();
@@ -20,6 +23,7 @@ export default function WorkflowDefinitionDetailPage() {
   const { mutate: cloneDefinition, isPending: cloning } = useCloneDefinition();
   const { mutate: updateDefinition, isPending: updating } = useUpdateDefinition();
 
+  const { hasPermission } = usePermissions();
   const [editName, setEditName] = useState('');
   const [isEditing, setIsEditing] = useState(false);
 
@@ -33,6 +37,9 @@ export default function WorkflowDefinitionDetailPage() {
 
   if (!def) return null;
 
+  const canViewAnalytics = hasPermission(PERMISSIONS.Workflows.ViewAnalytics);
+  const showAnalyticsTab = canViewAnalytics && !def.isTemplate;
+
   const handleEdit = () => {
     setEditName(def.name);
     setIsEditing(true);
@@ -45,46 +52,8 @@ export default function WorkflowDefinitionDetailPage() {
     );
   };
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title={def.name}
-        actions={
-          <div className="flex items-center gap-2">
-            {def.isTemplate ? (
-              <Button onClick={() => cloneDefinition(id!)} disabled={cloning}>
-                {t('workflow.detail.cloneToCustomize')}
-              </Button>
-            ) : (
-              !isEditing && (
-                <Button variant="outline" onClick={handleEdit}>
-                  {t('workflow.definitions.edit')}
-                </Button>
-              )
-            )}
-          </div>
-        }
-      />
-
-      {/* Header info */}
-      <Card>
-        <CardContent className="py-5">
-          <div className="flex flex-wrap items-center gap-3">
-            <Badge variant="secondary">{def.entityType}</Badge>
-            <Badge variant={def.isTemplate ? 'outline' : 'default'}>
-              {def.isTemplate
-                ? t('workflow.definitions.systemTemplate')
-                : t('workflow.definitions.customized')}
-            </Badge>
-            {def.isActive ? (
-              <Badge variant="default">{t('workflow.status.active')}</Badge>
-            ) : (
-              <Badge variant="secondary">{t('common.inactive')}</Badge>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
+  const overviewContent = (
+    <>
       {/* Editable fields for custom definitions */}
       {isEditing && !def.isTemplate && (
         <Card>
@@ -187,6 +156,67 @@ export default function WorkflowDefinitionDetailPage() {
           ))}
         </div>
       </section>
+    </>
+  );
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title={def.name}
+        actions={
+          <div className="flex items-center gap-2">
+            {def.isTemplate ? (
+              <Button onClick={() => cloneDefinition(id!)} disabled={cloning}>
+                {t('workflow.detail.cloneToCustomize')}
+              </Button>
+            ) : (
+              !isEditing && (
+                <Button variant="outline" onClick={handleEdit}>
+                  {t('workflow.definitions.edit')}
+                </Button>
+              )
+            )}
+          </div>
+        }
+      />
+
+      {/* Header info */}
+      <Card>
+        <CardContent className="py-5">
+          <div className="flex flex-wrap items-center gap-3">
+            <Badge variant="secondary">{def.entityType}</Badge>
+            <Badge variant={def.isTemplate ? 'outline' : 'default'}>
+              {def.isTemplate
+                ? t('workflow.definitions.systemTemplate')
+                : t('workflow.definitions.customized')}
+            </Badge>
+            {def.isActive ? (
+              <Badge variant="default">{t('workflow.status.active')}</Badge>
+            ) : (
+              <Badge variant="secondary">{t('common.inactive')}</Badge>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {showAnalyticsTab ? (
+        <Tabs defaultValue="overview">
+          <TabsList>
+            <TabsTrigger value="overview">{t('workflow.detail.tabOverview', 'Overview')}</TabsTrigger>
+            <TabsTrigger value="analytics">{t('workflow.detail.tabAnalytics', 'Analytics')}</TabsTrigger>
+          </TabsList>
+          <TabsContent value="overview" className="space-y-4 mt-4">
+            {overviewContent}
+          </TabsContent>
+          <TabsContent value="analytics" className="mt-4">
+            <WorkflowAnalyticsTab definitionId={id!} />
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <div className="space-y-4">
+          {overviewContent}
+        </div>
+      )}
     </div>
   );
 }
