@@ -41,6 +41,8 @@ public sealed class AIModule : IModule
             .ValidateOnStart();
         services.Configure<AiQdrantSettings>(configuration.GetSection(AiQdrantSettings.SectionName));
         services.Configure<AiOcrSettings>(configuration.GetSection(AiOcrSettings.SectionName));
+        services.Configure<AiRagEvalSettings>(
+            configuration.GetSection(AiRagEvalSettings.SectionName));
 
         services.AddDbContext<AiDbContext>(options =>
         {
