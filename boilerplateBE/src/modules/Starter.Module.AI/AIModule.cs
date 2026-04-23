@@ -144,6 +144,7 @@ public sealed class AIModule : IModule
         yield return (AiPermissions.RunAgentTasks, "Execute AI agent tasks", "AI");
         yield return (AiPermissions.ManageSettings, "Manage AI module settings", "AI");
         yield return (AiPermissions.SearchKnowledgeBase, "Search knowledge base content directly", "AI");
+        yield return (AiPermissions.RunEval, "Run RAG evaluation harness", "AI");
     }
 
     public IEnumerable<(string Role, string[] Permissions)> GetDefaultRolePermissions()
