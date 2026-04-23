@@ -48,6 +48,10 @@ public sealed class RagEvalFixture : IAsyncLifetime
         var services = new ServiceCollection();
         var config = new ConfigurationBuilder()
             .AddJsonFile("appsettings.json", optional: true)
+            // Pull provider API keys from the Starter.Api project's user-secrets
+            // store so live eval runs don't require exporting env vars.
+            .AddUserSecrets<Starter.Api.Program>(optional: true)
+            .AddEnvironmentVariables()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ConnectionStrings:Default"] = Postgres.ConnectionString,

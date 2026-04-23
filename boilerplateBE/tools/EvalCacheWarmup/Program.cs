@@ -33,7 +33,12 @@ var dataset = datasetResult.Value;
 var builder = Host.CreateApplicationBuilder(args);
 builder.Configuration
     .AddJsonFile("../../src/Starter.Api/appsettings.json", optional: false)
-    .AddJsonFile("../../src/Starter.Api/appsettings.Development.json", optional: true);
+    .AddJsonFile("../../src/Starter.Api/appsettings.Development.json", optional: true)
+    // Pull provider API keys (ANTHROPIC_API_KEY, OPENAI_API_KEY, etc.) from the
+    // Starter.Api project's user-secrets store so the tool doesn't need them
+    // copied into env vars.
+    .AddUserSecrets<Starter.Api.Program>(optional: true)
+    .AddEnvironmentVariables();
 
 Starter.Api.Program.ConfigureServicesForTooling(builder.Services, builder.Configuration);
 
