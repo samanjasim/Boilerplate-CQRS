@@ -12,8 +12,8 @@ A per-definition analytics dashboard surfacing six operator metrics from existin
 
 | Query param | Backend enum | Range |
 |---|---|---|
-| `7d` (default when omitted: `30d`) | `SevenDays` | last 7 days |
-| `30d` | `ThirtyDays` | last 30 days |
+| `7d` | `SevenDays` | last 7 days |
+| `30d` *(default)* | `ThirtyDays` | last 30 days |
 | `90d` | `NinetyDays` | last 90 days |
 | `all` | `AllTime` | since definition `CreatedAt` |
 
