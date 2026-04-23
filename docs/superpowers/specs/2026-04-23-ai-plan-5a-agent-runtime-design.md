@@ -18,9 +18,58 @@ This unblocks downstream plans (5b persona-aware runs, 8a insights, 8b actions, 
 
 - **Wiring `AiAgentTask` execution.** The task entity exists; its executor is a later sub-plan. 5a designs the runtime contract so the executor can plug in without changes.
 - **Moving to provider-native runtimes** (OpenAI Responses API / Agents SDK, Anthropic native tool-use primitives). The per-provider adapter seam is introduced; all three adapters initially share one loop in `AgentRuntimeBase`. Migration to genuine provider-native runtimes is a per-provider follow-up that does not break callers.
+- **Adding new `IAiProvider` implementations.** 5a scope covers abstraction of what already ships (OpenAI, Anthropic, Ollama). Google Gemini lands in Plan 5g using the same seam. Other providers (xAI, Mistral, Cohere, DeepSeek, …) land when needed using the same pattern.
 - **Changes to `IAiProvider`, provider implementations, tool catalog, or `IAiToolRegistry`.**
 - **UI changes.** No frontend work in 5a.
 - **Persona wiring.** 5b adds personas; 5a keeps assistant-as-identity as today.
+
+---
+
+## Provider + model coverage (current and planned)
+
+The point of the `IAiAgentRuntime` seam is that no caller — chat, agent task, insight generator, action handler — needs to know which provider or model is serving a request. The abstraction accommodates all of the families below. 5a ships the first three. Everything else lands against the same contract without breaking callers.
+
+### Text / chat / agent (runtime-owned)
+
+| Family | Example models | Plan | Notes |
+|---|---|---|---|
+| OpenAI | GPT-4o, GPT-4o-mini, GPT-4.1 | **5a** | Current `OpenAiProvider` |
+| Anthropic | Claude Sonnet 4.x, Claude Haiku, Claude Opus | **5a** | Current `AnthropicAiProvider` |
+| Ollama (self-hosted) | Llama 3.x, Mistral, Qwen, DeepSeek-coder | **5a** | No native tool calling — runtime guard strips tools |
+| Google Gemini | Gemini 2.5 Pro, Gemini 2.5 Flash, Gemini 2.5 Flash-Lite | 5g | Text + tool-call + embeddings |
+| Reasoning-specialised | OpenAI o-series (o1 / o3 / o4-mini), Claude Opus with extended thinking, Gemini 2.5 Pro "thinking", DeepSeek R1 | follow-ons | No new runtime class needed — different `Model` value; runtime surfaces thinking tokens as an optional step field when the provider emits them |
+| xAI / Grok, Mistral, Cohere Command, DeepSeek | Various | later | Each ships a new `IAiProvider` + thin `*AgentRuntime : AgentRuntimeBase` |
+
+### Embeddings (not runtime-owned; used by RAG)
+
+| Family | Example models | Plan |
+|---|---|---|
+| OpenAI | text-embedding-3-small / -large | shipped |
+| Ollama | nomic-embed-text, bge | shipped |
+| Google Gemini | text-embedding-004, gemini-embedding | 5g |
+| Cohere, Voyage | embed-v3, voyage-3 | later |
+
+### Multi-modal (not runtime-owned; Plan 10 abstractions)
+
+| Capability | Candidate providers / models | Plan |
+|---|---|---|
+| Image generation | OpenAI DALL·E 3, OpenAI gpt-image-1, **Google Nano Banana (Gemini 2.5 Flash Image)**, Stable Diffusion 3, Flux.1 | 10 |
+| Image editing / inpainting | **Nano Banana**, Flux.1 edit, DALL·E edit | 10 |
+| Vision (image → text) | GPT-4o vision, Claude Sonnet vision, Gemini 2.5 vision | runtime handles natively; input shape extension |
+| Speech-to-text (STT) | Whisper, Google STT, ElevenLabs Scribe | 10 |
+| Text-to-speech (TTS) | OpenAI TTS, ElevenLabs, Google TTS | 10 |
+| Video generation | Sora, Veo, Runway Gen-3 | 10 |
+
+### What this means for 5a
+
+The runtime contract (`AgentRunContext`, `AgentStepEvent`, `AgentRunResult`) is vendor-agnostic by design. Specifically:
+
+- `ModelConfig.Provider` is an enum — adding Google adds one value. Adding xAI adds one value. No caller changes.
+- `AgentStepEvent` has `InputTokens` / `OutputTokens` as provider-reported numbers; a future "thinking tokens" extension is a new nullable field, not a new event type. Reasoning models (o-series, Gemini thinking, Claude Opus thinking) surface their thinking budget through this field.
+- Tool-calling is abstracted through `AiToolCall` / `AiToolDefinitionDto` which already normalise OpenAI function-calling, Anthropic tool_use blocks, and (when they land) Gemini function-calling. A provider that doesn't support tools (today: Ollama llama3.1) is handled by the runtime's "no tools when unsupported" guard.
+- Vision input: the existing `AiChatMessage.Content` is a string today; when Plan 10 or a specific vision use case lands, we extend to `AiChatMessagePart[]` (text + image refs) without changing the runtime surface — only `AiChatMessage` grows.
+
+In short: **5a is the seam that makes all of these adapters drop-in, not the place that ships them.**
 
 ---
 

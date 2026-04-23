@@ -162,6 +162,22 @@ The `anonymous` persona, public API scoping, and per-widget API key design are b
 ### Decision 12 — Multi-vendor model coverage including Google
 Provider coverage targets the three dominant cloud families plus a self-hosted option: OpenAI, Anthropic, Google (Gemini for text + agent, Nano Banana / Gemini image model for multi-modal), and Ollama. Google support is scheduled — 5g for the text/agent runtime, Plan 10 for the image model. The `IAiAgentRuntime` abstraction introduced in 5a is the seam that lets any of these arrive without breaking callers. No tenant should be locked to a single vendor for contractual, compliance, or cost reasons.
 
+**Capability × provider matrix.** The abstractions are designed to accept any of the following without retrofits. 5a / 5g ship the first wave; later providers are opt-in drop-ins.
+
+| Capability | Shipped / scheduled | Future candidates |
+|---|---|---|
+| Chat + tool calling | OpenAI (GPT-4o family), Anthropic (Claude Sonnet / Opus / Haiku), Ollama (Llama/Mistral/Qwen), Google Gemini (2.5 Pro / Flash) — 5g | xAI Grok, Mistral Large, Cohere Command, DeepSeek chat |
+| Reasoning-specialised | OpenAI o-series, Claude Opus with extended thinking | Gemini 2.5 Pro "thinking", DeepSeek R1 |
+| Vision (image input) | GPT-4o, Claude Sonnet vision, Gemini vision | — |
+| Embeddings | OpenAI text-embedding-3, Ollama nomic/bge, Gemini text-embedding (5g) | Cohere embed v3, Voyage 3 |
+| Image generation | OpenAI DALL·E 3 / gpt-image-1 (Plan 10), **Google Nano Banana / Gemini image model (Plan 10)** | Stable Diffusion 3, Flux.1 |
+| Image editing | Nano Banana (Plan 10) | Flux edit, DALL·E edit |
+| Speech-to-text | Whisper (Plan 10) | Google STT, ElevenLabs Scribe |
+| Text-to-speech | OpenAI TTS, ElevenLabs (Plan 10) | Google TTS |
+| Video generation | — (future Plan 10+) | Sora, Veo, Runway Gen-3 |
+
+The platform never presumes a single provider per capability. Tenants pick per agent / per surface; superadmin configures allowed sets at the platform level.
+
 ---
 
 ## Revised Roadmap
