@@ -15,6 +15,8 @@ internal abstract class AgentRuntimeBase(
     IAgentToolDispatcher toolDispatcher,
     ILogger<AgentRuntimeBase> logger) : IAiAgentRuntime
 {
+    protected ILogger<AgentRuntimeBase> Logger { get; } = logger;
+
     public virtual async Task<AgentRunResult> RunAsync(
         AgentRunContext ctx,
         IAgentRunSink sink,
@@ -55,7 +57,7 @@ internal abstract class AgentRuntimeBase(
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Agent runtime provider call failed at step {Step}", stepIndex);
+                Logger.LogWarning(ex, "Agent runtime provider call failed at step {Step}", stepIndex);
                 return await FinalizeAsync(sink, AgentRunStatus.ProviderError, null,
                     ex.Message, steps, totalInput, totalOutput, ct);
             }

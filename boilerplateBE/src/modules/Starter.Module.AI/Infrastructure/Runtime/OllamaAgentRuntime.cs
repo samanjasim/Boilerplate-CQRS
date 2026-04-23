@@ -24,7 +24,7 @@ internal sealed class OllamaAgentRuntime(
     {
         if (context.Tools.ProviderTools.Count > 0)
         {
-            logger.LogInformation(
+            Logger.LogInformation(
                 "Ollama runtime invoked with {ToolCount} tools; stripping because the provider has no native tool calling.",
                 context.Tools.ProviderTools.Count);
 
