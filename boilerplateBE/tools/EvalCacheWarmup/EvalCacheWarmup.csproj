@@ -7,7 +7,6 @@
     <RootNamespace>EvalCacheWarmup</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="MessagePack" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
   </ItemGroup>
   <ItemGroup>

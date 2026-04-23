@@ -1,8 +1,9 @@
+using System.Text.Json;
 using EvalCacheWarmup;
-using MessagePack;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Services.Ingestion;
 using Starter.Module.AI.Application.Services.Retrieval;
 using Starter.Module.AI.Infrastructure.Eval.Fixtures;
@@ -36,22 +37,19 @@ builder.Configuration
 
 Starter.Api.Program.ConfigureServicesForTooling(builder.Services, builder.Configuration);
 
-// ── Replace IReranker with CapturingReranker decorator ─────────────────────────
-var innerDesc = builder.Services.Last(d => d.ServiceType == typeof(IReranker));
-builder.Services.Remove(innerDesc);
-
-CapturingReranker? capturingInstance = null;
-builder.Services.AddScoped<IReranker>(sp =>
+// ── Decorate ICacheService so we can capture what the production rerankers write ──
+CacheRecordingService? recorder = null;
+var existing = builder.Services.Last(d => d.ServiceType == typeof(ICacheService));
+builder.Services.Remove(existing);
+builder.Services.AddSingleton<ICacheService>(sp =>
 {
-    if (capturingInstance is null)
-    {
-        var inner = (IReranker)ActivatorUtilities.CreateInstance(sp, innerDesc.ImplementationType!);
-        capturingInstance = new CapturingReranker(inner);
-    }
-    return capturingInstance;
+    if (recorder is not null) return recorder;
+    var inner = (ICacheService)ActivatorUtilities.CreateInstance(sp, existing.ImplementationType!);
+    recorder = new CacheRecordingService(inner);
+    return recorder;
 });
 
-// ── Run ingest + retrieval queries ─────────────────────────────────────────────
+// ── Run ingest + retrieval queries against synthetic tenant ────────────────────
 using var host = builder.Build();
 using var scope = host.Services.CreateScope();
 var sp = scope.ServiceProvider;
@@ -60,7 +58,7 @@ var ingester = sp.GetRequiredService<EvalFixtureIngester>();
 var retrieval = sp.GetRequiredService<IRagRetrievalService>();
 var vectors = sp.GetRequiredService<IVectorStore>();
 
-var syntheticTenantId = Guid.NewGuid();
+var syntheticTenantId = Guid.CreateVersion7();
 var uploaderId = Guid.NewGuid();
 
 try
@@ -76,14 +74,19 @@ try
 finally
 {
     try { await vectors.DropCollectionAsync(syntheticTenantId, CancellationToken.None); }
-    catch { /* best-effort cleanup */ }
+    catch { /* best-effort */ }
 }
 
-// ── Serialise captured scores ──────────────────────────────────────────────────
-var captured = capturingInstance?.Captured ?? new Dictionary<string, decimal>();
-await File.WriteAllBytesAsync(outPath,
-    MessagePackSerializer.Serialize(captured,
-        MessagePack.Resolvers.ContractlessStandardResolver.Options));
+// ── Persist recorded blob (stable-ordered JSON, byte-exact with production) ────
+var captured = recorder?.Captured ?? new Dictionary<string, string>();
+var ordered = captured.OrderBy(kv => kv.Key, StringComparer.Ordinal)
+                      .ToDictionary(kv => kv.Key, kv => kv.Value);
 
-Console.Error.WriteLine($"wrote {captured.Count} entries to {outPath}");
+var outDir = Path.GetDirectoryName(outPath);
+if (!string.IsNullOrEmpty(outDir)) Directory.CreateDirectory(outDir);
+await File.WriteAllTextAsync(
+    outPath,
+    JsonSerializer.Serialize(ordered, new JsonSerializerOptions { WriteIndented = true }));
+
+Console.Error.WriteLine($"wrote {ordered.Count} entries to {outPath}");
 return 0;
