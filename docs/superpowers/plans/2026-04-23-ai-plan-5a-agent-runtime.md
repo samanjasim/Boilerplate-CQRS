@@ -29,7 +29,7 @@
 - `AgentRunResult.cs` — output DTO + `AgentRunStatus` enum
 - `AgentStepEvent.cs` — per-step audit record + `AgentStepKind` enum + `AgentToolInvocation`
 - `AgentRunSinkEvents.cs` — `AgentAssistantMessage`, `AgentToolCallEvent`, `AgentToolResultEvent` records
-- `IAgentRunSink.cs` — sink interface (8 methods, all `Task`-returning)
+- `IAgentRunSink.cs` — sink interface (7 methods, all `Task`-returning)
 - `IAiAgentRuntime.cs` — single-method runtime interface
 - `IAiAgentRuntimeFactory.cs` — factory interface
 - `IAgentToolDispatcher.cs` — tool dispatch interface + `AgentToolDispatchResult`
