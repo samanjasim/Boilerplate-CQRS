@@ -20,6 +20,7 @@
     <!-- MediatR (CQRS) -->
     <PackageVersion Include="MediatR" Version="12.5.0" />
     <!-- Validation -->
+    <PackageVersion Include="FluentValidation" Version="12.1.1" />
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <!-- Mapping -->
     <PackageVersion Include="Riok.Mapperly" Version="4.3.1" />
@@ -53,6 +54,7 @@
     <PackageVersion Include="FluentAssertions" Version="6.12.2" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.2" />
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.4.0" />
     <!-- Health Checks -->
     <PackageVersion Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
     <PackageVersion Include="AspNetCore.HealthChecks.Redis" Version="9.0.0" />
@@ -70,5 +72,15 @@
     <PackageVersion Include="Stubble.Core" Version="1.10.8" />
     <!-- Utils -->
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
+    <!-- AI Module -->
+    <PackageVersion Include="Anthropic.SDK" Version="4.4.0" />
+    <PackageVersion Include="OpenAI" Version="2.2.0" />
+    <PackageVersion Include="Qdrant.Client" Version="1.12.0" />
+    <PackageVersion Include="SharpToken" Version="2.0.4" />
+    <PackageVersion Include="Tesseract" Version="5.2.0" />
+    <PackageVersion Include="PdfPig" Version="0.1.9" />
+    <PackageVersion Include="DocumentFormat.OpenXml" Version="3.2.0" />
+    <PackageVersion Include="ReverseMarkdown" Version="4.6.0" />
+    <PackageVersion Include="Polly" Version="8.4.2" />
   </ItemGroup>
 </Project>

@@ -41,6 +41,7 @@ export const PERMISSIONS = {
     Upload: 'Files.Upload',
     Delete: 'Files.Delete',
     Manage: 'Files.Manage',
+    ShareOwn: 'Files.ShareOwn',
   },
   ApiKeys: {
     View: 'ApiKeys.View',
@@ -107,6 +108,19 @@ export const PERMISSIONS = {
     Update: 'Webhooks.Update',
     Delete: 'Webhooks.Delete',
     ViewPlatform: 'Webhooks.ViewPlatform',
+  },
+  Ai: {
+    Chat: 'Ai.Chat',
+    ViewConversations: 'Ai.ViewConversations',
+    DeleteConversation: 'Ai.DeleteConversation',
+    ManageAssistants: 'Ai.ManageAssistants',
+    ManageDocuments: 'Ai.ManageDocuments',
+    ManageTools: 'Ai.ManageTools',
+    ManageTriggers: 'Ai.ManageTriggers',
+    ViewUsage: 'Ai.ViewUsage',
+    RunAgentTasks: 'Ai.RunAgentTasks',
+    ManageSettings: 'Ai.ManageSettings',
+    SearchKnowledgeBase: 'Ai.SearchKnowledgeBase',
   },
   Workflows: {
     View: 'Workflows.View',

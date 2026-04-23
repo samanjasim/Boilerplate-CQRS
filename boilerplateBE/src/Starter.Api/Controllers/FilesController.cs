@@ -2,8 +2,14 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Starter.Application.Common.Access.Contracts;
 using Starter.Application.Common.Interfaces;
 using Starter.Application.Common.Constants;
+using Starter.Application.Features.Access.Commands.GrantResourceAccess;
+using Starter.Application.Features.Access.Commands.RevokeResourceAccess;
+using Starter.Application.Features.Access.Commands.SetResourceVisibility;
+using Starter.Application.Features.Access.Commands.TransferResourceOwnership;
+using Starter.Application.Features.Access.Queries.ListResourceGrants;
 using Starter.Application.Features.Files;
 using Starter.Application.Features.Files.Commands.DeleteFile;
 using Starter.Application.Features.Files.Commands.UpdateFileMetadata;
@@ -11,6 +17,8 @@ using Starter.Application.Features.Files.Commands.UploadFile;
 using Starter.Application.Features.Files.Queries.GetFileById;
 using Starter.Application.Features.Files.Queries.GetFiles;
 using Starter.Application.Features.Files.Queries.GetFileUrl;
+using Starter.Application.Features.Files.Queries.GetStorageSummary;
+using Starter.Domain.Common.Access.Enums;
 using Starter.Domain.Common.Enums;
 using Starter.Shared.Constants;
 using Starter.Shared.Models;
@@ -39,7 +47,7 @@ public sealed class FilesController(ISender mediator, IFileService fileService, 
         [FromForm] string? tags = null,
         [FromForm] string? entityType = null,
         [FromForm] Guid? entityId = null,
-        [FromForm] bool isPublic = false,
+        [FromForm] ResourceVisibility visibility = ResourceVisibility.Private,
         CancellationToken cancellationToken = default)
     {
         using var stream = file.OpenReadStream();
@@ -56,7 +64,7 @@ public sealed class FilesController(ISender mediator, IFileService fileService, 
             tags?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
             entityType,
             entityId,
-            isPublic);
+            visibility);
         var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }
@@ -149,6 +157,92 @@ public sealed class FilesController(ISender mediator, IFileService fileService, 
         var result = await Mediator.Send(new DeleteFileCommand(id));
         return HandleResult(result);
     }
+
+    /// <summary>
+    /// List grants for a file.
+    /// </summary>
+    [HttpGet("{id:guid}/grants")]
+    [Authorize(Policy = Permissions.Files.View)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ListGrants(Guid id, CancellationToken ct)
+    {
+        var result = await Mediator.Send(new ListResourceGrantsQuery(ResourceTypes.File, id), ct);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Grant access to a file.
+    /// </summary>
+    [HttpPost("{id:guid}/grants")]
+    [Authorize(Policy = Permissions.Files.ShareOwn)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GrantAccess(Guid id, [FromBody] GrantFileAccessRequest request, CancellationToken ct)
+    {
+        var command = new GrantResourceAccessCommand(
+            ResourceTypes.File,
+            id,
+            request.SubjectType,
+            request.SubjectId,
+            request.Level);
+        var result = await Mediator.Send(command, ct);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Revoke a grant on a file.
+    /// </summary>
+    [HttpDelete("{id:guid}/grants/{grantId:guid}")]
+    [Authorize(Policy = Permissions.Files.ShareOwn)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RevokeGrant(Guid id, Guid grantId, CancellationToken ct)
+    {
+        var result = await Mediator.Send(new RevokeResourceAccessCommand(grantId), ct);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Set file visibility.
+    /// </summary>
+    [HttpPut("{id:guid}/visibility")]
+    [Authorize(Policy = Permissions.Files.ShareOwn)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SetVisibility(Guid id, [FromBody] SetFileVisibilityRequest request, CancellationToken ct)
+    {
+        var command = new SetResourceVisibilityCommand(ResourceTypes.File, id, request.Visibility);
+        var result = await Mediator.Send(command, ct);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Transfer file ownership.
+    /// </summary>
+    [HttpPost("{id:guid}/transfer-ownership")]
+    [Authorize(Policy = Permissions.Files.ShareOwn)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> TransferOwnership(Guid id, [FromBody] TransferFileOwnershipRequest request, CancellationToken ct)
+    {
+        var command = new TransferResourceOwnershipCommand(ResourceTypes.File, id, request.NewOwnerId);
+        var result = await Mediator.Send(command, ct);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Get storage summary by category, entity type and top uploaders.
+    /// </summary>
+    [HttpGet("storage-summary")]
+    [Authorize(Policy = Permissions.Files.View)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetStorageSummary([FromQuery] bool allTenants = false, CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(new GetStorageSummaryQuery(allTenants), ct);
+        return HandleResult(result);
+    }
 }
 
 /// <summary>
@@ -158,3 +252,21 @@ public sealed record UpdateFileMetadataRequest(
     string? Description,
     FileCategory? Category,
     string[]? Tags);
+
+/// <summary>
+/// Request body for granting file access.
+/// </summary>
+public sealed record GrantFileAccessRequest(
+    GrantSubjectType SubjectType,
+    Guid SubjectId,
+    AccessLevel Level);
+
+/// <summary>
+/// Request body for setting file visibility.
+/// </summary>
+public sealed record SetFileVisibilityRequest(ResourceVisibility Visibility);
+
+/// <summary>
+/// Request body for transferring file ownership.
+/// </summary>
+public sealed record TransferFileOwnershipRequest(Guid NewOwnerId);

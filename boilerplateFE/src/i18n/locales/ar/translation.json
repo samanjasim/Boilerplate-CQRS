@@ -469,7 +469,21 @@
     "permanent": "دائم",
     "uploading": "جاري الرفع...",
     "uploadComplete": "اكتمل الرفع",
-    "invalidFileType": "نوع الملف غير صالح"
+    "invalidFileType": "نوع الملف غير صالح",
+    "views": {
+      "all": "الكل",
+      "mine": "ملفاتي",
+      "shared": "مشاركة معي",
+      "public": "عام"
+    },
+    "storageSummary": {
+      "trigger": "التخزين",
+      "title": "ملخص التخزين",
+      "total": "إجمالي التخزين",
+      "byCategory": "حسب الفئة",
+      "topUploaders": "أكثر الرافعين",
+      "allTenants": "عرض جميع المستأجرين"
+    }
   },
   "reports": {
     "title": "التقارير",
@@ -886,6 +900,56 @@
     "processing": "المعالجة",
     "completed": "مكتمل",
     "partialSuccess": "نجاح جزئي"
+  },
+  "access": {
+    "share": "مشاركة",
+    "sharedWith": "مشارك مع",
+    "visibility": {
+      "label": "الرؤية",
+      "private": "خاص",
+      "tenantWide": "المستأجر",
+      "public": "عام"
+    },
+    "visibilityUpdated": "تم تحديث الرؤية",
+    "grantAdded": "تم منح الصلاحية",
+    "grantRevoked": "تم سحب الصلاحية",
+    "ownershipTransferred": "تم نقل الملكية",
+    "levels": {
+      "viewer": "مشاهد",
+      "editor": "محرر",
+      "manager": "مدير"
+    },
+    "shareDialog": {
+      "title": "مشاركة \"{{name}}\"",
+      "visibility": "الرؤية",
+      "addPeople": "إضافة أشخاص أو أدوار",
+      "whoHasAccess": "من لديه صلاحية الوصول",
+      "copyLink": "نسخ الرابط",
+      "confirmPublic": {
+        "title": "جعل هذا عاماً؟",
+        "body": "سيتمكن أي شخص لديه الرابط من الوصول إلى هذا المورد.",
+        "acknowledge": "أفهم أن هذا المورد سيكون متاحاً للعموم",
+        "confirm": "جعله عاماً"
+      }
+    },
+    "revokeDialog": {
+      "title": "إزالة الصلاحية",
+      "description": "لن يتمكن هذا الشخص أو الدور من الوصول إلى هذا المورد بعد الآن."
+    },
+    "transferOwnership": {
+      "action": "نقل الملكية",
+      "title": "نقل ملكية \"{{name}}\"",
+      "description": "سيتم تخفيض المالك الحالي إلى مدير مع احتفاظه بالوصول.",
+      "confirm": "نقل"
+    },
+    "subjectPicker": {
+      "search": "البحث عن أشخاص أو أدوار...",
+      "users": "المستخدمون",
+      "roles": "الأدوار"
+    },
+    "subjectStack": {
+      "overflow": "+{{count}} آخرون"
+    }
   },
   "commentsActivity": {
     "title": "التعليقات والنشاط",

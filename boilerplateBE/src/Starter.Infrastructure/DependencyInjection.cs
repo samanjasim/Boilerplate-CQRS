@@ -2,6 +2,7 @@ using Amazon.S3;
 using QuestPDF.Infrastructure;
 using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Readers;
+using Starter.Application.Common.Access;
 using Starter.Application.Common.Interfaces;
 using Starter.Infrastructure.Capabilities;
 using Starter.Infrastructure.Capabilities.Adapters;
@@ -12,6 +13,7 @@ using Starter.Infrastructure.Persistence;
 using Starter.Infrastructure.Persistence.Interceptors;
 using Starter.Infrastructure.Readers;
 using Starter.Infrastructure.Services;
+using Starter.Infrastructure.Services.Access;
 using Starter.Infrastructure.Settings;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
@@ -63,6 +65,7 @@ public static class DependencyInjection
     ///   <item><c>NullWebhookPublisher</c> → Scoped (matches <c>WebhookPublisher</c>)</item>
     ///   <item><c>NullImportExportRegistry</c> → Singleton (matches <c>ImportExportRegistry</c>)</item>
     ///   <item><c>NullQuotaChecker</c> → Singleton (stateless; no module override yet)</item>
+    ///   <item><c>NullAiService</c> → Scoped (matches real AI provider lifetime)</item>
     /// </list>
     /// </summary>
     private static IServiceCollection AddCapabilities(this IServiceCollection services)
@@ -80,6 +83,7 @@ public static class DependencyInjection
         services.TryAddScoped<IBillingProvider, NullBillingProvider>();
         services.TryAddScoped<IWebhookPublisher, NullWebhookPublisher>();
         services.TryAddSingleton<IImportExportRegistry, NullImportExportRegistry>();
+        services.TryAddScoped<IAiService, NullAiService>();
         services.TryAddScoped<IMessageDispatcher, NullMessageDispatcher>();
         services.TryAddScoped<ICommunicationEventNotifier, NullCommunicationEventNotifier>();
         services.TryAddScoped<ITemplateRegistrar, NullTemplateRegistrar>();
@@ -253,6 +257,9 @@ public static class DependencyInjection
         services.AddScoped<IFeatureFlagService, FeatureFlagService>();
         services.AddScoped<IPermissionHierarchyService, PermissionHierarchyService>();
         services.AddScoped<IUsageTracker, UsageTrackerService>();
+        services.AddScoped<IResourceAccessService, ResourceAccessService>();
+        services.AddScoped<IResourceOwnershipProbe, ResourceOwnershipProbe>();
+        services.AddScoped<IResourceOwnershipHandler, FileOwnershipHandler>();
 
         return services;
     }

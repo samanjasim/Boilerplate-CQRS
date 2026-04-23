@@ -1,7 +1,10 @@
 using Starter.Abstractions.Paging;
+using Starter.Application.Common.Access;
+using Starter.Application.Common.Access.Contracts;
 using Starter.Application.Common.Extensions;
 using Starter.Application.Common.Interfaces;
 using Starter.Domain.Common;
+using Starter.Domain.Common.Access.Enums;
 using Starter.Domain.Common.Enums;
 using Starter.Domain.Identity.Entities;
 using Starter.Shared.Results;
@@ -11,13 +14,28 @@ using Microsoft.EntityFrameworkCore;
 namespace Starter.Application.Features.Files.Queries.GetFiles;
 
 internal sealed class GetFilesQueryHandler(
-    IApplicationDbContext context) : IRequestHandler<GetFilesQuery, Result<PaginatedList<FileDto>>>
+    IApplicationDbContext context,
+    IResourceAccessService access,
+    ICurrentUserService currentUser) : IRequestHandler<GetFilesQuery, Result<PaginatedList<FileDto>>>
 {
     public async Task<Result<PaginatedList<FileDto>>> Handle(GetFilesQuery request, CancellationToken cancellationToken)
     {
-        // Tenant scoping is handled by the global query filter on FileMetadata in ApplicationDbContext
+        var resolution = await access.ResolveAccessibleResourcesAsync(currentUser, ResourceTypes.File, cancellationToken);
+        var uid = currentUser.UserId;
+
         var query = context.Set<FileMetadata>().AsNoTracking()
             .Where(f => f.Status == FileStatus.Permanent);
+
+        if (!resolution.IsAdminBypass && uid.HasValue)
+        {
+            var userId = uid.Value;
+            var grantedIds = resolution.ExplicitGrantedResourceIds;
+            query = query.Where(f =>
+                f.Visibility == ResourceVisibility.TenantWide
+                || f.Visibility == ResourceVisibility.Public
+                || f.UploadedBy == userId
+                || grantedIds.Contains(f.Id));
+        }
 
         if (request.Category.HasValue)
             query = query.Where(f => f.Category == request.Category.Value);
@@ -30,6 +48,21 @@ internal sealed class GetFilesQueryHandler(
 
         if (request.EntityId.HasValue)
             query = query.Where(f => f.EntityId == request.EntityId.Value);
+
+        if (!string.IsNullOrWhiteSpace(request.View) && uid.HasValue)
+        {
+            var userId = uid.Value;
+            var grantedIds = resolution.ExplicitGrantedResourceIds;
+            query = request.View.ToLowerInvariant() switch
+            {
+                "mine" => query.Where(f => f.UploadedBy == userId),
+                "shared" => query.Where(f => f.UploadedBy != userId
+                                             && (grantedIds.Contains(f.Id)
+                                                 || f.Visibility == ResourceVisibility.TenantWide)),
+                "public" => query.Where(f => f.Visibility == ResourceVisibility.Public),
+                _ => query,
+            };
+        }
 
         if (!string.IsNullOrWhiteSpace(request.SearchTerm))
         {
@@ -55,7 +88,7 @@ internal sealed class GetFilesQueryHandler(
                 f.TenantId,
                 f.UploadedBy,
                 u != null ? u.FullName.FirstName + " " + u.FullName.LastName : null,
-                f.IsPublic,
+                f.Visibility,
                 f.Description,
                 f.EntityType,
                 f.EntityId,

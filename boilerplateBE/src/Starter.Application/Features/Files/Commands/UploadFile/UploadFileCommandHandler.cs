@@ -43,7 +43,7 @@ internal sealed class UploadFileCommandHandler(
             request.EntityType,
             request.Description,
             request.Tags,
-            request.IsPublic,
+            request.Visibility,
             cancellationToken);
 
         var url = await fileService.GetUrlAsync(metadata.Id, cancellationToken);

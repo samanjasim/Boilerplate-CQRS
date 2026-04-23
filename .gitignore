@@ -1,4 +1,5 @@
-# Test output (rename.ps1 scaffolded test apps at repo root only)
+# Test output (rename.ps1 scaffolded test apps) — anchored to repo root so
+# macOS case-insensitive git does not match boilerplateBE/tests/.
 /_test*/
 /Test*/
 

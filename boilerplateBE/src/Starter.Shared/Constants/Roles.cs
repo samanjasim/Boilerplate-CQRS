@@ -49,6 +49,7 @@ public static class Roles
             Permissions.Files.Upload,
             Permissions.Files.Delete,
             Permissions.Files.Manage,
+            Permissions.Files.ShareOwn,
             // FeatureFlags
             Permissions.FeatureFlags.View,
             Permissions.FeatureFlags.OptOut,
@@ -65,6 +66,7 @@ public static class Roles
             // Files
             Permissions.Files.View,
             Permissions.Files.Upload,
+            Permissions.Files.ShareOwn,
         ]);
     }
 }
