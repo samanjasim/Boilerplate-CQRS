@@ -21,13 +21,13 @@ public sealed class RagEvalHarnessTests(RagEvalFixture fixture, ITestOutputHelpe
 
     [Fact]
     public Task EvalHarness_EnglishDataset_PassesBaseline() =>
-        RunBaselineCheckAsync("rag-eval-dataset-en.json");
+        RunBaselineCheckAsync("rag-eval-dataset-en.json", "eval-rerank-cache-en.json");
 
     [Fact]
     public Task EvalHarness_ArabicDataset_PassesBaseline() =>
-        RunBaselineCheckAsync("rag-eval-dataset-ar.json");
+        RunBaselineCheckAsync("rag-eval-dataset-ar.json", "eval-rerank-cache-ar.json");
 
-    private async Task RunBaselineCheckAsync(string fixtureFile)
+    private async Task RunBaselineCheckAsync(string fixtureFile, string rerankCacheFile)
     {
         if (!Enabled)
         {
@@ -40,6 +40,8 @@ public sealed class RagEvalHarnessTests(RagEvalFixture fixture, ITestOutputHelpe
         var sp = fixture.BuildEvalServiceProvider();
         var harness = sp.GetRequiredService<IRagEvalHarness>();
         var settings = sp.GetRequiredService<IOptions<AiRagEvalSettings>>().Value;
+
+        await fixture.SeedRerankCacheAsync(sp, rerankCacheFile);
 
         var fixturePath = Path.Combine(AppContext.BaseDirectory,
             "Ai", "Eval", "fixtures", fixtureFile);

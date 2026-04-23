@@ -1,3 +1,5 @@
+using System.Text.Json;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Qdrant.Client;
@@ -15,6 +17,8 @@ public sealed class RagEvalCollectionDef : ICollectionFixture<RagEvalFixture>
 
 public sealed class RagEvalFixture : IAsyncLifetime
 {
+    private static readonly TimeSpan OrphanMaxAge = TimeSpan.FromHours(24);
+
     private static bool Enabled =>
         Environment.GetEnvironmentVariable("AI_EVAL_ENABLED") == "1";
 
@@ -55,13 +59,41 @@ public sealed class RagEvalFixture : IAsyncLifetime
         return services.BuildServiceProvider();
     }
 
+    /// <summary>
+    /// Loads a rerank-cache blob (produced by the EvalCacheWarmup tool) into the
+    /// <see cref="IDistributedCache"/> the harness will pick up. Keys and JSON-encoded
+    /// values are written directly so the production rerankers see a byte-identical
+    /// cache hit and don't need to call the live reranker — making eval runs
+    /// deterministic across machines.
+    /// </summary>
+    public async Task SeedRerankCacheAsync(IServiceProvider sp, string fixtureFileName)
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "Ai", "Eval", "fixtures", fixtureFileName);
+        if (!File.Exists(path)) return;
+
+        var json = await File.ReadAllTextAsync(path);
+        var entries = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+        if (entries is null || entries.Count == 0) return;
+
+        var cache = sp.GetRequiredService<IDistributedCache>();
+        var options = new DistributedCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1),
+        };
+        foreach (var (key, value) in entries)
+            await cache.SetStringAsync(key, value, options);
+    }
+
     private async Task CleanupOrphanCollectionsAsync()
     {
         var collections = await Qdrant.ListCollectionsAsync();
+        var cutoff = DateTimeOffset.UtcNow - OrphanMaxAge;
+
         foreach (var c in collections)
         {
-            if (!c.StartsWith("eval-") && !c.StartsWith("warmup-")) continue;
-            try { await Qdrant.DeleteCollectionAsync(c); } catch { }
+            if (!OrphanCollectionFilter.TryParseHarnessCollectionAge(c, out var createdAt)) continue;
+            if (createdAt > cutoff) continue;
+            try { await Qdrant.DeleteCollectionAsync(c); } catch { /* best-effort */ }
         }
     }
 
