@@ -1,5 +1,84 @@
 {
-  "generated_at": "2026-04-23T00:00:00Z",
+  "generated_at": "2026-04-23T14:20:11.473366Z",
   "git_sha": null,
-  "datasets": {}
+  "datasets": {
+    "boilerplate-core-en-v1": {
+      "recall_at_k": {
+        "5": 1,
+        "10": 1,
+        "20": 1
+      },
+      "precision_at_k": {
+        "5": 0.21111111111111114,
+        "10": 0.10555555555555557,
+        "20": 0.052777777777777785
+      },
+      "ndcg_at_k": {
+        "5": 1,
+        "10": 1,
+        "20": 1
+      },
+      "hit_rate_at_k": {
+        "5": 1,
+        "10": 1,
+        "20": 1
+      },
+      "mrr": 1,
+      "stage_p95_ms": {
+        "classify": 1.893,
+        "query-rewrite": 0.79,
+        "embed-query": 509.5754,
+        "acl-resolve": 0.0135,
+        "vector-search[0]": 15.113,
+        "vector-search[1]": 2.2061,
+        "vector-search[2]": 2.207,
+        "keyword-search[0]": 29.406,
+        "keyword-search[1]": 1.1284,
+        "keyword-search[2]": 0.9217,
+        "rerank": 8011.4561,
+        "neighbor-expand": 0.9922,
+        "total": 8421.8407
+      },
+      "degraded_stage_count": 1
+    },
+    "boilerplate-core-ar-v1": {
+      "recall_at_k": {
+        "5": 1,
+        "10": 1,
+        "20": 1
+      },
+      "precision_at_k": {
+        "5": 0.21250000000000002,
+        "10": 0.10625000000000001,
+        "20": 0.053125000000000006
+      },
+      "ndcg_at_k": {
+        "5": 1,
+        "10": 1,
+        "20": 1
+      },
+      "hit_rate_at_k": {
+        "5": 1,
+        "10": 1,
+        "20": 1
+      },
+      "mrr": 1,
+      "stage_p95_ms": {
+        "classify": 1.4162,
+        "query-rewrite": 1.0298,
+        "embed-query": 591.6338,
+        "acl-resolve": 0.0199,
+        "vector-search[0]": 16.8933,
+        "vector-search[1]": 4.5741,
+        "vector-search[2]": 2.3982,
+        "keyword-search[0]": 1.5687,
+        "keyword-search[1]": 1.296,
+        "keyword-search[2]": 1.0381,
+        "rerank": 8003.162,
+        "neighbor-expand": 0.8202,
+        "total": 8383.1945
+      },
+      "degraded_stage_count": 1
+    }
+  }
 }

@@ -46,21 +46,46 @@ public sealed class RagEvalFixture : IAsyncLifetime
     public IServiceProvider BuildEvalServiceProvider()
     {
         var services = new ServiceCollection();
+        var starterApiConfigDir = FindStarterApiConfigDir();
         var config = new ConfigurationBuilder()
-            .AddJsonFile("appsettings.json", optional: true)
+            .SetBasePath(starterApiConfigDir)
+            .AddJsonFile("appsettings.json", optional: false)
+            .AddJsonFile("appsettings.Development.json", optional: true)
             // Pull provider API keys from the Starter.Api project's user-secrets
             // store so live eval runs don't require exporting env vars.
             .AddUserSecrets<Starter.Api.Program>(optional: true)
             .AddEnvironmentVariables()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["ConnectionStrings:Default"] = Postgres.ConnectionString,
-                ["AI:Rag:Eval:Enabled"] = "true"
+                ["ConnectionStrings:DefaultConnection"] = Postgres.ConnectionString,
+                ["AI:Rag:Eval:Enabled"] = "true",
             })
             .Build();
+        // The real services (AiService, etc.) take IConfiguration as a dep, so
+        // make the same instance we passed to ConfigureServicesForTooling available
+        // via DI too.
+        services.AddSingleton<IConfiguration>(config);
+        services.AddHttpContextAccessor();
         Starter.Api.Program.ConfigureServicesForTooling(services, config);
+        // Override the HTTP-dependent current-user resolver with an eval-scoped stub.
+        var userDesc = services.Last(d => d.ServiceType == typeof(ICurrentUserService));
+        services.Remove(userDesc);
         services.AddSingleton<ICurrentUserService>(new EvalAdminCurrentUser());
         return services.BuildServiceProvider();
+    }
+
+    private static string FindStarterApiConfigDir()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null)
+        {
+            var candidate = Path.Combine(dir.FullName, "src", "Starter.Api");
+            if (Directory.Exists(candidate) && File.Exists(Path.Combine(candidate, "appsettings.json")))
+                return candidate;
+            dir = dir.Parent;
+        }
+        throw new InvalidOperationException(
+            "Could not locate src/Starter.Api relative to the test output directory.");
     }
 
     /// <summary>
