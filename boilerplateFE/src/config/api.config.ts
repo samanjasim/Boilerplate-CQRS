@@ -202,6 +202,7 @@ export const API_ENDPOINTS = {
     DEFINITION_ANALYTICS: (id: string) => `/workflow/definitions/${id}/analytics`,
     DEFINITION_CLONE: (id: string) => `/workflow/definitions/${id}/clone`,
     INSTANCES: '/workflow/instances',
+    INSTANCE_BY_ID: (id: string) => `/workflow/instances/${id}`,
     INSTANCE_STATUS: '/workflow/instances/status',
     INSTANCE_HISTORY: (id: string) => `/workflow/instances/${id}/history`,
     INSTANCE_CANCEL: (id: string) => `/workflow/instances/${id}/cancel`,

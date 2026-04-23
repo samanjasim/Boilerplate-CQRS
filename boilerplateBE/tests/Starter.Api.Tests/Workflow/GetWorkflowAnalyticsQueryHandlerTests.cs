@@ -163,15 +163,16 @@ public sealed class GetWorkflowAnalyticsQueryHandlerTests : IDisposable
         var def = CreateTenantDefinition();
         var today = DateTime.UtcNow.Date;
 
-        // Two started today.
-        SeedInstance(def.Id, today.AddHours(2),  InstanceStatus.Active);
-        SeedInstance(def.Id, today.AddHours(10), InstanceStatus.Active);
+        // Two started today — use minutes-ago offsets so the StartedAt is always
+        // strictly before DateTime.UtcNow regardless of the time-of-day the test runs.
+        SeedInstance(def.Id, today.AddMinutes(1),  InstanceStatus.Active);
+        SeedInstance(def.Id, today.AddMinutes(2), InstanceStatus.Active);
         // One started+completed yesterday.
         SeedInstance(def.Id, today.AddDays(-1).AddHours(5), InstanceStatus.Completed,
             completedAt: today.AddDays(-1).AddHours(9));
-        // One started two days ago, cancelled today.
+        // One started two days ago, cancelled today (minutes ago).
         SeedInstance(def.Id, today.AddDays(-2).AddHours(1), InstanceStatus.Cancelled,
-            cancelledAt: today.AddHours(12));
+            cancelledAt: today.AddMinutes(3));
 
         var result = await _sut.Handle(
             new GetWorkflowAnalyticsQuery(def.Id, WindowSelector.ThirtyDays),

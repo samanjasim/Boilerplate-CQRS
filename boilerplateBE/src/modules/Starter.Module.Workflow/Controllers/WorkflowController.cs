@@ -21,6 +21,7 @@ using Starter.Module.Workflow.Application.Queries.GetPendingTasks;
 using Starter.Module.Workflow.Application.Queries.GetWorkflowDefinitionDetail;
 using Starter.Module.Workflow.Application.Queries.GetWorkflowDefinitions;
 using Starter.Module.Workflow.Application.Queries.GetWorkflowHistory;
+using Starter.Module.Workflow.Application.Queries.GetWorkflowInstanceById;
 using Starter.Module.Workflow.Application.Queries.GetWorkflowInstances;
 using Starter.Module.Workflow.Application.Queries.GetWorkflowAnalytics;
 using Starter.Module.Workflow.Application.Queries.GetWorkflowStatus;
@@ -123,6 +124,16 @@ public sealed class WorkflowController(ISender mediator) : BaseApiController(med
     {
         var result = await Mediator.Send(
             new GetWorkflowInstancesQuery(entityType, state, startedByUserId, status, page, pageSize), ct);
+        return HandleResult(result);
+    }
+
+    [HttpGet("instances/{instanceId:guid}")]
+    [Authorize(Policy = WorkflowPermissions.View)]
+    [ProducesResponseType(typeof(ApiResponse<WorkflowInstanceSummary>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetInstanceById(Guid instanceId, CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(new GetWorkflowInstanceByIdQuery(instanceId), ct);
         return HandleResult(result);
     }
 

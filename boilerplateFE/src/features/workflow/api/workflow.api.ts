@@ -63,6 +63,11 @@ export const workflowApi = {
       .get<ApiResponse<WorkflowInstanceSummary[]>>(API_ENDPOINTS.WORKFLOW.INSTANCES, { params })
       .then((r) => r.data.data),
 
+  getInstanceById: (instanceId: string): Promise<WorkflowInstanceSummary> =>
+    apiClient
+      .get<ApiResponse<WorkflowInstanceSummary>>(API_ENDPOINTS.WORKFLOW.INSTANCE_BY_ID(instanceId))
+      .then((r) => r.data.data),
+
   getStatus: (entityType: string, entityId: string): Promise<WorkflowStatusSummary> =>
     apiClient
       .get<ApiResponse<WorkflowStatusSummary>>(API_ENDPOINTS.WORKFLOW.INSTANCE_STATUS, {
