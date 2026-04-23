@@ -55,9 +55,11 @@ public sealed class FileMetadataConfiguration : IEntityTypeConfiguration<FileMet
             .HasColumnName("uploaded_by")
             .IsRequired();
 
-        builder.Property(f => f.IsPublic)
-            .HasColumnName("is_public")
-            .HasDefaultValue(false);
+        builder.Property(f => f.Visibility)
+            .HasColumnName("visibility")
+            .HasConversion<int>()
+            .HasDefaultValue(Starter.Domain.Common.Access.Enums.ResourceVisibility.Private)
+            .IsRequired();
 
         builder.Property(f => f.Description)
             .HasColumnName("description")

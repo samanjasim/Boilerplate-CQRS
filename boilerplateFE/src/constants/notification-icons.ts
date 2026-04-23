@@ -1,4 +1,4 @@
-import { UserPlus, KeyRound, Shield, Bell, Building, Users, Monitor } from 'lucide-react';
+import { UserPlus, KeyRound, Shield, Bell, Building, Users, Monitor, Share2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export const NOTIFICATION_ICONS: Record<string, LucideIcon> = {
@@ -9,5 +9,6 @@ export const NOTIFICATION_ICONS: Record<string, LucideIcon> = {
   TenantCreated: Building,
   InvitationAccepted: UserPlus,
   LoginFromNewDevice: Monitor,
+  ResourceShared: Share2,
   default: Bell,
 };

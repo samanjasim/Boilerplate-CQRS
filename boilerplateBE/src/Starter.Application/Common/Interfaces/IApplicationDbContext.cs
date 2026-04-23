@@ -1,5 +1,6 @@
 using System.Data;
 using Starter.Domain.Common;
+using Starter.Domain.Common.Access;
 using Starter.Domain.Identity.Entities;
 using Starter.Domain.Tenants.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +22,7 @@ public interface IApplicationDbContext
     DbSet<LoginHistory> LoginHistory { get; }
     DbSet<Notification> Notifications { get; }
     DbSet<SystemSetting> SystemSettings { get; }
+    DbSet<ResourceGrant> ResourceGrants { get; }
 
     // Generic accessor — modules and core services use this for all other entities
     DbSet<TEntity> Set<TEntity>() where TEntity : class;

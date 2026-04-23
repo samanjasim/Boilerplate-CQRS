@@ -61,3 +61,10 @@ export function useDeleteFile() {
     },
   });
 }
+
+export function useStorageSummary(allTenants = false) {
+  return useQuery({
+    queryKey: ['files', 'storageSummary', allTenants],
+    queryFn: () => filesApi.getStorageSummary({ allTenants }),
+  });
+}

@@ -15,7 +15,7 @@ public static class FileMapper
             file.TenantId,
             file.UploadedBy,
             uploadedByName,
-            file.IsPublic,
+            file.Visibility,
             file.Description,
             file.EntityType,
             file.EntityId,

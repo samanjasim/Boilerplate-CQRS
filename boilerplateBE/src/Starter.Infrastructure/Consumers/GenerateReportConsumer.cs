@@ -242,7 +242,7 @@ public sealed class GenerateReportConsumer(
 
         var data = await query.ToListAsync(cancellationToken);
 
-        var columnHeaders = new[] { "File Name", "Content Type", "Size (bytes)", "Category", "Uploaded By", "Public", "Created At" };
+        var columnHeaders = new[] { "File Name", "Content Type", "Size (bytes)", "Category", "Uploaded By", "Visibility", "Created At" };
         Func<FileMetadata, object[]> rowMapper = f => new object[]
         {
             f.FileName,
@@ -250,7 +250,7 @@ public sealed class GenerateReportConsumer(
             f.Size.ToString(),
             f.Category.ToString(),
             f.UploadedBy.ToString(),
-            f.IsPublic ? "Yes" : "No",
+            f.Visibility.ToString(),
             f.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")
         };
 

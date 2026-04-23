@@ -1,8 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
+    <UserSecretsId>28025670-6752-4ada-a756-c41ce763661d</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -38,6 +39,7 @@
     <ProjectReference Include="..\modules\Starter.Module.ImportExport\Starter.Module.ImportExport.csproj" />
     <ProjectReference Include="..\modules\Starter.Module.Billing\Starter.Module.Billing.csproj" />
     <ProjectReference Include="..\modules\Starter.Module.Products\Starter.Module.Products.csproj" />
+    <ProjectReference Include="..\modules\Starter.Module.AI\Starter.Module.AI.csproj" />
     <ProjectReference Include="..\modules\Starter.Module.Communication\Starter.Module.Communication.csproj" />
     <ProjectReference Include="..\Starter.Infrastructure.Identity\Starter.Infrastructure.Identity.csproj" />
     <ProjectReference Include="..\modules\Starter.Module.CommentsActivity\Starter.Module.CommentsActivity.csproj" />

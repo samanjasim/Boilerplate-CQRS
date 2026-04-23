@@ -13,6 +13,9 @@ import {
   Copy,
   Pencil,
   FolderOpen,
+  MoreVertical,
+  Share2,
+  UserCog,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -44,13 +47,47 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { PageHeader, EmptyState, FileUpload, ConfirmDialog, ExportButton, Pagination, getPersistedPageSize } from '@/components/common';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  PageHeader,
+  EmptyState,
+  FileUpload,
+  ConfirmDialog,
+  ExportButton,
+  Pagination,
+  getPersistedPageSize,
+  VisibilityBadge,
+  ResourceShareDialog,
+  OwnershipTransferDialog,
+} from '@/components/common';
+import { useResourceGrants } from '@/features/access/api/access.queries';
+import { StorageSummaryPanel } from '../components/StorageSummaryPanel';
 import { filesApi, useFiles, useUploadFile, useDeleteFile, useUpdateFile } from '../api';
 import { toast } from 'sonner';
 import { usePermissions } from '@/hooks';
+import { useAuthStore } from '@/stores/auth.store';
 import { PERMISSIONS } from '@/constants';
 import { formatFileSize } from '@/utils';
+import { cn } from '@/lib/utils';
 import type { FileMetadata, FileCategory } from '@/types';
+import type { ResourceVisibility } from '@/features/access/types';
+
+type ViewFilter = 'all' | 'mine' | 'shared' | 'public';
+
+function SharedWithCell({ fileId }: { fileId: string }) {
+  const { data: grants = [] } = useResourceGrants('File', fileId);
+  if (grants.length === 0) return <span className="text-muted-foreground text-xs">—</span>;
+  return (
+    <span className="text-xs text-muted-foreground">
+      {grants.length}
+    </span>
+  );
+}
 
 function isImageType(contentType: string): boolean {
   return contentType.startsWith('image/');
@@ -68,11 +105,14 @@ const CATEGORIES: FileCategory[] = ['Avatar', 'Logo', 'Document', 'Attachment', 
 export default function FilesPage() {
   const { t } = useTranslation();
   const { hasPermission } = usePermissions();
+  const currentUser = useAuthStore(s => s.user);
   const canUpload = hasPermission(PERMISSIONS.Files.Upload);
   const canDelete = hasPermission(PERMISSIONS.Files.Delete);
   const canManage = hasPermission(PERMISSIONS.Files.Manage);
+  const canShare = hasPermission(PERMISSIONS.Files.ShareOwn) || canManage;
   const canExport = hasPermission(PERMISSIONS.System.ExportData);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [view, setView] = useState<ViewFilter>('all');
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(getPersistedPageSize);
   const [category, setCategory] = useState<string>('all');
@@ -81,6 +121,8 @@ export default function FilesPage() {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [detailFile, setDetailFile] = useState<FileMetadata | null>(null);
   const [deleteFile, setDeleteFile] = useState<FileMetadata | null>(null);
+  const [shareFile, setShareFile] = useState<FileMetadata | null>(null);
+  const [transferFile, setTransferFile] = useState<FileMetadata | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
   // Upload form state
@@ -100,8 +142,9 @@ export default function FilesPage() {
     if (category && category !== 'all') p.category = category;
     if (searchTerm) p.searchTerm = searchTerm;
     if (origin) p.origin = origin;
+    if (view !== 'all') p.view = view;
     return p;
-  }, [pageNumber, pageSize, category, searchTerm, origin]);
+  }, [pageNumber, pageSize, category, searchTerm, origin, view]);
 
   const { data, isLoading, isFetching, isError } = useFiles(params);
   const { mutate: doUpload, isPending: isUploading } = useUploadFile();
@@ -119,7 +162,7 @@ export default function FilesPage() {
         category: uploadCategory,
         description: uploadDescription || undefined,
         tags: uploadTags || undefined,
-        isPublic: uploadIsPublic,
+        visibility: uploadIsPublic ? 'Public' : 'Private',
       },
       {
         onSuccess: () => {
@@ -260,6 +303,7 @@ export default function FilesPage() {
                 <List className="h-4 w-4" />
               </Button>
             </div>
+            <StorageSummaryPanel />
             {canExport && <ExportButton reportType="Files" filters={exportFilters} />}
             {canUpload && (
               <Button onClick={() => setUploadDialogOpen(true)}>
@@ -270,6 +314,25 @@ export default function FilesPage() {
           </div>
         }
       />
+
+      {/* View tabs */}
+      <div className="flex gap-1 border-b">
+        {(['all', 'mine', 'shared', 'public'] as const).map(v => (
+          <button
+            key={v}
+            type="button"
+            className={cn(
+              'px-4 py-2 text-sm -mb-px border-b-2 transition-colors',
+              view === v
+                ? 'border-primary text-foreground font-medium'
+                : 'border-transparent text-muted-foreground hover:text-foreground',
+            )}
+            onClick={() => { setView(v); setPageNumber(1); }}
+          >
+            {t(`files.views.${v}`)}
+          </button>
+        ))}
+      </div>
 
       {/* Filters */}
       <Card>
@@ -405,6 +468,8 @@ export default function FilesPage() {
                   <TableHead>{t('files.fileName')}</TableHead>
                   <TableHead>{t('files.category')}</TableHead>
                   <TableHead>{t('files.fileSize')}</TableHead>
+                  <TableHead>{t('access.visibility.label')}</TableHead>
+                  <TableHead>{t('access.sharedWith')}</TableHead>
                   <TableHead>{t('files.uploadedBy')}</TableHead>
                   <TableHead>{t('files.uploadDate')}</TableHead>
                   <TableHead>{t('common.actions')}</TableHead>
@@ -413,6 +478,8 @@ export default function FilesPage() {
               <TableBody>
                 {files.map((file) => {
                   const Icon = getFileIcon(file.contentType);
+                  const isOwner = currentUser?.id === file.uploadedBy;
+                  const fileCanShare = canShare || isOwner;
                   return (
                     <TableRow key={file.id}>
                       <TableCell>
@@ -432,6 +499,12 @@ export default function FilesPage() {
                       <TableCell className="text-muted-foreground">
                         {formatFileSize(file.size)}
                       </TableCell>
+                      <TableCell>
+                        <VisibilityBadge visibility={file.visibility as ResourceVisibility} />
+                      </TableCell>
+                      <TableCell>
+                        <SharedWithCell fileId={file.id} />
+                      </TableCell>
                       <TableCell className="text-muted-foreground">
                         {file.uploadedByName ?? '-'}
                       </TableCell>
@@ -439,26 +512,40 @@ export default function FilesPage() {
                         {formatDate(file.createdAt)}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDownload(file)}
-                            title={t('files.download')}
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                          {canDelete && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setDeleteFile(file)}
-                              title={t('files.deleteFile')}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="h-4 w-4" />
                             </Button>
-                          )}
-                        </div>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {fileCanShare && (
+                              <DropdownMenuItem onClick={() => setShareFile(file)}>
+                                <Share2 className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+                                {t('access.share')}
+                              </DropdownMenuItem>
+                            )}
+                            {isOwner && (
+                              <DropdownMenuItem onClick={() => setTransferFile(file)}>
+                                <UserCog className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+                                {t('access.transferOwnership.action')}
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem onClick={() => handleDownload(file)}>
+                              <Download className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+                              {t('files.download')}
+                            </DropdownMenuItem>
+                            {canDelete && (
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => setDeleteFile(file)}
+                              >
+                                <Trash2 className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+                                {t('common.delete')}
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   );
@@ -730,6 +817,31 @@ export default function FilesPage() {
         description={t('files.deleteConfirm', { name: deleteFile?.fileName ?? '' })}
         isLoading={isDeleting}
       />
+
+      {/* Share Dialog */}
+      {shareFile && (
+        <ResourceShareDialog
+          open={!!shareFile}
+          onOpenChange={open => { if (!open) setShareFile(null); }}
+          resourceType="File"
+          resourceId={shareFile.id}
+          resourceName={shareFile.fileName}
+          currentVisibility={shareFile.visibility as ResourceVisibility}
+          fileId={shareFile.id}
+        />
+      )}
+
+      {/* Transfer Ownership Dialog */}
+      {transferFile && currentUser && (
+        <OwnershipTransferDialog
+          open={!!transferFile}
+          onOpenChange={open => { if (!open) setTransferFile(null); }}
+          resourceType="File"
+          resourceId={transferFile.id}
+          resourceName={transferFile.fileName}
+          currentOwnerId={currentUser.id}
+        />
+      )}
     </div>
   );
 }

@@ -40,7 +40,7 @@ export const filesApi = {
     if (data.tags) formData.append('tags', data.tags);
     if (data.entityType) formData.append('entityType', data.entityType);
     if (data.entityId) formData.append('entityId', data.entityId);
-    formData.append('isPublic', String(data.isPublic ?? false));
+    formData.append('visibility', data.visibility ?? 'Private');
 
     const response = await apiClient.post<{ data: FileMetadata }>(
       API_ENDPOINTS.FILES.UPLOAD,
@@ -69,4 +69,19 @@ export const filesApi = {
   deleteFile: async (id: string): Promise<void> => {
     await apiClient.delete(API_ENDPOINTS.FILES.DELETE(id));
   },
+
+  getStorageSummary: async (params?: { allTenants?: boolean }): Promise<StorageSummary> => {
+    const response = await apiClient.get<{ data: StorageSummary }>(
+      API_ENDPOINTS.FILES.STORAGE_SUMMARY,
+      { params },
+    );
+    return response.data.data;
+  },
 };
+
+export interface StorageSummary {
+  totalBytes: number;
+  byCategory: { category: string; bytes: number; fileCount: number }[];
+  byEntityType: { entityType: string | null; bytes: number; fileCount: number }[];
+  topUploaders: { userId: string; userName: string | null; bytes: number; fileCount: number }[];
+}

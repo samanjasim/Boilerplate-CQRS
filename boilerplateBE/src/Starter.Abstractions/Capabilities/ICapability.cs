@@ -23,6 +23,7 @@ namespace Starter.Abstractions.Capabilities;
 ///   <item><c>IWebhookPublisher</c></item>
 ///   <item><c>IImportExportRegistry</c></item>
 ///   <item><c>IUsageMetricCalculator</c></item>
+///   <item><c>IAiService</c></item>
 ///   <item><c>IMessageDispatcher</c></item>
 ///   <item><c>ICommunicationEventNotifier</c></item>
 ///   <item><c>ITemplateRegistrar</c></item>

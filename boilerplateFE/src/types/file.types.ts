@@ -1,3 +1,5 @@
+export type FileVisibility = 'Private' | 'TenantWide' | 'Public';
+
 export interface FileMetadata {
   id: string;
   fileName: string;
@@ -8,7 +10,7 @@ export interface FileMetadata {
   description: string | null;
   entityType: string | null;
   entityId: string | null;
-  isPublic: boolean;
+  visibility: FileVisibility;
   uploadedBy: string;
   uploadedByName: string | null;
   createdAt: string;
@@ -27,7 +29,7 @@ export interface UploadFileData {
   tags?: string;
   entityType?: string;
   entityId?: string;
-  isPublic?: boolean;
+  visibility?: FileVisibility;
 }
 
 export interface UpdateFileData {

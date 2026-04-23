@@ -1,3 +1,4 @@
+using Starter.Domain.Common.Access.Enums;
 using Starter.Domain.Common.Enums;
 using Starter.Shared.Results;
 using MediatR;
@@ -14,4 +15,4 @@ public sealed record UploadFileCommand(
     string[]? Tags,
     string? EntityType,
     Guid? EntityId,
-    bool IsPublic) : IRequest<Result<FileDto>>;
+    ResourceVisibility Visibility) : IRequest<Result<FileDto>>;

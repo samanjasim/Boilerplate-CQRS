@@ -9,5 +9,6 @@ public enum FileCategory
     Other = 5,
     Report = 6,
     Generated = 7,
-    Export = 8
+    Export = 8,
+    AiDocument = 9
 }
