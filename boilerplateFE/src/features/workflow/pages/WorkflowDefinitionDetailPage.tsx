@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,9 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Workflow as WorkflowIcon } from 'lucide-react';
 import { PageHeader } from '@/components/common';
 import { useBackNavigation, usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
+import { ROUTES } from '@/config';
 import { useWorkflowDefinition, useCloneDefinition, useUpdateDefinition } from '../api';
 import { WorkflowAnalyticsTab } from '../components/analytics/WorkflowAnalyticsTab';
 
@@ -23,6 +25,7 @@ export default function WorkflowDefinitionDetailPage() {
   const { mutate: cloneDefinition, isPending: cloning } = useCloneDefinition();
   const { mutate: updateDefinition, isPending: updating } = useUpdateDefinition();
 
+  const navigate = useNavigate();
   const { hasPermission } = usePermissions();
   const [editName, setEditName] = useState('');
   const [isEditing, setIsEditing] = useState(false);
@@ -166,15 +169,35 @@ export default function WorkflowDefinitionDetailPage() {
         actions={
           <div className="flex items-center gap-2">
             {def.isTemplate ? (
-              <Button onClick={() => cloneDefinition(id!)} disabled={cloning}>
-                {t('workflow.detail.cloneToCustomize')}
-              </Button>
-            ) : (
-              !isEditing && (
-                <Button variant="outline" onClick={handleEdit}>
-                  {t('workflow.definitions.edit')}
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => navigate(ROUTES.WORKFLOWS.getDefinitionDesigner(id!))}
+                >
+                  <WorkflowIcon className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+                  {t('workflow.designer.openDesigner')}
                 </Button>
-              )
+                <Button onClick={() => cloneDefinition(id!)} disabled={cloning}>
+                  {t('workflow.detail.cloneToCustomize')}
+                </Button>
+              </>
+            ) : (
+              <>
+                {!isEditing && hasPermission(PERMISSIONS.Workflows.ManageDefinitions) && (
+                  <Button
+                    variant="default"
+                    onClick={() => navigate(ROUTES.WORKFLOWS.getDefinitionDesigner(id!))}
+                  >
+                    <WorkflowIcon className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+                    {t('workflow.designer.openDesigner')}
+                  </Button>
+                )}
+                {!isEditing && (
+                  <Button variant="outline" onClick={handleEdit}>
+                    {t('workflow.definitions.edit')}
+                  </Button>
+                )}
+              </>
             )}
           </div>
         }
