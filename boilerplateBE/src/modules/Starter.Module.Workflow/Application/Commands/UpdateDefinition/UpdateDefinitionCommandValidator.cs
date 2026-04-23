@@ -122,6 +122,15 @@ public sealed partial class UpdateDefinitionCommandValidator : AbstractValidator
         try
         {
             states = JsonSerializer.Deserialize<List<WorkflowStateConfig>>(statesJson, JsonOpts);
+        }
+        catch (JsonException)
+        {
+            // StatesJson parse errors are reported by ValidateStates; skip transition checks.
+            return;
+        }
+
+        try
+        {
             transitions = JsonSerializer.Deserialize<List<WorkflowTransitionConfig>>(transitionsJson, JsonOpts);
         }
         catch (JsonException ex)

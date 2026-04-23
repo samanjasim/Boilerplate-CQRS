@@ -280,4 +280,18 @@ public sealed class UpdateDefinitionCommandValidatorTests
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.ErrorMessage.Contains("duplicate"));
     }
+
+    [Fact]
+    public void Passes_when_transitions_are_valid()
+    {
+        var cmd = new UpdateDefinitionCommand(Guid.NewGuid(), "ok", null,
+            StatesJson(
+                new("Start", "Start", "Initial"),
+                new("Done", "Done", "Terminal")),
+            TransitionsJson(new WorkflowTransitionConfig("Start", "Done", "Approve")));
+
+        var result = _sut.Validate(cmd);
+
+        result.IsValid.Should().BeTrue(because: string.Join(", ", result.Errors.Select(e => e.ErrorMessage)));
+    }
 }
