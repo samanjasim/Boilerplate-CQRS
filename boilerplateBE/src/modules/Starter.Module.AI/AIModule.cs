@@ -17,6 +17,11 @@ using Starter.Module.AI.Infrastructure.Ingestion;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Services;
+using Starter.Module.AI.Application.Eval;
+using Starter.Module.AI.Application.Eval.Faithfulness;
+using Starter.Module.AI.Infrastructure.Eval;
+using Starter.Module.AI.Infrastructure.Eval.Faithfulness;
+using Starter.Module.AI.Infrastructure.Eval.Fixtures;
 using Starter.Module.AI.Infrastructure.Retrieval;
 using Starter.Module.AI.Infrastructure.Retrieval.Classification;
 using Starter.Module.AI.Infrastructure.Retrieval.Resilience;
@@ -118,6 +123,10 @@ public sealed class AIModule : IModule
         services.AddHostedService<AiToolRegistrySyncHostedService>();
 
         services.AddScoped<IResourceOwnershipHandler, AiAssistantOwnershipHandler>();
+
+        services.AddScoped<EvalFixtureIngester>();
+        services.AddScoped<IFaithfulnessJudge, LlmJudgeFaithfulness>();
+        services.AddScoped<IRagEvalHarness, RagEvalHarness>();
 
         return services;
     }
