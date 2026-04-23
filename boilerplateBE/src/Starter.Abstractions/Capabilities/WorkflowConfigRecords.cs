@@ -17,7 +17,8 @@ public sealed record WorkflowStateConfig(
     List<HookConfig>? OnExit = null,
     List<FormFieldDefinition>? FormFields = null,
     ParallelConfig? Parallel = null,
-    SlaConfig? Sla = null);
+    SlaConfig? Sla = null,
+    UiPosition? UiPosition = null);
 
 public sealed record WorkflowTransitionConfig(
     string From,
@@ -66,3 +67,5 @@ public sealed record ParallelConfig(
 public sealed record SlaConfig(
     int? ReminderAfterHours = null,
     int? EscalateAfterHours = null);
+
+public sealed record UiPosition(double X, double Y);
