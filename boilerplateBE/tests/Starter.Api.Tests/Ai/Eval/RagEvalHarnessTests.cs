@@ -7,11 +7,12 @@ using Starter.Module.AI.Infrastructure.Eval.Baseline;
 using Starter.Module.AI.Infrastructure.Eval.Fixtures;
 using Starter.Module.AI.Infrastructure.Settings;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Starter.Api.Tests.Ai.Eval;
 
 [Collection(RagEvalCollectionDef.Name)]
-public sealed class RagEvalHarnessTests(RagEvalFixture fixture)
+public sealed class RagEvalHarnessTests(RagEvalFixture fixture, ITestOutputHelper output)
 {
     private static bool Enabled =>
         Environment.GetEnvironmentVariable("AI_EVAL_ENABLED") == "1";
@@ -19,57 +20,29 @@ public sealed class RagEvalHarnessTests(RagEvalFixture fixture)
         Environment.GetEnvironmentVariable("UPDATE_EVAL_BASELINE") == "1";
 
     [Fact]
-    public async Task EvalHarness_EnglishDataset_PassesBaseline()
-    {
-        if (!Enabled) return;
-
-        var sp = fixture.BuildEvalServiceProvider();
-        var harness = sp.GetRequiredService<IRagEvalHarness>();
-        var settings = sp.GetRequiredService<IOptions<AiRagEvalSettings>>().Value;
-
-        var fixturePath = Path.Combine(AppContext.BaseDirectory,
-            "Ai", "Eval", "fixtures", "rag-eval-dataset-en.json");
-        var datasetResult = EvalFixtureLoader.LoadFromFile(fixturePath);
-        datasetResult.IsSuccess.Should().BeTrue();
-
-        var report = await harness.RunAsync(
-            datasetResult.Value,
-            new EvalRunOptions(KValues: settings.KValues, WarmupQueries: settings.WarmupQueries),
-            CancellationToken.None);
-
-        var baselinePath = Path.Combine(AppContext.BaseDirectory,
-            "Ai", "Eval", "fixtures", "rag-eval-baseline.json");
-
-        if (UpdateBaseline)
-        {
-            BaselineWriter.Update(baselinePath, report.DatasetName, ToSnapshot(report));
-            return;
-        }
-
-        var baseline = BaselineLoader.Load(baselinePath);
-        baseline.IsSuccess.Should().BeTrue();
-        var comparison = BaselineComparator.Compare(
-            baseline.Value.Datasets[report.DatasetName],
-            ToSnapshot(report),
-            settings.MetricTolerance,
-            settings.LatencyTolerance);
-
-        if (comparison.Failed)
-            throw new Xunit.Sdk.XunitException(
-                "Eval baseline regression:\n" + string.Join("\n", comparison.Failures));
-    }
+    public Task EvalHarness_EnglishDataset_PassesBaseline() =>
+        RunBaselineCheckAsync("rag-eval-dataset-en.json");
 
     [Fact]
-    public async Task EvalHarness_ArabicDataset_PassesBaseline()
+    public Task EvalHarness_ArabicDataset_PassesBaseline() =>
+        RunBaselineCheckAsync("rag-eval-dataset-ar.json");
+
+    private async Task RunBaselineCheckAsync(string fixtureFile)
     {
-        if (!Enabled) return;
+        if (!Enabled)
+        {
+            output.WriteLine(
+                "SKIPPED: AI_EVAL_ENABLED is not set to 1. " +
+                "Set AI_EVAL_ENABLED=1 (and bring up Postgres + Qdrant + a live provider key) to run this test.");
+            return;
+        }
 
         var sp = fixture.BuildEvalServiceProvider();
         var harness = sp.GetRequiredService<IRagEvalHarness>();
         var settings = sp.GetRequiredService<IOptions<AiRagEvalSettings>>().Value;
 
         var fixturePath = Path.Combine(AppContext.BaseDirectory,
-            "Ai", "Eval", "fixtures", "rag-eval-dataset-ar.json");
+            "Ai", "Eval", "fixtures", fixtureFile);
         var datasetResult = EvalFixtureLoader.LoadFromFile(fixturePath);
         datasetResult.IsSuccess.Should().BeTrue();
 
@@ -84,16 +57,25 @@ public sealed class RagEvalHarnessTests(RagEvalFixture fixture)
         if (UpdateBaseline)
         {
             BaselineWriter.Update(baselinePath, report.DatasetName, ToSnapshot(report));
+            output.WriteLine($"Baseline updated for dataset '{report.DatasetName}'.");
             return;
         }
 
         var baseline = BaselineLoader.Load(baselinePath);
         baseline.IsSuccess.Should().BeTrue();
+
+        if (!baseline.Value.Datasets.TryGetValue(report.DatasetName, out var datasetBaseline))
+            throw new Xunit.Sdk.XunitException(
+                $"Baseline snapshot has no entry for dataset '{report.DatasetName}'. " +
+                $"Run with UPDATE_EVAL_BASELINE=1 to seed it, then commit {baselinePath}.");
+
         var comparison = BaselineComparator.Compare(
-            baseline.Value.Datasets[report.DatasetName],
+            datasetBaseline,
             ToSnapshot(report),
             settings.MetricTolerance,
             settings.LatencyTolerance);
+
+        foreach (var warning in comparison.Warnings) output.WriteLine("WARN: " + warning);
 
         if (comparison.Failed)
             throw new Xunit.Sdk.XunitException(
