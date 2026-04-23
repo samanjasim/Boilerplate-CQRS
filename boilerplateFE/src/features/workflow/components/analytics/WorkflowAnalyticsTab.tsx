@@ -1,5 +1,4 @@
 import { useSearchParams } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { Spinner } from '@/components/ui/spinner';
 import { useWorkflowAnalytics } from '@/features/workflow/api';
 import { WindowSelector, type WindowValue } from './WindowSelector';
@@ -19,11 +18,10 @@ const DEFAULT_WINDOW: WindowValue = '30d';
 const LOW_DATA_THRESHOLD = 5;
 
 export function WorkflowAnalyticsTab({ definitionId }: Props) {
-  const { t: _t } = useTranslation();
   const [params, setParams] = useSearchParams();
-  const window = (params.get('window') as WindowValue) || DEFAULT_WINDOW;
+  const selectedWindow = (params.get('window') as WindowValue) || DEFAULT_WINDOW;
 
-  const { data, isLoading } = useWorkflowAnalytics(definitionId, window);
+  const { data, isLoading } = useWorkflowAnalytics(definitionId, selectedWindow);
 
   const setWindow = (w: WindowValue) => {
     const next = new URLSearchParams(params);
@@ -44,7 +42,7 @@ export function WorkflowAnalyticsTab({ definitionId }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-end">
-        <WindowSelector value={window} onChange={setWindow} />
+        <WindowSelector value={selectedWindow} onChange={setWindow} />
       </div>
 
       {data.instancesInWindow < LOW_DATA_THRESHOLD && (

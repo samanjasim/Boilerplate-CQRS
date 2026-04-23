@@ -126,10 +126,10 @@ export default function WorkflowDefinitionDetailPage() {
                         <p className="text-xs text-muted-foreground">
                           <span className="font-medium">{t('workflow.sla.overdue', 'SLA')}:</span>
                           {state.sla.reminderAfterHours != null && (
-                            <span className="ms-1">⏰ Reminder after {state.sla.reminderAfterHours}h</span>
+                            <span className="ms-1">Reminder after {state.sla.reminderAfterHours}h</span>
                           )}
                           {state.sla.escalateAfterHours != null && (
-                            <span className="ms-1">🔺 Escalate after {state.sla.escalateAfterHours}h</span>
+                            <span className="ms-1">Escalate after {state.sla.escalateAfterHours}h</span>
                           )}
                         </p>
                       </div>
