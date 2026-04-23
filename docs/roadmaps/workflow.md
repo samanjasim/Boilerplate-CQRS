@@ -83,6 +83,27 @@ Shipped components:
 
 ---
 
+## Phase 4c Shipped (merged YYYY-MM-DD)
+
+**Visual workflow designer (MVP).** Drag-and-drop state-machine builder at `/workflows/definitions/:id/designer`. Produces the same `WorkflowStateConfig[]` + `WorkflowTransitionConfig[]` JSON the backend already accepts. First-class UI for common fields (identity, actions, assignee strategy + basic params, SLA, trigger); inline JSON blocks for advanced fields (hooks, form fields, parallel/quorum, compound conditions, fallback assignee, custom params). Node positions persist via optional `UiPosition` on `WorkflowStateConfig`. Auto-layout via dagre on first open; explicit toolbar button for reflow. Templates open in read-only mode with "Clone to edit".
+
+Shipped components:
+- `UpdateDefinitionCommandValidator` — unified FluentValidation rules for slug / uniqueness / type membership / exactly-one-Initial / at-least-one-Terminal / assignee-required-for-HumanTask / SLA ordering / transition from-to-trigger rules.
+- Optional `UiPosition` record on `WorkflowStateConfig` in `Starter.Abstractions`.
+- FE: `WorkflowDefinitionDesignerPage` + `DesignerCanvas` (React Flow) + `StateNode` / `TransitionEdge` custom renderers + `SidePanel` router + `StateEditor` + `TransitionEditor` + `JsonBlockField` + `DesignerToolbar` + `useDesignerStore` (zustand) + `useAutoLayout` (dagre) + `designerSchema.ts` (zod mirror).
+- i18n keys in en/ar/ku under `workflow.designer.*`.
+- Documentation: `docs/features/workflow-designer.md`.
+
+See `docs/superpowers/specs/2026-04-23-workflow-phase4c-visual-designer-design.md` for the full design.
+
+### Designer follow-ups (deferred)
+
+- Post-merge translations for ar/ku `workflow.designer.*` keys (shipped in English across all three locales; translation pass is a short follow-up).
+- Designer — Option A (full-schema visual editor, removing JSON-block escape hatches) — see deferred item below.
+- Simulation / dry-run, collaborative editing, version history + diff, AI-assisted authoring — see deferred items below.
+
+---
+
 ## Phase 4+ Deferred Items
 
 ### AI agent as workflow participant
@@ -143,21 +164,6 @@ Shipped components:
 
 ---
 
-### Visual workflow designer
-
-**What:** A drag-and-drop state-machine builder in the frontend that produces the `statesJson` / `transitionsJson` payload consumed by `WorkflowDefinition.Create`. Today definitions are created via raw JSON in the admin panel.
-
-**Why deferred:** The JSON editor is usable by developers bootstrapping workflows. A visual designer is a significant frontend investment (React Flow or similar) with no pressing tenant demand.
-
-**Pick this up when:** Non-technical tenant admins need to create or modify workflow definitions without developer intervention, OR workflow count per tenant exceeds ~5.
-
-**Starting points:**
-- Frontend: create `WorkflowDesignerPage` under `boilerplateFE/src/features/workflow/pages/` using a graph library (React Flow recommended).
-- The designer should serialize to the same `WorkflowStateConfig[]` + `WorkflowTransitionConfig[]` format already accepted by `POST /api/v1/workflows/definitions`.
-- Wire a preview/simulation mode that walks through states without persisting.
-
----
-
 ### AI integration
 
 **What:** Allow a `SystemAction` step to call an AI model (e.g. "auto-classify request risk level" or "summarize supporting documents") and store the result in `WorkflowInstance.ContextJson` for downstream condition evaluation.
@@ -189,3 +195,100 @@ Shipped components:
 - Consider: should the checker be AND-ed (all checkers must approve) or OR-ed (any checker can approve)?
 
 ---
+
+### Designer — Option A (full-schema visual editor)
+
+**What:** Upgrade the Phase 4c designer to cover every `WorkflowStateConfig` / `WorkflowTransitionConfig` field with dedicated visual editors, removing all JSON-block escape hatches. Ships as a **sequence** of independent PRs, one per removed JSON block:
+- Hooks editor (OnEnter / OnExit)
+- Form fields editor (visual row-based builder)
+- Parallel / quorum editor (mode + assignees builder)
+- Compound condition editor (tree-style AND/OR/NOT builder; requires updating FE `ConditionConfig` type to match BE's compound shape)
+- Assignee fallback sub-form
+- Custom assignee parameters editor
+
+**Why deferred:** the MVP covers the 80% case. Full visual parity is valuable but larger than a single PR, and some blocks (compound conditions, form fields) deserve their own UX iterations.
+
+**Pick this up when:** first tenant complaint that JSON editing is a barrier, OR workflow authoring crosses ~20 custom definitions across all tenants.
+
+**Starting points:**
+- Each block lives in `boilerplateFE/src/features/workflow/components/designer/StateEditor.tsx` — find the `<JsonBlockField ... >` calls and replace one at a time with a dedicated form.
+
+---
+
+### Designer — simulation / dry-run
+
+**What:** a "Run" mode in the designer that walks a mock instance through the graph without persistence, letting authors verify triggers and conditions fire as expected.
+
+**Why deferred:** meaningful simulation needs stubs of assignee resolution, condition evaluation, and hook execution in parallel to the real engine. Ship authoring first; measure whether users actually need a simulator vs. starting real test instances against a draft.
+
+**Pick this up when:** authors repeatedly ship broken definitions because they can't preview them.
+
+---
+
+### Designer — collaborative editing
+
+**What:** live cursors + presence on the same definition so multiple authors can edit together.
+
+**Why deferred:** needs a persistent collaboration channel (WebSocket or Yjs/CRDT) and server-side conflict resolution. Not justified until two or more authors regularly touch the same definition at once.
+
+**Pick this up when:** two or more tenant users report conflicting edits, OR a tenant explicitly asks for team-editing.
+
+---
+
+### Definition version history + diff
+
+**What:** store a history of saved definitions and let users compare two versions, restore an old one, and annotate changes.
+
+**Why deferred:** needs schema (history table, audit trail), UX (diff renderer), and storage-growth considerations. Today, `AuditLog` captures `WorkflowDefinition.Updated` events; users can reconstruct recent history via that if needed.
+
+**Pick this up when:** tenant compliance or change-management requirements force it, OR authors lose work due to unintended saves.
+
+---
+
+### Designer — non-JSON import/export
+
+**What:** export a definition as YAML or PNG; import a definition from another tenant's export bundle.
+
+**Why deferred:** YAML is a serialization bike-shed; image export is `reactflow-to-image`. Neither moves the needle vs "copy the JSON body".
+
+**Pick this up when:** a specific integration (marketplace, template sharing) makes a non-JSON format useful.
+
+---
+
+### Designer — accessibility-first keyboard authoring
+
+**What:** full screen-reader + keyboard-only authoring mode with spoken state/edge descriptions and a linear-list navigator fallback.
+
+**Why deferred:** React Flow ships basic keyboard nav (arrow-select, delete, enter-to-edit). MVP meets that bar. Full a11y authoring requires custom navigators and labels beyond the designer surface.
+
+**Pick this up when:** an enterprise tenant has a compliance requirement (Section 508, WCAG 2.2 AA for authoring tools), OR reports accessibility as a blocker.
+
+---
+
+### Designer — AI-assisted authoring
+
+**What:** natural-language prompt to scaffold a workflow ("build me an expense approval with first-line then director then finance"), AI-generated state suggestions, AI-generated condition expressions from English.
+
+**Why deferred:** depends on the Phase 6 `IWorkflowAiService` work. AI authoring is a natural extension of that, not an MVP-designer feature.
+
+**Pick this up when:** Phase 6 ships.
+
+---
+
+### Designer — richer per-type node skinning
+
+**What:** distinct visual node shapes/iconography per `type` (e.g. diamond for conditional routes, double-ring for parallel states, pill for SystemAction).
+
+**Why deferred:** diminishing returns vs Option A. Nice-to-have, no tenant demand.
+
+**Pick this up when:** UX feedback consistently flags that state types are hard to tell apart at a glance.
+
+---
+
+### Designer — new state-machine constructs
+
+**What:** compensating transitions, sub-workflows / state inlining, timeout-based auto-transitions with designer affordances.
+
+**Why deferred:** these are engine-level capabilities, not designer features. The roadmap treats them as engine work that the designer picks up once the engine supports them.
+
+**Pick this up when:** engine gains the construct AND a tenant needs it authored visually.
