@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Providers;
@@ -13,6 +14,7 @@ namespace Starter.Api.Tests.Ai.Fakes;
 internal sealed class FakeAiProvider : IAiProvider
 {
     private readonly ConcurrentQueue<Func<IReadOnlyList<AiChatMessage>, AiChatOptions, AiChatCompletion>> _responses = new();
+    private readonly ConcurrentQueue<IReadOnlyList<AiChatChunk>> _streamedResponses = new();
     private readonly ConcurrentDictionary<string, AiChatCompletion> _contentMatchers = new();
     private readonly ConcurrentDictionary<string, Exception> _contentThrowers = new();
     private int _calls;
@@ -23,6 +25,32 @@ internal sealed class FakeAiProvider : IAiProvider
     public void EnqueueContent(string content, int inputTokens = 10, int outputTokens = 5)
     {
         _responses.Enqueue((_, _) => new AiChatCompletion(content, null, inputTokens, outputTokens, "stop"));
+    }
+
+    public void EnqueueStreamChunks(IEnumerable<AiChatChunk> chunks)
+    {
+        _streamedResponses.Enqueue(chunks.ToArray());
+    }
+
+    public void EnqueueStreamedContent(string content, int inputTokens = 10, int outputTokens = 5)
+    {
+        EnqueueStreamChunks(new[]
+        {
+            new AiChatChunk(ContentDelta: content, ToolCallDelta: null, FinishReason: null),
+            new AiChatChunk(ContentDelta: null, ToolCallDelta: null, FinishReason: "stop",
+                InputTokens: inputTokens, OutputTokens: outputTokens)
+        });
+    }
+
+    public void EnqueueToolCall(string name, string argsJson, int inputTokens = 10, int outputTokens = 5)
+    {
+        var id = Guid.NewGuid().ToString();
+        _responses.Enqueue((_, _) => new AiChatCompletion(
+            Content: null,
+            ToolCalls: new[] { new AiToolCall(id, name, argsJson) },
+            InputTokens: inputTokens,
+            OutputTokens: outputTokens,
+            FinishReason: "tool_calls"));
     }
 
     /// <summary>
@@ -83,11 +111,25 @@ internal sealed class FakeAiProvider : IAiProvider
         return Task.FromResult(factory(messages, options));
     }
 
-    public IAsyncEnumerable<AiChatChunk> StreamChatAsync(
+    public async IAsyncEnumerable<AiChatChunk> StreamChatAsync(
         IReadOnlyList<AiChatMessage> messages,
         AiChatOptions options,
-        CancellationToken ct = default)
-        => throw new NotImplementedException("FakeAiProvider.StreamChatAsync not implemented.");
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        Interlocked.Increment(ref _calls);
+        CallLog.Add((messages, options));
+        if (AlwaysFail is not null) throw AlwaysFail;
+
+        if (!_streamedResponses.TryDequeue(out var chunks))
+            throw new InvalidOperationException("FakeAiProvider: no scripted stream available.");
+
+        foreach (var chunk in chunks)
+        {
+            ct.ThrowIfCancellationRequested();
+            yield return chunk;
+            await Task.Yield();
+        }
+    }
 
     public Task<float[]> EmbedAsync(string text, CancellationToken ct = default)
         => Task.FromResult(Array.Empty<float>());
