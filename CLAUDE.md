@@ -373,45 +373,93 @@ See `.claude/skills/post-feature-testing.md` for full details.
 
 ## Running the RAG eval harness
 
-The AI module ships with an offline evaluation harness covering retrieval quality and stage latency.
+The AI module ships with an offline evaluation harness covering retrieval quality, stage latency, and faithfulness.
 
 **When to run it:** Before merging any change to the retrieval pipeline (`RagRetrievalService`, chunking, embedding, reranker, vector store). A nightly Jenkins job also runs it against main.
 
-**Prerequisites:** Live Postgres + Qdrant (docker-compose up); live provider API key (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `OLLAMA_URL` set in `appsettings.Test.json`).
+### Prerequisites
 
-**Run the harness:**
+- **Postgres** — Qdrant reads from Docker (`starter-qdrant`), but the eval fixture prefers a locally-installed Postgres. Set `STARTER_TEST_PG_CONN` to a connection string *without* a database name — the fixture creates and drops a per-run DB (`starter_test_<guid>`). Falls back to Testcontainers when unset.
+- **Qdrant** — `docker compose up -d qdrant` (listens on `localhost:6333`).
+- **Provider keys** — stored as dotnet-user-secrets under the Starter.Api `UserSecretsId` (`28025670-6752-4ada-a756-c41ce763661d`). The harness auto-loads them via `.AddUserSecrets<Starter.Api.Program>()`. Currently configured providers are OpenAI (embeddings) and Anthropic (chat + reranker). **No Ollama.**
+  - Verify they're populated with `dotnet user-secrets list --project boilerplateBE/src/Starter.Api`.
+  - The EvalCacheWarmup tool and `RagEvalFixture` both pull from this same store — no need to export env vars.
+
+### Run the harness
 
 ```bash
-AI_EVAL_ENABLED=1 dotnet test boilerplateBE/tests/Starter.Api.Tests/Starter.Api.Tests.csproj \
+AI_EVAL_ENABLED=1 \
+STARTER_TEST_PG_CONN="Host=localhost;Port=5432;Username=<you>" \
+  dotnet test boilerplateBE/Starter.sln \
   --filter "FullyQualifiedName~RagEvalHarnessTests"
 ```
 
-**Update the baseline** (when an intentional improvement is expected):
+Without `AI_EVAL_ENABLED=1` the test emits a skip reason via `ITestOutputHelper` and returns early.
+
+### Update the baseline
+
+Intentional improvements to the pipeline (new reranker, better chunking, etc.) should bump the baseline:
 
 ```bash
-AI_EVAL_ENABLED=1 UPDATE_EVAL_BASELINE=1 dotnet test boilerplateBE/tests/Starter.Api.Tests/Starter.Api.Tests.csproj \
+AI_EVAL_ENABLED=1 UPDATE_EVAL_BASELINE=1 \
+STARTER_TEST_PG_CONN="Host=localhost;Port=5432;Username=<you>" \
+  dotnet test boilerplateBE/Starter.sln \
   --filter "FullyQualifiedName~RagEvalHarnessTests"
 ```
 
-Commit `boilerplateBE/tests/Starter.Api.Tests/Ai/Eval/fixtures/rag-eval-baseline.json` alongside your change so reviewers see the before/after metric drift explicitly.
-
-**Warm the rerank cache blob** (required when adding new questions to a fixture):
+This writes to the copy under `bin/Debug/net10.0/Ai/Eval/fixtures/rag-eval-baseline.json`. Copy it back to the source tree before committing:
 
 ```bash
-dotnet run --project boilerplateBE/tools/EvalCacheWarmup -- \
-  --fixture boilerplateBE/tests/Starter.Api.Tests/Ai/Eval/fixtures/rag-eval-dataset-en.json \
-  --out boilerplateBE/tests/Starter.Api.Tests/Ai/Eval/fixtures/eval-rerank-cache-en.bin
+cp boilerplateBE/tests/Starter.Api.Tests/bin/Debug/net10.0/Ai/Eval/fixtures/rag-eval-baseline.json \
+   boilerplateBE/tests/Starter.Api.Tests/Ai/Eval/fixtures/rag-eval-baseline.json
 ```
 
-Commit the updated blob alongside the fixture change.
+### Regenerate the rerank cache blobs
 
-**Faithfulness spot-check (superadmin):**
+Required when adding new questions to a fixture or when provider model IDs change. The blobs let offline eval runs hit a warm cache rather than calling the reranker live, which is what makes the harness deterministic.
+
+```bash
+# Create a throwaway Postgres DB (schema is built via EnsureCreated)
+createdb starter_eval_warmup
+
+# EN
+ConnectionStrings__DefaultConnection="Host=localhost;Port=5432;Database=starter_eval_warmup;Username=<you>" \
+  dotnet run --project boilerplateBE/tools/EvalCacheWarmup -- \
+    --fixture boilerplateBE/tests/Starter.Api.Tests/Ai/Eval/fixtures/rag-eval-dataset-en.json \
+    --out     boilerplateBE/tests/Starter.Api.Tests/Ai/Eval/fixtures/eval-rerank-cache-en.json
+
+# AR (drop + recreate first so each run starts clean)
+dropdb starter_eval_warmup && createdb starter_eval_warmup
+ConnectionStrings__DefaultConnection="Host=localhost;Port=5432;Database=starter_eval_warmup;Username=<you>" \
+  dotnet run --project boilerplateBE/tools/EvalCacheWarmup -- \
+    --fixture boilerplateBE/tests/Starter.Api.Tests/Ai/Eval/fixtures/rag-eval-dataset-ar.json \
+    --out     boilerplateBE/tests/Starter.Api.Tests/Ai/Eval/fixtures/eval-rerank-cache-ar.json
+
+dropdb starter_eval_warmup
+```
+
+Commit the updated blobs alongside the fixture/model change.
+
+### Faithfulness spot-check (superadmin)
+
+Single-shot JSON response (fine for small datasets):
 
 ```bash
 curl -H "Authorization: Bearer <superadmin-token>" \
-  -F datasetName=en \
-  -F assistantId=<assistant-guid> \
+  -F datasetName=en -F assistantId=<assistant-guid> \
   http://localhost:5000/api/v1/ai/eval/faithfulness
 ```
 
-Returns a `FaithfulnessReport` with per-question SUPPORTED/UNSUPPORTED claim breakdowns. Only superadmins (`Ai.RunEval`) can invoke this endpoint.
+SSE streaming (recommended for >20-question datasets):
+
+```bash
+curl -N -H "Authorization: Bearer <superadmin-token>" \
+  -F datasetName=en -F assistantId=<assistant-guid> \
+  http://localhost:5000/api/v1/ai/eval/faithfulness/stream
+```
+
+Emits `run_started`, one `question_completed` per question, then a terminal `run_completed` with the full `FaithfulnessReport`. Only superadmins (`Ai.RunEval`) can invoke either endpoint.
+
+### Orphan Qdrant collections
+
+The harness names its synthetic tenants with v7 (time-ordered) GUIDs, so `RagEvalFixture.InitializeAsync` can safely reap any `tenant_{v7-guid}` collection older than 24 h without touching real tenants (which use v4 GUIDs). If a run crashes, the next eval-test invocation will clean up after it.
