@@ -16,4 +16,15 @@ export const STATUS_BADGE_VARIANT: Record<string, 'default' | 'secondary' | 'des
   Completed: 'default',
   Failed: 'destructive',
   Refunded: 'outline',
+
+  // Communication statuses
+  Inactive: 'secondary',
+  Error: 'destructive',
+  Queued: 'secondary',
+  Sending: 'secondary',
+  Delivered: 'default',
+  Bounced: 'destructive',
+
+  // Workflow statuses
+  Cancelled: 'destructive',
 };

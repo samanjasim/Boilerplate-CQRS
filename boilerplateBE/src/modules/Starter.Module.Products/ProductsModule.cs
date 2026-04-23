@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Starter.Abstractions.Capabilities;
@@ -6,6 +7,7 @@ using Starter.Abstractions.Modularity;
 using Starter.Module.Products.Constants;
 using Starter.Module.Products.Infrastructure.Persistence;
 using Starter.Module.Products.Infrastructure.Services;
+using Starter.Module.Products.Infrastructure.Tenancy;
 
 namespace Starter.Module.Products;
 
@@ -18,8 +20,10 @@ public sealed class ProductsModule : IModule
 
     public IServiceCollection ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
-        services.AddDbContext<ProductsDbContext>(options =>
+        services.AddDbContext<ProductsDbContext>((sp, options) =>
         {
+            options.AddInterceptors(sp.GetServices<ISaveChangesInterceptor>());
+
             options.UseNpgsql(
                 configuration.GetConnectionString("DefaultConnection"),
                 npgsqlOptions =>
@@ -34,6 +38,18 @@ public sealed class ProductsModule : IModule
         });
 
         services.AddScoped<IUsageMetricCalculator, ProductsUsageMetricCalculator>();
+
+        services.AddScoped<ProductTenantResolver>();
+        services.AddCommentableEntity("Product", builder =>
+        {
+            builder.CustomActivityTypes = ["PriceChanged", "Published", "Archived"];
+            builder.UseTenantResolver<ProductTenantResolver>();
+        });
+
+        services.AddWorkflowableEntity("Product", builder =>
+        {
+            builder.DefaultDefinitionName = "general-approval";
+        });
 
         return services;
     }

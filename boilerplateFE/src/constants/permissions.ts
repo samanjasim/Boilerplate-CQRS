@@ -74,6 +74,16 @@ export const PERMISSIONS = {
     Create: 'Products.Create',
     Update: 'Products.Update',
   },
+  Comments: {
+    View: 'Comments.View',
+    Create: 'Comments.Create',
+    Edit: 'Comments.Edit',
+    Delete: 'Comments.Delete',
+    Manage: 'Comments.Manage',
+  },
+  Activity: {
+    View: 'Activity.View',
+  },
   System: {
     ViewAuditLogs: 'System.ViewAuditLogs',
     ManageSettings: 'System.ManageSettings',
@@ -81,6 +91,16 @@ export const PERMISSIONS = {
     ExportData: 'System.ExportData',
     ForceExport: 'System.ForceExport',
     ImportData: 'System.ImportData',
+  },
+  Communication: {
+    View: 'Communication.View',
+    ManageChannels: 'Communication.ManageChannels',
+    ManageIntegrations: 'Communication.ManageIntegrations',
+    ManageTemplates: 'Communication.ManageTemplates',
+    ManageTriggerRules: 'Communication.ManageTriggerRules',
+    ViewDeliveryLog: 'Communication.ViewDeliveryLog',
+    Resend: 'Communication.Resend',
+    ManageQuotas: 'Communication.ManageQuotas',
   },
   Webhooks: {
     View: 'Webhooks.View',
@@ -90,7 +110,25 @@ export const PERMISSIONS = {
     ViewPlatform: 'Webhooks.ViewPlatform',
   },
   Ai: {
+    Chat: 'Ai.Chat',
+    ViewConversations: 'Ai.ViewConversations',
+    DeleteConversation: 'Ai.DeleteConversation',
+    ManageAssistants: 'Ai.ManageAssistants',
+    ManageDocuments: 'Ai.ManageDocuments',
+    ManageTools: 'Ai.ManageTools',
+    ManageTriggers: 'Ai.ManageTriggers',
+    ViewUsage: 'Ai.ViewUsage',
+    RunAgentTasks: 'Ai.RunAgentTasks',
+    ManageSettings: 'Ai.ManageSettings',
     SearchKnowledgeBase: 'Ai.SearchKnowledgeBase',
+  },
+  Workflows: {
+    View: 'Workflows.View',
+    ManageDefinitions: 'Workflows.ManageDefinitions',
+    Start: 'Workflows.Start',
+    ActOnTask: 'Workflows.ActOnTask',
+    Cancel: 'Workflows.Cancel',
+    ViewAllTasks: 'Workflows.ViewAllTasks',
   },
 } as const;
 

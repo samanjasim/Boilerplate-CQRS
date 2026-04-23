@@ -58,6 +58,7 @@
     <!-- Health Checks -->
     <PackageVersion Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
     <PackageVersion Include="AspNetCore.HealthChecks.Redis" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.0" />
     <!-- OpenTelemetry -->
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.15.1" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.1" />
@@ -67,6 +68,8 @@
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.1" />
     <PackageVersion Include="OpenTelemetry.Api" Version="1.15.1" />
     <PackageVersion Include="Serilog.Sinks.OpenTelemetry" Version="4.2.0" />
+    <!-- Template Engine -->
+    <PackageVersion Include="Stubble.Core" Version="1.10.8" />
     <!-- Utils -->
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
     <!-- AI Module -->

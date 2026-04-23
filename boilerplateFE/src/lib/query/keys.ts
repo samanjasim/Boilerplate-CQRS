@@ -91,6 +91,8 @@ export const queryKeys = {
     list: (filters?: object) => [...queryKeys.featureFlags.lists(), filters ?? {}] as const,
     details: () => [...queryKeys.featureFlags.all, 'detail'] as const,
     detail: (key: string) => [...queryKeys.featureFlags.details(), key] as const,
+    resolves: () => [...queryKeys.featureFlags.all, 'resolve'] as const,
+    resolve: (key: string) => [...queryKeys.featureFlags.resolves(), key] as const,
   },
 
   webhooks: {
@@ -140,6 +142,48 @@ export const queryKeys = {
     details: () => ['products', 'detail'] as const,
     detail: (id: string) => ['products', 'detail', id] as const,
   },
+  communication: {
+    all: ['communication'] as const,
+    channelConfigs: {
+      all: ['communication', 'channel-configs'] as const,
+      list: () => ['communication', 'channel-configs', 'list'] as const,
+      detail: (id: string) => ['communication', 'channel-configs', 'detail', id] as const,
+    },
+    providers: () => ['communication', 'providers'] as const,
+    templates: {
+      all: ['communication', 'templates'] as const,
+      list: (category?: string) => ['communication', 'templates', 'list', category] as const,
+      detail: (id: string) => ['communication', 'templates', 'detail', id] as const,
+      categories: () => ['communication', 'templates', 'categories'] as const,
+    },
+    triggerRules: {
+      all: ['communication', 'trigger-rules'] as const,
+      list: () => ['communication', 'trigger-rules', 'list'] as const,
+      detail: (id: string) => ['communication', 'trigger-rules', 'detail', id] as const,
+    },
+    events: {
+      list: () => ['communication', 'events', 'list'] as const,
+    },
+    integrationConfigs: {
+      all: ['communication', 'integration-configs'] as const,
+      list: () => ['communication', 'integration-configs', 'list'] as const,
+      detail: (id: string) => ['communication', 'integration-configs', 'detail', id] as const,
+    },
+    preferences: {
+      all: ['communication', 'preferences'] as const,
+      list: () => ['communication', 'preferences', 'list'] as const,
+    },
+    required: {
+      all: ['communication', 'required'] as const,
+      list: () => ['communication', 'required', 'list'] as const,
+    },
+    deliveryLogs: {
+      all: ['communication', 'delivery-logs'] as const,
+      list: (params?: Record<string, unknown>) => ['communication', 'delivery-logs', 'list', params] as const,
+      detail: (id: string) => ['communication', 'delivery-logs', 'detail', id] as const,
+    },
+    dashboard: () => ['communication', 'dashboard'] as const,
+  },
   importExport: {
     all: ['importExport'] as const,
     types: () => ['importExport', 'types'] as const,
@@ -148,5 +192,55 @@ export const queryKeys = {
       list: (params?: Record<string, unknown>) => ['importExport', 'imports', 'list', params] as const,
       detail: (id: string) => ['importExport', 'imports', 'detail', id] as const,
     },
+  },
+  workflow: {
+    all: ['workflow'] as const,
+    definitions: {
+      all: ['workflow', 'definitions'] as const,
+      list: (entityType?: string) => ['workflow', 'definitions', 'list', entityType] as const,
+      detail: (id: string) => ['workflow', 'definitions', 'detail', id] as const,
+    },
+    instances: {
+      all: ['workflow', 'instances'] as const,
+      list: (params?: Record<string, unknown>) => ['workflow', 'instances', 'list', params] as const,
+      status: (entityType: string, entityId: string) =>
+        ['workflow', 'instances', 'status', entityType, entityId] as const,
+      history: (instanceId: string) => ['workflow', 'instances', 'history', instanceId] as const,
+    },
+    tasks: {
+      all: ['workflow', 'tasks'] as const,
+      list: (params?: Record<string, unknown>) => ['workflow', 'tasks', 'list', params] as const,
+      count: () => ['workflow', 'tasks', 'count'] as const,
+    },
+    delegations: {
+      all: ['workflow', 'delegations'] as const,
+      list: () => ['workflow', 'delegations', 'list'] as const,
+      active: () => ['workflow', 'delegations', 'active'] as const,
+    },
+  },
+  commentsActivity: {
+    all: ['commentsActivity'] as const,
+    comments: {
+      all: ['commentsActivity', 'comments'] as const,
+      list: (entityType: string, entityId: string, params?: Record<string, unknown>) =>
+        ['commentsActivity', 'comments', 'list', entityType, entityId, params] as const,
+    },
+    activity: {
+      all: ['commentsActivity', 'activity'] as const,
+      list: (entityType: string, entityId: string, params?: Record<string, unknown>) =>
+        ['commentsActivity', 'activity', 'list', entityType, entityId, params] as const,
+    },
+    timeline: {
+      all: ['commentsActivity', 'timeline'] as const,
+      list: (entityType: string, entityId: string, params?: Record<string, unknown>) =>
+        ['commentsActivity', 'timeline', 'list', entityType, entityId, params] as const,
+    },
+    watchers: {
+      all: ['commentsActivity', 'watchers'] as const,
+      status: (entityType: string, entityId: string) =>
+        ['commentsActivity', 'watchers', 'status', entityType, entityId] as const,
+    },
+    mentionableUsers: (search?: string, entityType?: string, entityId?: string) =>
+      ['commentsActivity', 'mentionable-users', search, entityType, entityId] as const,
   },
 } as const;

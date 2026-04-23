@@ -1,5 +1,6 @@
+using Starter.Abstractions.Paging;
+using Starter.Application.Common.Extensions;
 using Starter.Application.Common.Interfaces;
-using Starter.Application.Common.Models;
 using Starter.Application.Features.Notifications.DTOs;
 using Starter.Domain.Common;
 using Starter.Domain.Identity.Errors;
@@ -37,8 +38,7 @@ internal sealed class GetNotificationsQueryHandler(
             n.IsRead,
             n.CreatedAt));
 
-        var paginatedList = await PaginatedList<NotificationDto>.CreateAsync(
-            projectedQuery,
+        var paginatedList = await projectedQuery.ToPaginatedListAsync(
             request.PageNumber,
             request.PageSize,
             cancellationToken);

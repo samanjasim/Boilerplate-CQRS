@@ -49,6 +49,7 @@ public static class DataSeeder
             await SeedRolePermissionsAsync(context, logger, modules);
             await SeedDefaultTenantAsync(context, logger);
             await SeedSuperAdminUserAsync(context, configuration, logger);
+            await SeedDemoTenantsAsync(context, logger);
             await SeedDefaultSettingsAsync(context, logger);
             await SeedFeatureFlagsAsync(context, logger);
 
@@ -215,6 +216,82 @@ public static class DataSeeder
         logger.LogInformation("Seeded SuperAdmin user: {Username}", superAdminUsername);
     }
 
+    // Demo tenants used for multi-tenant dev/test scenarios (e.g. verifying
+    // tenant isolation, switching roles). Idempotent per slug — each tenant's
+    // block is skipped if the slug already exists. Credentials are documented
+    // in CLAUDE.md under "Default Credentials".
+    private static readonly (string Name, string Slug, (string Username, string FirstName, string LastName, string Role)[] Users)[] DemoTenants =
+    [
+        ("Acme Corporation", "acme", [
+            ("acme.admin",   "Alice",  "Anderson", RoleNames.Admin),
+            ("acme.alice",   "Alice",  "Baker",    RoleNames.User),
+            ("acme.bob",     "Bob",    "Carter",   RoleNames.User),
+        ]),
+        ("Globex Industries", "globex", [
+            ("globex.admin", "Gloria", "Greene",   RoleNames.Admin),
+            ("globex.hank",  "Hank",   "Harrison", RoleNames.User),
+            ("globex.ivy",   "Ivy",    "Ingram",   RoleNames.User),
+        ]),
+        ("Initech Systems", "initech", [
+            ("initech.admin","Peter",  "Parker",   RoleNames.Admin),
+            ("initech.milton","Milton","Waddams",  RoleNames.User),
+            ("initech.samir","Samir",  "Nagheenanajar", RoleNames.User),
+        ]),
+    ];
+
+    private const string DemoUserPassword = "Admin@123456";
+
+    private static async Task SeedDemoTenantsAsync(ApplicationDbContext context, ILogger logger)
+    {
+        var rolesByName = await context.Roles.ToDictionaryAsync(r => r.Name);
+        var createdTenants = 0;
+        var createdUsers = 0;
+
+        foreach (var (name, slug, users) in DemoTenants)
+        {
+            var tenant = await context.Tenants.FirstOrDefaultAsync(t => t.Slug == slug);
+            if (tenant is null)
+            {
+                tenant = Tenant.Create(name, slug);
+                tenant.Activate();
+                context.Tenants.Add(tenant);
+                await context.SaveChangesAsync();
+                createdTenants++;
+            }
+
+            foreach (var (username, firstName, lastName, roleName) in users)
+            {
+                var exists = await context.Users
+                    .IgnoreQueryFilters()
+                    .AnyAsync(u => u.Username == username);
+                if (exists) continue;
+
+                var user = User.Create(
+                    username,
+                    Starter.Domain.Identity.ValueObjects.Email.Create($"{username}@{slug}.com"),
+                    FullName.Create(firstName, lastName),
+                    BCrypt.Net.BCrypt.HashPassword(DemoUserPassword),
+                    tenant.Id);
+
+                user.ConfirmEmail();
+                user.Activate();
+
+                if (rolesByName.TryGetValue(roleName, out var role))
+                    user.AddRole(role);
+
+                context.Users.Add(user);
+                createdUsers++;
+            }
+        }
+
+        if (createdTenants == 0 && createdUsers == 0) return;
+
+        await context.SaveChangesAsync();
+        logger.LogInformation(
+            "Seeded {Tenants} demo tenant(s) and {Users} demo user(s) (password: {Password})",
+            createdTenants, createdUsers, DemoUserPassword);
+    }
+
     private static async Task SeedDefaultSettingsAsync(ApplicationDbContext context, ILogger logger)
     {
         var defaultSettings = new (string Key, string Value, string Description, string Category, bool IsSecret, string DataType)[]
@@ -345,6 +422,8 @@ public static class DataSeeder
             FeatureFlag.Create("imports.enabled", "Imports Enabled", "Enable data imports", "false", FlagValueType.Boolean, FlagCategory.System, false),
             FeatureFlag.Create("imports.max_rows", "Max Import Rows", "Maximum rows per import", "0", FlagValueType.Integer, FlagCategory.System, false),
             FeatureFlag.Create("exports.enabled", "Exports Enabled", "Enable data exports", "true", FlagValueType.Boolean, FlagCategory.System, true),
+            FeatureFlag.Create("comments.activity_enabled", "Comments & Activity Enabled", "Enable comments and activity timeline on supported entities", "true", FlagValueType.Boolean, FlagCategory.System, true),
+            FeatureFlag.Create("workflow.enabled", "Workflow Enabled", "Enable workflow and approvals module", "true", FlagValueType.Boolean, FlagCategory.System, true),
         };
 
         context.Set<FeatureFlag>().AddRange(flags);

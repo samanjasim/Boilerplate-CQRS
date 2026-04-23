@@ -39,6 +39,7 @@ const ApiKeysPage = lazy(() => import('@/features/api-keys/pages/ApiKeysPage'));
 const FeatureFlagsPage = lazy(() => import('@/features/feature-flags/pages/FeatureFlagsPage'));
 
 // Module pages (conditionally loaded based on modules.config.ts)
+// eslint-disable-next-line react-refresh/only-export-components
 const NullPage = () => null;
 const WebhooksPage = activeModules.webhooks ? lazy(() => import('@/features/webhooks/pages/WebhooksPage')) : NullPage;
 const WebhookAdminPage = activeModules.webhooks ? lazy(() => import('@/features/webhooks/pages/WebhookAdminPage')) : NullPage;
@@ -52,6 +53,16 @@ const ImportExportPage = activeModules.importExport ? lazy(() => import('@/featu
 const ProductsListPage = activeModules.products ? lazy(() => import('@/features/products/pages/ProductsListPage')) : NullPage;
 const ProductCreatePage = activeModules.products ? lazy(() => import('@/features/products/pages/ProductCreatePage')) : NullPage;
 const ProductDetailPage = activeModules.products ? lazy(() => import('@/features/products/pages/ProductDetailPage')) : NullPage;
+const WorkflowInboxPage = activeModules.workflow ? lazy(() => import('@/features/workflow/pages/WorkflowInboxPage')) : NullPage;
+const WorkflowInstancesPage = activeModules.workflow ? lazy(() => import('@/features/workflow/pages/WorkflowInstancesPage')) : NullPage;
+const WorkflowInstanceDetailPage = activeModules.workflow ? lazy(() => import('@/features/workflow/pages/WorkflowInstanceDetailPage')) : NullPage;
+const WorkflowDefinitionsPage = activeModules.workflow ? lazy(() => import('@/features/workflow/pages/WorkflowDefinitionsPage')) : NullPage;
+const WorkflowDefinitionDetailPage = activeModules.workflow ? lazy(() => import('@/features/workflow/pages/WorkflowDefinitionDetailPage')) : NullPage;
+const ChannelsPage = activeModules.communication ? lazy(() => import('@/features/communication/pages/ChannelsPage')) : NullPage;
+const TemplatesPage = activeModules.communication ? lazy(() => import('@/features/communication/pages/TemplatesPage')) : NullPage;
+const TriggerRulesPage = activeModules.communication ? lazy(() => import('@/features/communication/pages/TriggerRulesPage')) : NullPage;
+const IntegrationsPage = activeModules.communication ? lazy(() => import('@/features/communication/pages/IntegrationsPage')) : NullPage;
+const DeliveryLogPage = activeModules.communication ? lazy(() => import('@/features/communication/pages/DeliveryLogPage')) : NullPage;
 
 export const routes: RouteObject[] = [
   // Public landing page (always accessible)
@@ -243,6 +254,44 @@ export const routes: RouteObject[] = [
               element: <PermissionGuard permission={PERMISSIONS.Products.Create} />,
               children: [
                 { path: ROUTES.PRODUCTS.CREATE, element: <ProductCreatePage /> },
+              ],
+            },
+          ] : []),
+
+          // Workflows
+          ...(activeModules.workflow ? [
+            {
+              element: <PermissionGuard permission={PERMISSIONS.Workflows.View} />,
+              children: [
+                { path: ROUTES.WORKFLOWS.INBOX, element: <WorkflowInboxPage /> },
+                { path: ROUTES.WORKFLOWS.INSTANCES, element: <WorkflowInstancesPage /> },
+                { path: ROUTES.WORKFLOWS.INSTANCE_DETAIL, element: <WorkflowInstanceDetailPage /> },
+              ],
+            },
+            {
+              element: <PermissionGuard permission={PERMISSIONS.Workflows.ManageDefinitions} />,
+              children: [
+                { path: ROUTES.WORKFLOWS.DEFINITIONS, element: <WorkflowDefinitionsPage /> },
+                { path: ROUTES.WORKFLOWS.DEFINITION_DETAIL, element: <WorkflowDefinitionDetailPage /> },
+              ],
+            },
+          ] : []),
+
+          // Communication
+          ...(activeModules.communication ? [
+            {
+              element: <PermissionGuard permission={PERMISSIONS.Communication.View} />,
+              children: [
+                { path: ROUTES.COMMUNICATION.CHANNELS, element: <ChannelsPage /> },
+                { path: ROUTES.COMMUNICATION.TEMPLATES, element: <TemplatesPage /> },
+                { path: ROUTES.COMMUNICATION.TRIGGER_RULES, element: <TriggerRulesPage /> },
+                { path: ROUTES.COMMUNICATION.INTEGRATIONS, element: <IntegrationsPage /> },
+              ],
+            },
+            {
+              element: <PermissionGuard permission={PERMISSIONS.Communication.ViewDeliveryLog} />,
+              children: [
+                { path: ROUTES.COMMUNICATION.DELIVERY_LOG, element: <DeliveryLogPage /> },
               ],
             },
           ] : []),

@@ -1,6 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Starter.Application.Common.Models;
+using Starter.Abstractions.Paging;
 using Starter.Module.AI.Application.DTOs;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Persistence;

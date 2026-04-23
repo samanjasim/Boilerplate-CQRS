@@ -1,5 +1,5 @@
 {
-  "_comment": "Optional modules in the Starter boilerplate. After the true-modularity refactor (2026-04-07), only these three features remain as removable modules. Files, Notifications, FeatureFlags, ApiKeys, AuditLogs, and Reports are now part of core and ship with every build.",
+  "_comment": "Optional modules in the Starter boilerplate. Removable by passing `-Modules None` (strip all), `-Modules commentsActivity,communication` (keep only these), or `-Modules All` (default). Files, Notifications, FeatureFlags, ApiKeys, AuditLogs, and Reports are core and always ship. The `testsFolder` field names the module's test subfolder under tests/Starter.Api.Tests/ so the rename script deletes orphan tests alongside the module.",
   "billing": {
     "displayName": "Billing",
     "backendModule": "Starter.Module.Billing",
@@ -33,5 +33,32 @@
     "configKey": "products",
     "required": false,
     "description": "E-commerce product catalog with CRUD, image upload, demo catalog seeding. Uses IQuotaChecker + IWebhookPublisher capabilities. Frontend slots: tenant-detail-tabs, dashboard-cards."
+  },
+  "commentsActivity": {
+    "displayName": "Comments & Activity",
+    "backendModule": "Starter.Module.CommentsActivity",
+    "frontendFeature": "comments-activity",
+    "testsFolder": "CommentsActivity",
+    "configKey": "commentsActivity",
+    "required": false,
+    "description": "Entity-scoped comments, activity feed, reactions, watchers, mentions. Implements ICommentableEntityRegistry, ICommentService, IActivityService, IEntityWatcherService; null fallbacks return empty results. Frontend slot: entity-detail-timeline. No mobile counterpart."
+  },
+  "communication": {
+    "displayName": "Communication",
+    "backendModule": "Starter.Module.Communication",
+    "frontendFeature": "communication",
+    "testsFolder": "Communication",
+    "configKey": "communication",
+    "required": false,
+    "description": "Multi-channel messaging: email (SMTP), Slack, Telegram, Discord, Teams; templates, trigger rules, delivery log. Implements IMessageDispatcher, ICommunicationEventNotifier, ITemplateRegistrar; null fallbacks are silent no-ops. Frontend slot: dashboard-cards. No mobile counterpart."
+  },
+  "workflow": {
+    "displayName": "Workflow & Approvals",
+    "backendModule": "Starter.Module.Workflow",
+    "frontendFeature": "workflow",
+    "testsFolder": "Workflow",
+    "configKey": "workflow",
+    "required": false,
+    "description": "Configurable state-machine workflows with approval chains, task inbox, and process automation. Implements IWorkflowService; null fallback returns empty results. Frontend: inbox page, admin definitions, entity status panel slot."
   }
 }

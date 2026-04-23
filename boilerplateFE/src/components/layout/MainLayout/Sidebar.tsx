@@ -18,13 +18,22 @@ import {
   Webhook,
   ArrowLeftRight,
   Package,
+  MessageSquare,
+  FileText,
+  Zap,
+  Link2,
+  ScrollText,
+  ClipboardCheck,
+  History,
+  GitBranch,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore, useAuthStore, selectSidebarCollapsed, selectUser } from '@/stores';
 import { ROUTES } from '@/config';
-import { activeModules } from '@/config/modules.config';
+import { activeModules, isModuleActive } from '@/config/modules.config';
 import { usePermissions, useFeatureFlag } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
+import { usePendingTaskCount } from '@/features/workflow/api';
 
 export function Sidebar() {
   const { t } = useTranslation();
@@ -36,6 +45,8 @@ export function Sidebar() {
   const webhooksFlag = useFeatureFlag('webhooks.enabled');
   const importsFlag = useFeatureFlag('imports.enabled');
   const exportsFlag = useFeatureFlag('exports.enabled');
+
+  const { data: pendingTaskCount = 0 } = usePendingTaskCount(isModuleActive('workflow'));
 
   const tenantLogoUrl = user?.tenantLogoUrl;
   const tenantName = user?.tenantName;
@@ -67,8 +78,28 @@ export function Sidebar() {
     ...(hasPermission(PERMISSIONS.ApiKeys.View)
       ? [{ label: t('nav.apiKeys'), icon: KeyRound, path: ROUTES.API_KEYS.LIST }]
       : []),
+    ...(activeModules.workflow && hasPermission(PERMISSIONS.Workflows.View)
+      ? [{ label: t('workflow.sidebar.taskInbox'), icon: ClipboardCheck, path: ROUTES.WORKFLOWS.INBOX, badge: pendingTaskCount > 0 ? pendingTaskCount : undefined }]
+      : []),
+    ...(activeModules.workflow && hasPermission(PERMISSIONS.Workflows.View)
+      ? [{ label: t('workflow.sidebar.history'), icon: History, path: ROUTES.WORKFLOWS.INSTANCES }]
+      : []),
+    ...(activeModules.workflow && hasPermission(PERMISSIONS.Workflows.ManageDefinitions)
+      ? [{ label: t('workflow.sidebar.definitions'), icon: GitBranch, path: ROUTES.WORKFLOWS.DEFINITIONS }]
+      : []),
     ...(activeModules.products && hasPermission(PERMISSIONS.Products.View)
       ? [{ label: t('nav.products', 'Products'), icon: Package, path: ROUTES.PRODUCTS.LIST }]
+      : []),
+    ...(activeModules.communication && hasPermission(PERMISSIONS.Communication.View) && user?.tenantId
+      ? [
+          { label: t('nav.channels'), icon: MessageSquare, path: ROUTES.COMMUNICATION.CHANNELS },
+          { label: t('nav.templates'), icon: FileText, path: ROUTES.COMMUNICATION.TEMPLATES },
+          { label: t('nav.triggerRules'), icon: Zap, path: ROUTES.COMMUNICATION.TRIGGER_RULES },
+          { label: t('nav.integrations'), icon: Link2, path: ROUTES.COMMUNICATION.INTEGRATIONS },
+        ]
+      : []),
+    ...(activeModules.communication && hasPermission(PERMISSIONS.Communication.ViewDeliveryLog) && user?.tenantId
+      ? [{ label: t('nav.deliveryLog'), icon: ScrollText, path: ROUTES.COMMUNICATION.DELIVERY_LOG }]
       : []),
     ...(activeModules.webhooks && hasPermission(PERMISSIONS.Webhooks.View) && user?.tenantId && webhooksFlag.isEnabled
       ? [{ label: t('nav.webhooks'), icon: Webhook, path: ROUTES.WEBHOOKS }]
@@ -147,7 +178,12 @@ export function Sidebar() {
                 }
               >
                 <item.icon className="h-[18px] w-[18px] shrink-0" />
-                {!isCollapsed && <span>{item.label}</span>}
+                {!isCollapsed && <span className="flex-1">{item.label}</span>}
+                {!isCollapsed && 'badge' in item && item.badge != null && (
+                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
+                    {(item.badge as number) > 99 ? '99+' : item.badge}
+                  </span>
+                )}
               </NavLink>
             </li>
           ))}

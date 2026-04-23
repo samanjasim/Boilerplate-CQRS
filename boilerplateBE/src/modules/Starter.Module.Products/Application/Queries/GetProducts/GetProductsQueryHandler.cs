@@ -1,7 +1,8 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Starter.Abstractions.Paging;
 using Starter.Abstractions.Readers;
-using Starter.Application.Common.Models;
+using Starter.Application.Common.Extensions;
 using Starter.Module.Products.Application.DTOs;
 using Starter.Module.Products.Domain.Entities;
 using Starter.Module.Products.Domain.Enums;
@@ -38,8 +39,7 @@ internal sealed class GetProductsQueryHandler(
 
         query = query.OrderByDescending(p => p.CreatedAt);
 
-        var page = await PaginatedList<Product>.CreateAsync(
-            query,
+        var page = await query.ToPaginatedListAsync(
             request.PageNumber,
             request.PageSize,
             cancellationToken);

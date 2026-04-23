@@ -82,11 +82,9 @@ export default function TenantDetailPage() {
   const tenantId = selfService ? user?.tenantId : id;
 
   // Guard: platform admin (no tenantId) shouldn't access /organization
-  if (selfService && !tenantId) {
-    return <Navigate to={ROUTES.DASHBOARD} replace />;
-  }
+  const shouldRedirect = selfService && !tenantId;
 
-  const { data: tenant, isLoading } = useTenant(tenantId!);
+  const { data: tenant, isLoading } = useTenant(tenantId ?? '');
 
   useBackNavigation(
     selfService ? ROUTES.DASHBOARD : ROUTES.TENANTS.LIST,
@@ -174,7 +172,6 @@ export default function TenantDetailPage() {
   const { mutate: updateBusinessInfo, isPending: isSavingBusiness } = useUpdateTenantBusinessInfo();
   const { mutate: updateCustomText, isPending: isSavingCustomText } = useUpdateTenantCustomText();
 
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const handleSaveBranding = useCallback(() => {
     const hexRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
     if (primaryColor && !hexRegex.test(primaryColor)) {
@@ -209,7 +206,7 @@ export default function TenantDetailPage() {
         },
       }
     );
-  }, [id, uploadedLogoId, uploadedFaviconId, primaryColor, secondaryColor, description, removeLogo, removeFavicon, updateBranding, t]);
+  }, [tenantId, uploadedLogoId, uploadedFaviconId, primaryColor, secondaryColor, description, removeLogo, removeFavicon, updateBranding, t]);
 
   const handleSaveBusinessInfo = useCallback(() => {
     updateBusinessInfo({
@@ -240,6 +237,10 @@ export default function TenantDetailPage() {
     if (removeFavicon) return null;
     return tenant?.faviconUrl ?? null;
   }, [faviconPreview, removeFavicon, tenant?.faviconUrl]);
+
+  if (shouldRedirect) {
+    return <Navigate to={ROUTES.DASHBOARD} replace />;
+  }
 
   if (isLoading) {
     return (

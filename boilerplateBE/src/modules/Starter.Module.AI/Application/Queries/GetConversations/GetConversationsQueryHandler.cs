@@ -1,7 +1,8 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Starter.Abstractions.Paging;
+using Starter.Application.Common.Extensions;
 using Starter.Application.Common.Interfaces;
-using Starter.Application.Common.Models;
 using Starter.Domain.Identity.Errors;
 using Starter.Module.AI.Application.DTOs;
 using Starter.Module.AI.Domain.Entities;
@@ -37,8 +38,8 @@ internal sealed class GetConversationsQueryHandler(
 
         query = query.OrderByDescending(c => c.LastMessageAt);
 
-        var page = await PaginatedList<AiConversation>.CreateAsync(
-            query, request.PageNumber, request.PageSize, cancellationToken);
+        var page = await query.ToPaginatedListAsync(
+            request.PageNumber, request.PageSize, cancellationToken);
 
         var assistantIds = page.Items.Select(c => c.AssistantId).Distinct().ToList();
         var assistantNames = await context.AiAssistants

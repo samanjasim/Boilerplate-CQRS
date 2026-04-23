@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ROUTES } from '@/config';
+import { Slot } from '@/lib/extensions';
 import { useBackNavigation, usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
 import { useAuthStore, selectUser } from '@/stores';
@@ -216,6 +217,7 @@ function ProductDetailForm({ product }: { product: Product }) {
 
               <div className="space-y-2">
                 <Label htmlFor="currency">{t('products.currency', 'Currency')}</Label>
+                {/* eslint-disable-next-line react-hooks/incompatible-library */}
                 <Select value={watch('currency')} onValueChange={(v) => setValue('currency', v, { shouldValidate: true, shouldDirty: true })} disabled={!canEdit}>
                   <SelectTrigger>
                     <SelectValue placeholder={t('products.selectCurrency', 'Select currency')} />
@@ -275,6 +277,9 @@ function ProductDetailForm({ product }: { product: Product }) {
           </div>
         )}
       </form>
+
+      <Slot id="entity-detail-workflow" props={{ entityType: 'Product', entityId: product.id }} />
+      <Slot id="entity-detail-timeline" props={{ entityType: 'Product', entityId: product.id, tenantId: product.tenantId }} />
 
       <ConfirmDialog
         isOpen={showArchiveDialog}

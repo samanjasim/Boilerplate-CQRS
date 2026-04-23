@@ -1,5 +1,5 @@
 using MediatR;
-using Starter.Application.Common.Models;
+using Starter.Abstractions.Paging;
 using Starter.Module.AI.Application.DTOs;
 using Starter.Shared.Results;
 

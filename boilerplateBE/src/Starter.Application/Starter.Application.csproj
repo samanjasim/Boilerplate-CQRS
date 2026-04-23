@@ -12,6 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Starter.Abstractions\Starter.Abstractions.csproj" />
     <ProjectReference Include="..\Starter.Domain\Starter.Domain.csproj" />
     <ProjectReference Include="..\Starter.Shared\Starter.Shared.csproj" />
   </ItemGroup>

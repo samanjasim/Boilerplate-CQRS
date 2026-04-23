@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { formatDistanceToNow } from 'date-fns';
 import { Webhook, Plus, Pencil, Trash2, Send, List } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,7 +17,7 @@ import { useWebhookEndpoints, useDeleteWebhook, useTestWebhook } from '../api';
 import { CreateWebhookDialog } from '../components/CreateWebhookDialog';
 import { EditWebhookDialog } from '../components/EditWebhookDialog';
 import { DeliveryLogModal } from '../components/DeliveryLogModal';
-import { usePermissions } from '@/hooks';
+import { usePermissions, useTimeAgoFormatter } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
 import { lastStatusBadge } from '../utils/badges';
 import { truncateUrl } from '../utils/format';
@@ -32,6 +31,7 @@ export default function WebhooksPage() {
   const [editTarget, setEditTarget] = useState<WebhookEndpoint | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<WebhookEndpoint | null>(null);
   const [deliveriesTarget, setDeliveriesTarget] = useState<WebhookEndpoint | null>(null);
+  const formatTimeAgo = useTimeAgoFormatter();
 
   const { data, isLoading, isError } = useWebhookEndpoints();
   const deleteMutation = useDeleteWebhook();
@@ -161,9 +161,7 @@ export default function WebhooksPage() {
                       {lastStatusBadge(endpoint.lastDeliveryStatus)}
                       {endpoint.lastDeliveryAt && (
                         <span className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(endpoint.lastDeliveryAt), {
-                            addSuffix: true,
-                          })}
+                          {formatTimeAgo(endpoint.lastDeliveryAt)}
                         </span>
                       )}
                       {!endpoint.lastDeliveryAt && !endpoint.lastDeliveryStatus && (

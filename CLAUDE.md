@@ -245,10 +245,20 @@ The `entityType` prop must match the `EntityType` string in the backend definiti
 
 ### Default Credentials
 
-- **App**: `superadmin@starter.com` / `Admin@123456`
+- **App SuperAdmin**: `superadmin@starter.com` / `Admin@123456`
 - **MinIO**: `minioadmin` / `minioadmin`
 - **RabbitMQ**: `guest` / `guest`
 - **PostgreSQL**: `postgres` / `123456`
+
+**Demo tenants** (all seeded active + email-confirmed; password `Admin@123456`):
+
+| Tenant | Slug | Admin | Users |
+|---|---|---|---|
+| Acme Corporation | `acme` | `acme.admin@acme.com` | `acme.alice@acme.com`, `acme.bob@acme.com` |
+| Globex Industries | `globex` | `globex.admin@globex.com` | `globex.hank@globex.com`, `globex.ivy@globex.com` |
+| Initech Systems | `initech` | `initech.admin@initech.com` | `initech.milton@initech.com`, `initech.samir@initech.com` |
+
+Usernames are the email local-part (e.g. `acme.admin`). Admin users have the `Admin` role; others have `User`.
 
 ## Frontend Rules — Must Always Follow
 
@@ -262,10 +272,14 @@ The `entityType` prop must match the `EntityType` string in the backend definiti
 
 ### Components & Patterns
 
-- **Use shared components** — `Pagination`, `PageHeader`, `EmptyState`, `UserAvatar`, `ConfirmDialog`, `ExportButton` from `@/components/common`.
+- **MANDATORY: Use shared components** — `Pagination`, `PageHeader`, `EmptyState`, `UserAvatar`, `ConfirmDialog`, `ExportButton` from `@/components/common`. **NEVER create custom versions** of these. Every list page with a `<Table>` MUST include `<Pagination>` from the shared component. Every page MUST use `<PageHeader>`. Every empty data state MUST use `<EmptyState>`.
+- **MANDATORY: No component duplication** — Before creating any new component, check if a shared component or pattern already exists in `@/components/common`, `@/components/ui`, `@/constants`, or `@/hooks`. Duplicate components are a code smell and must be avoided. When multiple features need the same UI pattern, extract it to `@/components/common`.
+- **API Response Envelope** — Backend wraps all responses in `ApiResponse<T>`: `{ data: T, success, errors }`. Frontend API methods return `r.data` (axios), giving `{ data: T, success }`. Components must unwrap: `const item = response?.data ?? response`. This is the #1 source of "data not showing" bugs.
+- **DTO Sync** — When adding a field to a backend DTO record in `Starter.Abstractions`, ALWAYS add it to the matching TypeScript interface in `src/types/`. Missing fields silently render as `undefined`.
+- **Entity Display Names** — Never show raw GUIDs to users. All entities in lists/cards must show human-readable names. Pass `entityDisplayName` when creating records that will be displayed.
 - **Back navigation** — use `useBackNavigation(path, label)` hook in detail/edit pages. It renders in the header bar automatically and clears on unmount.
 - **Page size persistence** — use `getPersistedPageSize()` from `@/components/common/Pagination` as the initial state for paginated lists. The `Pagination` component persists changes to localStorage.
-- **Status badges** — use `STATUS_BADGE_VARIANT` from `@/constants/status` for mapping entity status to badge variants.
+- **Status badges** — use `STATUS_BADGE_VARIANT` from `@/constants/status` for mapping entity status to badge variants. Do NOT define local status-to-variant mappings in page components.
 - **Tables** — the `Table` component includes its own `rounded-2xl bg-card shadow-card` container. Do NOT wrap it in an extra `<Card>`.
 - **Empty states** — always use `<EmptyState>` component with an icon, title, and optional description/action.
 
@@ -327,14 +341,17 @@ Presentation (Cubit/Bloc) → Domain (UseCases + Repository ifaces) → Data (DT
 
 After completing any feature (backend + frontend builds pass), **always** run the testing workflow before requesting user review:
 
-1. **Create test app** — Run `scripts/rename.ps1 -Name "_testFeatureName" -OutputDir "."` to create an isolated test instance in `_testFeatureName/` (gitignored)
-2. **Drop old test DB** — `psql -U postgres -c "DROP DATABASE IF EXISTS _testfeaturenamedb;"`
-3. **Reconfigure ports** — Backend → `5100`, Frontend → `3100`, update CORS + `.env` accordingly
-4. **Install & build** — `dotnet build` (backend), `npm install` (frontend)
-5. **Run** — `dotnet run` (backend), `npm run dev` (frontend). Services (mailpit, redis, minio) come from existing Docker containers
-6. **Playwright tests** — Feature test (all CRUD for the new feature) + regression test (nav, users, roles, files, settings)
-7. **Fix findings** — Fix in the worktree source, regenerate test app, re-test
-8. **Leave running** — Report URLs to user for manual QA. Wait for confirmation before pushing
+1. **Check free ports** — `lsof -iTCP -sTCP:LISTEN -nP | awk '{print $9}' | grep -oE '[0-9]+$' | sort -un`. Use 5100/3100 or 5200/3200 or 5300/3300.
+2. **Create test app** — `scripts/rename.ps1 -Name "_testFeatureName" -OutputDir "." -Modules "All" -IncludeMobile:$false`
+3. **Reconfigure** — Fix seed email (remove `_` prefix from domain), fix bucket name, update ports in launchSettings.json, update CORS + FrontendUrl + BaseUrl to test port, create `.env` for frontend, increase rate limits 10x for testing.
+4. **Generate ALL migrations** — There are currently 8 DbContexts (Core + 7 modules). Generate a migration for each: `dotnet ef migrations add Init --project <project> --startup-project <api> --context <context> --no-build`
+5. **Build + Start** — `dotnet build` → `dotnet run` (backend), `npm install` → `npx vite --port <port>` (frontend)
+6. **Setup Communication** — Create Acme tenant's SMTP email channel via API pointing to Mailpit (localhost:1025)
+7. **Seed test data** — Create realistic test workflows/entities with proper display names (never use empty GUIDs)
+8. **Live test via Playwright MCP** — Every feature must be visually verified in the browser. The user must SEE it working. API-only verification is not sufficient.
+9. **Test ALL user roles** — Login as admin, regular user, and different users to verify scoping, permissions, delegation visibility
+10. **Fix findings** — Fix in the worktree source. For FE-only changes, copy files to test app for hot reload. For BE changes, regenerate test app.
+11. **Leave running** — Report URLs to user for manual QA. Do NOT clean up until user explicitly says so.
 
 See `.claude/skills/post-feature-testing.md` for full details.
 

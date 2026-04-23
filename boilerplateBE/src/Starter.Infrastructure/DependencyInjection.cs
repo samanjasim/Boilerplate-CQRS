@@ -4,6 +4,8 @@ using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Readers;
 using Starter.Application.Common.Access;
 using Starter.Application.Common.Interfaces;
+using Starter.Infrastructure.Capabilities;
+using Starter.Infrastructure.Capabilities.Adapters;
 using Starter.Infrastructure.Capabilities.MetricCalculators;
 using Starter.Infrastructure.Capabilities.NullObjects;
 using Starter.Infrastructure.Email.Templates;
@@ -28,14 +30,15 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration,
-        IReadOnlyList<System.Reflection.Assembly>? moduleAssemblies = null)
+        IReadOnlyList<System.Reflection.Assembly>? moduleAssemblies = null,
+        Action<IBusRegistrationConfigurator>? configureBus = null)
     {
         QuestPDF.Settings.License = LicenseType.Community;
 
         services
             .AddPersistence(configuration)
             .AddCaching(configuration)
-            .AddMessaging(configuration, moduleAssemblies)
+            .AddMessaging(configuration, moduleAssemblies, configureBus)
             .AddServices()
             .AddCapabilities()
             .AddEmailServices(configuration)
@@ -71,6 +74,9 @@ public static class DependencyInjection
         services.AddScoped<ITenantReader, TenantReader>();
         services.AddScoped<IUserReader, UserReader>();
         services.AddScoped<IRoleReader, RoleReader>();
+        services.AddScoped<IFileReader, FileReader>();
+        services.AddScoped<IRoleUserReader, RoleUserReader>();
+        services.AddScoped<INotificationPreferenceReader, NotificationPreferenceReaderService>();
 
         // Null Object fallbacks — lifetimes match the real module implementations
         services.TryAddSingleton<IQuotaChecker, NullQuotaChecker>();
@@ -78,6 +84,33 @@ public static class DependencyInjection
         services.TryAddScoped<IWebhookPublisher, NullWebhookPublisher>();
         services.TryAddSingleton<IImportExportRegistry, NullImportExportRegistry>();
         services.TryAddScoped<IAiService, NullAiService>();
+        services.TryAddScoped<IMessageDispatcher, NullMessageDispatcher>();
+        services.TryAddScoped<ICommunicationEventNotifier, NullCommunicationEventNotifier>();
+        services.TryAddScoped<ITemplateRegistrar, NullTemplateRegistrar>();
+        services.TryAddScoped<IWorkflowService, NullWorkflowService>();
+
+        // Comments & Activity — Null Object fallbacks
+        services.TryAddSingleton<ICommentableEntityRegistry, NullCommentableEntityRegistry>();
+        services.TryAddScoped<ICommentService, NullCommentService>();
+        services.TryAddScoped<IActivityService, NullActivityService>();
+        services.TryAddScoped<IEntityWatcherService, NullEntityWatcherService>();
+
+        // Notifications capability — registration order matters.
+        //
+        // Line 1 (TryAddScoped Null): only registers if no INotificationServiceCapability
+        // is already bound. Acts as a fallback for isolated module tests that don't
+        // wire the host's notification stack.
+        //
+        // Line 2 (AddScoped Adapter): appends the real adapter. When the container
+        // resolves a single INotificationServiceCapability, MSDI returns the LAST
+        // registration for that service — so the Adapter wins in the host. The Null
+        // remains reachable only via IEnumerable<INotificationServiceCapability>,
+        // which nothing currently injects.
+        //
+        // Do not swap these lines or convert line 2 to TryAddScoped — the Null would
+        // win and notifications would silently no-op in production.
+        services.TryAddScoped<INotificationServiceCapability, NullNotificationServiceCapability>();
+        services.AddScoped<INotificationServiceCapability, NotificationServiceCapabilityAdapter>();
 
         // Core usage metric calculators — one per core-owned metric. Modules
         // that own their own counted entities (e.g. Webhooks) register
@@ -151,7 +184,8 @@ public static class DependencyInjection
     private static IServiceCollection AddMessaging(
         this IServiceCollection services,
         IConfiguration configuration,
-        IReadOnlyList<System.Reflection.Assembly>? moduleAssemblies = null)
+        IReadOnlyList<System.Reflection.Assembly>? moduleAssemblies = null,
+        Action<IBusRegistrationConfigurator>? configureBus = null)
     {
         var rabbitMqEnabled = configuration.GetValue("RabbitMQ:Enabled", true);
 
@@ -180,6 +214,9 @@ public static class DependencyInjection
                 foreach (var asm in moduleAssemblies)
                     busConfigurator.AddConsumers(asm);
             }
+
+            // Module-provided bus extensions (e.g. additional EF outboxes)
+            configureBus?.Invoke(busConfigurator);
 
             if (!rabbitMqEnabled)
             {

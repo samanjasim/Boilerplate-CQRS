@@ -86,12 +86,32 @@ export const ROUTES = {
   // Import / Export
   IMPORT_EXPORT: '/import-export',
 
+  // Communication
+  COMMUNICATION: {
+    CHANNELS: '/communication/channels',
+    TEMPLATES: '/communication/templates',
+    TRIGGER_RULES: '/communication/trigger-rules',
+    INTEGRATIONS: '/communication/integrations',
+    DELIVERY_LOG: '/communication/delivery-log',
+  },
+
   // Products
   PRODUCTS: {
     LIST: '/products',
     CREATE: '/products/new',
     DETAIL: '/products/:id',
     getDetail: (id: string) => `/products/${id}`,
+  },
+
+  // Workflows
+  WORKFLOWS: {
+    INBOX: '/workflows/inbox',
+    INSTANCES: '/workflows/instances',
+    INSTANCE_DETAIL: '/workflows/instances/:id',
+    getInstanceDetail: (id: string) => `/workflows/instances/${id}`,
+    DEFINITIONS: '/workflows/definitions',
+    DEFINITION_DETAIL: '/workflows/definitions/:id',
+    getDefinitionDetail: (id: string) => `/workflows/definitions/${id}`,
   },
 
   // Billing

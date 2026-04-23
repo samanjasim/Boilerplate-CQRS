@@ -1,9 +1,10 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Starter.Abstractions.Paging;
 using Starter.Application.Common.Access;
 using Starter.Application.Common.Access.Contracts;
+using Starter.Application.Common.Extensions;
 using Starter.Application.Common.Interfaces;
-using Starter.Application.Common.Models;
 using Starter.Domain.Common.Access.Enums;
 using Starter.Module.AI.Application.DTOs;
 using Starter.Module.AI.Infrastructure.Persistence;
@@ -49,8 +50,8 @@ internal sealed class GetAssistantsQueryHandler(
 
         query = query.OrderByDescending(a => a.CreatedAt);
 
-        var page = await PaginatedList<Starter.Module.AI.Domain.Entities.AiAssistant>.CreateAsync(
-            query, request.PageNumber, request.PageSize, cancellationToken);
+        var page = await query.ToPaginatedListAsync(
+            request.PageNumber, request.PageSize, cancellationToken);
 
         var dtos = page.Map(a => a.ToDto());
         return Result.Success(dtos);

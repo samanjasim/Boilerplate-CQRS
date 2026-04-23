@@ -56,6 +56,7 @@ export default function ProductCreatePage() {
     defaultValues: { name: '', slug: '', description: '', price: 0, currency: 'USD' },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const nameValue = watch('name');
 
   function generateSlug() {

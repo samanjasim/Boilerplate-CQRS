@@ -1,7 +1,7 @@
 import { Bell, CheckCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
+import { useTimeAgo } from '@/hooks';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -30,7 +30,7 @@ function NotificationItem({
   notification: Notification;
   onRead: (n: Notification) => void;
 }) {
-  const timeAgo = formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true });
+  const timeAgo = useTimeAgo(notification.createdAt);
 
   return (
     <DropdownMenuItem

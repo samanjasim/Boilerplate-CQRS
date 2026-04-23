@@ -49,12 +49,13 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
         // MassTransit transactional outbox tables: InboxState, OutboxMessage,
         // OutboxState. Required for AddEntityFrameworkOutbox<ApplicationDbContext>().
         //
-        // All domain events across the whole app — including those published
-        // from module DbContexts via IPublishEndpoint — flow through THIS
-        // single outbox. Module contexts intentionally do NOT register their
-        // own outbox tables (see BillingDbContext/WebhooksDbContext/
-        // ImportExportDbContext). Consolidating in one context keeps retry +
-        // dedup bookkeeping simple and avoids dead __MT_* tables per module.
+        // The app now has TWO outboxes: this core outbox on ApplicationDbContext
+        // (used by Billing, Webhooks, Import/Export, and all other modules), and
+        // a dedicated outbox on WorkflowDbContext (see WorkflowMassTransitExtensions).
+        // Workflow owns its own SaveChanges scope, so its events must be enqueued
+        // in the same transaction as the workflow state changes — a shared outbox
+        // can't span two DbContexts. Non-workflow modules should continue to
+        // publish through this core outbox rather than registering their own.
         modelBuilder.AddInboxStateEntity();
         modelBuilder.AddOutboxMessageEntity();
         modelBuilder.AddOutboxStateEntity();
