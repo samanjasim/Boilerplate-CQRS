@@ -21,7 +21,6 @@ public sealed class RagEvalHarness(
     IAiService ai,
     IFaithfulnessJudge judge,
     ICurrentUserService currentUser,
-    IOptions<AiRagEvalSettings> settings,
     IOptions<AiRagSettings> ragSettings) : IRagEvalHarness
 {
     public async Task<EvalReport> RunAsync(
@@ -29,8 +28,7 @@ public sealed class RagEvalHarness(
         EvalRunOptions options,
         CancellationToken ct)
     {
-        // Use a synthetic tenantId per run for collection isolation
-        // (IVectorStore derives the Qdrant collection name from tenantId)
+        // Synthetic tenantId per run so each eval run gets its own isolated Qdrant collection
         var syntheticTenantId = Guid.NewGuid();
         var uploaderId = currentUser.UserId ?? Guid.NewGuid();
 
@@ -42,7 +40,7 @@ public sealed class RagEvalHarness(
         catch
         {
             // Clean up even if ingest partially succeeded
-            try { await vectors.DropCollectionAsync(syntheticTenantId, ct); } catch { }
+            try { await vectors.DropCollectionAsync(syntheticTenantId, CancellationToken.None); } catch { }
             throw;
         }
 
@@ -130,7 +128,7 @@ public sealed class RagEvalHarness(
         }
         finally
         {
-            try { await vectors.DropCollectionAsync(syntheticTenantId, ct); } catch { }
+            try { await vectors.DropCollectionAsync(syntheticTenantId, CancellationToken.None); } catch { }
         }
     }
 
@@ -161,6 +159,7 @@ public sealed class RagEvalHarness(
         IReadOnlyList<PerQuestionResult> results,
         int[] kValues)
     {
+        var resultById = results.ToDictionary(r => r.QuestionId);
         var recall = new Dictionary<int, double>();
         var precision = new Dictionary<int, double>();
         var ndcg = new Dictionary<int, double>();
@@ -168,18 +167,19 @@ public sealed class RagEvalHarness(
 
         foreach (var k in kValues)
         {
-            var recallVals = new List<double>(results.Count);
-            var precisionVals = new List<double>(results.Count);
-            var ndcgVals = new List<double>(results.Count);
-            var hitVals = new List<double>(results.Count);
+            var recallVals = new List<double>();
+            var precisionVals = new List<double>();
+            var ndcgVals = new List<double>();
+            var hitVals = new List<double>();
 
-            for (var i = 0; i < results.Count; i++)
+            foreach (var question in questions)
             {
-                var rel = new HashSet<Guid>(questions[i].RelevantDocumentIds);
-                recallVals.Add(RecallAtKCalculator.Compute(results[i].RetrievedDocumentIds, rel, k));
-                precisionVals.Add(PrecisionAtKCalculator.Compute(results[i].RetrievedDocumentIds, rel, k));
-                ndcgVals.Add(NdcgCalculator.Compute(results[i].RetrievedDocumentIds, rel, k));
-                hitVals.Add(HitRateCalculator.Compute(results[i].RetrievedDocumentIds, rel, k));
+                if (!resultById.TryGetValue(question.Id, out var result)) continue;
+                var rel = new HashSet<Guid>(question.RelevantDocumentIds);
+                recallVals.Add(RecallAtKCalculator.Compute(result.RetrievedDocumentIds, rel, k));
+                precisionVals.Add(PrecisionAtKCalculator.Compute(result.RetrievedDocumentIds, rel, k));
+                ndcgVals.Add(NdcgCalculator.Compute(result.RetrievedDocumentIds, rel, k));
+                hitVals.Add(HitRateCalculator.Compute(result.RetrievedDocumentIds, rel, k));
             }
 
             recall[k] = recallVals.Count == 0 ? 0 : recallVals.Average();
@@ -188,7 +188,7 @@ public sealed class RagEvalHarness(
             hit[k] = HitRateCalculator.Mean(hitVals);
         }
 
-        var mrr = MrrCalculator.Mean(results.Select(r => r.ReciprocalRank).ToArray());
+        var mrr = MrrCalculator.Mean(results.Select(r => r.ReciprocalRank).ToList());
         return new MetricBucket(recall, precision, ndcg, hit, mrr);
     }
 
