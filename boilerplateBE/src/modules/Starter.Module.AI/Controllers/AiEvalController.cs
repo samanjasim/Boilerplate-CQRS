@@ -14,10 +14,13 @@ public sealed class AiEvalController(ISender mediator) : Starter.Abstractions.We
 {
     [HttpPost("faithfulness")]
     [Authorize(Policy = AiPermissions.RunEval)]
+    [RequestSizeLimit(5_242_880)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 5_242_880)]
     [ProducesResponseType(typeof(ApiResponse<EvalReport>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status413PayloadTooLarge)]
     public async Task<IActionResult> RunFaithfulness(
         [FromForm] string? datasetName,
         [FromForm] Guid assistantId,
