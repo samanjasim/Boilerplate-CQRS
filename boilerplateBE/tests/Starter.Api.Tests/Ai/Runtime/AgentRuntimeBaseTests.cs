@@ -53,6 +53,13 @@ public sealed class AgentRuntimeBaseTests
         result.Steps.Should().HaveCount(1);
         result.Steps[0].Kind.Should().Be(AgentStepKind.Final);
         sink.RunCompleted.Should().BeTrue();
+        sink.StepStarted.Should().BeEquivalentTo(new[] { 0 });
+        sink.AssistantMessages.Should().HaveCount(1);
+        sink.AssistantMessages[0].ToolCalls.Should().BeEmpty();
+        sink.ToolCalls.Should().BeEmpty();
+        sink.ToolResults.Should().BeEmpty();
+        sink.StepsCompleted.Should().HaveCount(1);
+        sink.FinalResult.Should().NotBeNull();
     }
 
     [Fact]
@@ -77,6 +84,15 @@ public sealed class AgentRuntimeBaseTests
         result.Steps[0].Kind.Should().Be(AgentStepKind.ToolCall);
         result.Steps[0].ToolInvocations.Should().HaveCount(1);
         result.Steps[1].Kind.Should().Be(AgentStepKind.Final);
+        sink.StepStarted.Should().BeEquivalentTo(new[] { 0, 1 });
+        sink.AssistantMessages.Should().HaveCount(2);
+        sink.AssistantMessages[0].ToolCalls.Should().HaveCount(1);
+        sink.AssistantMessages[1].ToolCalls.Should().BeEmpty();
+        sink.ToolCalls.Should().HaveCount(1);
+        sink.ToolResults.Should().HaveCount(1);
+        sink.ToolCalls[0].Call.Name.Should().Be("search");
+        sink.ToolResults[0].CallId.Should().Be(sink.ToolCalls[0].Call.Id);
+        sink.StepsCompleted.Should().HaveCount(2);
     }
 
     [Fact]
@@ -156,10 +172,15 @@ public sealed class AgentRuntimeBaseTests
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        var result = await BuildRuntime(provider)
-            .RunAsync(BuildCtx(), new RecordingSink(), cts.Token);
+        var sink = new RecordingSink();
+        var result = await BuildRuntime(provider).RunAsync(BuildCtx(), sink, cts.Token);
 
         result.Status.Should().Be(AgentRunStatus.Cancelled);
+        // Pre-cancelled token must short-circuit before OnStepStartedAsync fires.
+        sink.StepStarted.Should().BeEmpty();
+        sink.AssistantMessages.Should().BeEmpty();
+        sink.StepsCompleted.Should().BeEmpty();
+        sink.RunCompleted.Should().BeTrue();   // OnRunCompletedAsync still fires once.
     }
 }
 
