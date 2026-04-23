@@ -10,7 +10,7 @@ using Starter.Shared.Results;
 
 namespace Starter.Application.Features.ApiKeys.Commands.CreateApiKey;
 
-public sealed class CreateApiKeyCommandHandler(
+internal sealed class CreateApiKeyCommandHandler(
     IApplicationDbContext dbContext,
     ICurrentUserService currentUserService,
     IPasswordService passwordService,
@@ -22,6 +22,22 @@ public sealed class CreateApiKeyCommandHandler(
         CreateApiKeyCommand request,
         CancellationToken cancellationToken)
     {
+        // Scope ceiling: a key can never grant more than the creating user holds.
+        // SuperAdmin (TenantId=null) holds every permission implicitly, so this only
+        // bites tenant-scoped callers. Comparison is case-insensitive to match the
+        // Permissions claim shape.
+        if (currentUserService.TenantId.HasValue && request.Scopes.Count > 0)
+        {
+            var heldScopes = new HashSet<string>(
+                currentUserService.Permissions,
+                StringComparer.OrdinalIgnoreCase);
+            var missingScopes = request.Scopes
+                .Where(s => !heldScopes.Contains(s))
+                .ToList();
+            if (missingScopes.Count > 0)
+                return Result.Failure<CreateApiKeyResponse>(ApiKeyErrors.ScopeEscalation(missingScopes));
+        }
+
         var apiKeyTenantId = currentUserService.TenantId;
 
         if (apiKeyTenantId.HasValue)

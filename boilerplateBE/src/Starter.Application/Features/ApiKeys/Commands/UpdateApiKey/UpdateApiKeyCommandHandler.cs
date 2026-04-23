@@ -9,7 +9,7 @@ using Starter.Shared.Results;
 
 namespace Starter.Application.Features.ApiKeys.Commands.UpdateApiKey;
 
-public sealed class UpdateApiKeyCommandHandler(
+internal sealed class UpdateApiKeyCommandHandler(
     IApplicationDbContext dbContext,
     ICurrentUserService currentUserService)
     : IRequestHandler<UpdateApiKeyCommand, Result<ApiKeyDto>>
@@ -45,6 +45,20 @@ public sealed class UpdateApiKeyCommandHandler(
                 // Platform admin cannot modify tenant keys
                 return Result.Failure<ApiKeyDto>(ApiKeyErrors.CannotModifyTenantKey);
             }
+        }
+
+        // Scope ceiling: a tenant caller cannot raise a key's permissions above their own.
+        // SuperAdmin is unrestricted by design (they hold every permission implicitly).
+        if (currentUserService.TenantId.HasValue && request.Scopes is { Count: > 0 })
+        {
+            var heldScopes = new HashSet<string>(
+                currentUserService.Permissions,
+                StringComparer.OrdinalIgnoreCase);
+            var missingScopes = request.Scopes
+                .Where(s => !heldScopes.Contains(s))
+                .ToList();
+            if (missingScopes.Count > 0)
+                return Result.Failure<ApiKeyDto>(ApiKeyErrors.ScopeEscalation(missingScopes));
         }
 
         apiKey.UpdateDetails(request.Name, request.Scopes);

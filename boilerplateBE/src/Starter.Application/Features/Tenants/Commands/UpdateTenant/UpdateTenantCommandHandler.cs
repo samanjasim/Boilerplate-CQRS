@@ -17,7 +17,10 @@ internal sealed class UpdateTenantCommandHandler(
         if (tenant is null)
             return Result.Failure(TenantErrors.NotFound(request.Id));
 
+        // Uniqueness must be evaluated across all tenants, not just the caller's filtered view.
+        // Otherwise a tenant Admin could rename themselves to another tenant's identity.
         var nameExists = await context.Tenants
+            .IgnoreQueryFilters()
             .AnyAsync(t => t.Name == request.Name.Trim() && t.Id != request.Id, cancellationToken);
 
         if (nameExists)
@@ -26,6 +29,7 @@ internal sealed class UpdateTenantCommandHandler(
         if (request.Slug is not null)
         {
             var slugExists = await context.Tenants
+                .IgnoreQueryFilters()
                 .AnyAsync(t => t.Slug == request.Slug.Trim() && t.Id != request.Id, cancellationToken);
 
             if (slugExists)

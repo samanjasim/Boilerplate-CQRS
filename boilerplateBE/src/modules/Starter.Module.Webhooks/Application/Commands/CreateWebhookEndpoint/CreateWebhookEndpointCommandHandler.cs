@@ -5,6 +5,7 @@ using Starter.Domain.FeatureFlags.Errors;
 using Starter.Module.Webhooks.Domain.Entities;
 using Starter.Module.Webhooks.Domain.Errors;
 using Starter.Module.Webhooks.Infrastructure.Persistence;
+using Starter.Module.Webhooks.Infrastructure.Services;
 using Starter.Shared.Results;
 
 namespace Starter.Module.Webhooks.Application.Commands.CreateWebhookEndpoint;
@@ -13,7 +14,8 @@ public sealed class CreateWebhookEndpointCommandHandler(
     WebhooksDbContext dbContext,
     ICurrentUserService currentUserService,
     IFeatureFlagService flags,
-    IUsageTracker usageTracker)
+    IUsageTracker usageTracker,
+    IWebhookSecretProtector secretProtector)
     : IRequestHandler<CreateWebhookEndpointCommand, Result<CreateWebhookEndpointResponse>>
 {
     public async Task<Result<CreateWebhookEndpointResponse>> Handle(
@@ -35,9 +37,13 @@ public sealed class CreateWebhookEndpointCommandHandler(
 
         var eventsJson = JsonSerializer.Serialize(request.Events);
 
+        var plaintextSecret = WebhookEndpoint.GenerateSecret();
+        var protectedSecret = secretProtector.Protect(plaintextSecret);
+
         var endpoint = WebhookEndpoint.Create(
             request.Url,
             request.Description,
+            protectedSecret,
             eventsJson,
             tenantId.Value);
 
@@ -49,6 +55,7 @@ public sealed class CreateWebhookEndpointCommandHandler(
 
         await usageTracker.IncrementAsync(tenantId.Value, "webhooks", ct: cancellationToken);
 
-        return Result.Success(new CreateWebhookEndpointResponse(endpoint.Id, endpoint.Secret));
+        // Return the plaintext once to the caller; it is never shown again.
+        return Result.Success(new CreateWebhookEndpointResponse(endpoint.Id, plaintextSecret));
     }
 }

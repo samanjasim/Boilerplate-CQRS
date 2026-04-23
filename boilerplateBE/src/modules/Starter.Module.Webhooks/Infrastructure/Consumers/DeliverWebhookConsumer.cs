@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Starter.Module.Webhooks.Domain.Entities;
 using Starter.Module.Webhooks.Application.Messages;
 using Starter.Module.Webhooks.Infrastructure.Persistence;
+using Starter.Module.Webhooks.Infrastructure.Services;
 
 namespace Starter.Module.Webhooks.Infrastructure.Consumers;
 
@@ -23,6 +24,7 @@ public sealed class DeliverWebhookConsumer(
 
         using var scope = scopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<WebhooksDbContext>();
+        var secretProtector = scope.ServiceProvider.GetRequiredService<IWebhookSecretProtector>();
 
         // Load all active endpoints for this tenant
         var allEndpoints = await dbContext.WebhookEndpoints
@@ -45,7 +47,7 @@ public sealed class DeliverWebhookConsumer(
             try
             {
                 var delivery = await DeliverToEndpointAsync(
-                    endpoint, message.EventType, message.Payload, ct);
+                    endpoint, message.EventType, message.Payload, secretProtector, ct);
                 deliveries.Add(delivery);
             }
             catch (Exception ex)
@@ -67,6 +69,7 @@ public sealed class DeliverWebhookConsumer(
         WebhookEndpoint endpoint,
         string eventType,
         string payload,
+        IWebhookSecretProtector secretProtector,
         CancellationToken ct)
     {
         var delivery = WebhookDelivery.Create(endpoint.Id, eventType, payload, endpoint.TenantId);
@@ -74,7 +77,8 @@ public sealed class DeliverWebhookConsumer(
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var signedPayload = $"{timestamp}.{payload}";
 
-        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(endpoint.Secret));
+        var plaintextSecret = secretProtector.Unprotect(endpoint.Secret);
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(plaintextSecret));
         var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(signedPayload));
         var signature = $"t={timestamp},v1={Convert.ToHexStringLower(hash)}";
 

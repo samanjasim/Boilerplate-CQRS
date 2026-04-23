@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
+using Starter.Infrastructure.Identity.Authentication;
 
 namespace Starter.Infrastructure.Identity.Authorization;
 
@@ -21,7 +23,17 @@ public class PermissionAuthorizationPolicyProvider : IAuthorizationPolicyProvide
         // Check if it's a permission policy (policy name contains a dot, like "Users.View")
         if (policyName.Contains('.'))
         {
-            var policy = new AuthorizationPolicyBuilder()
+            // Require an authenticated user and explicitly bind the policy to the JWT
+            // and ApiKey schemes. Without this, an unauthenticated caller's empty
+            // ClaimsPrincipal would be evaluated against the permission requirement
+            // and rejected — but only by happenstance. Binding the scheme list here
+            // makes the intent explicit and prevents regressions if a future endpoint
+            // sets only [Authorize(Policy=...)] without inheriting a controller-level
+            // [Authorize] safety net.
+            var policy = new AuthorizationPolicyBuilder(
+                    JwtBearerDefaults.AuthenticationScheme,
+                    ApiKeyAuthenticationHandler.SchemeName)
+                .RequireAuthenticatedUser()
                 .AddRequirements(new PermissionRequirement(policyName))
                 .Build();
 

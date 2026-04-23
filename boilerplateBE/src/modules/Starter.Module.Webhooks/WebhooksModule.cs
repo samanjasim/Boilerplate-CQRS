@@ -35,6 +35,8 @@ public sealed class WebhooksModule : IModule
         });
 
         services.AddHttpClient(); // Required for DeliverWebhookConsumer
+        services.AddDataProtection(); // Protects HMAC secrets at rest (no-op if already added)
+        services.AddSingleton<IWebhookSecretProtector, WebhookSecretProtector>();
         services.AddScoped<IWebhookPublisher, WebhookPublisher>();
         services.AddScoped<IUsageMetricCalculator, WebhookUsageMetricCalculator>();
         services.AddHostedService<WebhookDeliveryCleanupJob>();
