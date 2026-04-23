@@ -101,6 +101,33 @@ public sealed class ChatExecutionRagInjectionTests
         citationIdx.Should().BeGreaterThanOrEqualTo(0, "citations event should be emitted");
         doneIdx.Should().BeGreaterThan(citationIdx, "citations must come before done");
     }
+
+    [Fact]
+    public async Task Cancelled_Token_Does_Not_Persist_Final_Row_Or_Publish_Completion_Webhook()
+    {
+        var recording = new RecordingWebhookPublisher();
+        var fx = new ChatExecutionTestFixture(webhookPublisher: recording);
+        var assistant = fx.SeedAssistantWithRagScope(AiRagScope.None);
+        fx.FakeProvider.ScriptedResponse = "some reply"; // provider won't be reached with pre-cancelled ct
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        Func<Task> act = () => fx.RunOneTurnAsync(assistant, userMessage: "hi", ct: cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+
+        // No messages of any kind should be in the DB — FailTurnAsync detaches both the
+        // pending user message and the new conversation (which was never saved) before throwing.
+        var allMessages = await fx.GetAllMessagesAsync();
+        allMessages.Where(m => m.Role == MessageRole.Assistant).Should().BeEmpty(
+            "a cancelled turn must not persist an assistant reply row");
+
+        // No ai.chat.completed webhook should have been published for the cancelled turn.
+        recording.Events.Should().NotContain(
+            e => e.EventType == "ai.chat.completed",
+            "completing a cancelled turn would misrepresent usage");
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -222,8 +249,11 @@ internal sealed class ChatExecutionTestFixture
     }
 
     public Task<Starter.Shared.Results.Result<AiChatReplyDto>> RunOneTurnAsync(
-        AiAssistant assistant, string userMessage) =>
-        _chat.ExecuteAsync(conversationId: null, assistantId: assistant.Id, userMessage, CancellationToken.None);
+        AiAssistant assistant, string userMessage, CancellationToken ct = default) =>
+        _chat.ExecuteAsync(conversationId: null, assistantId: assistant.Id, userMessage, ct);
+
+    public Task<List<AiMessage>> GetAllMessagesAsync() =>
+        Db.AiMessages.IgnoreQueryFilters().AsNoTracking().ToListAsync();
 
     public async Task<List<ChatStreamEvent>> RunOneStreamingTurnAsync(
         AiAssistant assistant, string userMessage)

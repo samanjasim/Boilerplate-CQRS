@@ -97,12 +97,20 @@ internal sealed class ChatExecutionService(
             return Result.Failure<AiChatReplyDto>(AiErrors.ProviderError(runResult.TerminationReason ?? "provider error"));
         }
 
+        if (runResult.Status == AgentRunStatus.Cancelled)
+        {
+            await FailTurnAsync(state);
+            ct.ThrowIfCancellationRequested();
+            // If ct wasn't cancelled but the runtime returned Cancelled (shouldn't happen),
+            // surface as provider error for consistent API shape.
+            return Result.Failure<AiChatReplyDto>(AiErrors.ProviderError("cancelled"));
+        }
+
         var finalContent = runResult.Status switch
         {
             AgentRunStatus.Completed => runResult.FinalContent ?? "",
             AgentRunStatus.MaxStepsExceeded => "I couldn't fully complete the task within my step budget. Please narrow the request.",
             AgentRunStatus.LoopBreak => "I couldn't fully complete the task within my step budget. Please narrow the request.",
-            AgentRunStatus.Cancelled => "",
             _ => ""
         };
 
