@@ -32,6 +32,12 @@ public sealed class EvalFixtureIngester(
     {
         var idMap = new Dictionary<Guid, Guid>(dataset.Documents.Count);
 
+        // EmbeddingService.VectorSize is populated lazily after the first embed call.
+        // Probe with a single token so EnsureCollectionAsync has a dimension to work with
+        // without forcing every caller to pre-warm separately.
+        var attribution = new EmbedAttribution(TenantId: tenantId, UserId: uploaderUserId);
+        _ = await embeddings.EmbedAsync(new[] { "." }, ct, attribution);
+
         await vectors.EnsureCollectionAsync(tenantId, embeddings.VectorSize, ct);
 
         foreach (var doc in dataset.Documents)
@@ -95,7 +101,6 @@ public sealed class EvalFixtureIngester(
             float[][] childVectors;
             if (childTexts.Count > 0)
             {
-                var attribution = new EmbedAttribution(TenantId: tenantId, UserId: uploaderUserId);
                 childVectors = await embeddings.EmbedAsync(childTexts, ct, attribution);
             }
             else
