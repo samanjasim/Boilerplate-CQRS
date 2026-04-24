@@ -24,5 +24,7 @@ internal static class AiAssistantMappers
             a.RagScope,
             a.Visibility,
             a.AccessMode,
-            a.CreatedByUserId);
+            a.CreatedByUserId,
+            a.Slug,
+            a.PersonaTargetSlugs);
 }

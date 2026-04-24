@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.DTOs;
+using Starter.Module.AI.Application.Services.Personas;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Module.AI.Domain.Errors;
 using Starter.Module.AI.Infrastructure.Persistence;
@@ -11,17 +12,14 @@ namespace Starter.Module.AI.Application.Commands.CreateAssistant;
 
 internal sealed class CreateAssistantCommandHandler(
     AiDbContext context,
-    ICurrentUserService currentUser)
+    ICurrentUserService currentUser,
+    ISlugGenerator slugGenerator)
     : IRequestHandler<CreateAssistantCommand, Result<AiAssistantDto>>
 {
     public async Task<Result<AiAssistantDto>> Handle(
         CreateAssistantCommand request,
         CancellationToken cancellationToken)
     {
-        // Name uniqueness is scoped per tenant. Platform admins (TenantId=null) share the
-        // "global" namespace; tenant users collide only within their own tenant.
-        // IgnoreQueryFilters makes the scope explicit — otherwise a SuperAdmin create would
-        // match across every tenant because the global filter passes for TenantId=null.
         var tenantId = currentUser.TenantId;
         var normalized = request.Name.Trim();
 
@@ -30,6 +28,25 @@ internal sealed class CreateAssistantCommandHandler(
             .AnyAsync(a => a.TenantId == tenantId && a.Name == normalized, cancellationToken);
         if (nameTaken)
             return Result.Failure<AiAssistantDto>(AiErrors.AssistantNameAlreadyExists);
+
+        var existingSlugs = await context.AiAssistants
+            .IgnoreQueryFilters()
+            .Where(a => a.TenantId == tenantId && a.Slug != "")
+            .Select(a => a.Slug)
+            .ToListAsync(cancellationToken);
+        var taken = new HashSet<string>(existingSlugs, StringComparer.Ordinal);
+
+        string slug;
+        if (!string.IsNullOrWhiteSpace(request.Slug))
+        {
+            slug = request.Slug.Trim().ToLowerInvariant();
+            if (taken.Contains(slug))
+                return Result.Failure<AiAssistantDto>(AiErrors.AssistantSlugAlreadyExists(slug));
+        }
+        else
+        {
+            slug = slugGenerator.EnsureUnique(slugGenerator.Slugify(normalized), taken);
+        }
 
         var assistant = AiAssistant.Create(
             tenantId: tenantId,
@@ -43,7 +60,8 @@ internal sealed class CreateAssistantCommandHandler(
             maxTokens: request.MaxTokens,
             executionMode: request.ExecutionMode,
             maxAgentSteps: request.MaxAgentSteps,
-            isActive: true);
+            isActive: true,
+            slug: slug);
 
         if (request.EnabledToolNames is { Count: > 0 })
             assistant.SetEnabledTools(request.EnabledToolNames);
@@ -53,6 +71,9 @@ internal sealed class CreateAssistantCommandHandler(
 
         if (request.RagScope != Domain.Enums.AiRagScope.None)
             assistant.SetRagScope(request.RagScope);
+
+        if (request.PersonaTargetSlugs is not null)
+            assistant.SetPersonaTargets(request.PersonaTargetSlugs);
 
         context.AiAssistants.Add(assistant);
         await context.SaveChangesAsync(cancellationToken);

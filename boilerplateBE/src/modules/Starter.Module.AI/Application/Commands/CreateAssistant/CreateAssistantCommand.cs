@@ -17,5 +17,7 @@ public sealed record CreateAssistantCommand(
     int MaxAgentSteps,
     IReadOnlyList<string>? EnabledToolNames,
     IReadOnlyList<Guid>? KnowledgeBaseDocIds,
-    AiRagScope RagScope = AiRagScope.None)
+    AiRagScope RagScope = AiRagScope.None,
+    string? Slug = null,
+    IReadOnlyList<string>? PersonaTargetSlugs = null)
     : IRequest<Result<AiAssistantDto>>, IAssistantInput;

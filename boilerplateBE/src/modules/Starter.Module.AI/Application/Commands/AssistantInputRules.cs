@@ -19,6 +19,8 @@ internal interface IAssistantInput
     IReadOnlyList<string>? EnabledToolNames { get; }
     IReadOnlyList<Guid>? KnowledgeBaseDocIds { get; }
     AiRagScope RagScope { get; }
+    string? Slug { get; }
+    IReadOnlyList<string>? PersonaTargetSlugs { get; }
 }
 
 internal static class AssistantInputRules
@@ -40,5 +42,11 @@ internal static class AssistantInputRules
                 || (x.KnowledgeBaseDocIds is not null && x.KnowledgeBaseDocIds.Count > 0))
             .WithMessage(AiErrors.RagScopeRequiresDocuments.Description)
             .WithErrorCode(AiErrors.RagScopeRequiresDocuments.Code);
+        v.RuleFor(x => x.Slug!)
+            .Matches("^[a-z0-9]+(-[a-z0-9]+)*$").MaximumLength(64)
+            .When(x => !string.IsNullOrEmpty(x.Slug));
+        v.RuleForEach(x => x.PersonaTargetSlugs!)
+            .NotEmpty().Matches("^[a-z0-9]+(-[a-z0-9]+)*$").MaximumLength(64)
+            .When(x => x.PersonaTargetSlugs is not null);
     }
 }

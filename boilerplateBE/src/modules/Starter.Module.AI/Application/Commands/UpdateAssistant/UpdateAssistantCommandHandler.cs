@@ -52,6 +52,26 @@ internal sealed class UpdateAssistantCommandHandler(AiDbContext context)
         assistant.SetRagScope(request.RagScope);
         assistant.SetActive(request.IsActive);
 
+        if (request.Slug is not null)
+        {
+            var newSlug = request.Slug.Trim().ToLowerInvariant();
+            if (newSlug != assistant.Slug)
+            {
+                var taken = await context.AiAssistants
+                    .IgnoreQueryFilters()
+                    .AnyAsync(a => a.TenantId == assistant.TenantId &&
+                                   a.Slug == newSlug &&
+                                   a.Id != assistant.Id,
+                        cancellationToken);
+                if (taken)
+                    return Result.Failure<AiAssistantDto>(AiErrors.AssistantSlugAlreadyExists(newSlug));
+                assistant.SetSlug(newSlug);
+            }
+        }
+
+        if (request.PersonaTargetSlugs is not null)
+            assistant.SetPersonaTargets(request.PersonaTargetSlugs);
+
         await context.SaveChangesAsync(cancellationToken);
         return Result.Success(assistant.ToDto());
     }
