@@ -81,6 +81,18 @@ internal sealed class AiAssistantConfiguration : IEntityTypeConfiguration<AiAssi
             .HasConversion(guidListConverter, guidListComparer)
             .IsRequired();
 
+        builder.Property(e => e.Slug)
+            .HasColumnName("slug")
+            .HasMaxLength(64)
+            .IsRequired()
+            .HasDefaultValue("");
+
+        builder.Property(e => e.PersonaTargetSlugs)
+            .HasColumnName("persona_target_slugs")
+            .HasColumnType("jsonb")
+            .HasConversion(stringListConverter, stringListComparer)
+            .IsRequired();
+
         builder.Property(e => e.ExecutionMode)
             .HasColumnName("execution_mode")
             .HasConversion<string>()
@@ -134,5 +146,10 @@ internal sealed class AiAssistantConfiguration : IEntityTypeConfiguration<AiAssi
 
         builder.HasIndex(e => new { e.TenantId, e.CreatedByUserId });
         builder.HasIndex(e => new { e.TenantId, e.Visibility });
+
+        builder.HasIndex(e => new { e.TenantId, e.Slug })
+            .IsUnique()
+            .HasFilter("slug <> ''")
+            .HasDatabaseName("ux_ai_assistants_tenant_slug");
     }
 }

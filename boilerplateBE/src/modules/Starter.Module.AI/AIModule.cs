@@ -25,8 +25,10 @@ using Starter.Module.AI.Infrastructure.Eval.Fixtures;
 using Starter.Module.AI.Infrastructure.Retrieval;
 using Starter.Module.AI.Infrastructure.Retrieval.Classification;
 using Starter.Module.AI.Infrastructure.Retrieval.Resilience;
+using Starter.Module.AI.Application.Services.Personas;
 using Starter.Module.AI.Application.Services.Runtime;
 using Starter.Module.AI.Infrastructure.Runtime;
+using Starter.Module.AI.Infrastructure.Services.Personas;
 using Starter.Module.AI.Infrastructure.Settings;
 
 namespace Starter.Module.AI;
@@ -81,6 +83,12 @@ public sealed class AIModule : IModule
         services.AddScoped<AnthropicAgentRuntime>();
         services.AddScoped<OllamaAgentRuntime>();
         services.AddScoped<IAiAgentRuntimeFactory, AiAgentRuntimeFactory>();
+
+        // Personas (Plan 5b)
+        services.AddScoped<ISlugGenerator, SlugGenerator>();
+        services.AddScoped<IPersonaResolver, PersonaResolver>();
+        services.AddScoped<ISafetyPresetClauseProvider, ResxSafetyPresetClauseProvider>();
+        services.AddScoped<IPersonaContextAccessor, PersonaContextAccessor>();
 
         services.AddSingleton<TokenCounter>();
 
@@ -154,6 +162,9 @@ public sealed class AIModule : IModule
         yield return (AiPermissions.ManageSettings, "Manage AI module settings", "AI");
         yield return (AiPermissions.SearchKnowledgeBase, "Search knowledge base content directly", "AI");
         yield return (AiPermissions.RunEval, "Run RAG evaluation harness", "AI");
+        yield return (AiPermissions.ViewPersonas, "View AI personas", "AI");
+        yield return (AiPermissions.ManagePersonas, "Create and manage AI personas", "AI");
+        yield return (AiPermissions.AssignPersona, "Assign AI personas to users", "AI");
     }
 
     public IEnumerable<(string Role, string[] Permissions)> GetDefaultRolePermissions()
@@ -170,7 +181,10 @@ public sealed class AIModule : IModule
             AiPermissions.RunAgentTasks,
             AiPermissions.ManageSettings,
             AiPermissions.SearchKnowledgeBase,
-            AiPermissions.RunEval
+            AiPermissions.RunEval,
+            AiPermissions.ViewPersonas,
+            AiPermissions.ManagePersonas,
+            AiPermissions.AssignPersona
         ]);
 
         yield return ("Admin", [
@@ -183,13 +197,17 @@ public sealed class AIModule : IModule
             AiPermissions.ManageTriggers,
             AiPermissions.ViewUsage,
             AiPermissions.RunAgentTasks,
-            AiPermissions.SearchKnowledgeBase
+            AiPermissions.SearchKnowledgeBase,
+            AiPermissions.ViewPersonas,
+            AiPermissions.ManagePersonas,
+            AiPermissions.AssignPersona
         ]);
 
         yield return ("User", [
             AiPermissions.Chat,
             AiPermissions.ViewConversations,
-            AiPermissions.DeleteConversation
+            AiPermissions.DeleteConversation,
+            AiPermissions.ViewPersonas
         ]);
     }
 

@@ -13,6 +13,7 @@ public interface IChatExecutionService
         Guid? conversationId,
         Guid? assistantId,
         string userMessage,
+        Guid? personaId = null,
         CancellationToken ct = default);
 
     /// <summary>
@@ -23,5 +24,6 @@ public interface IChatExecutionService
         Guid? conversationId,
         Guid? assistantId,
         string userMessage,
+        Guid? personaId = null,
         CancellationToken ct = default);
 }

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Microsoft.EntityFrameworkCore;
@@ -9,6 +10,7 @@ using Starter.Application.Common.Access.Contracts;
 using Starter.Application.Common.Interfaces;
 using Starter.Domain.Common.Access.Enums;
 using Starter.Module.AI.Application.DTOs;
+using Starter.Module.AI.Application.Services.Personas;
 using Starter.Module.AI.Application.Services.Retrieval;
 using Starter.Module.AI.Application.Services.Runtime;
 using Starter.Module.AI.Domain.Entities;
@@ -34,6 +36,9 @@ internal sealed class ChatExecutionService(
     IAiAgentRuntimeFactory agentRuntimeFactory,
     IConfiguration configuration,
     IResourceAccessService access,
+    IPersonaResolver personaResolver,
+    ISafetyPresetClauseProvider safetyClauses,
+    IPersonaContextAccessor personaContextAccessor,
     ILogger<ChatExecutionService> logger) : IChatExecutionService
 {
     private const string AiTokensMetric = "ai_tokens";
@@ -49,16 +54,17 @@ internal sealed class ChatExecutionService(
         Guid? conversationId,
         Guid? assistantId,
         string userMessage,
+        Guid? personaId = null,
         CancellationToken ct = default)
     {
-        var stateResult = await PrepareTurnAsync(conversationId, assistantId, userMessage, ct);
+        var stateResult = await PrepareTurnAsync(conversationId, assistantId, userMessage, personaId, ct);
         if (stateResult.IsFailure)
             return Result.Failure<AiChatReplyDto>(stateResult.Error);
 
         var state = stateResult.Value;
         var retrieved = await RetrieveContextSafelyAsync(
             state.Assistant, userMessage, state.ProviderMessages, ct);
-        var effectiveSystemPrompt = ResolveSystemPrompt(state.Assistant, retrieved);
+        var effectiveSystemPrompt = ResolveSystemPrompt(state.Assistant, retrieved, state.Persona);
 
         var provider = ResolveProvider(state.Assistant);
         var stepBudget = Math.Clamp(state.Assistant.MaxAgentSteps, 1, 20);
@@ -73,7 +79,8 @@ internal sealed class ChatExecutionService(
             Tools: state.Tools,
             MaxSteps: stepBudget,
             LoopBreak: LoopBreakPolicy.Default,
-            Streaming: false);
+            Streaming: false,
+            Persona: state.Persona);
 
         var sink = new ChatAgentRunSink(context, state.Conversation.Id, state.NextOrder, streamWriter: null);
 
@@ -122,7 +129,8 @@ internal sealed class ChatExecutionService(
         return Result.Success(new AiChatReplyDto(
             state.Conversation.Id,
             state.UserMessage.ToDto(),
-            finalMessage.ToDto()));
+            finalMessage.ToDto(),
+            PersonaSlug: state.Persona?.Slug));
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -133,9 +141,10 @@ internal sealed class ChatExecutionService(
         Guid? conversationId,
         Guid? assistantId,
         string userMessage,
+        Guid? personaId = null,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
-        var stateResult = await PrepareTurnAsync(conversationId, assistantId, userMessage, ct);
+        var stateResult = await PrepareTurnAsync(conversationId, assistantId, userMessage, personaId, ct);
         if (stateResult.IsFailure)
         {
             yield return new ChatStreamEvent("error", new
@@ -151,12 +160,13 @@ internal sealed class ChatExecutionService(
         yield return new ChatStreamEvent("start", new
         {
             ConversationId = state.Conversation.Id,
-            UserMessageId = state.UserMessage.Id
+            UserMessageId = state.UserMessage.Id,
+            PersonaSlug = state.Persona?.Slug
         });
 
         var retrieved = await RetrieveContextSafelyAsync(
             state.Assistant, userMessage, state.ProviderMessages, ct);
-        var effectiveSystemPrompt = ResolveSystemPrompt(state.Assistant, retrieved);
+        var effectiveSystemPrompt = ResolveSystemPrompt(state.Assistant, retrieved, state.Persona);
 
         var provider = ResolveProvider(state.Assistant);
         var stepBudget = Math.Clamp(state.Assistant.MaxAgentSteps, 1, 20);
@@ -171,7 +181,8 @@ internal sealed class ChatExecutionService(
             Tools: state.Tools,
             MaxSteps: stepBudget,
             LoopBreak: LoopBreakPolicy.Default,
-            Streaming: true);
+            Streaming: true,
+            Persona: state.Persona);
 
         var channel = Channel.CreateUnbounded<ChatStreamEvent>(new UnboundedChannelOptions
         {
@@ -294,11 +305,24 @@ internal sealed class ChatExecutionService(
         Guid? conversationId,
         Guid? assistantId,
         string userMessage,
+        Guid? personaId,
         CancellationToken ct)
     {
         // Auth guard — must be signed in to chat
         if (currentUser.UserId is not Guid userId)
             return Result.Failure<ChatTurnState>(AiErrors.NotAuthenticated);
+
+        // Persona resolution (Plan 5b). Guarded by feature flag Ai:Personas:Enabled (default true).
+        PersonaContext? persona = null;
+        var personasEnabled = configuration.GetValue<bool?>("AI:Personas:Enabled") ?? true;
+        if (personasEnabled)
+        {
+            var personaResult = await personaResolver.ResolveAsync(personaId, ct);
+            if (personaResult.IsFailure)
+                return Result.Failure<ChatTurnState>(personaResult.Error);
+            persona = personaResult.Value;
+            personaContextAccessor.Set(persona);
+        }
 
         AiConversation? conversation;
         AiAssistant? assistant;
@@ -344,6 +368,12 @@ internal sealed class ChatExecutionService(
             currentUser, ResourceTypes.AiAssistant, assistant.Id, AccessLevel.Viewer, ct);
         if (!canAccess)
             return Result.Failure<ChatTurnState>(AiErrors.AssistantNotFound);
+
+        // Persona visibility filter (Plan 5b). Applied after ACL so we don't leak assistant
+        // existence to callers who lack any access at all.
+        if (persona is not null &&
+            !assistant.IsVisibleToPersona(persona.Slug, persona.PermittedAgentSlugs))
+            return Result.Failure<ChatTurnState>(AiErrors.AssistantNotPermittedForPersona);
 
         // Pre-flight quota gate: increments by 1 to block tenants already at their limit.
         // Concurrent requests can pass simultaneously before any real usage lands;
@@ -423,7 +453,8 @@ internal sealed class ChatExecutionService(
             userMsg,
             providerMessages,
             nextOrder + 1,  // NextOrder = order for the upcoming assistant reply
-            toolResolution
+            toolResolution,
+            persona
         ));
     }
 
@@ -458,6 +489,19 @@ internal sealed class ChatExecutionService(
         context.AiMessages.Add(assistantMessage);
 
         state.Conversation.AddMessageStats(inputTokens, outputTokens);
+
+        // Persona observability (Plan 5b).
+        if (state.Persona is { } p)
+        {
+            AiAgentMetrics.RunsByPersona.Add(1,
+                new KeyValuePair<string, object?>("persona_slug", p.Slug),
+                new KeyValuePair<string, object?>("audience", p.Audience.ToString()),
+                new KeyValuePair<string, object?>("safety", p.Safety.ToString()));
+
+            System.Diagnostics.Activity.Current?.SetTag("ai.persona.slug", p.Slug);
+            System.Diagnostics.Activity.Current?.SetTag("ai.persona.audience", p.Audience.ToString());
+            System.Diagnostics.Activity.Current?.SetTag("ai.persona.safety", p.Safety.ToString());
+        }
 
         // Auto-title on first assistant reply — truncate user message to MaxTitleLength chars
         if (state.Conversation.Title is null
@@ -693,10 +737,19 @@ internal sealed class ChatExecutionService(
         }
     }
 
-    private static string ResolveSystemPrompt(AiAssistant assistant, RetrievedContext retrieved) =>
-        retrieved.IsEmpty
+    private string ResolveSystemPrompt(AiAssistant assistant, RetrievedContext retrieved, PersonaContext? persona)
+    {
+        var basePrompt = retrieved.IsEmpty
             ? assistant.SystemPrompt
             : ContextPromptBuilder.Build(assistant.SystemPrompt, retrieved);
+
+        if (persona is null) return basePrompt;
+
+        var clause = safetyClauses.GetClause(persona.Safety, persona.Audience, CultureInfo.CurrentUICulture);
+        if (string.IsNullOrEmpty(clause)) return basePrompt;
+
+        return clause + "\n\n" + basePrompt;
+    }
 
     /// <summary>
     /// Converts the provider message list into a history slice for the RAG retrieval service.
@@ -738,5 +791,6 @@ internal sealed class ChatExecutionService(
         AiMessage UserMessage,
         List<AiChatMessage> ProviderMessages,
         int NextOrder,
-        ToolResolutionResult Tools);
+        ToolResolutionResult Tools,
+        PersonaContext? Persona);
 }

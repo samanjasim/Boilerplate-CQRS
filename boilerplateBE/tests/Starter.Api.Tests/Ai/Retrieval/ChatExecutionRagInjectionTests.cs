@@ -210,7 +210,12 @@ internal sealed class ChatExecutionTestFixture
         if (chatLogger is not null)
             services.AddSingleton(chatLogger);
         services.AddLogging(b => b.AddProvider(NullLoggerProvider.Instance));
-        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["AI:Personas:Enabled"] = "false"
+            })
+            .Build());
 
         services.AddSingleton<ICurrentUserService>(new StubCurrentUser(TenantId, UserId));
         services.AddSingleton<IQuotaChecker, StubQuotaChecker>();
@@ -229,6 +234,14 @@ internal sealed class ChatExecutionTestFixture
         services.AddScoped<OpenAiAgentRuntime>();
         services.AddScoped<OllamaAgentRuntime>();
         services.AddScoped<IAiAgentRuntimeFactory, AiAgentRuntimeFactory>();
+
+        // Persona services (Plan 5b) — feature flag disabled above, so resolver is never called.
+        services.AddScoped<Starter.Module.AI.Application.Services.Personas.IPersonaResolver,
+            Starter.Module.AI.Infrastructure.Services.Personas.PersonaResolver>();
+        services.AddScoped<Starter.Module.AI.Application.Services.Personas.ISafetyPresetClauseProvider,
+            Starter.Module.AI.Infrastructure.Services.Personas.ResxSafetyPresetClauseProvider>();
+        services.AddScoped<Starter.Module.AI.Application.Services.Personas.IPersonaContextAccessor,
+            Starter.Module.AI.Infrastructure.Services.Personas.PersonaContextAccessor>();
 
         services.AddScoped<IChatExecutionService, ChatExecutionService>();
 
@@ -322,7 +335,7 @@ internal sealed class ChatExecutionTestFixture
 
     public Task<Starter.Shared.Results.Result<AiChatReplyDto>> RunOneTurnAsync(
         AiAssistant assistant, string userMessage, CancellationToken ct = default) =>
-        _chat.ExecuteAsync(conversationId: null, assistantId: assistant.Id, userMessage, ct);
+        _chat.ExecuteAsync(conversationId: null, assistantId: assistant.Id, userMessage, personaId: null, ct);
 
     public Task<List<AiMessage>> GetAllMessagesAsync() =>
         Db.AiMessages.IgnoreQueryFilters().AsNoTracking().ToListAsync();
@@ -332,7 +345,7 @@ internal sealed class ChatExecutionTestFixture
     {
         var events = new List<ChatStreamEvent>();
         await foreach (var ev in _chat.ExecuteStreamAsync(
-            conversationId: null, assistantId: assistant.Id, userMessage, CancellationToken.None))
+            conversationId: null, assistantId: assistant.Id, userMessage, personaId: null, CancellationToken.None))
         {
             events.Add(ev);
         }

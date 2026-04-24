@@ -47,4 +47,13 @@ public static class AiErrors
             "RagScope SelectedDocuments requires at least one knowledge base document id.");
     public static readonly Error SearchRequiresTenant =
         Error.Validation("Ai.SearchRequiresTenant", "Knowledge base search requires a tenant context.");
+
+    public static Error AssistantNotPermittedForPersona =>
+        new("AiAssistant.NotPermittedForPersona",
+            "This assistant is not available for your current persona.",
+            ErrorType.Forbidden);
+
+    public static Error AssistantSlugAlreadyExists(string slug) =>
+        Error.Conflict("AiAssistant.SlugAlreadyExists",
+            $"An assistant with slug '{slug}' already exists.");
 }

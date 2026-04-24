@@ -7,4 +7,5 @@ namespace Starter.Module.AI.Application.Commands.SendChatMessage;
 public sealed record SendChatMessageCommand(
     Guid? ConversationId,
     Guid? AssistantId,
-    string Message) : IRequest<Result<AiChatReplyDto>>;
+    string Message,
+    Guid? PersonaId = null) : IRequest<Result<AiChatReplyDto>>;

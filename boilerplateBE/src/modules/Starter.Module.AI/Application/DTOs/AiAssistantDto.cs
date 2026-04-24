@@ -22,4 +22,6 @@ public sealed record AiAssistantDto(
     AiRagScope RagScope,
     ResourceVisibility Visibility,
     AssistantAccessMode AccessMode,
-    Guid CreatedByUserId);
+    Guid CreatedByUserId,
+    string Slug,
+    IReadOnlyList<string> PersonaTargetSlugs);

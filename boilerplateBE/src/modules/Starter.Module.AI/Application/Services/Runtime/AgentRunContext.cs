@@ -11,7 +11,8 @@ internal sealed record AgentRunContext(
     ToolResolutionResult Tools,
     int MaxSteps,
     LoopBreakPolicy LoopBreak,
-    bool Streaming = false);
+    bool Streaming = false,
+    PersonaContext? Persona = null);
 
 internal sealed record AgentModelConfig(
     AiProviderType Provider,

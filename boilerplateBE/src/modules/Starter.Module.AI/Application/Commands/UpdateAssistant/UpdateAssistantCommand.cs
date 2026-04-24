@@ -19,5 +19,7 @@ public sealed record UpdateAssistantCommand(
     IReadOnlyList<string>? EnabledToolNames,
     IReadOnlyList<Guid>? KnowledgeBaseDocIds,
     bool IsActive,
-    AiRagScope RagScope = AiRagScope.None)
+    AiRagScope RagScope = AiRagScope.None,
+    string? Slug = null,
+    IReadOnlyList<string>? PersonaTargetSlugs = null)
     : IRequest<Result<AiAssistantDto>>, IAssistantInput;

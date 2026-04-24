@@ -14,4 +14,7 @@ public static class AiPermissions
     public const string ManageSettings = "Ai.ManageSettings";
     public const string SearchKnowledgeBase = "Ai.SearchKnowledgeBase";
     public const string RunEval = "Ai.RunEval";
+    public const string ViewPersonas = "Ai.ViewPersonas";
+    public const string ManagePersonas = "Ai.ManagePersonas";
+    public const string AssignPersona = "Ai.AssignPersona";
 }
