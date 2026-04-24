@@ -8,8 +8,8 @@ import { Spinner } from '@/components/ui/spinner';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { PageHeader, EmptyState } from '@/components/common';
-import { useSubscription, useUsage, usePayments } from '../api';
+import { PageHeader, EmptyState, ConfirmDialog } from '@/components/common';
+import { useSubscription, useUsage, usePayments, useCancelSubscription } from '../api';
 import { UsageBar } from '../components/UsageBar';
 import { PlanSelectorModal } from '../components/PlanSelectorModal';
 import { usePermissions } from '@/hooks';
@@ -22,10 +22,12 @@ export default function BillingPage() {
   const { t } = useTranslation();
   const { hasPermission } = usePermissions();
   const [planModalOpen, setPlanModalOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   const { data: subscription, isLoading: subLoading } = useSubscription();
   const { data: usage, isLoading: usageLoading } = useUsage();
   const { data: paymentsData, isLoading: paymentsLoading } = usePayments({ pageSize: 20 });
+  const cancelMutation = useCancelSubscription();
 
   const payments = (paymentsData as { data?: unknown[] })?.data ?? (Array.isArray(paymentsData) ? paymentsData : []);
 
@@ -76,9 +78,19 @@ export default function BillingPage() {
                 </div>
 
                 {hasPermission(PERMISSIONS.Billing.Manage) && (
-                  <Button onClick={() => setPlanModalOpen(true)}>
-                    {t('billing.changePlan')}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button onClick={() => setPlanModalOpen(true)}>
+                      {t('billing.changePlan')}
+                    </Button>
+                    {/* Cancel only makes sense on a paid, non-canceled plan.
+                        The backend rejects cancel on the free plan with
+                        CannotCancelFreePlan, so hide the button in that case. */}
+                    {subscription.planSlug !== 'free' && subscription.status !== 'Canceled' && (
+                      <Button variant="outline" onClick={() => setCancelOpen(true)}>
+                        {t('billing.cancelSubscription')}
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
             </CardContent>
@@ -182,6 +194,26 @@ export default function BillingPage() {
         open={planModalOpen}
         onOpenChange={setPlanModalOpen}
         subscription={subscription}
+      />
+
+      {/* Cancel Subscription Confirm */}
+      <ConfirmDialog
+        isOpen={cancelOpen}
+        onClose={() => setCancelOpen(false)}
+        onConfirm={() => {
+          // Close the dialog on settle — success or failure — so the user always
+          // sees the refreshed page state (or the toast error from the axios
+          // interceptor) rather than a frozen modal. Success invalidation runs
+          // in the hook; the page re-renders via useSubscription's refetch.
+          cancelMutation.mutate(undefined, {
+            onSettled: () => setCancelOpen(false),
+          });
+        }}
+        title={t('billing.cancelSubscription')}
+        description={t('billing.cancelConfirm')}
+        confirmLabel={t('billing.cancelSubscription')}
+        variant="danger"
+        isLoading={cancelMutation.isPending}
       />
     </div>
   );

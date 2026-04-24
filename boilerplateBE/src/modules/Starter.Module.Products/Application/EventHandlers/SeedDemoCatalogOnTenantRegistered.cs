@@ -8,7 +8,7 @@ using Starter.Module.Products.Infrastructure.Persistence;
 
 namespace Starter.Module.Products.Application.EventHandlers;
 
-internal sealed class SeedDemoCatalogOnTenantRegistered(
+public sealed class SeedDemoCatalogOnTenantRegistered(
     ProductsDbContext context,
     ILogger<SeedDemoCatalogOnTenantRegistered> logger)
     : IConsumer<TenantRegisteredEvent>

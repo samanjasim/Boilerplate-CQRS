@@ -73,7 +73,7 @@ public sealed class FilesController(ISender mediator, IFileService fileService, 
     /// Upload a temporary file.
     /// </summary>
     [HttpPost("upload-temp")]
-    [Authorize]
+    [Authorize(Policy = Permissions.Files.Upload)]
     [RequestSizeLimit(50 * 1024 * 1024)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

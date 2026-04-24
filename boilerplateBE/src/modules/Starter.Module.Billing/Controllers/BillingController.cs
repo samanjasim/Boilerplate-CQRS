@@ -137,7 +137,7 @@ public sealed class BillingController(ISender mediator) : Starter.Abstractions.W
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> UpdatePlan(Guid id, [FromBody] UpdatePlanCommand command, CancellationToken ct = default)
     {
-        if (id != command.Id) return BadRequest();
+        if (ValidateRouteId(id, command.Id) is { } mismatch) return mismatch;
         var result = await Mediator.Send(command, ct);
         return HandleResult(result);
     }

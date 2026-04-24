@@ -71,7 +71,7 @@ export function LanguageSwitcher({ variant = 'ghost' }: LanguageSwitcherProps) {
               key={lang.code}
               onClick={() => changeLanguage(lang.code)}
               className={cn(
-                'w-full rounded-lg px-3 py-2 text-sm text-left transition-colors duration-150',
+                'w-full rounded-lg px-3 py-2 text-sm text-start transition-colors duration-150',
                 language === lang.code
                   ? 'bg-primary/10 text-primary font-medium'
                   : 'text-foreground hover:bg-secondary'

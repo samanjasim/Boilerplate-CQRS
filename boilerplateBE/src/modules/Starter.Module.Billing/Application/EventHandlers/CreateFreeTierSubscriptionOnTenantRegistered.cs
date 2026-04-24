@@ -28,7 +28,7 @@ namespace Starter.Module.Billing.Application.EventHandlers;
 /// required to share dedup. The manual check is simpler and equally correct
 /// because <c>TenantId</c> is unique per subscription.
 /// </summary>
-internal sealed class CreateFreeTierSubscriptionOnTenantRegistered(
+public sealed class CreateFreeTierSubscriptionOnTenantRegistered(
     BillingDbContext context,
     IUsageTracker usageTracker,
     IWebhookPublisher webhookPublisher,

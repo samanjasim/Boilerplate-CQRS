@@ -110,8 +110,15 @@ export function useCancelSubscription() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => billingApi.cancelSubscription(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.billing.subscription.all });
+    onSuccess: async () => {
+      // Cancel downgrades the tenant to the free plan, which resets usage quotas
+      // and may void pending payments, so invalidate all three related caches.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.billing.subscription.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.billing.usage.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.billing.payments.all }),
+        queryClient.invalidateQueries({ queryKey: ['featureFlags'] }),
+      ]);
       toast.success(i18n.t('billing.subscriptionCanceled'));
     },
   });

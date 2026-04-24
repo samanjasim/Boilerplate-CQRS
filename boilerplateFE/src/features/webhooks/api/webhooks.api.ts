@@ -35,6 +35,11 @@ export const webhooksApi = {
   testEndpoint: (id: string) =>
     apiClient.post(API_ENDPOINTS.WEBHOOKS.TEST(id)).then(r => r.data),
 
+  regenerateSecret: (id: string) =>
+    apiClient
+      .post<{ data: string }>(API_ENDPOINTS.WEBHOOKS.REGENERATE_SECRET(id))
+      .then(r => r.data.data),
+
   getEventTypes: () =>
     apiClient.get<{ data: WebhookEventType[] }>(API_ENDPOINTS.WEBHOOKS.EVENTS).then(r => r.data.data),
 

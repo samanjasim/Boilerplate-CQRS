@@ -85,6 +85,18 @@ export function useTestWebhook() {
   });
 }
 
+export function useRegenerateWebhookSecret() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => webhooksApi.regenerateSecret(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.webhooks.endpoints.all });
+      toast.success(i18n.t('webhooks.secretRegenerated'));
+    },
+    // onError is handled by the global axios error interceptor (error.interceptor.ts)
+  });
+}
+
 // ── Admin Queries ─────────────────────────────────────────────────────────
 
 export function useWebhookAdminEndpoints(params?: Record<string, unknown>) {

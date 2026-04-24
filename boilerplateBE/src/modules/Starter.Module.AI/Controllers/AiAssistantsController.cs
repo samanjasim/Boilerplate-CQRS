@@ -75,7 +75,7 @@ public sealed class AiAssistantsController(ISender mediator)
         [FromBody] UpdateAssistantCommand command,
         CancellationToken ct = default)
     {
-        if (id != command.Id) return BadRequest();
+        if (ValidateRouteId(id, command.Id) is { } mismatch) return mismatch;
         var result = await Mediator.Send(command, ct);
         return HandleResult(result);
     }

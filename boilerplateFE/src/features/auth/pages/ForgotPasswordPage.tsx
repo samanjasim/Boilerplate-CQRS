@@ -56,7 +56,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <div>
-      <div className="mb-8 text-center lg:text-left">
+      <div className="mb-8 text-center lg:text-start">
         <h2 className="text-2xl font-bold text-foreground">
           {step === 1 ? t('auth.forgotPassword') : t('auth.resetPassword')}
         </h2>

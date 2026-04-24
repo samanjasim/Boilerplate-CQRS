@@ -114,7 +114,7 @@ public sealed class WebhooksController(ISender mediator) : Starter.Abstractions.
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateEndpoint(Guid id, [FromBody] UpdateWebhookEndpointCommand command, CancellationToken ct = default)
     {
-        if (id != command.Id) return BadRequest();
+        if (ValidateRouteId(id, command.Id) is { } mismatch) return mismatch;
         var result = await Mediator.Send(command, ct);
         return HandleResult(result);
     }

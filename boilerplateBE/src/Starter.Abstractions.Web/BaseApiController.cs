@@ -65,6 +65,12 @@ public abstract class BaseApiController(ISender mediator) : ControllerBase
         return Ok(PagedApiResponse<T>.Ok(result.Value));
     }
 
+    protected IActionResult? ValidateRouteId(Guid routeId, Guid bodyId)
+    {
+        if (routeId == bodyId) return null;
+        return BadRequest(ApiResponse.Fail("Route id does not match body id."));
+    }
+
     private IActionResult HandleFailure(Result result)
     {
         if (result.ValidationErrors is not null)

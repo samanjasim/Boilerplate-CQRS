@@ -48,7 +48,7 @@ export default function AcceptInvitePage() {
   if (!token) {
     return (
       <div>
-        <div className="mb-8 text-center lg:text-left">
+        <div className="mb-8 text-center lg:text-start">
           <h2 className="text-2xl font-bold text-foreground">{t('invitations.acceptInvite')}</h2>
           <p className="mt-2 text-muted-foreground">{t('invitations.invalidToken')}</p>
         </div>
@@ -66,7 +66,7 @@ export default function AcceptInvitePage() {
 
   return (
     <div>
-      <div className="mb-8 text-center lg:text-left">
+      <div className="mb-8 text-center lg:text-start">
         <h2 className="text-2xl font-bold text-foreground">{t('invitations.acceptInvite')}</h2>
         <p className="mt-2 text-muted-foreground">{t('invitations.acceptInviteDesc')}</p>
       </div>
