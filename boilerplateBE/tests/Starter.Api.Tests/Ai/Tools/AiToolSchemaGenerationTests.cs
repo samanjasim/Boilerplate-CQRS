@@ -40,8 +40,11 @@ public sealed class AiToolSchemaGenerationTests
     }
 
     [Fact]
-    public void Omits_Properties_Marked_With_AiParameterIgnore()
+    public void Omits_Properties_Marked_With_AiParameterIgnore_Even_When_Name_Is_TrustBoundary()
     {
+        // Invariant: ignore-strip runs BEFORE trust-boundary enforcement. A TrustBoundary
+        // name (like TenantId) carrying [AiParameterIgnore] is allowed — it's removed from
+        // the schema before the trust-boundary check sees it.
         var schema = AiToolSchemaGenerator.Generate(
             typeof(FixtureCreateThingCommand),
             GetAttr<FixtureCreateThingCommand>());
@@ -49,6 +52,24 @@ public sealed class AiToolSchemaGenerationTests
         var props = schema.GetProperty("properties");
         props.TryGetProperty("tenantId", out _).Should().BeFalse();
         props.TryGetProperty("name", out _).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Required_Array_Is_Trimmed_When_An_Ignored_Property_Was_Required()
+    {
+        var schema = AiToolSchemaGenerator.Generate(
+            typeof(FixtureRequireIgnoreQuery),
+            GetAttr<FixtureRequireIgnoreQuery>());
+
+        schema.GetProperty("properties").TryGetProperty("secretField", out _).Should().BeFalse();
+
+        if (schema.TryGetProperty("required", out var required))
+        {
+            required.EnumerateArray()
+                .Select(e => e.GetString())
+                .Should().NotContain("secretField")
+                .And.Contain("kept", "the non-ignored required property must stay");
+        }
     }
 
     [Fact]
@@ -79,6 +100,8 @@ public sealed class AiToolSchemaGenerationTests
         var props = schema.GetProperty("properties");
         props.TryGetProperty("custom", out _).Should().BeTrue();
         props.TryGetProperty("ignored", out _).Should().BeFalse("override replaces auto-derivation");
+        props.GetProperty("custom").GetProperty("description").GetString()
+            .Should().Be("Override.", "override JSON is returned verbatim — no enrichment");
     }
 
     [Fact]

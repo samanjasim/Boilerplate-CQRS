@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Schema;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 
 namespace Starter.Abstractions.Capabilities;
 
@@ -22,8 +23,12 @@ public static class AiToolSchemaGenerator
     {
         "tenantId",
         "userId",
+        "createdBy",
         "createdByUserId",
+        "modifiedBy",
         "modifiedByUserId",
+        "actorId",
+        "actorUserId",
         "impersonatedBy",
         "isSystemAdmin",
     };
@@ -32,8 +37,13 @@ public static class AiToolSchemaGenerator
     {
         Converters = { new JsonStringEnumConverter() },
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        TypeInfoResolver = new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver(),
+        TypeInfoResolver = new DefaultJsonTypeInfoResolver(),
     };
+
+    static AiToolSchemaGenerator()
+    {
+        SchemaOptions.MakeReadOnly();
+    }
 
     // Treat the top-level type (and any unannotated reference type) as non-nullable so the
     // emitted schema uses `"type": "object"` rather than `"type": ["object", "null"]`.
@@ -139,11 +149,11 @@ public static class AiToolSchemaGenerator
     {
         if (root["properties"] is not JsonObject propsObj) return;
 
-        foreach (var propName in propsObj.Select(kv => kv.Key).ToList())
+        foreach (var kv in propsObj)
         {
-            if (TrustBoundaryPropertyNames.Contains(propName))
+            if (TrustBoundaryPropertyNames.Contains(kv.Key))
                 throw new InvalidOperationException(
-                    $"[AiTool] on '{type.FullName}': property '{propName}' is a server-trusted field. " +
+                    $"[AiTool] on '{type.FullName}': property '{kv.Key}' is a server-trusted field. " +
                     $"Mark it with [AiParameterIgnore] or remove it from the record.");
         }
     }

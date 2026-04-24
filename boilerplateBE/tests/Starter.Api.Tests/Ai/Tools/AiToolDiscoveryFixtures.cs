@@ -35,6 +35,18 @@ internal sealed record FixtureCreateThingCommand(
     [property: AiParameterIgnore] Guid? TenantId = null)
     : IRequest<Result<Guid>>;
 
+// Fixture with a required property that is [AiParameterIgnore]-marked — exercises the
+// trim-required-array branch in StripIgnoredProperties.
+[AiTool(
+    Name = "fixture_require_ignore",
+    Description = "Fixture where a required property is ignored — verifies required-array trimming.",
+    Category = "Fixtures",
+    RequiredPermission = AiToolDiscoveryFixtures.ReadOnlyPermission)]
+internal sealed record FixtureRequireIgnoreQuery(
+    [property: Description("Kept in the schema.")] string Kept,
+    [property: AiParameterIgnore] string SecretField)
+    : IRequest<Result<string>>;
+
 // Intentionally NOT attributed — used only in direct-call tests that construct an
 // AiToolAttribute inline. Having [AiTool] here would break the assembly-scan test in
 // Task 5 because these types violate the trust-boundary / IBaseRequest rules on purpose.
