@@ -19,8 +19,10 @@ internal sealed class AiToolRegistrySyncHostedService(
         foreach (var def in definitions)
         {
             if (!distinct.TryAdd(def.Name, def))
-                logger.LogWarning(
-                    "Duplicate IAiToolDefinition registered for '{Name}'. Keeping first.", def.Name);
+                throw new InvalidOperationException(
+                    $"AI tool sync has duplicate Name '{def.Name}' — registered by " +
+                    $"both '{distinct[def.Name].CommandType.FullName}' and '{def.CommandType.FullName}'. " +
+                    "Tool names must be unique across the process.");
         }
 
         if (distinct.Count == 0)

@@ -51,6 +51,8 @@ public sealed class ProductsModule : IModule
             builder.DefaultDefinitionName = "general-approval";
         });
 
+        services.AddAiToolsFromAssembly(typeof(ProductsModule).Assembly);
+
         return services;
     }
 

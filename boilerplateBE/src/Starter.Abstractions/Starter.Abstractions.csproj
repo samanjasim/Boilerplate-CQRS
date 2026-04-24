@@ -15,7 +15,11 @@
     define a new type here instead of adding a project reference.
   -->
   <ItemGroup>
+    <PackageReference Include="MediatR" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Starter.Api.Tests" />
   </ItemGroup>
 </Project>

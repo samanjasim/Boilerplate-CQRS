@@ -3,13 +3,16 @@ using System.Text.Json;
 namespace Starter.Abstractions.Capabilities;
 
 /// <summary>
-/// Interface for registering MediatR commands as AI-callable tools.
-/// Modules implement this in their ConfigureServices to expose commands
-/// to the AI execution engine. When AI module is absent, registrations are unused.
+/// Registers a MediatR request type as an AI-callable tool. In most cases prefer the
+/// <see cref="AiToolAttribute"/> + <see cref="AiToolDiscoveryExtensions.AddAiToolsFromAssembly"/>
+/// path — it auto-derives the JSON Schema from the record shape and removes per-tool
+/// boilerplate. Implement this interface directly only when the schema cannot be expressed
+/// by a static record shape (dynamic enums, runtime-computed polymorphism) or when the tool
+/// is not backed by a plain MediatR type.
 ///
 /// <para><b>LLM-safe command contract.</b> A command registered as an AI tool is invoked with
-/// arguments the LLM synthesised from <see cref="ParameterSchema"/>. The registrar is responsible
-/// for making sure the command type is safe to expose in this trust boundary:</para>
+/// arguments the LLM synthesised from <see cref="ParameterSchema"/>. The registrar is
+/// responsible for making sure the command type is safe to expose in this trust boundary:</para>
 /// <list type="bullet">
 ///   <item><description>Every field the LLM can set MUST appear in <see cref="ParameterSchema"/>.
 ///     Properties on the command that are not in the schema will deserialize as default values —

@@ -136,7 +136,7 @@ public sealed class AIModule : IModule
         services.AddScoped<IRagRetrievalService, Infrastructure.Retrieval.RagRetrievalService>();
 
         services.AddSingleton<IAiToolRegistry, AiToolRegistryService>();
-        services.AddSingleton<IAiToolDefinition, Infrastructure.Tools.ListMyConversationsAiTool>();
+        services.AddAiToolsFromAssembly(typeof(AIModule).Assembly);
         services.AddHostedService<AiToolRegistrySyncHostedService>();
 
         services.AddScoped<IResourceOwnershipHandler, AiAssistantOwnershipHandler>();

@@ -12,6 +12,10 @@ internal static class AiJsonDefaults
 {
     public static readonly JsonSerializerOptions Serializer = new(JsonSerializerDefaults.Web)
     {
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        // Mirrors AiToolSchemaGenerator.SchemaOptions so enum-typed parameters sent by the
+        // LLM as strings (e.g. "status": "Active") deserialize correctly into the handler
+        // request. Keep these two option sets in lockstep.
+        Converters = { new JsonStringEnumConverter() },
     };
 }

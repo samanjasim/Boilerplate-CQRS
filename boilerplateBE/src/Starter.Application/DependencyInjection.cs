@@ -1,4 +1,5 @@
 using System.Reflection;
+using Starter.Abstractions.Capabilities;
 using Starter.Application.Common.Behaviors;
 using FluentValidation;
 using MediatR;
@@ -29,6 +30,8 @@ public static class DependencyInjection
 
         foreach (var assembly in assemblies)
             services.AddValidatorsFromAssembly(assembly);
+
+        services.AddAiToolsFromAssembly(typeof(DependencyInjection).Assembly);
 
         return services;
     }
