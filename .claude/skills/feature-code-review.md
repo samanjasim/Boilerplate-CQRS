@@ -50,6 +50,29 @@ After a feature is fully implemented (backend + frontend builds pass), invoke th
 - [ ] Global query filter for tenant isolation in `ApplicationDbContext.OnModelCreating`
 - [ ] DI registration in `Infrastructure/DependencyInjection.cs`
 
+### 4b. Messaging & Integration Events
+**Only applies if the feature publishes or consumes cross-module events. Skip otherwise.**
+
+**Publishers (command handlers):**
+- [ ] Handler injects `IIntegrationEventCollector` — **never** `IPublishEndpoint` or `IBus`
+- [ ] Event is scheduled *before* `SaveChangesAsync()` in the handler
+- [ ] Event type lives in `Starter.Application/Common/Events/` and implements `IDomainEvent`
+- [ ] Event is a `record` with value-type fields (Guids, primitives, enums) — no entities, no navigation properties
+- [ ] `MessagingArchitectureTests` still passes (CI enforces: no MassTransit types in `Starter.Application`)
+- [ ] If adding to an existing event: changes are **additive only** (new property with default). Breaking changes → create `{Name}EventV2`
+
+**Consumers:**
+- [ ] Implements `IConsumer<TEvent>` — auto-discovered via `AddConsumers()`, no manual registration
+- [ ] **Idempotency check at the top** using a domain-uniqueness key (`AnyAsync(e => e.TenantId == evt.TenantId)` or equivalent) → returns silently if already processed
+- [ ] Uses the module's own DbContext, not `ApplicationDbContext`
+- [ ] **Throws on transient failures** (DB unreachable, 5xx dependency) so MT's retry policy fires — does NOT swallow exceptions with try/catch-log
+- [ ] **Returns quietly** on non-retryable business conditions (unknown tenant, feature off, idempotency hit)
+- [ ] Custom `ConsumerDefinition` only if the default retry (3×, 1s/5s/15s + circuit breaker) is wrong for this consumer
+
+**If the event goes to a dead-letter queue a lot:**
+- [ ] Dead-letter reason is understood (check the `_error` queue on RabbitMQ management UI at `localhost:15672`)
+- [ ] Consumer is genuinely idempotent — re-delivery from DLQ won't double-write
+
 ### 5. User Flow Completeness
 - [ ] No dead ends — every action has feedback (success toast or error toast)
 - [ ] Loading states shown during async operations (Spinner component)

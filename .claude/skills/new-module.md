@@ -595,7 +595,9 @@ internal sealed class Seed{Name}OnTenantRegistered(
     {
         var evt = ctx.Message;
 
-        // Idempotency check (manual — no InboxState in module DbContext)
+        // MANDATORY idempotency check — MT delivers at-least-once, so every
+        // consumer must tolerate duplicates. Use a domain-uniqueness key
+        // (TenantId here) queried against this module's own DbContext.
         if (await context.{Entities}.IgnoreQueryFilters().AnyAsync(e => e.TenantId == evt.TenantId))
             return;
 
@@ -618,10 +620,50 @@ internal sealed class Seed{Name}OnTenantRegistered(
 **Key rules for event handlers:**
 
 - Use `IConsumer<T>` from MassTransit (auto-registered via `AddConsumers()`)
-- Always check idempotency manually: `IgnoreQueryFilters().AnyAsync()`
+- **Always** check idempotency: `IgnoreQueryFilters().AnyAsync(<natural-key>)` at the top
 - Use the module's own DbContext, never `ApplicationDbContext`
-- Log what you did for debugging
-- Never throw — log and return if preconditions aren't met
+- **Throw on transient failures** (DB blip, dependency 5xx). The default policy wrapped around every endpoint gives 3 retries at 1 s / 5 s / 15 s, then routes to the `_error` dead-letter queue. Swallowing exceptions is how messages get lost.
+- **Return quietly** on idempotency hits and non-retryable business conditions (unknown tenant, feature-off).
+- Log what you did at Info level for debugging.
+
+### 5.2 Publishing Integration Events (if the module emits cross-module events)
+
+If the module needs to broadcast something other modules may react to — e.g. `{Name}Created` — do **NOT** inject `IPublishEndpoint`. The boilerplate has a transactional-outbox interceptor wired to `ApplicationDbContext`; direct `IPublishEndpoint` use from an HTTP-request handler routes through the last-registered `IScopedBusContextProvider<IBus>` and silently drops events when two outboxes are registered. An architecture test (`MessagingArchitectureTests`) fails the build if `Starter.Application` gains a dependency on MassTransit.
+
+**Correct pattern — handler in core emitting an event:**
+
+```csharp
+// Starter.Application/Features/{Feature}/Commands/.../{X}CommandHandler.cs
+internal sealed class Create{Entity}CommandHandler(
+    IApplicationDbContext context,
+    IIntegrationEventCollector eventCollector)  // ← inject the collector, not the bus
+    : IRequestHandler<Create{Entity}Command, Result<Guid>>
+{
+    public async Task<Result<Guid>> Handle(Create{Entity}Command cmd, CancellationToken ct)
+    {
+        var entity = {Entity}.Create(cmd.Name, /* ... */);
+        context.{Entities}.Add(entity);
+
+        // Scheduled into a scoped in-memory collector. The
+        // IntegrationEventOutboxInterceptor drains it during SavingChangesAsync
+        // and writes an outbox row on the same DbContext transaction.
+        eventCollector.Schedule(new {Entity}CreatedEvent(entity.Id, cmd.TenantId, DateTime.UtcNow));
+
+        await context.SaveChangesAsync(ct);  // business data + outbox row commit atomically
+        return Result.Success(entity.Id);
+    }
+}
+```
+
+**Inside a MassTransit consumer, `IPublishEndpoint` is the correct API** — MT's own outbox context is already in scope and targets the right DbContext. The rule only applies to MediatR/HTTP-request code.
+
+**Event contract:**
+
+- Define the event in `Starter.Application/Common/Events/{Name}Event.cs` as a `record` implementing `IDomainEvent`.
+- Treat it as a public contract the moment it's published once.
+- **Additive changes only.** Renaming or typing a property = create `{Name}EventV2` and migrate consumers gradually. Never change the CLR namespace + type name on a live event — MT uses that string as the routing key.
+
+For the full reference (dead-letter tuning, correlation propagation, outbox lag health check, when to use capabilities instead), see [docs/architecture/cross-module-communication.md § Pattern 2](../../docs/architecture/cross-module-communication.md).
 
 ---
 

@@ -119,16 +119,28 @@ For a codebase with 20 modules and 5 distinct triggers each, Pattern 1 adds 100 
 
 ---
 
-## 2. Pattern 2 — Integration events via `IPublishEndpoint` (for fan-out)
+## 2. Pattern 2 — Integration events via `IIntegrationEventCollector` (for fan-out)
 
 **Use when:** 0..N modules may react to the same trigger, and the reactions should happen asynchronously with transactional-outbox reliability.
 
+> ⚠️ **Publish via `IIntegrationEventCollector`, never `IPublishEndpoint` from a MediatR handler.**
+> Direct `IPublishEndpoint` use from HTTP-request code routes through whichever
+> `IScopedBusContextProvider<IBus>` was registered **last**. When the Workflow module
+> registers its own `AddEntityFrameworkOutbox<WorkflowDbContext>`, its provider
+> overrides core's — and events published from core handlers are silently written
+> into `WorkflowDbContext`'s outbox, which is never saved. Events disappear with
+> no error. See the commit message on PR #18 for the forensic writeup.
+>
+> Inside a MassTransit consumer (already in an MT pipeline), `IPublishEndpoint` is
+> fine — MT's `OutboxSendContext` is already wired to the correct DbContext.
+
 ### How it works
 
-1. The event type lives in `Starter.Application/Common/Events/` — the neutral shared location alongside `TenantRegisteredEvent`, `UserRegisteredEvent`, etc.
-2. The publishing code (core or a module) injects `IPublishEndpoint` from MassTransit and calls `Publish(new MyEvent(...))` inside the same EF Core transaction as the business write. MassTransit's EF Core outbox extension writes the event into the `OutboxMessage` table atomically with `SaveChangesAsync`.
-3. A background MassTransit dispatcher reads `OutboxMessage`, delivers to every registered `IConsumer<MyEvent>`, and marks the message delivered in `OutboxState`. `InboxState` deduplicates retries.
-4. Consumers implement `IConsumer<MyEvent>` anywhere. MassTransit's assembly scanning discovers them automatically at startup (`AddConsumers(moduleAssemblies)` in `DependencyInjection.cs`).
+1. The event type lives in `Starter.Application/Common/Events/` — the neutral shared location alongside `TenantRegisteredEvent`, `UserRegisteredEvent`, etc. It implements `IDomainEvent`.
+2. The handler injects `IIntegrationEventCollector` (defined in the Application layer — keeps `Application` MassTransit-free) and calls `Schedule(new MyEvent(...))`. The collector is a scoped in-memory accumulator; it does **not** touch the bus.
+3. The handler then calls `SaveChangesAsync()` on `IApplicationDbContext`. An EF `SaveChangesInterceptor` (`IntegrationEventOutboxInterceptor`) fires **before** EF emits SQL, lazily resolves the concrete `EntityFrameworkScopedBusContextProvider<IBus, ApplicationDbContext>` from DI (bypassing the overridable abstract slot), and calls `Publish(evt, evtType)` on **that** provider — so the outbox rows land in `ApplicationDbContext` alongside the business data.
+4. A background `BusOutboxDeliveryService<ApplicationDbContext>` drains `OutboxMessage` to the broker; `OutboxState` tracks progress; `InboxState` dedupes retries.
+5. Consumers implement `IConsumer<MyEvent>` anywhere. MassTransit's assembly scanning discovers them automatically at startup (`AddConsumers(moduleAssemblies)` in `DependencyInjection.cs`).
 
 ### Canonical example
 
@@ -136,18 +148,26 @@ Core publishes `TenantRegisteredEvent`; the Billing module consumes it to provis
 
 ```csharp
 // Core: src/Starter.Application/Features/Tenants/Commands/RegisterTenant/RegisterTenantCommandHandler.cs
-public async Task<Result<Guid>> Handle(RegisterTenantCommand cmd, CancellationToken ct)
+internal sealed class RegisterTenantCommandHandler(
+    IApplicationDbContext context,
+    IIntegrationEventCollector eventCollector,  // ← collector, not IPublishEndpoint
+    IPasswordService passwordService,
+    /* ... */) : IRequestHandler<RegisterTenantCommand, Result<Guid>>
 {
-    var tenant = Tenant.Create(cmd.Name, cmd.Slug, cmd.OwnerUserId);
-    db.Tenants.Add(tenant);
+    public async Task<Result<Guid>> Handle(RegisterTenantCommand cmd, CancellationToken ct)
+    {
+        var tenant = Tenant.Create(cmd.Name, cmd.Slug);
+        context.Tenants.Add(tenant);
 
-    // Published into the outbox atomically with the tenant write
-    await publishEndpoint.Publish(new TenantRegisteredEvent(
-        tenant.Id, tenant.Name, tenant.Slug, cmd.OwnerUserId, DateTime.UtcNow
-    ), ct);
+        // Scheduled into an in-memory list on the request-scoped collector.
+        // The IntegrationEventOutboxInterceptor picks it up during SavingChangesAsync
+        // and atomically writes the outbox row into ApplicationDbContext.
+        eventCollector.Schedule(new TenantRegisteredEvent(
+            tenant.Id, tenant.Name, tenant.Slug, cmd.OwnerUserId, DateTime.UtcNow));
 
-    await db.SaveChangesAsync(ct);   // ← outbox row committed with the tenant
-    return Result.Success(tenant.Id);
+        await context.SaveChangesAsync(ct);   // ← business data + outbox row commit atomically
+        return Result.Success(tenant.Id);
+    }
 }
 ```
 
@@ -157,14 +177,16 @@ public async Task<Result<Guid>> Handle(RegisterTenantCommand cmd, CancellationTo
 internal sealed class CreateFreeTierSubscriptionOnTenantRegistered(
     BillingDbContext context,
     IUsageTracker usageTracker,
-    IWebhookPublisher webhookPublisher,
     ILogger<CreateFreeTierSubscriptionOnTenantRegistered> logger)
     : IConsumer<TenantRegisteredEvent>
 {
     public async Task Consume(ConsumeContext<TenantRegisteredEvent> ctx)
     {
-        // Manual idempotency check — see system-design.md §8 for why
-        if (await context.TenantSubscriptions.AnyAsync(s => s.TenantId == ctx.Message.TenantId, ctx.CancellationToken))
+        // MANDATORY idempotency check — see "Consumer idempotency" below.
+        // TenantId is the stable correlation key; a duplicate delivery returns silently.
+        if (await context.TenantSubscriptions
+                .IgnoreQueryFilters()
+                .AnyAsync(s => s.TenantId == ctx.Message.TenantId, ctx.CancellationToken))
             return;
 
         // ... provision free-tier subscription ...
@@ -172,6 +194,58 @@ internal sealed class CreateFreeTierSubscriptionOnTenantRegistered(
     }
 }
 ```
+
+### Consumer idempotency
+
+At-least-once delivery is the guarantee. Exactly-once is **your** responsibility.
+
+The boilerplate convention is a **domain-uniqueness check at the top of every consumer**:
+
+- Pick a stable natural key from the event (`TenantId`, `OrderId`, a composite key).
+- Query the consumer's own DbContext with `IgnoreQueryFilters().AnyAsync(...)`.
+- If the row already exists → log (optional) and `return` without writing.
+
+Never add a generic "processed messages" table — you duplicate what MassTransit's `InboxState` already does, and you introduce a cross-DbContext coupling. The domain-uniqueness check is simpler and equally correct.
+
+### Retry, dead-letter, and when to throw
+
+Every receive endpoint inherits a default policy configured in `AddMessaging()`:
+
+- **3 in-process retries** at 1 s, 5 s, 15 s (exponential-ish). Handles transient DB jitter, dependency blips.
+- **After retries exhaust**, MT NACKs and RabbitMQ auto-routes the message to the endpoint's `_error` queue — that's the dead-letter destination.
+- **Circuit breaker**: 15 % failure rate over a 1-minute window (≥10 msgs) trips the endpoint offline for 5 minutes. Protects downstream services from cascading failure.
+
+Individual consumers can override via their own `ConsumerDefinition` (see `DeliverWebhookConsumerDefinition` for an example with a longer retry curve).
+
+**Implication for consumer code:** throwing is the correct way to signal a transient failure. The old "never throw — just log and return" guidance is wrong for retryable errors. Current discipline:
+
+| Situation | What to do |
+|---|---|
+| Transient failure (DB unreachable, 5xx from dependency) | **Throw** — retry will fire |
+| Non-retryable business condition (unknown tenant, feature off) | Log at Info and `return` |
+| Precondition failed (already processed — idempotency hit) | `return` silently |
+| Poison message (deserialization error, bad payload) | MT handles it automatically — it goes to `_error` on first attempt |
+
+### Correlation
+
+The interceptor derives a deterministic `Guid` from `Activity.Current.TraceId` and stamps it on every scheduled event as both `ConversationId` and `CorrelationId`. All events emitted from one HTTP request share the same ID, so MT traces, consumer logs, and OpenTelemetry spans group the causal chain cleanly. When there's no ambient `Activity` (hosted services, background work) the interceptor falls back to MT's default Guid generation.
+
+### Operational monitoring
+
+The `outbox-delivery-lag` health check at `/health`:
+
+- **Healthy** — backlog is small or young
+- **Degraded** (never Unhealthy) — backlog exceeds the thresholds in `Outbox:HealthCheck:*`
+
+Thresholds default to 1000 pending rows / 5 minutes oldest age. Tune in `appsettings.json` per environment. Liveness probes should treat this as informational — a lagging outbox is a delivery problem, not an API-readiness problem.
+
+### Event schema evolution
+
+Treat every event as a **public contract** the moment it's published once. The rules:
+
+- **Additive changes only** on the existing type — new properties with sensible defaults.
+- **Renaming** a property, **changing** a type, or **removing** a property is a breaking change. Create `TenantRegisteredEventV2` alongside the original and migrate consumers gradually. Delete `V1` only after the `_error` and outbox are fully drained of the old shape.
+- **Never change** the CLR namespace + type name on a live event — MT uses that string as the message routing key.
 
 ### What happens when a consumer is absent
 
@@ -196,6 +270,21 @@ When all three apply, define an integration event in `Starter.Application/Common
 ### Scalability consideration
 
 Each new integration event adds **one event type** to `Starter.Application/Common/Events/`. That file ships with every build of the boilerplate, even builds that don't include the subscribing modules. That's fine for truly shared events (tenant registration, user registration) but can get noisy if you reach for Pattern 2 for every cross-module trigger. **Pattern 1 is strictly better when the consumer count is exactly 1**, because Pattern 1 adds nothing to core for that single-consumer case.
+
+### Files involved
+
+If you need to trace the machinery:
+
+| File | Role |
+|------|------|
+| `Starter.Application/Common/Interfaces/IIntegrationEventCollector.cs` | Application-layer abstraction handlers inject |
+| `Starter.Application/Common/Events/*.cs` | Shared event contracts |
+| `Starter.Infrastructure/Persistence/Interceptors/IntegrationEventCollector.cs` | Scoped accumulator |
+| `Starter.Infrastructure/Persistence/Interceptors/IntegrationEventOutboxInterceptor.cs` | EF interceptor that writes outbox rows |
+| `Starter.Infrastructure/DependencyInjection.cs` → `AddMessaging()` | Bus registration, retry / circuit-breaker defaults |
+| `Starter.Infrastructure/Messaging/OutboxDeliveryLagHealthCheck.cs` | `/health` probe for delivery lag |
+
+An architecture test (`MessagingArchitectureTests`) asserts `Starter.Application` has no dependency on `MassTransit` — CI fails if a handler tries to inject `IPublishEndpoint` directly.
 
 ---
 
