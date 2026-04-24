@@ -7,7 +7,6 @@ using Starter.Domain.Identity.ValueObjects;
 using Starter.Domain.Tenants.Entities;
 using Starter.Domain.Tenants.Errors;
 using Starter.Shared.Results;
-using MassTransit;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
@@ -21,7 +20,7 @@ internal sealed class RegisterTenantCommandHandler(
     IOtpService otpService,
     IEmailService emailService,
     IEmailTemplateService emailTemplateService,
-    IPublishEndpoint publishEndpoint) : IRequestHandler<RegisterTenantCommand, Result<Guid>>
+    IIntegrationEventCollector eventCollector) : IRequestHandler<RegisterTenantCommand, Result<Guid>>
 {
     public async Task<Result<Guid>> Handle(RegisterTenantCommand request, CancellationToken cancellationToken)
     {
@@ -68,19 +67,20 @@ internal sealed class RegisterTenantCommandHandler(
 
         context.Users.Add(user);
 
-        // Publish TenantRegisteredEvent via the transactional outbox so any
-        // installed module (Billing → free-tier subscription, Webhooks →
-        // tenant.created event, etc.) can react asynchronously. The outbox row
-        // is committed in the same SaveChangesAsync as the tenant + user, so
-        // the event is guaranteed to fire iff the tenant was actually persisted.
-        await publishEndpoint.Publish(
+        // Schedule TenantRegisteredEvent for transactional outbox delivery.
+        // IntegrationEventOutboxInterceptor flushes this into the ApplicationDbContext
+        // outbox table during SavingChangesAsync, so the event row is committed
+        // atomically with the tenant + user rows — guaranteed delivery iff the
+        // business transaction commits, regardless of how many EF outboxes are
+        // registered (dual-outbox with WorkflowDbContext would silently discard
+        // events published via IPublishEndpoint directly).
+        eventCollector.Schedule(
             new TenantRegisteredEvent(
                 tenant.Id,
                 tenant.Name,
                 tenant.Slug ?? string.Empty,
                 user.Id,
-                DateTime.UtcNow),
-            cancellationToken);
+                DateTime.UtcNow));
 
         await context.SaveChangesAsync(cancellationToken);
 

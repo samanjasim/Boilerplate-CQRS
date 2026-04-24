@@ -1,4 +1,5 @@
 using Amazon.S3;
+using MassTransit.EntityFrameworkCoreIntegration;
 using QuestPDF.Infrastructure;
 using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Readers;
@@ -133,6 +134,15 @@ public static class DependencyInjection
     {
         services.AddScoped<ISaveChangesInterceptor, AuditableEntityInterceptor>();
         services.AddScoped<ISaveChangesInterceptor, DomainEventDispatcherInterceptor>();
+
+        // Integration-event outbox: collector is shared between the handler (via
+        // IIntegrationEventCollector) and the interceptor.  The interceptor writes
+        // scheduled events into ApplicationDbContext's MT outbox table during
+        // SavingChangesAsync, guaranteeing atomicity with the business data.
+        services.AddScoped<IntegrationEventCollector>();
+        services.AddScoped<IIntegrationEventCollector>(sp =>
+            sp.GetRequiredService<IntegrationEventCollector>());
+        services.AddScoped<ISaveChangesInterceptor, IntegrationEventOutboxInterceptor>();
 
         services.AddDbContext<ApplicationDbContext>((sp, options) =>
         {
