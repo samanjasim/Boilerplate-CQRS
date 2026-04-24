@@ -15,13 +15,22 @@ internal sealed class AiToolRegistryService(
     IServiceScopeFactory scopeFactory)
     : IAiToolRegistry
 {
-    // Definitions are singleton DI registrations — snapshot them once.
-    private readonly IReadOnlyDictionary<string, IAiToolDefinition> _byName =
-        definitions
-            .GroupBy(d => d.Name, StringComparer.OrdinalIgnoreCase)
-            // First-wins when a duplicate name is registered — the sync service will log
-            // the duplicate so the developer can rename.
-            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+    private readonly IReadOnlyDictionary<string, IAiToolDefinition> _byName = BuildDictionary(definitions);
+
+    private static IReadOnlyDictionary<string, IAiToolDefinition> BuildDictionary(
+        IEnumerable<IAiToolDefinition> definitions)
+    {
+        var dict = new Dictionary<string, IAiToolDefinition>(StringComparer.OrdinalIgnoreCase);
+        foreach (var d in definitions)
+        {
+            if (!dict.TryAdd(d.Name, d))
+                throw new InvalidOperationException(
+                    $"AI tool registry has duplicate Name '{d.Name}' — registered by " +
+                    $"both '{dict[d.Name].CommandType.FullName}' and '{d.CommandType.FullName}'. " +
+                    "Tool names must be unique across the process.");
+        }
+        return dict;
+    }
 
     public IAiToolDefinition? FindByName(string name) =>
         _byName.TryGetValue(name, out var d) ? d : null;
