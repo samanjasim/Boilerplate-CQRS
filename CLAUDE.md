@@ -124,6 +124,41 @@ When in doubt: if more than one module needs it, it's core.
 - Use `.IgnoreQueryFilters()` when cross-tenant access is needed (e.g., uniqueness checks)
 - Never expose `TenantId` in API responses — it's an internal concern
 
+### Integration Events & Messaging
+
+Cross-module events are published via the **transactional outbox pattern**. Events are committed atomically with business data, then delivered asynchronously by MassTransit. Full reference: [docs/architecture/cross-module-communication.md § Pattern 2](docs/architecture/cross-module-communication.md).
+
+**Publishing from a command handler — the only correct way:**
+
+```csharp
+internal sealed class RegisterTenantCommandHandler(
+    IApplicationDbContext context,
+    IIntegrationEventCollector eventCollector)  // ← NOT IPublishEndpoint
+    : IRequestHandler<RegisterTenantCommand, Result<Guid>>
+{
+    public async Task<Result<Guid>> Handle(RegisterTenantCommand cmd, CancellationToken ct)
+    {
+        context.Tenants.Add(tenant);
+        eventCollector.Schedule(new TenantRegisteredEvent(tenant.Id, ...));
+        await context.SaveChangesAsync(ct);   // event row commits atomically
+        return Result.Success(tenant.Id);
+    }
+}
+```
+
+**Never inject `IPublishEndpoint` in a MediatR handler.** With two `AddEntityFrameworkOutbox<T>` registrations, `IPublishEndpoint` resolves to the last-registered DbContext's provider — which isn't saved by the handler — and the event disappears silently. An architecture test (`MessagingArchitectureTests`) fails the build if anyone tries. Inside a MassTransit consumer, `IPublishEndpoint` is fine.
+
+**Consumer rules:**
+
+- Always implement a domain-uniqueness idempotency check at the top (`AnyAsync(e => e.TenantId == evt.TenantId)`) and `return` if the row already exists. At-least-once delivery is the guarantee.
+- **Throw on transient failures** (DB unreachable, 5xx dependency). The default retry policy (3 attempts at 1 s / 5 s / 15 s) will fire, and exhausted messages go to the `_error` queue automatically.
+- **Return quietly** on non-retryable business conditions (unknown tenant, feature off) and on idempotency hits.
+- Events automatically carry a `ConversationId` derived from the originating HTTP request's `Activity.TraceId` — all events from one request share it for log/trace grouping.
+
+**Event schema evolution:** additive-only. Renames or type changes → create `MyEventV2` alongside the original and migrate consumers gradually.
+
+**Operational monitoring:** the `outbox-delivery-lag` check at `/health` reports `Degraded` (never `Unhealthy`) when the outbox backlog exceeds `Outbox:HealthCheck:MaxPendingRows` (default 1000) or `MaxOldestAge` (default 5 min). Liveness probes must not restart the pod on this signal.
+
 ## Frontend Development Patterns
 
 ### Adding a New Feature (End-to-End)

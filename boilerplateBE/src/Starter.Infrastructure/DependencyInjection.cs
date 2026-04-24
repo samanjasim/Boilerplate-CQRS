@@ -24,6 +24,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using StackExchange.Redis;
 
 namespace Starter.Infrastructure;
@@ -217,6 +218,35 @@ public static class DependencyInjection
                 o.UseBusOutbox();
             });
 
+            // Default retry + dead-letter policy applied to every receive endpoint.
+            // Individual consumers can override via their own ConsumerDefinition.
+            //
+            //   1. In-process retry: 3 attempts with exponential backoff (1s, 5s, 15s).
+            //      Handles transient failures (DB blip, dependency jitter) without
+            //      republishing to the broker.
+            //   2. After in-process retries are exhausted, the message is NACKed and
+            //      RabbitMQ routes it to the endpoint's `_error` queue automatically.
+            //      This is the dead-letter destination; operators can inspect, replay,
+            //      or discard from there.
+            //   3. The circuit breaker trips the endpoint offline if >15% of messages
+            //      fail within a 1-minute window — protects downstream dependencies
+            //      from cascading failure while the retry loop burns through them.
+            busConfigurator.AddConfigureEndpointsCallback((ctx, name, endpoint) =>
+            {
+                endpoint.UseMessageRetry(r => r.Intervals(
+                    TimeSpan.FromSeconds(1),
+                    TimeSpan.FromSeconds(5),
+                    TimeSpan.FromSeconds(15)));
+
+                endpoint.UseCircuitBreaker(cb =>
+                {
+                    cb.TrackingPeriod = TimeSpan.FromMinutes(1);
+                    cb.TripThreshold = 15;      // trip if 15% of messages fail
+                    cb.ActiveThreshold = 10;    // require at least 10 messages before tripping
+                    cb.ResetInterval = TimeSpan.FromMinutes(5);
+                });
+            });
+
             // Auto-discover consumers from core Infrastructure assembly
             busConfigurator.AddConsumers(typeof(DependencyInjection).Assembly);
 
@@ -394,11 +424,18 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        services.Configure<OutboxHealthCheckOptions>(
+            configuration.GetSection(OutboxHealthCheckOptions.SectionName));
+
         var healthChecksBuilder = services.AddHealthChecks()
             .AddNpgSql(
                 configuration.GetConnectionString("DefaultConnection")!,
                 name: "postgresql",
-                tags: ["db", "sql", "postgresql"]);
+                tags: ["db", "sql", "postgresql"])
+            .AddCheck<OutboxDeliveryLagHealthCheck>(
+                name: "outbox-delivery-lag",
+                failureStatus: HealthStatus.Degraded,
+                tags: ["messaging", "outbox"]);
 
         var redisConnectionString = configuration.GetConnectionString("Redis");
         if (!string.IsNullOrWhiteSpace(redisConnectionString))
