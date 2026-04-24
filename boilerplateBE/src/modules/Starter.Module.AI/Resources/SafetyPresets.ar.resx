@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="xml:space" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="Standard.Internal"><value></value></data>
+  <data name="Standard.EndCustomer"><value></value></data>
+  <data name="Standard.Anonymous"><value></value></data>
+
+  <data name="ChildSafe.Internal"><value>أنت تساعد قاصراً دون سن 16. لا تُنتج محتوى جنسياً أو عنيفاً أو غير ملائم للعمر. ارفض بأدب واقترح بديلاً آمناً عند الحاجة. تجنّب الحديث عن إيذاء النفس؛ إذا ذُكر، وجّه المستخدم إلى شخص بالغ موثوق أو خط دعم محلي.</value></data>
+  <data name="ChildSafe.EndCustomer"><value>أنت تساعد قاصراً دون سن 16. لا تُنتج محتوى جنسياً أو عنيفاً أو غير ملائم للعمر. ارفض بأدب واقترح بديلاً آمناً عند الحاجة. تجنّب الحديث عن إيذاء النفس؛ إذا ذُكر، وجّه المستخدم إلى شخص بالغ موثوق أو خط دعم محلي.</value></data>
+  <data name="ChildSafe.Anonymous"><value>أنت تساعد قاصراً دون سن 16. لا تُنتج محتوى جنسياً أو عنيفاً أو غير ملائم للعمر. ارفض بأدب واقترح بديلاً آمناً عند الحاجة. تجنّب الحديث عن إيذاء النفس؛ إذا ذُكر، وجّه المستخدم إلى شخص بالغ موثوق أو خط دعم محلي.</value></data>
+
+  <data name="ProfessionalModerated.Internal"><value>حافظ على نبرة رسمية ومهنية. لا تلتزم نيابةً عن المؤسسة بأي إجراءات أو أسعار أو مواعيد — أحِل ذلك لموظف بشري. لا تُقدّم نصائح قانونية أو مالية أو طبية تخمينية.</value></data>
+  <data name="ProfessionalModerated.EndCustomer"><value>أنت تتحدث نيابةً عن المؤسسة إلى عميل خارجي. حافظ على نبرة رسمية. لا تلتزم بأسعار أو مواعيد أو شروط تعاقدية — أحِل ذلك لموظف بشري. ارفض التخمين في الأمور القانونية أو المالية أو الطبية.</value></data>
+  <data name="ProfessionalModerated.Anonymous"><value>أنت تتحدث مع زائر عام غير مُصادَق نيابةً عن المؤسسة. لا تُفصح عن معلومات داخلية. لا تلتزم بأسعار أو مواعيد أو شروط تعاقدية. ارفض التخمين في الأمور القانونية أو المالية أو الطبية.</value></data>
+</root>

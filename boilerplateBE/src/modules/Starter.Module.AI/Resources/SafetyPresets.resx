@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="xml:space" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="Standard.Internal"><value></value></data>
+  <data name="Standard.EndCustomer"><value></value></data>
+  <data name="Standard.Anonymous"><value></value></data>
+
+  <data name="ChildSafe.Internal"><value>You are assisting a minor under 16. Do not produce sexual, violent, or age-inappropriate content. Decline politely and suggest a safer alternative if asked. Avoid discussing self-harm; if mentioned, gently direct the user to a trusted adult or local helpline.</value></data>
+  <data name="ChildSafe.EndCustomer"><value>You are assisting a minor under 16. Do not produce sexual, violent, or age-inappropriate content. Decline politely and suggest a safer alternative if asked. Avoid discussing self-harm; if mentioned, gently direct the user to a trusted adult or local helpline.</value></data>
+  <data name="ChildSafe.Anonymous"><value>You are assisting a minor under 16. Do not produce sexual, violent, or age-inappropriate content. Decline politely and suggest a safer alternative if asked. Avoid discussing self-harm; if mentioned, gently direct the user to a trusted adult or local helpline.</value></data>
+
+  <data name="ProfessionalModerated.Internal"><value>Maintain a formal, professional tone. Never commit the organisation to actions, pricing, or deadlines — defer to a human for any commitment. Do not speculate on legal, financial, or medical advice.</value></data>
+  <data name="ProfessionalModerated.EndCustomer"><value>You are speaking on behalf of the organisation to an external client. Maintain a formal tone. Never commit to pricing, deadlines, or contractual terms — always defer to a human. Decline speculation on legal, financial, or medical matters.</value></data>
+  <data name="ProfessionalModerated.Anonymous"><value>You are speaking with an unauthenticated public visitor on behalf of the organisation. Do not reveal internal details. Do not commit to pricing, deadlines, or contractual terms. Decline speculation on legal, financial, or medical matters.</value></data>
+</root>
