@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using Starter.Abstractions.Capabilities;
 using Xunit;
 
@@ -28,5 +29,34 @@ public sealed class AiToolDiscoveryTests
         adapter.ParameterSchema.ValueKind.Should().Be(JsonValueKind.Object);
 
         (adapter as IAiToolDefinitionModuleSource)!.ModuleSource.Should().Be("Fixtures");
+    }
+
+    [Fact]
+    public void AddAiToolsFromAssembly_Registers_Attributed_Types()
+    {
+        var services = new ServiceCollection();
+        services.AddAiToolsFromAssembly(typeof(FixtureListThingsQuery).Assembly);
+
+        var sp = services.BuildServiceProvider();
+        var defs = sp.GetServices<IAiToolDefinition>().ToList();
+
+        defs.Select(d => d.Name).Should()
+            .Contain("fixture_list_things")
+            .And.Contain("fixture_create_thing")
+            .And.Contain("fixture_with_schema_override");
+    }
+
+    [Fact]
+    public void AddAiToolsFromAssembly_Derives_ModuleSource_From_Assembly_Name()
+    {
+        var services = new ServiceCollection();
+        services.AddAiToolsFromAssembly(typeof(FixtureListThingsQuery).Assembly);
+
+        var sp = services.BuildServiceProvider();
+        var def = sp.GetServices<IAiToolDefinition>()
+            .Single(d => d.Name == "fixture_list_things");
+
+        // Test assembly is "Starter.Api.Tests" → stripped "Starter." prefix → "Api.Tests".
+        (def as IAiToolDefinitionModuleSource)!.ModuleSource.Should().Be("Api.Tests");
     }
 }

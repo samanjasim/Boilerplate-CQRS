@@ -33,6 +33,7 @@ public sealed class AbstractionsPurityTests
         "Starter.Abstractions",
         "System",
         "netstandard",
+        "MediatR",
         "Microsoft.Extensions.Configuration.Abstractions",
         "Microsoft.Extensions.DependencyInjection.Abstractions",
         "Microsoft.Extensions.Primitives",
