@@ -1,0 +1,34 @@
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
+
+namespace Starter.Module.AI.Infrastructure.Observability;
+
+/// <summary>
+/// Central OpenTelemetry meter, instruments, and activity source for the agent runtime.
+/// One <see cref="Meter"/> and one <see cref="ActivitySource"/> are shared across all
+/// agent runtime invocations so they share a single registration and export path.
+/// </summary>
+internal static class AiAgentMetrics
+{
+    public const string MeterName = "Starter.Ai.Agent";
+    public const string ActivitySourceName = "Starter.Ai.Agent";
+
+    private static readonly Meter _meter = new(MeterName, "1.0.0");
+
+    public static readonly Histogram<int> StepCount = _meter.CreateHistogram<int>(
+        name: "ai_agent_steps",
+        unit: "steps",
+        description: "Number of steps in a completed agent run.");
+
+    public static readonly Counter<int> LoopBreaks = _meter.CreateCounter<int>(
+        name: "ai_agent_loop_breaks",
+        unit: "runs",
+        description: "Runs terminated because LoopBreakDetector detected a repeated tool call.");
+
+    public static readonly Counter<int> MaxStepsExceeded = _meter.CreateCounter<int>(
+        name: "ai_agent_max_steps_exceeded",
+        unit: "runs",
+        description: "Runs terminated because MaxSteps was reached.");
+
+    public static readonly ActivitySource Source = new(ActivitySourceName, "1.0.0");
+}

@@ -1,0 +1,17 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+namespace Starter.Module.AI.Application.Services.Runtime;
+
+/// <summary>
+/// Shared JsonSerializerOptions used by the agent runtime + tool dispatcher + chat sink.
+/// Kept in one place so the JSON shape the provider/model sees on tool results + the
+/// serialised shape of intermediate persistence stays consistent as the module evolves.
+/// </summary>
+internal static class AiJsonDefaults
+{
+    public static readonly JsonSerializerOptions Serializer = new(JsonSerializerDefaults.Web)
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
+}

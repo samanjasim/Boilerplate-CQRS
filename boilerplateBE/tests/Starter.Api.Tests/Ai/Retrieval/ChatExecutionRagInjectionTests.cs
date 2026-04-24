@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using FluentAssertions;
 using MediatR;
@@ -15,10 +16,12 @@ using Starter.Domain.Common.Access.Enums;
 using Starter.Module.AI.Application.DTOs;
 using Starter.Module.AI.Application.Services;
 using Starter.Module.AI.Application.Services.Retrieval;
+using Starter.Module.AI.Application.Services.Runtime;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Providers;
+using Starter.Module.AI.Infrastructure.Runtime;
 using Xunit;
 
 namespace Starter.Api.Tests.Ai.Retrieval;
@@ -99,6 +102,79 @@ public sealed class ChatExecutionRagInjectionTests
         citationIdx.Should().BeGreaterThanOrEqualTo(0, "citations event should be emitted");
         doneIdx.Should().BeGreaterThan(citationIdx, "citations must come before done");
     }
+
+    /// <summary>
+    /// Regression sentinel for streaming-path cancellation behavior (Task 11 follow-up).
+    ///
+    /// When the caller's CancellationToken is pre-cancelled, <see cref="IChatExecutionService.ExecuteStreamAsync"/>
+    /// throws <see cref="OperationCanceledException"/> from the very first awaited DB call inside
+    /// <c>PrepareTurnAsync</c> — before any <c>yield</c> executes. This is asymmetric with the
+    /// non-streaming path (Task 10) which explicitly calls <c>FailTurnAsync</c> and then rethrows;
+    /// the streaming path skips <c>FailTurnAsync</c> because cancellation fires before any state
+    /// has been established. The test pins this legacy behavior so future refactors don't silently
+    /// change it.
+    /// </summary>
+    [Fact]
+    public async Task Streaming_Cancelled_Token_Does_Not_Persist_Final_Row_Or_Publish_Completion_Webhook()
+    {
+        var recordingPublisher = new RecordingWebhookPublisher();
+        var fx = new ChatExecutionTestFixture(webhookPublisher: recordingPublisher);
+        var assistant = fx.SeedAssistantWithRagScope(AiRagScope.None);
+        fx.FakeProvider.ScriptedResponse = "unreachable"; // provider won't be reached with pre-cancelled ct
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        // With a pre-cancelled token the first awaited DB call inside PrepareTurnAsync fires
+        // OperationCanceledException before any yield executes, so enumerating the stream throws.
+        Func<Task> act = async () =>
+        {
+            await foreach (var _ in fx.Service.ExecuteStreamAsync(
+                conversationId: null, assistantId: assistant.Id, userMessage: "hi", ct: cts.Token))
+            {
+                // no-op — we expect to never reach here
+            }
+        };
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+
+        // No ai.chat.completed webhook for a cancelled turn (FinalizeTurnAsync was never reached).
+        recordingPublisher.Events.Should().NotContain(
+            e => e.EventType == "ai.chat.completed",
+            "completing a cancelled turn would misrepresent usage");
+
+        // No assistant message row persisted — FinalizeTurnAsync was never called.
+        var msgs = await fx.GetAllMessagesAsync();
+        msgs.Where(m => m.Role == MessageRole.Assistant).Should().BeEmpty(
+            "a cancelled streaming turn must not persist an assistant reply row");
+    }
+
+    [Fact]
+    public async Task Cancelled_Token_Does_Not_Persist_Final_Row_Or_Publish_Completion_Webhook()
+    {
+        var recording = new RecordingWebhookPublisher();
+        var fx = new ChatExecutionTestFixture(webhookPublisher: recording);
+        var assistant = fx.SeedAssistantWithRagScope(AiRagScope.None);
+        fx.FakeProvider.ScriptedResponse = "some reply"; // provider won't be reached with pre-cancelled ct
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        Func<Task> act = () => fx.RunOneTurnAsync(assistant, userMessage: "hi", ct: cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+
+        // No messages of any kind should be in the DB — FailTurnAsync detaches both the
+        // pending user message and the new conversation (which was never saved) before throwing.
+        var allMessages = await fx.GetAllMessagesAsync();
+        allMessages.Where(m => m.Role == MessageRole.Assistant).Should().BeEmpty(
+            "a cancelled turn must not persist an assistant reply row");
+
+        // No ai.chat.completed webhook should have been published for the cancelled turn.
+        recording.Events.Should().NotContain(
+            e => e.EventType == "ai.chat.completed",
+            "completing a cancelled turn would misrepresent usage");
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -112,6 +188,10 @@ internal sealed class ChatExecutionTestFixture
     public Guid TenantId { get; } = Guid.NewGuid();
     public Guid UserId { get; } = Guid.NewGuid();
     public int RetrievalCallCount => _retrieval.CallCount;
+
+    /// <summary>Exposes the underlying <see cref="IChatExecutionService"/> for tests that
+    /// need to call streaming overloads directly (e.g. the streaming cancellation regression).</summary>
+    public IChatExecutionService Service => _chat;
 
     private readonly FakeRetrieval _retrieval = new();
     private readonly IChatExecutionService _chat;
@@ -143,6 +223,13 @@ internal sealed class ChatExecutionTestFixture
         services.AddSingleton<IAiProviderFactory>(new ScriptedProviderFactory(FakeProvider));
         services.AddSingleton<IResourceAccessService>(new StubResourceAccessService());
 
+        // Agent runtime factory (Task 10 — ChatExecutionService.ExecuteAsync now delegates here)
+        services.AddScoped<IAgentToolDispatcher, AgentToolDispatcher>();
+        services.AddScoped<AnthropicAgentRuntime>();
+        services.AddScoped<OpenAiAgentRuntime>();
+        services.AddScoped<OllamaAgentRuntime>();
+        services.AddScoped<IAiAgentRuntimeFactory, AiAgentRuntimeFactory>();
+
         services.AddScoped<IChatExecutionService, ChatExecutionService>();
 
         var sp = services.BuildServiceProvider();
@@ -171,6 +258,27 @@ internal sealed class ChatExecutionTestFixture
         {
             a.SetRagScope(AiRagScope.AllTenantDocuments);
         }
+
+        Db.AiAssistants.Add(a);
+        Db.SaveChanges();
+        return a;
+    }
+
+    /// <summary>
+    /// Seeds a minimal assistant with a given MaxAgentSteps budget. Useful for tests that
+    /// need the runtime to iterate more than once (e.g. loop-break E2E tests).
+    /// </summary>
+    public AiAssistant SeedAssistantWithMaxSteps(int maxAgentSteps)
+    {
+        var a = AiAssistant.Create(
+            tenantId: TenantId,
+            name: $"A-{Guid.NewGuid():N}",
+            description: null,
+            systemPrompt: "You are a helpful assistant.",
+            createdByUserId: Guid.NewGuid(),
+            provider: AiProviderType.Anthropic,
+            model: "claude-sonnet-4",
+            maxAgentSteps: maxAgentSteps);
 
         Db.AiAssistants.Add(a);
         Db.SaveChanges();
@@ -213,8 +321,11 @@ internal sealed class ChatExecutionTestFixture
     }
 
     public Task<Starter.Shared.Results.Result<AiChatReplyDto>> RunOneTurnAsync(
-        AiAssistant assistant, string userMessage) =>
-        _chat.ExecuteAsync(conversationId: null, assistantId: assistant.Id, userMessage, CancellationToken.None);
+        AiAssistant assistant, string userMessage, CancellationToken ct = default) =>
+        _chat.ExecuteAsync(conversationId: null, assistantId: assistant.Id, userMessage, ct);
+
+    public Task<List<AiMessage>> GetAllMessagesAsync() =>
+        Db.AiMessages.IgnoreQueryFilters().AsNoTracking().ToListAsync();
 
     public async Task<List<ChatStreamEvent>> RunOneStreamingTurnAsync(
         AiAssistant assistant, string userMessage)
@@ -267,8 +378,25 @@ internal sealed class ScriptedProviderFactory(ScriptedAiProvider provider) : IAi
 
 internal sealed class ScriptedAiProvider : IAiProvider
 {
+    private readonly ConcurrentQueue<AiChatCompletion> _queue = new();
+
     public string ScriptedResponse { get; set; } = "";
     public string? LastSystemPrompt { get; private set; }
+
+    /// <summary>
+    /// Enqueues a tool-call completion. When the queue is non-empty, ChatAsync dequeues
+    /// from it before falling back to <see cref="ScriptedResponse"/>.
+    /// </summary>
+    public void EnqueueToolCall(string name, string argsJson, int inputTokens = 10, int outputTokens = 5)
+    {
+        var id = Guid.NewGuid().ToString();
+        _queue.Enqueue(new AiChatCompletion(
+            Content: null,
+            ToolCalls: new[] { new AiToolCall(id, name, argsJson) },
+            InputTokens: inputTokens,
+            OutputTokens: outputTokens,
+            FinishReason: "tool_calls"));
+    }
 
     public Task<AiChatCompletion> ChatAsync(
         IReadOnlyList<AiChatMessage> messages,
@@ -276,6 +404,8 @@ internal sealed class ScriptedAiProvider : IAiProvider
         CancellationToken ct = default)
     {
         LastSystemPrompt = options.SystemPrompt;
+        if (_queue.TryDequeue(out var queued))
+            return Task.FromResult(queued);
         return Task.FromResult(new AiChatCompletion(
             Content: ScriptedResponse,
             ToolCalls: null,
