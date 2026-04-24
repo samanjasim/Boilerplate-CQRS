@@ -1,7 +1,10 @@
+using System.Reflection;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Moq;
 using Starter.Abstractions.Capabilities;
+using Starter.Module.AI.Application.DTOs;
 using Xunit;
 
 namespace Starter.Api.Tests.Ai.Tools;
@@ -58,5 +61,38 @@ public sealed class AiToolDiscoveryTests
 
         // Test assembly is "Starter.Api.Tests" → stripped "Starter." prefix → "Api.Tests".
         (def as IAiToolDefinitionModuleSource)!.ModuleSource.Should().Be("Api.Tests");
+    }
+
+    [Fact]
+    public void AdapterMapper_Emits_Module_From_CapabilityInterface()
+    {
+        var attr = typeof(FixtureListThingsQuery)
+            .GetCustomAttribute<AiToolAttribute>()!;
+        var schema = AiToolSchemaGenerator.Generate(typeof(FixtureListThingsQuery), attr);
+        IAiToolDefinition def = new AttributedAiToolDefinition(
+            typeof(FixtureListThingsQuery), attr, schema, "Fixtures");
+
+        var dto = def.ToDto(dbRow: null);
+
+        dto.Module.Should().Be("Fixtures");
+        dto.IsEnabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public void HandAuthored_Definition_Without_ModuleSource_Emits_Unknown()
+    {
+        var defMock = new Mock<IAiToolDefinition>();
+        defMock.SetupGet(d => d.Name).Returns("hand_authored");
+        defMock.SetupGet(d => d.Description).Returns("d");
+        defMock.SetupGet(d => d.Category).Returns("c");
+        defMock.SetupGet(d => d.RequiredPermission).Returns("p");
+        defMock.SetupGet(d => d.IsReadOnly).Returns(true);
+        defMock.SetupGet(d => d.CommandType).Returns(typeof(object));
+        defMock.SetupGet(d => d.ParameterSchema)
+            .Returns(JsonDocument.Parse("""{ "type": "object" }""").RootElement);
+
+        var dto = defMock.Object.ToDto(dbRow: null);
+
+        dto.Module.Should().Be("Unknown");
     }
 }
