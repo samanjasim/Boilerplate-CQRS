@@ -30,6 +30,13 @@ internal static class AiToolMappers
             row.IsEnabled,
             definition.ParameterSchema);
 
-    private static string ModuleOf(IAiToolDefinition definition) =>
-        definition is IAiToolDefinitionModuleSource src ? src.ModuleSource : UnknownModule;
+    private static string ModuleOf(IAiToolDefinition definition)
+    {
+        if (definition is not IAiToolDefinitionModuleSource src)
+            return UnknownModule;
+
+        // Starter.Application → "Application" via DeriveModuleSource; surface as "Core" in
+        // the catalog because that matches how the module is referred to in docs and UI.
+        return src.ModuleSource == "Application" ? "Core" : src.ModuleSource;
+    }
 }

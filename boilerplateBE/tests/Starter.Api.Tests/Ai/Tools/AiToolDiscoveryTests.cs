@@ -95,4 +95,18 @@ public sealed class AiToolDiscoveryTests
 
         dto.Module.Should().Be("Unknown");
     }
+
+    [Fact]
+    public void AdapterMapper_Maps_Application_ModuleSource_To_Core()
+    {
+        var attr = typeof(FixtureListThingsQuery).GetCustomAttribute<AiToolAttribute>()!;
+        var schema = AiToolSchemaGenerator.Generate(typeof(FixtureListThingsQuery), attr);
+        // Simulate an adapter whose assembly name was "Starter.Application" → "Application".
+        IAiToolDefinition def = new AttributedAiToolDefinition(
+            typeof(FixtureListThingsQuery), attr, schema, "Application");
+
+        var dto = def.ToDto(dbRow: null);
+
+        dto.Module.Should().Be("Core");
+    }
 }
