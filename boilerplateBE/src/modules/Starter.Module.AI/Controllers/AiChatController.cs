@@ -59,7 +59,7 @@ public sealed class AiChatController(
         Response.Headers["Cache-Control"] = "no-cache";
         Response.Headers["X-Accel-Buffering"] = "no"; // disable Nginx buffering
 
-        await foreach (var evt in chat.ExecuteStreamAsync(command.ConversationId, command.AssistantId, command.Message, ct))
+        await foreach (var evt in chat.ExecuteStreamAsync(command.ConversationId, command.AssistantId, command.Message, command.PersonaId, ct))
         {
             var json = JsonSerializer.Serialize(new { type = evt.Type, data = evt.Data }, StreamJsonOptions);
             await Response.WriteAsync($"event: {evt.Type}\n", ct);

@@ -10,5 +10,5 @@ internal sealed class SendChatMessageCommandHandler(
     : IRequestHandler<SendChatMessageCommand, Result<AiChatReplyDto>>
 {
     public Task<Result<AiChatReplyDto>> Handle(SendChatMessageCommand request, CancellationToken cancellationToken) =>
-        chat.ExecuteAsync(request.ConversationId, request.AssistantId, request.Message, cancellationToken);
+        chat.ExecuteAsync(request.ConversationId, request.AssistantId, request.Message, request.PersonaId, cancellationToken);
 }
