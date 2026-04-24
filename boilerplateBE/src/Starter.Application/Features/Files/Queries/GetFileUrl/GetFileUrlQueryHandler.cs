@@ -31,9 +31,11 @@ internal sealed class GetFileUrlQueryHandler(
         {
             // tenant-wide files accessible to any user in same tenant
         }
-        else if (file.UploadedBy == currentUser.UserId)
+        else if (file.UploadedBy == currentUser.UserId && file.TenantId == currentUser.TenantId)
         {
-            // owner bypass
+            // Owner bypass — but only while the file still sits in the user's current
+            // tenant. A user who uploaded in tenant A and is later moved to tenant B
+            // must not keep read access purely because they hold the UploadedBy id.
         }
         else if (!await access.CanAccessAsync(currentUser, ResourceTypes.File, file.Id, AccessLevel.Viewer, cancellationToken))
         {

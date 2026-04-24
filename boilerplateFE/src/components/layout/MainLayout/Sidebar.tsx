@@ -26,6 +26,8 @@ import {
   ClipboardCheck,
   History,
   GitBranch,
+  FileBarChart2,
+  Bell,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore, useAuthStore, selectSidebarCollapsed, selectUser } from '@/stores';
@@ -69,6 +71,10 @@ export function Sidebar() {
     ...(hasPermission(PERMISSIONS.Files.View)
       ? [{ label: t('nav.files'), icon: FolderOpen, path: ROUTES.FILES.LIST }]
       : []),
+    ...(hasPermission(PERMISSIONS.System.ExportData)
+      ? [{ label: t('nav.reports'), icon: FileBarChart2, path: ROUTES.REPORTS.LIST }]
+      : []),
+    { label: t('nav.notifications'), icon: Bell, path: ROUTES.NOTIFICATIONS },
     ...(activeModules.importExport && ((hasPermission(PERMISSIONS.System.ExportData) && exportsFlag.isEnabled) || (hasPermission(PERMISSIONS.System.ImportData) && importsFlag.isEnabled))
       ? [{ label: t('nav.importExport'), icon: ArrowLeftRight, path: ROUTES.IMPORT_EXPORT }]
       : []),

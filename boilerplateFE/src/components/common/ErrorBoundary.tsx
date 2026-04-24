@@ -48,7 +48,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 {i18n.t('common.unexpectedError')}
               </p>
               {import.meta.env.DEV && this.state.error && (
-                <pre className="mb-6 max-h-32 w-full overflow-auto rounded-lg bg-muted p-3 text-left text-xs text-muted-foreground">
+                <pre className="mb-6 max-h-32 w-full overflow-auto rounded-lg bg-muted p-3 text-start text-xs text-muted-foreground">
                   {this.state.error.message}
                 </pre>
               )}

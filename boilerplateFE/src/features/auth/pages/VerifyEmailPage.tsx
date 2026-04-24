@@ -67,7 +67,7 @@ export default function VerifyEmailPage() {
   if (!email) {
     return (
       <div>
-        <div className="mb-8 text-center lg:text-left">
+        <div className="mb-8 text-center lg:text-start">
           <h2 className="text-2xl font-bold text-foreground">{t('auth.verifyEmail')}</h2>
           <p className="mt-2 text-muted-foreground">{t('auth.verifyEmailDesc')}</p>
         </div>
@@ -109,7 +109,7 @@ export default function VerifyEmailPage() {
 
   return (
     <div>
-      <div className="mb-8 text-center lg:text-left">
+      <div className="mb-8 text-center lg:text-start">
         <h2 className="text-2xl font-bold text-foreground">{t('auth.verifyEmail')}</h2>
         <p className="mt-2 text-muted-foreground">{t('auth.verifyEmailDesc')}</p>
       </div>

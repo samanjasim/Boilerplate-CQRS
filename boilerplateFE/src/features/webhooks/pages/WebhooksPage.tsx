@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Webhook, Plus, Pencil, Trash2, Send, List } from 'lucide-react';
+import { Webhook, Plus, Pencil, Trash2, Send, List, KeyRound } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -12,8 +12,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from '@/components/ui/dialog';
 import { PageHeader, EmptyState, ConfirmDialog } from '@/components/common';
-import { useWebhookEndpoints, useDeleteWebhook, useTestWebhook } from '../api';
+import { useWebhookEndpoints, useDeleteWebhook, useTestWebhook, useRegenerateWebhookSecret } from '../api';
 import { CreateWebhookDialog } from '../components/CreateWebhookDialog';
 import { EditWebhookDialog } from '../components/EditWebhookDialog';
 import { DeliveryLogModal } from '../components/DeliveryLogModal';
@@ -30,12 +33,15 @@ export default function WebhooksPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<WebhookEndpoint | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<WebhookEndpoint | null>(null);
+  const [regenerateTarget, setRegenerateTarget] = useState<WebhookEndpoint | null>(null);
+  const [revealedSecret, setRevealedSecret] = useState<string | null>(null);
   const [deliveriesTarget, setDeliveriesTarget] = useState<WebhookEndpoint | null>(null);
   const formatTimeAgo = useTimeAgoFormatter();
 
   const { data, isLoading, isError } = useWebhookEndpoints();
   const deleteMutation = useDeleteWebhook();
   const testMutation = useTestWebhook();
+  const regenerateMutation = useRegenerateWebhookSecret();
 
   const endpoints: WebhookEndpoint[] = data?.data ?? [];
 
@@ -47,6 +53,16 @@ export default function WebhooksPage() {
 
   const handleTest = (endpoint: WebhookEndpoint) => {
     testMutation.mutate(endpoint.id);
+  };
+
+  const handleRegenerate = () => {
+    if (!regenerateTarget) return;
+    regenerateMutation.mutate(regenerateTarget.id, {
+      onSuccess: (secret) => {
+        setRegenerateTarget(null);
+        setRevealedSecret(secret);
+      },
+    });
   };
 
   if (isError) {
@@ -206,6 +222,18 @@ export default function WebhooksPage() {
                         </Button>
                       )}
 
+                      {/* Regenerate secret */}
+                      {hasPermission(PERMISSIONS.Webhooks.Update) && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title={t('webhooks.regenerateSecret')}
+                          onClick={() => setRegenerateTarget(endpoint)}
+                        >
+                          <KeyRound className="h-4 w-4" />
+                        </Button>
+                      )}
+
                       {/* Delete */}
                       {hasPermission(PERMISSIONS.Webhooks.Delete) && (
                         <Button
@@ -246,6 +274,37 @@ export default function WebhooksPage() {
         isLoading={deleteMutation.isPending}
         variant="danger"
       />
+
+      <ConfirmDialog
+        isOpen={!!regenerateTarget}
+        onClose={() => setRegenerateTarget(null)}
+        title={t('webhooks.regenerateSecret')}
+        description={t('webhooks.regenerateSecretConfirm')}
+        confirmLabel={t('webhooks.regenerateSecret')}
+        onConfirm={handleRegenerate}
+        isLoading={regenerateMutation.isPending}
+        variant="danger"
+      />
+
+      <Dialog
+        open={!!revealedSecret}
+        onOpenChange={(open) => !open && setRevealedSecret(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('webhooks.newSecretTitle')}</DialogTitle>
+            <DialogDescription>{t('webhooks.newSecretBody')}</DialogDescription>
+          </DialogHeader>
+          <code className="block w-full break-all rounded-lg bg-muted p-3 text-xs">
+            {revealedSecret}
+          </code>
+          <DialogFooter>
+            <Button onClick={() => setRevealedSecret(null)}>
+              {t('common.close')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
