@@ -12,6 +12,7 @@ public sealed class AiAssistant : AggregateRoot, ITenantEntity, IShareable
 {
     private List<string> _enabledToolNames = new();
     private List<Guid> _knowledgeBaseDocIds = new();
+    private List<string> _personaTargetSlugs = new();
 
     public Guid? TenantId { get; private set; }
     public string Name { get; private set; } = default!;
@@ -34,6 +35,15 @@ public sealed class AiAssistant : AggregateRoot, ITenantEntity, IShareable
     {
         get => _knowledgeBaseDocIds;
         private set => _knowledgeBaseDocIds = value?.ToList() ?? new();
+    }
+
+    public string Slug { get; private set; } = "";
+
+    /// <summary>Slugs of personas this assistant is visible to. Empty = visible to all personas. Persisted as jsonb.</summary>
+    public IReadOnlyList<string> PersonaTargetSlugs
+    {
+        get => _personaTargetSlugs;
+        private set => _personaTargetSlugs = value?.ToList() ?? new();
     }
 
     public AssistantExecutionMode ExecutionMode { get; private set; }
@@ -88,9 +98,10 @@ public sealed class AiAssistant : AggregateRoot, ITenantEntity, IShareable
         int maxTokens = 4096,
         AssistantExecutionMode executionMode = AssistantExecutionMode.Chat,
         int maxAgentSteps = 10,
-        bool isActive = true)
+        bool isActive = true,
+        string? slug = null)
     {
-        return new AiAssistant(
+        var a = new AiAssistant(
             Guid.NewGuid(),
             tenantId,
             name.Trim(),
@@ -104,6 +115,11 @@ public sealed class AiAssistant : AggregateRoot, ITenantEntity, IShareable
             maxAgentSteps,
             isActive,
             createdByUserId);
+
+        if (!string.IsNullOrWhiteSpace(slug))
+            a.SetSlug(slug);
+
+        return a;
     }
 
     public void SetVisibility(ResourceVisibility visibility)
@@ -188,4 +204,30 @@ public sealed class AiAssistant : AggregateRoot, ITenantEntity, IShareable
 
     public void Deactivate() => SetActive(false);
     public void Activate() => SetActive(true);
+
+    public void SetSlug(string slug)
+    {
+        Slug = (slug ?? "").Trim().ToLowerInvariant();
+        ModifiedAt = DateTime.UtcNow;
+    }
+
+    public void SetPersonaTargets(IEnumerable<string?>? slugs)
+    {
+        _personaTargetSlugs = (slugs ?? Array.Empty<string?>())
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Select(s => s!.Trim().ToLowerInvariant())
+            .Distinct()
+            .ToList();
+        ModifiedAt = DateTime.UtcNow;
+    }
+
+    public bool IsVisibleToPersona(string personaSlug, IReadOnlyList<string> personaPermittedAgentSlugs)
+    {
+        personaSlug = personaSlug.ToLowerInvariant();
+        var personaSide = personaPermittedAgentSlugs.Count == 0
+            || personaPermittedAgentSlugs.Contains(Slug, StringComparer.Ordinal);
+        var agentSide = _personaTargetSlugs.Count == 0
+            || _personaTargetSlugs.Contains(personaSlug, StringComparer.Ordinal);
+        return personaSide && agentSide;
+    }
 }
