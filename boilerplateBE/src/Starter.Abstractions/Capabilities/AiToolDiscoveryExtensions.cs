@@ -62,7 +62,7 @@ public static class AiToolDiscoveryExtensions
         return services;
     }
 
-    private static void ValidateShape(Type type, AiToolAttribute attr)
+    internal static void ValidateShape(Type type, AiToolAttribute attr)
     {
         if (!typeof(IBaseRequest).IsAssignableFrom(type))
             throw new InvalidOperationException(

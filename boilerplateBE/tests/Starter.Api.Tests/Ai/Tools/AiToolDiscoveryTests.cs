@@ -109,4 +109,89 @@ public sealed class AiToolDiscoveryTests
 
         dto.Module.Should().Be("Core");
     }
+
+    // ValidateShape failure branches — exposed as internal via InternalsVisibleTo.
+
+    [Fact]
+    public void ValidateShape_Throws_When_Type_Is_Not_IBaseRequest()
+    {
+        var attr = new AiToolAttribute
+        {
+            Name = "x",
+            Description = "d",
+            Category = "c",
+            RequiredPermission = "p",
+        };
+
+        var act = () => AiToolDiscoveryExtensions.ValidateShape(typeof(FixtureNotAMediatRRequest), attr);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*FixtureNotAMediatRRequest*IBaseRequest*");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void ValidateShape_Throws_When_Name_Blank(string name)
+    {
+        var attr = new AiToolAttribute
+        {
+            Name = name,
+            Description = "d",
+            Category = "c",
+            RequiredPermission = "p",
+        };
+
+        var act = () => AiToolDiscoveryExtensions.ValidateShape(typeof(FixtureListThingsQuery), attr);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Name is required*");
+    }
+
+    [Fact]
+    public void ValidateShape_Throws_When_Description_Blank()
+    {
+        var attr = new AiToolAttribute
+        {
+            Name = "n",
+            Description = "",
+            Category = "c",
+            RequiredPermission = "p",
+        };
+
+        var act = () => AiToolDiscoveryExtensions.ValidateShape(typeof(FixtureListThingsQuery), attr);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Description is required*");
+    }
+
+    [Fact]
+    public void ValidateShape_Throws_When_Category_Blank()
+    {
+        var attr = new AiToolAttribute
+        {
+            Name = "n",
+            Description = "d",
+            Category = " ",
+            RequiredPermission = "p",
+        };
+
+        var act = () => AiToolDiscoveryExtensions.ValidateShape(typeof(FixtureListThingsQuery), attr);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Category is required*");
+    }
+
+    [Fact]
+    public void ValidateShape_Throws_When_RequiredPermission_Blank()
+    {
+        var attr = new AiToolAttribute
+        {
+            Name = "n",
+            Description = "d",
+            Category = "c",
+            RequiredPermission = "",
+        };
+
+        var act = () => AiToolDiscoveryExtensions.ValidateShape(typeof(FixtureListThingsQuery), attr);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*RequiredPermission is required*");
+    }
 }
