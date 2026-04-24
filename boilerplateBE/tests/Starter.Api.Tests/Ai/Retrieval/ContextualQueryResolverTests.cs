@@ -35,7 +35,7 @@ public sealed class ContextualQueryResolverTests
         var cache = new FakeCacheService();
         var svc = Build(provider, cache);
 
-        var result = await svc.ResolveAsync("how do we configure it?", history: Array.Empty<RagHistoryMessage>(), language: null, CancellationToken.None);
+        var result = await svc.ResolveAsync(Guid.Empty, "how do we configure it?", history: Array.Empty<RagHistoryMessage>(), language: null, CancellationToken.None);
 
         result.Should().Be("how do we configure it?");
         provider.Calls.Should().Be(0);
@@ -48,7 +48,7 @@ public sealed class ContextualQueryResolverTests
         var cache = new FakeCacheService();
         var svc = Build(provider, cache, new AiRagSettings { EnableContextualRewrite = false });
 
-        var result = await svc.ResolveAsync("how do we configure it?",
+        var result = await svc.ResolveAsync(Guid.Empty, "how do we configure it?",
             Hist(("user", "what is qdrant?"), ("assistant", "qdrant is a vector db.")),
             language: null, CancellationToken.None);
 
@@ -64,6 +64,7 @@ public sealed class ContextualQueryResolverTests
         var svc = Build(provider, cache);
 
         var result = await svc.ResolveAsync(
+            Guid.Empty,
             "What is the default RRF constant used in hybrid fusion?",
             Hist(("user", "hi"), ("assistant", "hello")),
             language: "en", CancellationToken.None);
@@ -81,6 +82,7 @@ public sealed class ContextualQueryResolverTests
         var svc = Build(provider, cache);
 
         var result = await svc.ResolveAsync(
+            Guid.Empty,
             "how do we configure it?",
             Hist(("user", "what is qdrant?"), ("assistant", "qdrant is a vector db.")),
             language: "en", CancellationToken.None);
@@ -88,6 +90,7 @@ public sealed class ContextualQueryResolverTests
         result.Should().Be("How do we configure Qdrant?");
         provider.Calls.Should().Be(1);
         var second = await svc.ResolveAsync(
+            Guid.Empty,
             "how do we configure it?",
             Hist(("user", "what is qdrant?"), ("assistant", "qdrant is a vector db.")),
             language: "en", CancellationToken.None);
@@ -104,6 +107,7 @@ public sealed class ContextualQueryResolverTests
         var svc = Build(provider, cache);
 
         var result = await svc.ResolveAsync(
+            Guid.Empty,
             "how do we configure it?",
             Hist(("user", "what is qdrant?"), ("assistant", "qdrant is a vector db.")),
             language: "en", CancellationToken.None);
@@ -120,6 +124,7 @@ public sealed class ContextualQueryResolverTests
         var svc = Build(provider, cache);
 
         var result = await svc.ResolveAsync(
+            Guid.Empty,
             "how do we configure it?",
             Hist(("user", "what is qdrant?"), ("assistant", "qdrant is a vector db.")),
             language: "en", CancellationToken.None);
@@ -136,6 +141,7 @@ public sealed class ContextualQueryResolverTests
         var svc = Build(provider, cache);
 
         var result = await svc.ResolveAsync(
+            Guid.Empty,
             "how do we configure it?",
             Hist(("user", "what is qdrant?"), ("assistant", "qdrant is a vector db.")),
             language: "en", CancellationToken.None);
@@ -152,6 +158,7 @@ public sealed class ContextualQueryResolverTests
         var svc = Build(provider, cache);
 
         var result = await svc.ResolveAsync(
+            Guid.Empty,
             "كيف نضبطه؟",
             Hist(("user", "ما هو Qdrant؟"), ("assistant", "Qdrant هو قاعدة بيانات متجهية.")),
             language: "ar", CancellationToken.None);
@@ -169,6 +176,7 @@ public sealed class ContextualQueryResolverTests
         var svc = Build(provider, cache);
 
         var result = await svc.ResolveAsync(
+            Guid.Empty,
             "and then?",
             Hist(("user", "what is qdrant?"), ("assistant", "qdrant is a vector db.")),
             language: "en", CancellationToken.None);
@@ -186,6 +194,7 @@ public sealed class ContextualQueryResolverTests
         var svc = Build(provider, cache);
 
         var result = await svc.ResolveAsync(
+            Guid.Empty,
             "how do we configure it?",
             Hist(("user", "what is qdrant?"), ("assistant", "qdrant is a vector db.")),
             language: "en", CancellationToken.None);
@@ -203,6 +212,7 @@ public sealed class ContextualQueryResolverTests
         var svc = Build(provider, cache);
 
         var result = await svc.ResolveAsync(
+            Guid.Empty,
             "كيف نضبطه؟",
             Hist(("user", "ما هو Qdrant؟"), ("assistant", "Qdrant هو قاعدة بيانات متجهية.")),
             language: "ar", CancellationToken.None);

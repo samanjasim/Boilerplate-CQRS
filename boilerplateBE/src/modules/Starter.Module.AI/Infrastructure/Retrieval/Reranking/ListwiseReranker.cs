@@ -32,6 +32,7 @@ internal sealed class ListwiseReranker
     }
 
     public async Task<RerankResult> RerankAsync(
+        Guid tenantId,
         string query,
         IReadOnlyList<HybridHit> candidates,
         IReadOnlyList<AiDocumentChunk> candidateChunks,
@@ -41,7 +42,7 @@ internal sealed class ListwiseReranker
         if (candidates.Count == 0)
             return new RerankResult(candidates, RerankStrategy.Listwise, RerankStrategy.Listwise, 0, 0, 0, 0, 0, 0, 0.0);
 
-        var key = BuildCacheKey(query, candidates);
+        var key = BuildCacheKey(tenantId, query, candidates);
         var cached = await _cache.GetAsync<List<int>>(key, ct);
         AiRagMetrics.CacheRequests.Add(
             1,
@@ -155,10 +156,10 @@ internal sealed class ListwiseReranker
     private static RerankResult Fallback(IReadOnlyList<HybridHit> candidates, Stopwatch sw) =>
         new(candidates, RerankStrategy.Listwise, RerankStrategy.FallbackRrf, candidates.Count, 0, 0, sw.ElapsedMilliseconds, 0, 0, 0.0);
 
-    private string BuildCacheKey(string query, IReadOnlyList<HybridHit> candidates)
+    private string BuildCacheKey(Guid tenantId, string query, IReadOnlyList<HybridHit> candidates)
     {
         var provider = _factory.GetDefaultProviderType().ToString();
         var model = _settings.RerankerModel ?? _factory.GetDefaultChatModelId();
-        return RagCacheKeys.ListwiseRerank(provider, model, query, candidates);
+        return RagCacheKeys.ListwiseRerank(tenantId, provider, model, query, candidates);
     }
 }

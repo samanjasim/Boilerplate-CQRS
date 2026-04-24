@@ -35,11 +35,13 @@ public sealed class PerformanceBehavior<TRequest, TResponse> : IPipelineBehavior
         {
             var requestName = typeof(TRequest).Name;
 
+            // Do NOT destructure the request ({@Request}) — auth commands
+            // (Login, Register, Reset/ChangePassword, Verify2FA, etc.) carry
+            // plaintext secrets that would otherwise land in the log sinks.
             _logger.LogWarning(
-                "Long running request: {RequestName} ({ElapsedMilliseconds}ms) - {@Request}",
+                "Long running request: {RequestName} ({ElapsedMilliseconds}ms)",
                 requestName,
-                elapsedMilliseconds,
-                request);
+                elapsedMilliseconds);
         }
 
         return response;

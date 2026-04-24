@@ -15,7 +15,7 @@ public class RerankStrategySelectorTests
     public void Override_takes_precedence_over_settings()
     {
         var s = Selector(RerankStrategy.Listwise);
-        var ctx = new RerankContext(null, RerankStrategy.Off);
+        var ctx = new RerankContext(null, RerankStrategy.Off, Guid.Empty);
 
         s.Resolve(ctx).Should().Be(RerankStrategy.Off);
     }
@@ -23,21 +23,21 @@ public class RerankStrategySelectorTests
     [Fact]
     public void Off_setting_returns_off()
     {
-        Selector(RerankStrategy.Off).Resolve(new RerankContext(QuestionType.Reasoning, null))
+        Selector(RerankStrategy.Off).Resolve(new RerankContext(QuestionType.Reasoning, null, Guid.Empty))
             .Should().Be(RerankStrategy.Off);
     }
 
     [Fact]
     public void Listwise_setting_returns_listwise()
     {
-        Selector(RerankStrategy.Listwise).Resolve(new RerankContext(QuestionType.Reasoning, null))
+        Selector(RerankStrategy.Listwise).Resolve(new RerankContext(QuestionType.Reasoning, null, Guid.Empty))
             .Should().Be(RerankStrategy.Listwise);
     }
 
     [Fact]
     public void Pointwise_setting_returns_pointwise()
     {
-        Selector(RerankStrategy.Pointwise).Resolve(new RerankContext(QuestionType.Greeting, null))
+        Selector(RerankStrategy.Pointwise).Resolve(new RerankContext(QuestionType.Greeting, null, Guid.Empty))
             .Should().Be(RerankStrategy.Pointwise);
     }
 
@@ -49,14 +49,14 @@ public class RerankStrategySelectorTests
     [InlineData(QuestionType.Other, RerankStrategy.Listwise)]
     public void Auto_routes_on_question_type(QuestionType qt, RerankStrategy expected)
     {
-        Selector(RerankStrategy.Auto).Resolve(new RerankContext(qt, null))
+        Selector(RerankStrategy.Auto).Resolve(new RerankContext(qt, null, Guid.Empty))
             .Should().Be(expected);
     }
 
     [Fact]
     public void Auto_with_null_question_type_defaults_to_listwise()
     {
-        Selector(RerankStrategy.Auto).Resolve(new RerankContext(null, null))
+        Selector(RerankStrategy.Auto).Resolve(new RerankContext(null, null, Guid.Empty))
             .Should().Be(RerankStrategy.Listwise);
     }
 }

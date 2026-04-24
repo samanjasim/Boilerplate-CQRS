@@ -22,7 +22,7 @@ public class QuestionClassifierTests
         var cache = new FakeCacheService();
         var c = Build(provider, cache);
 
-        var type = await c.ClassifyAsync("hello", CancellationToken.None);
+        var type = await c.ClassifyAsync(Guid.Empty, "hello", CancellationToken.None);
 
         type.Should().Be(QuestionType.Greeting);
         provider.Calls.Should().Be(0);
@@ -36,7 +36,7 @@ public class QuestionClassifierTests
         var cache = new FakeCacheService();
         var c = Build(provider, cache);
 
-        var type = await c.ClassifyAsync("the forecast for Q3 is ambiguous", CancellationToken.None);
+        var type = await c.ClassifyAsync(Guid.Empty, "the forecast for Q3 is ambiguous", CancellationToken.None);
 
         type.Should().Be(QuestionType.Reasoning);
         provider.Calls.Should().Be(1);
@@ -50,8 +50,8 @@ public class QuestionClassifierTests
         var cache = new FakeCacheService();
         var c = Build(provider, cache);
 
-        await c.ClassifyAsync("what about concurrent queues in .NET", CancellationToken.None);
-        await c.ClassifyAsync("what about concurrent queues in .NET", CancellationToken.None);
+        await c.ClassifyAsync(Guid.Empty, "what about concurrent queues in .NET", CancellationToken.None);
+        await c.ClassifyAsync(Guid.Empty, "what about concurrent queues in .NET", CancellationToken.None);
 
         provider.Calls.Should().Be(1);
     }
@@ -64,7 +64,7 @@ public class QuestionClassifierTests
         var cache = new FakeCacheService();
         var c = Build(provider, cache);
 
-        var type = await c.ClassifyAsync("ambiguous prose input", CancellationToken.None);
+        var type = await c.ClassifyAsync(Guid.Empty, "ambiguous prose input", CancellationToken.None);
 
         type.Should().BeNull();
     }
@@ -77,7 +77,7 @@ public class QuestionClassifierTests
         var cache = new FakeCacheService();
         var c = Build(provider, cache);
 
-        var type = await c.ClassifyAsync("ambiguous prose input", CancellationToken.None);
+        var type = await c.ClassifyAsync(Guid.Empty, "ambiguous prose input", CancellationToken.None);
 
         type.Should().Be(QuestionType.Other);
     }

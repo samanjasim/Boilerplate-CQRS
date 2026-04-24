@@ -23,7 +23,7 @@ export function BottleneckStatesChart({ states }: Props) {
               <XAxis type="number" tick={{ fontSize: 11 }} unit="h" />
               <YAxis type="category" dataKey="stateName" width={120} tick={{ fontSize: 11 }} />
               <Tooltip />
-              <Bar dataKey="medianDwellHours" fill="var(--primary)" />
+              <Bar dataKey="medianDwellHours" fill="var(--color-primary)" />
             </BarChart>
           </ResponsiveContainer>
         ) : (

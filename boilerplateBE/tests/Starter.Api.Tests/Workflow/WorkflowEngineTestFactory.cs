@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Readers;
+using Starter.Application.Common.Interfaces;
 using Starter.Module.Workflow.Infrastructure.Persistence;
 using Starter.Module.Workflow.Infrastructure.Services;
 
@@ -70,6 +71,7 @@ internal static class WorkflowEngineTestFactory
             humanTaskFactory,
             autoTransitionEvaluator,
             parallelCoordinator,
+            Mock.Of<ICurrentUserService>(),
             NullLogger<WorkflowEngine>.Instance);
 
         return new Fixture(engine, userReader);

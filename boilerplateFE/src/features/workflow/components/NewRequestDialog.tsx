@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQueryClient } from '@tanstack/react-query';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
@@ -10,8 +9,6 @@ import { Label } from '@/components/ui/label';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { toast } from 'sonner';
-import { queryKeys } from '@/lib/query/keys';
 import { useWorkflowDefinitions, useStartWorkflow } from '../api';
 
 interface NewRequestDialogProps {
@@ -21,7 +18,6 @@ interface NewRequestDialogProps {
 
 export function NewRequestDialog({ open, onOpenChange }: NewRequestDialogProps) {
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const [selectedDefinitionId, setSelectedDefinitionId] = useState('');
   const [entityDisplayName, setEntityDisplayName] = useState('');
 
@@ -37,6 +33,8 @@ export function NewRequestDialog({ open, onOpenChange }: NewRequestDialogProps) 
   const handleSubmit = () => {
     if (!selectedDefinition || !entityDisplayName.trim()) return;
 
+    // useStartWorkflow already toasts success and invalidates instances/tasks;
+    // the dialog only needs to close when the mutation succeeds.
     startWorkflow(
       {
         entityType: selectedDefinition.entityType,
@@ -44,14 +42,7 @@ export function NewRequestDialog({ open, onOpenChange }: NewRequestDialogProps) 
         definitionName: selectedDefinition.name,
         entityDisplayName: entityDisplayName.trim(),
       },
-      {
-        onSuccess: () => {
-          toast.success(t('workflow.newRequest.success'));
-          queryClient.invalidateQueries({ queryKey: queryKeys.workflow.instances.all });
-          queryClient.invalidateQueries({ queryKey: queryKeys.workflow.tasks.all });
-          handleOpenChange(false);
-        },
-      },
+      { onSuccess: () => handleOpenChange(false) },
     );
   };
 

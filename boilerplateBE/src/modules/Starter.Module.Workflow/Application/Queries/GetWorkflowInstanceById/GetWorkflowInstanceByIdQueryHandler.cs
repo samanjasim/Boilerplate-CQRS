@@ -30,13 +30,24 @@ internal sealed class GetWorkflowInstanceByIdQueryHandler(
         if (instance is null)
             return Result.Failure<WorkflowInstanceSummary>(WorkflowErrors.InstanceNotFound(request.InstanceId));
 
-        // Mirror the server-side scoping used by GetWorkflowInstances: users without
-        // ViewAllTasks can only see instances they started. Return NotFound (not Forbid)
+        // Mirror GetWorkflowHistory's access check: ViewAllTasks holders see every
+        // instance, initiators see their own, AND anyone with a past/current task
+        // on the instance can see it (otherwise an approver can open the history
+        // timeline but gets 404 on the detail page). Return NotFound (not Forbid)
         // to avoid leaking existence of instances belonging to other users.
         if (!currentUser.HasPermission(WorkflowPermissions.ViewAllTasks)
             && instance.StartedByUserId != currentUser.UserId)
         {
-            return Result.Failure<WorkflowInstanceSummary>(WorkflowErrors.InstanceNotFound(request.InstanceId));
+            var hasTask = await db.ApprovalTasks
+                .AsNoTracking()
+                .AnyAsync(t => t.InstanceId == request.InstanceId
+                               && (t.AssigneeUserId == currentUser.UserId
+                                   || t.OriginalAssigneeUserId == currentUser.UserId
+                                   || t.CompletedByUserId == currentUser.UserId),
+                          cancellationToken);
+
+            if (!hasTask)
+                return Result.Failure<WorkflowInstanceSummary>(WorkflowErrors.InstanceNotFound(request.InstanceId));
         }
 
         var users = await _userReader.GetManyAsync([instance.StartedByUserId], cancellationToken);

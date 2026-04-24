@@ -16,6 +16,7 @@ public interface IContextualQueryResolver
     /// without calling the LLM.
     /// </summary>
     Task<string> ResolveAsync(
+        Guid tenantId,
         string latestUserMessage,
         IReadOnlyList<RagHistoryMessage> history,
         string? language,

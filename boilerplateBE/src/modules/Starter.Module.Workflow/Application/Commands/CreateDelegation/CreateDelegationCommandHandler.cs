@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Starter.Abstractions.Capabilities;
+using Starter.Abstractions.Readers;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.Workflow.Domain.Entities;
 using Starter.Module.Workflow.Infrastructure.Persistence;
@@ -12,6 +13,7 @@ namespace Starter.Module.Workflow.Application.Commands.CreateDelegation;
 internal sealed class CreateDelegationCommandHandler(
     WorkflowDbContext dbContext,
     ICurrentUserService currentUser,
+    IUserReader userReader,
     IMessageDispatcher messageDispatcher,
     ILogger<CreateDelegationCommandHandler> logger) : IRequestHandler<CreateDelegationCommand, Result<Guid>>
 {
@@ -31,6 +33,16 @@ internal sealed class CreateDelegationCommandHandler(
         if (request.ToUserId == userId)
             return Result.Failure<Guid>(Error.Validation(
                 "Delegation.SelfDelegation", "Cannot delegate to yourself."));
+
+        // Require the delegate to exist and belong to the same tenant. Without
+        // this, a tenant user could create a delegation pointing at a foreign
+        // (or non-existent) userId — the AssigneeResolver would then swap
+        // tasks to that user but neither side can ever act on them because
+        // the global tenant filter hides the task from the delegate.
+        var delegate_ = await userReader.GetAsync(request.ToUserId, cancellationToken);
+        if (delegate_ is null || delegate_.TenantId != currentUser.TenantId)
+            return Result.Failure<Guid>(Error.NotFound(
+                "Delegation.UserNotFound", "Delegate user not found in this tenant."));
 
         // Check for overlapping active delegations
         var hasOverlap = await dbContext.DelegationRules

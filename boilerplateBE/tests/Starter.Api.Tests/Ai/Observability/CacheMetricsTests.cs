@@ -66,9 +66,9 @@ public class CacheMetricsTests
             NullLogger<QueryRewriter>.Instance);
 
         // Miss: no cached entry, LLM returns two variants → cache populated.
-        await sut.RewriteAsync("what is a pump?", language: "en", CancellationToken.None);
+        await sut.RewriteAsync(Guid.Empty, "what is a pump?", language: "en", CancellationToken.None);
         // Hit: cached entry from previous call is returned.
-        await sut.RewriteAsync("what is a pump?", language: "en", CancellationToken.None);
+        await sut.RewriteAsync(Guid.Empty, "what is a pump?", language: "en", CancellationToken.None);
 
         provider.Calls.Should().Be(1);
 
@@ -107,8 +107,8 @@ public class CacheMetricsTests
         // so it falls through to the LLM+cache path.
         const string query = "centrifugal pumps move fluid through impeller rotation";
 
-        await sut.ClassifyAsync(query, CancellationToken.None); // miss
-        await sut.ClassifyAsync(query, CancellationToken.None); // hit
+        await sut.ClassifyAsync(Guid.Empty, query, CancellationToken.None); // miss
+        await sut.ClassifyAsync(Guid.Empty, query, CancellationToken.None); // hit
 
         provider.Calls.Should().Be(1);
 
@@ -137,8 +137,8 @@ public class CacheMetricsTests
             Microsoft.Extensions.Logging.Abstractions.NullLogger<Starter.Module.AI.Infrastructure.Retrieval.Reranking.ListwiseReranker>.Instance);
 
         var (candidates, chunks) = BuildRerankInputs(count: 3);
-        await sut.RerankAsync("q", candidates, chunks, CancellationToken.None); // miss (populates cache)
-        await sut.RerankAsync("q", candidates, chunks, CancellationToken.None); // hit
+        await sut.RerankAsync(Guid.Empty, "q", candidates, chunks, CancellationToken.None); // miss (populates cache)
+        await sut.RerankAsync(Guid.Empty, "q", candidates, chunks, CancellationToken.None); // hit
 
         var rows = listener.Snapshot()
             .Where(m => m.InstrumentName == "rag.cache.requests"
@@ -174,8 +174,8 @@ public class CacheMetricsTests
             Microsoft.Extensions.Logging.Abstractions.NullLogger<Starter.Module.AI.Infrastructure.Retrieval.Reranking.PointwiseReranker>.Instance);
 
         var (candidates, chunks) = BuildRerankInputs(count: 3);
-        await sut.RerankAsync("q", candidates, chunks, CancellationToken.None); // 3 misses
-        await sut.RerankAsync("q", candidates, chunks, CancellationToken.None); // 3 hits
+        await sut.RerankAsync(Guid.Empty, "q", candidates, chunks, CancellationToken.None); // 3 misses
+        await sut.RerankAsync(Guid.Empty, "q", candidates, chunks, CancellationToken.None); // 3 hits
 
         var rows = listener.Snapshot()
             .Where(m => m.InstrumentName == "rag.cache.requests"
@@ -203,7 +203,7 @@ public class CacheMetricsTests
             Microsoft.Extensions.Logging.Abstractions.NullLogger<Starter.Module.AI.Infrastructure.Retrieval.Reranking.ListwiseReranker>.Instance);
 
         var (candidates, chunks) = BuildRerankInputs(count: 3);
-        await sut.RerankAsync("q", candidates, chunks, CancellationToken.None);
+        await sut.RerankAsync(Guid.Empty, "q", candidates, chunks, CancellationToken.None);
 
         var rows = listener.Snapshot()
             .Where(m => m.InstrumentName == "rag.rerank.reordered").ToList();
@@ -227,7 +227,7 @@ public class CacheMetricsTests
             Microsoft.Extensions.Logging.Abstractions.NullLogger<Starter.Module.AI.Infrastructure.Retrieval.Reranking.ListwiseReranker>.Instance);
 
         var (candidates, chunks) = BuildRerankInputs(count: 3);
-        await sut.RerankAsync("q", candidates, chunks, CancellationToken.None);
+        await sut.RerankAsync(Guid.Empty, "q", candidates, chunks, CancellationToken.None);
 
         var rows = listener.Snapshot()
             .Where(m => m.InstrumentName == "rag.rerank.reordered").ToList();
@@ -260,7 +260,7 @@ public class CacheMetricsTests
             Microsoft.Extensions.Logging.Abstractions.NullLogger<Starter.Module.AI.Infrastructure.Retrieval.Reranking.PointwiseReranker>.Instance);
 
         var (candidates, chunks) = BuildRerankInputs(count: 3);
-        await sut.RerankAsync("q", candidates, chunks, CancellationToken.None);
+        await sut.RerankAsync(Guid.Empty, "q", candidates, chunks, CancellationToken.None);
 
         var rows = listener.Snapshot()
             .Where(m => m.InstrumentName == "rag.rerank.reordered").ToList();

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Readers;
+using Starter.Application.Common.Interfaces;
 using Starter.Module.Workflow.Domain.Entities;
 using Starter.Module.Workflow.Domain.Enums;
 using Starter.Module.Workflow.Infrastructure.Persistence;
@@ -67,6 +68,7 @@ public sealed class WorkflowEngineTests : IDisposable
             humanTaskFactory,
             autoTransitionEvaluator,
             parallelCoordinator,
+            Mock.Of<ICurrentUserService>(),
             NullLogger<WorkflowEngine>.Instance);
     }
 

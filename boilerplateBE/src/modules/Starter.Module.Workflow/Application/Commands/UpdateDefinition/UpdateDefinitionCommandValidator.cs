@@ -2,12 +2,21 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using FluentValidation;
 using Starter.Abstractions.Capabilities;
+using Starter.Module.Workflow.Domain.Constants;
 
 namespace Starter.Module.Workflow.Application.Commands.UpdateDefinition;
 
 public sealed partial class UpdateDefinitionCommandValidator : AbstractValidator<UpdateDefinitionCommand>
 {
-    private static readonly string[] KnownTypes = ["Initial", "HumanTask", "SystemAction", "Terminal"];
+    private static readonly string[] KnownTypes =
+    [
+        WorkflowStateTypes.Initial,
+        WorkflowStateTypes.HumanTask,
+        WorkflowStateTypes.SystemAction,
+        WorkflowStateTypes.Terminal,
+        WorkflowStateTypes.Final,
+        WorkflowStateTypes.ConditionalGate,
+    ];
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -74,7 +83,7 @@ public sealed partial class UpdateDefinitionCommandValidator : AbstractValidator
 
             if (!KnownTypes.Contains(state.Type, StringComparer.OrdinalIgnoreCase))
                 ctx.AddFailure($"{prefix}.type",
-                    $"State type '{state.Type}' is not one of Initial, HumanTask, SystemAction, Terminal.");
+                    $"State type '{state.Type}' is not one of {string.Join(", ", KnownTypes)}.");
 
             if (state.Type.Equals("HumanTask", StringComparison.OrdinalIgnoreCase)
                 && (state.Assignee is null || string.IsNullOrWhiteSpace(state.Assignee.Strategy))
@@ -108,11 +117,13 @@ public sealed partial class UpdateDefinitionCommandValidator : AbstractValidator
             ctx.AddFailure(nameof(UpdateDefinitionCommand.StatesJson),
                 $"A definition must have exactly one Initial state (found {initialCount}).");
 
-        // At least one Terminal
-        var terminalCount = states.Count(s => s.Type.Equals("Terminal", StringComparison.OrdinalIgnoreCase));
+        // At least one Terminal/Final (both are absorbing outcome states).
+        var terminalCount = states.Count(s =>
+            s.Type.Equals(WorkflowStateTypes.Terminal, StringComparison.OrdinalIgnoreCase)
+            || s.Type.Equals(WorkflowStateTypes.Final, StringComparison.OrdinalIgnoreCase));
         if (terminalCount == 0)
             ctx.AddFailure(nameof(UpdateDefinitionCommand.StatesJson),
-                "A definition must have at least one Terminal state.");
+                "A definition must have at least one Terminal or Final state.");
     }
 
     private static void ValidateTransitions(
@@ -161,9 +172,10 @@ public sealed partial class UpdateDefinitionCommandValidator : AbstractValidator
             if (!stateByName.TryGetValue(t.From, out var fromState))
                 ctx.AddFailure($"{prefix}.from",
                     $"Transition from '{t.From}' references an unknown state.");
-            else if (fromState.Type.Equals("Terminal", StringComparison.OrdinalIgnoreCase))
+            else if (fromState.Type.Equals(WorkflowStateTypes.Terminal, StringComparison.OrdinalIgnoreCase)
+                     || fromState.Type.Equals(WorkflowStateTypes.Final, StringComparison.OrdinalIgnoreCase))
                 ctx.AddFailure($"{prefix}.from",
-                    $"Transition cannot originate from Terminal state '{t.From}'.");
+                    $"Transition cannot originate from Terminal/Final state '{t.From}'.");
 
             if (!stateByName.ContainsKey(t.To))
                 ctx.AddFailure($"{prefix}.to",

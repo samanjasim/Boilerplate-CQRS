@@ -105,5 +105,9 @@ public sealed class WorkflowInstanceConfiguration : IEntityTypeConfiguration<Wor
 
         builder.HasIndex(i => new { i.EntityType, i.EntityId });
         builder.HasIndex(i => new { i.TenantId, i.Status });
+        // Every analytics query (headline, instance-count-series, bottleneck,
+        // stuck-instances) filters on (DefinitionId, StartedAt). Without this
+        // composite index, Postgres seq-scans the instances table.
+        builder.HasIndex(i => new { i.DefinitionId, i.StartedAt });
     }
 }

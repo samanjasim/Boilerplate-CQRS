@@ -5,6 +5,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import type { FormFieldDefinition } from '@/types/workflow.types';
 
 interface DynamicFormRendererProps {
@@ -54,8 +55,14 @@ export function DynamicFormRenderer({ fields, values, onChange, errors }: Dynami
             <Input
               id={`form-field-${field.name}`}
               type="number"
-              value={(values[field.name] as number) ?? ''}
-              onChange={(e) => onChange(field.name, e.target.value ? Number(e.target.value) : '')}
+              value={(values[field.name] as number | undefined) ?? ''}
+              onChange={(e) => {
+                // Empty input becomes undefined (not ''), so the backend
+                // validator sees a missing field instead of a string where
+                // a number is expected.
+                const raw = e.target.value;
+                onChange(field.name, raw === '' ? undefined : Number(raw));
+              }}
               placeholder={field.placeholder}
               min={field.min}
               max={field.max}
@@ -91,12 +98,10 @@ export function DynamicFormRenderer({ fields, values, onChange, errors }: Dynami
 
           {field.type === 'checkbox' && (
             <div className="flex items-center gap-2">
-              <input
+              <Checkbox
                 id={`form-field-${field.name}`}
-                type="checkbox"
                 checked={!!values[field.name]}
-                onChange={(e) => onChange(field.name, e.target.checked)}
-                className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                onCheckedChange={(checked) => onChange(field.name, checked === true)}
               />
               <Label htmlFor={`form-field-${field.name}`} className="text-sm font-medium text-foreground">
                 {field.label}

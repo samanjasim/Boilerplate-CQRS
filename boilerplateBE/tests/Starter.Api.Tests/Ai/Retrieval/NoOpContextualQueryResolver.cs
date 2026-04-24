@@ -10,6 +10,7 @@ namespace Starter.Api.Tests.Ai.Retrieval;
 internal sealed class NoOpContextualQueryResolver : IContextualQueryResolver
 {
     public Task<string> ResolveAsync(
+        Guid tenantId,
         string latestUserMessage,
         IReadOnlyList<RagHistoryMessage> history,
         string? language,

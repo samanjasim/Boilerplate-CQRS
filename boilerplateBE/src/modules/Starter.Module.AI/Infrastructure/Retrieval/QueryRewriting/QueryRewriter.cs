@@ -29,7 +29,7 @@ internal sealed class QueryRewriter : IQueryRewriter
     }
 
     public async Task<IReadOnlyList<string>> RewriteAsync(
-        string originalQuery, string? language, CancellationToken ct)
+        Guid tenantId, string originalQuery, string? language, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(originalQuery))
             return Array.Empty<string>();
@@ -39,7 +39,7 @@ internal sealed class QueryRewriter : IQueryRewriter
         if (!_settings.EnableQueryExpansion)
             return ruleVariants;
 
-        var cacheKey = BuildCacheKey(originalQuery, language);
+        var cacheKey = BuildCacheKey(tenantId, originalQuery, language);
         var cached = await _cache.GetAsync<List<string>>(cacheKey, ct);
         AiRagMetrics.CacheRequests.Add(
             1,
@@ -134,10 +134,10 @@ internal sealed class QueryRewriter : IQueryRewriter
     private string Normalize(string s) =>
         ArabicTextNormalizer.Normalize(s.Trim(), _settings.ToArabicOptions());
 
-    private string BuildCacheKey(string query, string? language)
+    private string BuildCacheKey(Guid tenantId, string query, string? language)
     {
         var provider = _factory.GetDefaultProviderType().ToString();
         var model = _settings.RewriterModel ?? _factory.GetDefaultChatModelId();
-        return RagCacheKeys.QueryRewrite(provider, model, language ?? string.Empty, Normalize(query));
+        return RagCacheKeys.QueryRewrite(tenantId, provider, model, language ?? string.Empty, Normalize(query));
     }
 }

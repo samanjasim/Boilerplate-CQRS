@@ -9,6 +9,6 @@ internal sealed class FakeQuestionClassifier : IQuestionClassifier
 
     public FakeQuestionClassifier(QuestionType? type) => _type = type;
 
-    public Task<QuestionType?> ClassifyAsync(string query, CancellationToken ct)
+    public Task<QuestionType?> ClassifyAsync(Guid tenantId, string query, CancellationToken ct)
         => Task.FromResult(_type);
 }

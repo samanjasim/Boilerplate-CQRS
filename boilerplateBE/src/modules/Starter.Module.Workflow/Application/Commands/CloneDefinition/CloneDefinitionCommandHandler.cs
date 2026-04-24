@@ -21,6 +21,16 @@ internal sealed class CloneDefinitionCommandHandler(
 
         var clone = definition.Clone(currentUser.TenantId);
 
+        // Pre-check the (TenantId, Name) unique constraint so re-cloning a
+        // template the tenant already owns returns a clean Conflict error
+        // instead of bubbling a raw DbUpdateException from the unique index.
+        var conflict = await context.WorkflowDefinitions
+            .AnyAsync(d => d.TenantId == currentUser.TenantId && d.Name == clone.Name, cancellationToken);
+        if (conflict)
+            return Result.Failure<Guid>(Error.Conflict(
+                "Workflow.DefinitionAlreadyCloned",
+                $"A workflow definition named '{clone.Name}' already exists in this tenant."));
+
         context.WorkflowDefinitions.Add(clone);
         await context.SaveChangesAsync(cancellationToken);
 

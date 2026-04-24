@@ -52,7 +52,7 @@ public sealed class PointwiseRerankerTests
         var svc = Build(provider, cache, settings);
         var (hits, chunks) = Build(3);
 
-        var result = await svc.RerankAsync("q", hits, chunks, CancellationToken.None);
+        var result = await svc.RerankAsync(Guid.Empty, "q", hits, chunks, CancellationToken.None);
 
         result.StrategyUsed.Should().Be(RerankStrategy.Pointwise);
         result.Ordered.Should().HaveCount(2);
@@ -70,8 +70,8 @@ public sealed class PointwiseRerankerTests
         var svc = Build(provider, cache);
         var (hits, chunks) = Build(2);
 
-        _ = await svc.RerankAsync("same query", hits, chunks, CancellationToken.None);
-        _ = await svc.RerankAsync("same query", hits, chunks, CancellationToken.None);
+        _ = await svc.RerankAsync(Guid.Empty, "same query", hits, chunks, CancellationToken.None);
+        _ = await svc.RerankAsync(Guid.Empty, "same query", hits, chunks, CancellationToken.None);
 
         provider.Calls.Should().Be(2);
     }
@@ -90,7 +90,7 @@ public sealed class PointwiseRerankerTests
         var svc = Build(provider, cache, settings);
         var (hits, chunks) = Build(4);
 
-        var result = await svc.RerankAsync("q", hits, chunks, CancellationToken.None);
+        var result = await svc.RerankAsync(Guid.Empty, "q", hits, chunks, CancellationToken.None);
 
         result.StrategyUsed.Should().Be(RerankStrategy.FallbackRrf);
         result.Ordered.Should().Equal(hits);
@@ -107,6 +107,7 @@ public sealed class PointwiseRerankerTests
         var svc = Build(provider, cache);
 
         var result = await svc.RerankAsync(
+            Guid.Empty,
             "q",
             Array.Empty<HybridHit>(),
             Array.Empty<AiDocumentChunk>(),
@@ -134,7 +135,7 @@ public sealed class PointwiseRerankerTests
         var svc = Build(provider, cache, settings);
         var (hits, chunks) = Build(3);
 
-        var result = await svc.RerankAsync("q", hits, chunks, CancellationToken.None);
+        var result = await svc.RerankAsync(Guid.Empty, "q", hits, chunks, CancellationToken.None);
 
         result.StrategyUsed.Should().Be(RerankStrategy.Pointwise);
         result.Ordered[0].ChunkId.Should().Be(hits[0].ChunkId);
