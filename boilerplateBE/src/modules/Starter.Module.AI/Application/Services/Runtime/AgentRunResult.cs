@@ -4,8 +4,8 @@ internal sealed record AgentRunResult(
     AgentRunStatus Status,
     string? FinalContent,
     IReadOnlyList<AgentStepEvent> Steps,
-    int TotalInputTokens,
-    int TotalOutputTokens,
+    long TotalInputTokens,
+    long TotalOutputTokens,
     string? TerminationReason);
 
 internal enum AgentRunStatus

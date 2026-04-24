@@ -18,11 +18,6 @@ namespace Starter.Module.AI.Application.Services;
 /// </summary>
 internal sealed class ChatAgentRunSink : IAgentRunSink
 {
-    private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
-    {
-        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-    };
-
     private readonly AiDbContext _db;
     private readonly Guid _conversationId;
     private readonly ChannelWriter<ChatStreamEvent>? _streamWriter;
@@ -48,14 +43,14 @@ internal sealed class ChatAgentRunSink : IAgentRunSink
 
     public Task OnStepStartedAsync(int stepIndex, CancellationToken ct) => Task.CompletedTask;
 
-    public async Task OnAssistantMessageAsync(AgentAssistantMessage msg, CancellationToken ct)
+    public Task OnAssistantMessageAsync(AgentAssistantMessage msg, CancellationToken ct)
     {
         // Only persist intermediate assistant-tool-call rows here. The final assistant
         // message (the one with no tool calls) is persisted by ChatExecutionService's
         // FinalizeTurnAsync so it can attach citations + invoke webhooks atomically.
-        if (msg.ToolCalls.Count == 0) return;
+        if (msg.ToolCalls.Count == 0) return Task.CompletedTask;
 
-        var json = JsonSerializer.Serialize(msg.ToolCalls, SerializerOptions);
+        var json = JsonSerializer.Serialize(msg.ToolCalls, AiJsonDefaults.Serializer);
         var row = AiMessage.CreateAssistantMessage(
             _conversationId,
             msg.Content ?? "",
@@ -65,6 +60,7 @@ internal sealed class ChatAgentRunSink : IAgentRunSink
             toolCalls: json);
 
         _db.AiMessages.Add(row);
+        return Task.CompletedTask;
     }
 
     public async Task OnToolCallAsync(AgentToolCallEvent call, CancellationToken ct)

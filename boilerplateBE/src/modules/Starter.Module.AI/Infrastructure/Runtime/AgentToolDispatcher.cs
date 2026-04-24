@@ -23,11 +23,6 @@ internal sealed class AgentToolDispatcher(
     ICurrentUserService currentUser,
     ILogger<AgentToolDispatcher> logger) : IAgentToolDispatcher
 {
-    private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
-    {
-        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-    };
-
     public async Task<AgentToolDispatchResult> DispatchAsync(
         AiToolCall call,
         ToolResolutionResult tools,
@@ -42,7 +37,7 @@ internal sealed class AgentToolDispatcher(
         object? command;
         try
         {
-            command = JsonSerializer.Deserialize(call.ArgumentsJson, def.CommandType, SerializerOptions);
+            command = JsonSerializer.Deserialize(call.ArgumentsJson, def.CommandType, AiJsonDefaults.Serializer);
         }
         catch (Exception ex)
         {
@@ -84,12 +79,12 @@ internal sealed class AgentToolDispatcher(
     }
 
     private static AgentToolDispatchResult Success(object? value) => new(
-        JsonSerializer.Serialize(new { ok = true, value }, SerializerOptions),
+        JsonSerializer.Serialize(new { ok = true, value }, AiJsonDefaults.Serializer),
         IsError: false);
 
     private static AgentToolDispatchResult Failure(Error error) => new(
         JsonSerializer.Serialize(
             new { ok = false, error = new { code = error.Code, message = error.Description } },
-            SerializerOptions),
+            AiJsonDefaults.Serializer),
         IsError: true);
 }

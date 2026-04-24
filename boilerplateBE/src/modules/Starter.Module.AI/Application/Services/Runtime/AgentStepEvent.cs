@@ -15,6 +15,10 @@ internal enum AgentStepKind
 {
     Final,
     ToolCall,
+    /// <summary>
+    /// Reserved for future chain-of-thought steps emitted by reasoning-specialised
+    /// models (e.g., OpenAI o-series, Claude Opus thinking). Not emitted in 5a.
+    /// </summary>
     ThinkOnly
 }
 

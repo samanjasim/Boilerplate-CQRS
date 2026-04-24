@@ -38,6 +38,8 @@ internal sealed class ChatExecutionService(
 {
     private const string AiTokensMetric = "ai_tokens";
     private const int MaxTitleLength = 80;
+    private const string StepBudgetExceededMessage =
+        "I couldn't fully complete the task within my step budget. Please narrow the request.";
 
     // ──────────────────────────────────────────────────────────────
     // Public: non-streaming turn
@@ -105,8 +107,8 @@ internal sealed class ChatExecutionService(
         var finalContent = runResult.Status switch
         {
             AgentRunStatus.Completed => runResult.FinalContent ?? "",
-            AgentRunStatus.MaxStepsExceeded => "I couldn't fully complete the task within my step budget. Please narrow the request.",
-            AgentRunStatus.LoopBreak => "I couldn't fully complete the task within my step budget. Please narrow the request.",
+            AgentRunStatus.MaxStepsExceeded => StepBudgetExceededMessage,
+            AgentRunStatus.LoopBreak => StepBudgetExceededMessage,
             _ => ""
         };
 
@@ -114,7 +116,7 @@ internal sealed class ChatExecutionService(
         var finalOrder = sink.NextOrder;
         var finalMessage = await FinalizeTurnAsync(
             state, finalContent,
-            runResult.TotalInputTokens, runResult.TotalOutputTokens,
+            (int)runResult.TotalInputTokens, (int)runResult.TotalOutputTokens,
             finalOrder, citations, ct);
 
         return Result.Success(new AiChatReplyDto(
@@ -217,6 +219,9 @@ internal sealed class ChatExecutionService(
         if (runResult is null)
             yield break;
 
+        // Defensive: the runtime returns Cancelled only when ct was observed; ReadAllAsync(ct)
+        // typically throws OCE first, so this branch rarely executes. Retained to cover a
+        // future runtime that could return Cancelled for non-ct reasons.
         if (runResult.Status == AgentRunStatus.Cancelled)
         {
             await FailTurnAsync(state);
@@ -243,8 +248,8 @@ internal sealed class ChatExecutionService(
         var finalContent = runResult.Status switch
         {
             AgentRunStatus.Completed => runResult.FinalContent ?? "",
-            AgentRunStatus.MaxStepsExceeded => "I couldn't fully complete the task within my step budget. Please narrow the request.",
-            AgentRunStatus.LoopBreak => "I couldn't fully complete the task within my step budget. Please narrow the request.",
+            AgentRunStatus.MaxStepsExceeded => StepBudgetExceededMessage,
+            AgentRunStatus.LoopBreak => StepBudgetExceededMessage,
             _ => ""
         };
 
@@ -269,14 +274,14 @@ internal sealed class ChatExecutionService(
         var finalOrder = sink.NextOrder;
         var assistantMessage = await FinalizeTurnAsync(
             state, finalContent,
-            runResult.TotalInputTokens, runResult.TotalOutputTokens,
+            (int)runResult.TotalInputTokens, (int)runResult.TotalOutputTokens,
             finalOrder, citations, ct);
 
         yield return new ChatStreamEvent("done", new
         {
             MessageId = assistantMessage.Id,
-            InputTokens = runResult.TotalInputTokens,
-            OutputTokens = runResult.TotalOutputTokens,
+            InputTokens = (int)runResult.TotalInputTokens,
+            OutputTokens = (int)runResult.TotalOutputTokens,
             FinishReason = runResult.Status == AgentRunStatus.Completed ? "stop" : runResult.Status.ToString()
         });
     }

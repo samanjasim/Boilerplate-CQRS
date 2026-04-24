@@ -44,8 +44,15 @@ internal abstract class AgentRuntimeBase(
             new KeyValuePair<string, object?>("status", result.Status.ToString()));
 
         if (result.Status == AgentRunStatus.LoopBreak)
+        {
+            // TerminationReason format: "Repeated identical tool call: {toolName}"
+            var toolName = result.TerminationReason is { Length: > 0 } reason && reason.Contains(':')
+                ? reason[(reason.IndexOf(':') + 1)..].Trim()
+                : "unknown";
             AiAgentMetrics.LoopBreaks.Add(1,
-                new KeyValuePair<string, object?>("provider", ctx.ModelConfig.Provider.ToString()));
+                new KeyValuePair<string, object?>("provider", ctx.ModelConfig.Provider.ToString()),
+                new KeyValuePair<string, object?>("tool_name", toolName));
+        }
 
         if (result.Status == AgentRunStatus.MaxStepsExceeded)
             AiAgentMetrics.MaxStepsExceeded.Add(1,
@@ -70,8 +77,8 @@ internal abstract class AgentRuntimeBase(
         var messages = new List<AiChatMessage>(ctx.Messages);
         var steps = new List<AgentStepEvent>();
         var detector = new LoopBreakDetector(ctx.LoopBreak);
-        var totalInput = 0;
-        var totalOutput = 0;
+        long totalInput = 0;
+        long totalOutput = 0;
 
         for (var stepIndex = 0; stepIndex < ctx.MaxSteps; stepIndex++)
         {
@@ -81,6 +88,9 @@ internal abstract class AgentRuntimeBase(
 
             await sink.OnStepStartedAsync(stepIndex, ct);
             var startedAt = DateTimeOffset.UtcNow;
+
+            using var stepActivity = AiAgentMetrics.Source.StartActivity("ai.agent.step");
+            stepActivity?.SetTag("step.index", stepIndex);
 
             AiChatCompletion completion;
             try
@@ -112,6 +122,11 @@ internal abstract class AgentRuntimeBase(
                     completion.Content, Array.Empty<AgentToolInvocation>(),
                     completion.InputTokens, completion.OutputTokens,
                     completion.FinishReason, startedAt, DateTimeOffset.UtcNow);
+
+                stepActivity?.SetTag("step.kind", AgentStepKind.Final.ToString());
+                stepActivity?.SetTag("step.input_tokens", completion.InputTokens);
+                stepActivity?.SetTag("step.output_tokens", completion.OutputTokens);
+                stepActivity?.SetTag("step.tool_count", 0);
 
                 steps.Add(finalStep);
                 await sink.OnAssistantMessageAsync(new AgentAssistantMessage(
@@ -165,12 +180,25 @@ internal abstract class AgentRuntimeBase(
             steps.Add(toolStep);
             await sink.OnStepCompletedAsync(toolStep, ct);
 
+            stepActivity?.SetTag("step.kind", AgentStepKind.ToolCall.ToString());
+            stepActivity?.SetTag("step.input_tokens", completion.InputTokens);
+            stepActivity?.SetTag("step.output_tokens", completion.OutputTokens);
+            stepActivity?.SetTag("step.tool_count", toolCalls.Count);
+
             if (loopBreakTool is not null)
+            {
+                Logger.LogInformation(
+                    "Agent run terminated {Status} step={StepIndex} tool={ToolName} steps={StepCount}",
+                    AgentRunStatus.LoopBreak, stepIndex, loopBreakTool, steps.Count);
                 return await FinalizeAsync(sink, AgentRunStatus.LoopBreak, null,
                     $"Repeated identical tool call: {loopBreakTool}",
                     steps, totalInput, totalOutput, ct);
+            }
         }
 
+        Logger.LogInformation(
+            "Agent run terminated {Status} max_steps={MaxSteps} steps={StepCount}",
+            AgentRunStatus.MaxStepsExceeded, ctx.MaxSteps, steps.Count);
         return await FinalizeAsync(sink, AgentRunStatus.MaxStepsExceeded, null,
             $"MaxSteps={ctx.MaxSteps} reached",
             steps, totalInput, totalOutput, ct);
@@ -192,8 +220,8 @@ internal abstract class AgentRuntimeBase(
         var messages = new List<AiChatMessage>(ctx.Messages);
         var steps = new List<AgentStepEvent>();
         var detector = new LoopBreakDetector(ctx.LoopBreak);
-        var totalInput = 0;
-        var totalOutput = 0;
+        long totalInput = 0;
+        long totalOutput = 0;
         var priorPromptChars = 0;
 
         for (var stepIndex = 0; stepIndex < ctx.MaxSteps; stepIndex++)
@@ -204,6 +232,9 @@ internal abstract class AgentRuntimeBase(
 
             await sink.OnStepStartedAsync(stepIndex, ct);
             var startedAt = DateTimeOffset.UtcNow;
+
+            using var stepActivity = AiAgentMetrics.Source.StartActivity("ai.agent.step");
+            stepActivity?.SetTag("step.index", stepIndex);
 
             var currentPromptChars = messages.Sum(m => m.Content?.Length ?? 0);
             var newPromptChars = currentPromptChars - priorPromptChars;
@@ -266,6 +297,11 @@ internal abstract class AgentRuntimeBase(
                     startedAt, DateTimeOffset.UtcNow);
                 steps.Add(finalStep);
 
+                stepActivity?.SetTag("step.kind", AgentStepKind.Final.ToString());
+                stepActivity?.SetTag("step.input_tokens", stepIn);
+                stepActivity?.SetTag("step.output_tokens", stepOut);
+                stepActivity?.SetTag("step.tool_count", 0);
+
                 await sink.OnAssistantMessageAsync(new AgentAssistantMessage(
                     stepIndex, roundContent, Array.Empty<AiToolCall>(), stepIn, stepOut), ct);
                 await sink.OnStepCompletedAsync(finalStep, ct);
@@ -307,12 +343,25 @@ internal abstract class AgentRuntimeBase(
             steps.Add(toolStep);
             await sink.OnStepCompletedAsync(toolStep, ct);
 
+            stepActivity?.SetTag("step.kind", AgentStepKind.ToolCall.ToString());
+            stepActivity?.SetTag("step.input_tokens", stepIn);
+            stepActivity?.SetTag("step.output_tokens", stepOut);
+            stepActivity?.SetTag("step.tool_count", assembledCalls.Count);
+
             if (loopBreakTool is not null)
+            {
+                Logger.LogInformation(
+                    "Agent run terminated {Status} step={StepIndex} tool={ToolName} steps={StepCount}",
+                    AgentRunStatus.LoopBreak, stepIndex, loopBreakTool, steps.Count);
                 return await FinalizeAsync(sink, AgentRunStatus.LoopBreak, null,
                     $"Repeated identical tool call: {loopBreakTool}",
                     steps, totalInput, totalOutput, ct);
+            }
         }
 
+        Logger.LogInformation(
+            "Agent run terminated {Status} max_steps={MaxSteps} steps={StepCount}",
+            AgentRunStatus.MaxStepsExceeded, ctx.MaxSteps, steps.Count);
         return await FinalizeAsync(sink, AgentRunStatus.MaxStepsExceeded, null,
             $"MaxSteps={ctx.MaxSteps} reached",
             steps, totalInput, totalOutput, ct);
@@ -324,8 +373,8 @@ internal abstract class AgentRuntimeBase(
         string? finalContent,
         string? terminationReason,
         IReadOnlyList<AgentStepEvent> steps,
-        int totalInput,
-        int totalOutput,
+        long totalInput,
+        long totalOutput,
         CancellationToken ct)
     {
         var result = new AgentRunResult(status, finalContent, steps, totalInput, totalOutput, terminationReason);
