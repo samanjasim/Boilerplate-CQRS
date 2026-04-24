@@ -9,6 +9,7 @@ using Starter.Infrastructure.Capabilities.Adapters;
 using Starter.Infrastructure.Capabilities.MetricCalculators;
 using Starter.Infrastructure.Capabilities.NullObjects;
 using Starter.Infrastructure.Email.Templates;
+using Starter.Infrastructure.Messaging;
 using Starter.Infrastructure.Persistence;
 using Starter.Infrastructure.Persistence.Interceptors;
 using Starter.Infrastructure.Readers;
@@ -16,6 +17,7 @@ using Starter.Infrastructure.Services;
 using Starter.Infrastructure.Services.Access;
 using Starter.Infrastructure.Settings;
 using MassTransit;
+using MassTransit.Middleware.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
@@ -244,6 +246,16 @@ public static class DependencyInjection
                 cfg.ConfigureEndpoints(context);
             });
         });
+
+        // Replace the MassTransit-registered IBusOutboxNotification with a
+        // thread-safe implementation. The stock BusOutboxNotification races on
+        // a shared _cancellationTokenSource field when more than one
+        // BusOutboxDeliveryService<T> is registered (we register one per
+        // outbox DbContext — core + Workflow), which reliably NREs the second
+        // caller at _cancellationTokenSource.Dispose(). Until MT ships a fix
+        // upstream, ride over their Singleton registration.
+        // See Starter.Infrastructure.Messaging.SafeBusOutboxNotification.
+        services.Replace(ServiceDescriptor.Singleton<IBusOutboxNotification, SafeBusOutboxNotification>());
 
         return services;
     }
