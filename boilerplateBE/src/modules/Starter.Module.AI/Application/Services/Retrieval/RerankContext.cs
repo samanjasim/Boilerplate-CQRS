@@ -2,4 +2,5 @@ namespace Starter.Module.AI.Application.Services.Retrieval;
 
 public sealed record RerankContext(
     QuestionType? QuestionType,
-    RerankStrategy? StrategyOverride);
+    RerankStrategy? StrategyOverride,
+    Guid TenantId);

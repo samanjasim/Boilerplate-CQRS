@@ -9,6 +9,6 @@ namespace Starter.Api.Tests.Ai.Retrieval;
 /// </summary>
 internal sealed class NoOpQueryRewriter : IQueryRewriter
 {
-    public Task<IReadOnlyList<string>> RewriteAsync(string query, string? language, CancellationToken ct)
+    public Task<IReadOnlyList<string>> RewriteAsync(Guid tenantId, string query, string? language, CancellationToken ct)
         => Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
 }

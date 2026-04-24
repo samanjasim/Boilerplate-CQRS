@@ -15,12 +15,18 @@ internal sealed class SetTenantDefaultRoleCommandHandler(
 {
     public async Task<Result> Handle(SetTenantDefaultRoleCommand request, CancellationToken cancellationToken)
     {
+        // IgnoreQueryFilters is required here because SuperAdmin (TenantId=null) must be
+        // able to target any tenant. For tenant-scoped callers we re-assert the boundary
+        // explicitly below to prevent cross-tenant default-role tampering.
         var tenant = await context.Tenants
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(t => t.Id == request.TenantId, cancellationToken);
 
         if (tenant is null)
             return Result.Failure(TenantErrors.NotFound(request.TenantId));
+
+        if (currentUserService.TenantId.HasValue && tenant.Id != currentUserService.TenantId.Value)
+            return Result.Failure(Error.Forbidden("You cannot modify another tenant's default role."));
 
         // Null means "clear the default" — always allowed
         if (request.RoleId is null)

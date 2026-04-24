@@ -31,4 +31,10 @@ public static class ApiKeyErrors
         "ApiKey.UseTenantEmergencyRevoke",
         "Use the emergency-revoke endpoint to revoke tenant keys.",
         ErrorType.Forbidden);
+
+    public static Error ScopeEscalation(IEnumerable<string> missing) =>
+        new(
+            "ApiKey.ScopeEscalation",
+            $"Cannot grant scopes the caller does not hold: {string.Join(", ", missing)}.",
+            ErrorType.Forbidden);
 }

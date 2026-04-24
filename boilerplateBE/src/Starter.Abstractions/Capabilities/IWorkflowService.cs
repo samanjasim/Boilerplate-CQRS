@@ -13,7 +13,12 @@ public interface IWorkflowService : ICapability
     Task<Guid> StartAsync(string entityType, Guid entityId, string definitionName,
         Guid initiatorUserId, Guid? tenantId, string? entityDisplayName = null,
         CancellationToken ct = default);
-    Task CancelAsync(Guid instanceId, string? reason, Guid actorUserId,
+    /// <summary>
+    /// Cancels an active workflow instance. Returns <c>false</c> when the
+    /// instance does not exist or is not in an active state so callers can
+    /// surface a proper 404/409 instead of silently returning success.
+    /// </summary>
+    Task<bool> CancelAsync(Guid instanceId, string? reason, Guid actorUserId,
         CancellationToken ct = default);
 
     // ── Task Actions ──

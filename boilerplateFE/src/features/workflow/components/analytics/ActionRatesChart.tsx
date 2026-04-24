@@ -10,7 +10,9 @@ interface Props {
   rates: ActionRateMetric[];
 }
 
-const palette = ['var(--primary)', 'var(--destructive)', 'var(--chart-2, #10b981)', 'var(--chart-3, #f59e0b)'];
+// --primary / --destructive are HSL triples (need hsl(...)); --chart-N tokens
+// aren't defined in styles/index.css, so use hex fallbacks directly.
+const palette = ['var(--color-primary)', 'hsl(var(--destructive))', '#10b981', '#f59e0b'];
 
 export function ActionRatesChart({ rates }: Props) {
   const { t } = useTranslation();

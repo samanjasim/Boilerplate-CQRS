@@ -28,6 +28,7 @@ internal sealed class ContextualQueryResolver : IContextualQueryResolver
     }
 
     public async Task<string> ResolveAsync(
+        Guid tenantId,
         string latestUserMessage,
         IReadOnlyList<RagHistoryMessage> history,
         string? language,
@@ -42,7 +43,7 @@ internal sealed class ContextualQueryResolver : IContextualQueryResolver
             return latestUserMessage;
         }
 
-        var cacheKey = BuildCacheKey(latestUserMessage, history, language);
+        var cacheKey = BuildCacheKey(tenantId, latestUserMessage, history, language);
 
         string? cached = null;
         try
@@ -170,6 +171,7 @@ internal sealed class ContextualQueryResolver : IContextualQueryResolver
     }
 
     private string BuildCacheKey(
+        Guid tenantId,
         string latestUserMessage,
         IReadOnlyList<RagHistoryMessage> history,
         string? language)
@@ -184,7 +186,7 @@ internal sealed class ContextualQueryResolver : IContextualQueryResolver
         var normalizedMessage = Normalize(latestUserMessage);
         var payload = string.Join("\n", normalizedHistory) + "\n---\n" + normalizedMessage;
 
-        return RagCacheKeys.Contextualize(providerType, model, lang, payload);
+        return RagCacheKeys.Contextualize(tenantId, providerType, model, lang, payload);
     }
 
     private string Normalize(string s) =>

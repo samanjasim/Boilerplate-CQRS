@@ -96,7 +96,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
         {
             var detectedLang = RagLanguageDetector.Detect(latestUserMessage);
             var resolved = await WithTimeoutAsync(
-                innerCt => _contextualResolver.ResolveAsync(latestUserMessage, history, detectedLang, innerCt),
+                innerCt => _contextualResolver.ResolveAsync(tenantId, latestUserMessage, history, detectedLang, innerCt),
                 _settings.StageTimeoutContextualizeMs,
                 RagStages.Contextualize,
                 degradedForContext,
@@ -182,7 +182,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
             string classifyOutcome = RagStageOutcome.Success;
             try
             {
-                questionType = await _classifier.ClassifyAsync(queryText, classifyCts.Token);
+                questionType = await _classifier.ClassifyAsync(tenantId, queryText, classifyCts.Token);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -231,7 +231,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
 
         // 1. Query rewrite (original + variants). Never throws.
         var variants = await WithTimeoutAsync(
-            innerCt => _queryRewriter.RewriteAsync(queryText, language: null, innerCt),
+            innerCt => _queryRewriter.RewriteAsync(tenantId, queryText, language: null, innerCt),
             _settings.StageTimeoutQueryRewriteMs,
             RagStages.QueryRewrite,
             degraded,
@@ -345,7 +345,7 @@ internal sealed class RagRetrievalService : IRagRetrievalService
 
         // 6. Rerank. Resolve the strategy up front so we can size the candidate pool
         // larger than topK — the reranker reorders within this pool, then we trim.
-        var plannedCtx = new RerankContext(QuestionType: questionType, StrategyOverride: null);
+        var plannedCtx = new RerankContext(QuestionType: questionType, StrategyOverride: null, TenantId: tenantId);
         var plannedStrategy = _rerankSelector.Resolve(plannedCtx);
         var poolMultiplier = plannedStrategy switch
         {

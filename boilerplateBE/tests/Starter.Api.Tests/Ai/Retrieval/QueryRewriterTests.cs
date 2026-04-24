@@ -31,7 +31,7 @@ public sealed class QueryRewriterTests
         var cache = new FakeCacheService();
         var svc = Build(provider, cache, new AiRagSettings { EnableQueryExpansion = false });
 
-        var result = await svc.RewriteAsync("what is photosynthesis?", "en", CancellationToken.None);
+        var result = await svc.RewriteAsync(Guid.Empty, "what is photosynthesis?", "en", CancellationToken.None);
 
         result[0].Should().Be("what is photosynthesis?");
         provider.Calls.Should().Be(0);
@@ -45,7 +45,7 @@ public sealed class QueryRewriterTests
         var cache = new FakeCacheService();
         var svc = Build(provider, cache);
 
-        var result = await svc.RewriteAsync("what is photosynthesis?", "en", CancellationToken.None);
+        var result = await svc.RewriteAsync(Guid.Empty, "what is photosynthesis?", "en", CancellationToken.None);
 
         result.Should().Contain("what is photosynthesis?");
         result.Should().Contain("define photosynthesis");
@@ -60,7 +60,7 @@ public sealed class QueryRewriterTests
         var cache = new FakeCacheService();
         var svc = Build(provider, cache);
 
-        var result = await svc.RewriteAsync("what is photosynthesis?", "en", CancellationToken.None);
+        var result = await svc.RewriteAsync(Guid.Empty, "what is photosynthesis?", "en", CancellationToken.None);
 
         result[0].Should().Be("what is photosynthesis?");
         result.Should().NotBeEmpty();
@@ -74,7 +74,7 @@ public sealed class QueryRewriterTests
         var cache = new FakeCacheService();
         var svc = Build(provider, cache);
 
-        var result = await svc.RewriteAsync("what is photosynthesis?", "en", CancellationToken.None);
+        var result = await svc.RewriteAsync(Guid.Empty, "what is photosynthesis?", "en", CancellationToken.None);
 
         result.Should().NotBeEmpty();
         result[0].Should().Be("what is photosynthesis?");
@@ -88,8 +88,8 @@ public sealed class QueryRewriterTests
         var cache = new FakeCacheService();
         var svc = Build(provider, cache);
 
-        _ = await svc.RewriteAsync("الضوء", "ar", CancellationToken.None);
-        _ = await svc.RewriteAsync("الضوء", "ar", CancellationToken.None);
+        _ = await svc.RewriteAsync(Guid.Empty, "الضوء", "ar", CancellationToken.None);
+        _ = await svc.RewriteAsync(Guid.Empty, "الضوء", "ar", CancellationToken.None);
 
         provider.Calls.Should().Be(1);
     }
@@ -106,7 +106,7 @@ public sealed class QueryRewriterTests
             QueryRewriteMaxVariants = 3
         });
 
-        var result = await svc.RewriteAsync("root", "en", CancellationToken.None);
+        var result = await svc.RewriteAsync(Guid.Empty, "root", "en", CancellationToken.None);
 
         result.Should().HaveCount(3);
     }
@@ -119,7 +119,7 @@ public sealed class QueryRewriterTests
         var cache = new FakeCacheService();
         var svc = Build(provider, cache);
 
-        var result = await svc.RewriteAsync("الضوء", "ar", CancellationToken.None);
+        var result = await svc.RewriteAsync(Guid.Empty, "الضوء", "ar", CancellationToken.None);
 
         result.Should().HaveCount(c => c <= 2);
     }

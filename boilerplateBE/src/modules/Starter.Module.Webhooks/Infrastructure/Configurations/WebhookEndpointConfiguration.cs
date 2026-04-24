@@ -26,7 +26,10 @@ internal sealed class WebhookEndpointConfiguration : IEntityTypeConfiguration<We
 
         builder.Property(e => e.Secret)
             .HasColumnName("secret")
-            .HasMaxLength(128)
+            // IDataProtector wraps the 64-char hex secret as a base64 payload of
+            // ~180-250 characters depending on key size. Widen to 500 so future
+            // rotations remain headroom-safe.
+            .HasMaxLength(500)
             .IsRequired();
 
         builder.Property(e => e.Events)

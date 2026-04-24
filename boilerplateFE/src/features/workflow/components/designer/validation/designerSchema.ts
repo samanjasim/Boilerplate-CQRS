@@ -2,7 +2,14 @@ import { z } from 'zod';
 import type { WorkflowStateConfig, WorkflowTransitionConfig } from '@/types/workflow.types';
 
 const SLUG = /^[A-Za-z][A-Za-z0-9_]*$/;
-const KNOWN_TYPES = ['Initial', 'HumanTask', 'SystemAction', 'Terminal'] as const;
+const KNOWN_TYPES = [
+  'Initial',
+  'HumanTask',
+  'SystemAction',
+  'Terminal',
+  'Final',
+  'ConditionalGate',
+] as const;
 
 export const stateSchema = z.object({
   name: z.string()

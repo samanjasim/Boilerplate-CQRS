@@ -53,7 +53,7 @@ internal sealed class Reranker : IReranker
         {
             try
             {
-                var pointwiseResult = await _pointwise.RerankAsync(query, candidates, candidateChunks, ct);
+                var pointwiseResult = await _pointwise.RerankAsync(context.TenantId, query, candidates, candidateChunks, ct);
                 if (pointwiseResult.StrategyUsed != RerankStrategy.FallbackRrf)
                     return pointwiseResult;
 
@@ -77,7 +77,7 @@ internal sealed class Reranker : IReranker
         {
             try
             {
-                var listwiseResult = await _listwise.RerankAsync(query, candidates, candidateChunks, ct);
+                var listwiseResult = await _listwise.RerankAsync(context.TenantId, query, candidates, candidateChunks, ct);
                 return listwiseResult with { StrategyRequested = requested };
             }
             catch (OperationCanceledException)

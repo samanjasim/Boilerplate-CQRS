@@ -7,6 +7,7 @@ public interface IQueryRewriter
     /// Never throws — falls back to [originalQuery] on any failure.
     /// </summary>
     Task<IReadOnlyList<string>> RewriteAsync(
+        Guid tenantId,
         string originalQuery,
         string? language,
         CancellationToken ct);

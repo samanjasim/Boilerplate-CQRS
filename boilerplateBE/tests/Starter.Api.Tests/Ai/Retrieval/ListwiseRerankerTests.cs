@@ -55,7 +55,7 @@ public sealed class ListwiseRerankerTests
         var svc = Build(provider, cache);
         var (hits, chunks, id0, id1, id2) = Build3Candidates();
 
-        var result = await svc.RerankAsync("what is photosynthesis?", hits, chunks, CancellationToken.None);
+        var result = await svc.RerankAsync(Guid.Empty, "what is photosynthesis?", hits, chunks, CancellationToken.None);
 
         result.StrategyUsed.Should().Be(RerankStrategy.Listwise);
         result.Ordered.Should().HaveCount(3);
@@ -73,7 +73,7 @@ public sealed class ListwiseRerankerTests
         var svc = Build(provider, cache);
         var (hits, chunks, id0, id1, id2) = Build3Candidates();
 
-        var result = await svc.RerankAsync("q", hits, chunks, CancellationToken.None);
+        var result = await svc.RerankAsync(Guid.Empty, "q", hits, chunks, CancellationToken.None);
 
         result.Ordered.Should().HaveCount(3);
         result.Ordered[0].ChunkId.Should().Be(id2);
@@ -90,7 +90,7 @@ public sealed class ListwiseRerankerTests
         var svc = Build(provider, cache);
         var (hits, chunks, _, _, _) = Build3Candidates();
 
-        var result = await svc.RerankAsync("q", hits, chunks, CancellationToken.None);
+        var result = await svc.RerankAsync(Guid.Empty, "q", hits, chunks, CancellationToken.None);
 
         result.StrategyUsed.Should().Be(RerankStrategy.FallbackRrf);
         result.Ordered.Should().Equal(hits);
@@ -105,7 +105,7 @@ public sealed class ListwiseRerankerTests
         var svc = Build(provider, cache);
         var (hits, chunks, _, _, _) = Build3Candidates();
 
-        var result = await svc.RerankAsync("q", hits, chunks, CancellationToken.None);
+        var result = await svc.RerankAsync(Guid.Empty, "q", hits, chunks, CancellationToken.None);
 
         result.StrategyUsed.Should().Be(RerankStrategy.FallbackRrf);
         result.Ordered.Should().Equal(hits);
@@ -120,8 +120,8 @@ public sealed class ListwiseRerankerTests
         var svc = Build(provider, cache);
         var (hits, chunks, _, _, _) = Build3Candidates();
 
-        _ = await svc.RerankAsync("same query", hits, chunks, CancellationToken.None);
-        _ = await svc.RerankAsync("same query", hits, chunks, CancellationToken.None);
+        _ = await svc.RerankAsync(Guid.Empty, "same query", hits, chunks, CancellationToken.None);
+        _ = await svc.RerankAsync(Guid.Empty, "same query", hits, chunks, CancellationToken.None);
 
         provider.Calls.Should().Be(1);
     }
@@ -134,6 +134,7 @@ public sealed class ListwiseRerankerTests
         var svc = Build(provider, cache);
 
         var result = await svc.RerankAsync(
+            Guid.Empty,
             "q",
             Array.Empty<HybridHit>(),
             Array.Empty<AiDocumentChunk>(),

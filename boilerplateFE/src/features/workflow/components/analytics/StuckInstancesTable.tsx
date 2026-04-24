@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { EmptyState } from '@/components/common';
 import type { StuckInstance } from '@/types/workflow.types';
 import { Timer } from 'lucide-react';
+import { formatDate } from '@/utils/format';
 
 interface Props {
   rows: StuckInstance[];
@@ -50,7 +51,7 @@ export function StuckInstancesTable({ rows }: Props) {
                   <span className="text-xs text-muted-foreground">{r.currentState}</span>
                 </div>
               </TableCell>
-              <TableCell>{new Date(r.startedAt).toLocaleDateString()}</TableCell>
+              <TableCell>{formatDate(r.startedAt)}</TableCell>
               <TableCell>
                 {`${r.daysSinceStarted}${t('workflow.analytics.daysShort')}`}
               </TableCell>

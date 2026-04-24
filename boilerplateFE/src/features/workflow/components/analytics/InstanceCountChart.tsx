@@ -4,6 +4,7 @@ import { EmptyState } from '@/components/common';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 import type { InstanceCountPoint } from '@/types/workflow.types';
 import { BarChart3 } from 'lucide-react';
+import { formatDate } from '@/utils/format';
 
 interface Props {
   series: InstanceCountPoint[];
@@ -14,7 +15,7 @@ export function InstanceCountChart({ series }: Props) {
   const hasData = series.some((p) => p.started + p.completed + p.cancelled > 0);
 
   const data = series.map((p) => ({
-    bucket: new Date(p.bucket).toLocaleDateString(),
+    bucket: formatDate(p.bucket),
     started: p.started,
     completed: p.completed,
     cancelled: p.cancelled,
@@ -32,9 +33,10 @@ export function InstanceCountChart({ series }: Props) {
               <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
               <Tooltip />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="started"   stackId="a" fill="var(--primary)" />
-              <Bar dataKey="completed" stackId="a" fill="var(--chart-2, #10b981)" />
-              <Bar dataKey="cancelled" stackId="a" fill="var(--destructive)" />
+              {/* --primary / --destructive are HSL triples (consumed as hsl(var(--…))); --color-primary is the hex token. */}
+              <Bar dataKey="started"   stackId="a" fill="var(--color-primary)" />
+              <Bar dataKey="completed" stackId="a" fill="#10b981" />
+              <Bar dataKey="cancelled" stackId="a" fill="hsl(var(--destructive))" />
             </BarChart>
           </ResponsiveContainer>
         ) : (

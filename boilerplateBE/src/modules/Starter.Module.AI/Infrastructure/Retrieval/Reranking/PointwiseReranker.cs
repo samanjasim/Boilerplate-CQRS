@@ -33,6 +33,7 @@ internal sealed class PointwiseReranker
     }
 
     public async Task<RerankResult> RerankAsync(
+        Guid tenantId,
         string query,
         IReadOnlyList<HybridHit> candidates,
         IReadOnlyList<AiDocumentChunk> candidateChunks,
@@ -62,7 +63,7 @@ internal sealed class PointwiseReranker
                 try
                 {
                     var hit = candidates[idx];
-                    var key = BuildPairKey(query, hit.ChunkId);
+                    var key = BuildPairKey(tenantId, query, hit.ChunkId);
                     var cached = await _cache.GetAsync<decimal?>(key, ct);
                     AiRagMetrics.CacheRequests.Add(
                         1,
@@ -230,10 +231,10 @@ internal sealed class PointwiseReranker
 
     private decimal RrfFallbackScore(int rank) => 1m / (_settings.RrfK + rank + 1);
 
-    private string BuildPairKey(string query, Guid chunkId)
+    private string BuildPairKey(Guid tenantId, string query, Guid chunkId)
     {
         var provider = _factory.GetDefaultProviderType().ToString();
         var model = _settings.RerankerModel ?? _factory.GetDefaultChatModelId();
-        return RagCacheKeys.PointwiseRerank(provider, model, query, chunkId);
+        return RagCacheKeys.PointwiseRerank(tenantId, provider, model, query, chunkId);
     }
 }

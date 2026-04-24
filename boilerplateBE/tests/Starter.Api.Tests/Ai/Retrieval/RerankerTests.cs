@@ -63,7 +63,7 @@ public sealed class RerankerTests
         var settings = new AiRagSettings { RerankStrategy = RerankStrategy.Off };
         var (reranker, provider, _) = BuildReranker(settings);
         var (hits, chunks) = FakeBatch(3);
-        var ctx = new RerankContext(QuestionType: null, StrategyOverride: null);
+        var ctx = new RerankContext(QuestionType: null, StrategyOverride: null, TenantId: Guid.Empty);
 
         var result = await reranker.RerankAsync("q", hits, chunks, ctx, CancellationToken.None);
 
@@ -82,7 +82,7 @@ public sealed class RerankerTests
         provider.EnqueueAllFail("listwise provider down");
         var (reranker, _, _) = BuildReranker(settings, provider);
         var (hits, chunks) = FakeBatch(3);
-        var ctx = new RerankContext(QuestionType: null, StrategyOverride: null);
+        var ctx = new RerankContext(QuestionType: null, StrategyOverride: null, TenantId: Guid.Empty);
 
         var result = await reranker.RerankAsync("q", hits, chunks, ctx, CancellationToken.None);
 
@@ -103,7 +103,7 @@ public sealed class RerankerTests
         provider.EnqueueAllFail("all chat calls fail");
         var (reranker, _, _) = BuildReranker(settings, provider);
         var (hits, chunks) = FakeBatch(3);
-        var ctx = new RerankContext(QuestionType: null, StrategyOverride: null);
+        var ctx = new RerankContext(QuestionType: null, StrategyOverride: null, TenantId: Guid.Empty);
 
         var result = await reranker.RerankAsync("q", hits, chunks, ctx, CancellationToken.None);
 
@@ -118,7 +118,7 @@ public sealed class RerankerTests
         var settings = new AiRagSettings { RerankStrategy = RerankStrategy.Listwise };
         var (reranker, provider, _) = BuildReranker(settings);
         var (hits, chunks) = FakeBatch(3);
-        var ctx = new RerankContext(QuestionType: null, StrategyOverride: RerankStrategy.Off);
+        var ctx = new RerankContext(QuestionType: null, StrategyOverride: RerankStrategy.Off, TenantId: Guid.Empty);
 
         var result = await reranker.RerankAsync("q", hits, chunks, ctx, CancellationToken.None);
 

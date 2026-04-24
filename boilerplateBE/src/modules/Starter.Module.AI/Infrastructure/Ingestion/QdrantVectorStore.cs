@@ -118,6 +118,10 @@ internal sealed class QdrantVectorStore : IVectorStore
     {
         var name = CollectionName(tenantId);
 
+        // Defense-in-depth: the primary tenant boundary is the per-tenant
+        // collection name, but also enforce tenant_id on the payload so a
+        // future refactor that consolidates collections (or a bug that routes
+        // a query to the wrong collection) can never return cross-tenant hits.
         var filter = new Filter
         {
             Must =
@@ -128,6 +132,14 @@ internal sealed class QdrantVectorStore : IVectorStore
                     {
                         Key = "chunk_level",
                         Match = new Match { Keyword = "child" }
+                    }
+                },
+                new Condition
+                {
+                    Field = new FieldCondition
+                    {
+                        Key = "tenant_id",
+                        Match = new Match { Keyword = tenantId.ToString() }
                     }
                 }
             }

@@ -26,7 +26,7 @@ public sealed class NullWorkflowService(ILogger<NullWorkflowService> logger) : I
         return Task.FromResult(Guid.Empty);
     }
 
-    public Task CancelAsync(
+    public Task<bool> CancelAsync(
         Guid instanceId,
         string? reason,
         Guid actorUserId,
@@ -35,7 +35,7 @@ public sealed class NullWorkflowService(ILogger<NullWorkflowService> logger) : I
         logger.LogDebug(
             "Workflow cancel skipped — Workflow module not installed (instanceId: {InstanceId})",
             instanceId);
-        return Task.CompletedTask;
+        return Task.FromResult(false);
     }
 
     public Task<WorkflowTaskResult> ExecuteTaskAsync(

@@ -27,7 +27,7 @@ internal sealed class QuestionClassifier : IQuestionClassifier
         _logger = logger;
     }
 
-    public async Task<QuestionType?> ClassifyAsync(string query, CancellationToken ct)
+    public async Task<QuestionType?> ClassifyAsync(Guid tenantId, string query, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(query))
             return QuestionType.Other;
@@ -40,7 +40,7 @@ internal sealed class QuestionClassifier : IQuestionClassifier
             ? ArabicTextNormalizer.Normalize(query, _settings.ToArabicOptions())
             : query;
 
-        var key = BuildCacheKey(normalized);
+        var key = BuildCacheKey(tenantId, normalized);
         var cached = await _cache.GetAsync<string>(key, ct);
         AiRagMetrics.CacheRequests.Add(
             1,
@@ -90,10 +90,10 @@ internal sealed class QuestionClassifier : IQuestionClassifier
             _ => QuestionType.Other
         };
 
-    private string BuildCacheKey(string normalized)
+    private string BuildCacheKey(Guid tenantId, string normalized)
     {
         var provider = _factory.GetDefaultProviderType().ToString();
         var model = _settings.ClassifierModel ?? _factory.GetDefaultChatModelId();
-        return RagCacheKeys.Classify(provider, model, normalized);
+        return RagCacheKeys.Classify(tenantId, provider, model, normalized);
     }
 }

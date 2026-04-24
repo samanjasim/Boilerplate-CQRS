@@ -29,17 +29,22 @@ public sealed class WebhookEndpoint : AggregateRoot
         TenantId = tenantId;
     }
 
-    public static WebhookEndpoint Create(
-        string url, string? description, string events, Guid tenantId)
+    /// <summary>Generates a fresh cryptographic secret. Callers are responsible for
+    /// protecting (encrypting) the value before storing it via <see cref="Create"/>.</summary>
+    public static string GenerateSecret()
     {
         var secretBytes = RandomNumberGenerator.GetBytes(32);
-        var secret = Convert.ToHexStringLower(secretBytes);
+        return Convert.ToHexStringLower(secretBytes);
+    }
 
+    public static WebhookEndpoint Create(
+        string url, string? description, string storedSecret, string events, Guid tenantId)
+    {
         return new WebhookEndpoint(
             Guid.NewGuid(),
             url.Trim(),
             description?.Trim(),
-            secret,
+            storedSecret,
             events,
             true,
             tenantId);
@@ -66,12 +71,11 @@ public sealed class WebhookEndpoint : AggregateRoot
         ModifiedAt = DateTime.UtcNow;
     }
 
-    public string RegenerateSecret()
+    /// <summary>Replaces the stored secret. The caller supplies the already-protected
+    /// value; this keeps the domain entity free of any cryptography abstractions.</summary>
+    public void ReplaceSecret(string storedSecret)
     {
-        var secretBytes = RandomNumberGenerator.GetBytes(32);
-        var newSecret = Convert.ToHexStringLower(secretBytes);
-        Secret = newSecret;
+        Secret = storedSecret;
         ModifiedAt = DateTime.UtcNow;
-        return newSecret;
     }
 }

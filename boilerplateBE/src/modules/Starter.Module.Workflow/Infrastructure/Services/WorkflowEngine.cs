@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Paging;
 using Starter.Abstractions.Readers;
+using Starter.Application.Common.Interfaces;
 using Starter.Module.Workflow.Domain.Constants;
 using Starter.Module.Workflow.Domain.Entities;
 using Starter.Module.Workflow.Domain.Enums;
@@ -27,6 +28,7 @@ internal sealed class WorkflowEngine(
     HumanTaskFactory humanTaskFactory,
     AutoTransitionEvaluator autoTransitionEvaluator,
     ParallelApprovalCoordinator parallelCoordinator,
+    ICurrentUserService currentUserService,
     ILogger<WorkflowEngine> logger) : IWorkflowService
 {
     private static readonly JsonSerializerOptions JsonOpts = new()
@@ -111,7 +113,7 @@ internal sealed class WorkflowEngine(
         return instance.Id;
     }
 
-    public async Task CancelAsync(
+    public async Task<bool> CancelAsync(
         Guid instanceId, string? reason, Guid actorUserId, CancellationToken ct = default)
     {
         var instance = await context.WorkflowInstances
@@ -120,7 +122,7 @@ internal sealed class WorkflowEngine(
         if (instance is null || instance.Status != InstanceStatus.Active)
         {
             logger.LogWarning("Cannot cancel instance {InstanceId}: not found or not active.", instanceId);
-            return;
+            return false;
         }
 
         instance.Cancel(reason, actorUserId);
@@ -154,12 +156,13 @@ internal sealed class WorkflowEngine(
         catch (DbUpdateConcurrencyException)
         {
             logger.LogWarning("Concurrency conflict on cancel for instance {InstanceId}. Another user may have already acted.", instanceId);
-            return;
+            return false;
         }
 
         logger.LogInformation(
             "Cancelled workflow instance {InstanceId}. Reason: {Reason}",
             instanceId, reason);
+        return true;
     }
 
     // ── Transition (resubmit from Initial state) ──────────────────────────
@@ -288,13 +291,32 @@ internal sealed class WorkflowEngine(
             return ToWorkflowTaskResult(WorkflowErrors.TaskNotPending(taskId));
         }
 
-        // Verify the actor is the assigned user (or task has no specific assignee)
-        if (task.AssigneeUserId.HasValue && task.AssigneeUserId.Value != actorUserId)
+        // Authorize the actor. When the task has a specific assignee, require
+        // an exact user match. When the task is role-assigned (AssigneeUserId
+        // null, AssigneeRole set — produced by role-only strategies or when
+        // the resolver found no candidate user), require the actor to hold
+        // that role. Without the role check, any tenant member with the
+        // generic ActOnTask permission could execute tasks intended for
+        // privileged roles.
+        if (task.AssigneeUserId.HasValue)
         {
-            logger.LogWarning(
-                "Actor {ActorId} is not assigned to task {TaskId} (assigned to {AssigneeId}).",
-                actorUserId, taskId, task.AssigneeUserId);
-            return ToWorkflowTaskResult(WorkflowErrors.TaskNotAssignedToUser(taskId, actorUserId));
+            if (task.AssigneeUserId.Value != actorUserId)
+            {
+                logger.LogWarning(
+                    "Actor {ActorId} is not assigned to task {TaskId} (assigned to {AssigneeId}).",
+                    actorUserId, taskId, task.AssigneeUserId);
+                return ToWorkflowTaskResult(WorkflowErrors.TaskNotAssignedToUser(taskId, actorUserId));
+            }
+        }
+        else if (!string.IsNullOrEmpty(task.AssigneeRole))
+        {
+            if (!currentUserService.IsInRole(task.AssigneeRole))
+            {
+                logger.LogWarning(
+                    "Actor {ActorId} does not hold role {Role} required by task {TaskId}.",
+                    actorUserId, task.AssigneeRole, taskId);
+                return ToWorkflowTaskResult(WorkflowErrors.TaskNotAssignedToUser(taskId, actorUserId));
+            }
         }
 
         var instance = task.Instance;
@@ -340,8 +362,12 @@ internal sealed class WorkflowEngine(
 
         // Build the eval context = persisted context overlaid with the form
         // data just submitted, so a condition like `amount > 10000` can branch
-        // on the same action that carried the value.
-        var instanceContext = MergeFormDataIntoContext(instance.ContextJson, formData);
+        // on the same action that carried the value. Only keys declared in
+        // the current state's FormFields are merged — otherwise a submitter
+        // could inject condition inputs (e.g. isManagerApproved=true) that
+        // were never part of the form.
+        var declaredFieldNames = fromStateConfig?.FormFields?.Select(f => f.Name).ToList();
+        var instanceContext = MergeFormDataIntoContext(instance.ContextJson, formData, declaredFieldNames);
 
         // If multiple transitions match, evaluate conditional ones first;
         // fall back to the first matching transition if nothing selected.
@@ -1241,12 +1267,16 @@ internal sealed class WorkflowEngine(
     /// <summary>
     /// Deserializes <paramref name="contextJson"/> and overlays
     /// <paramref name="formData"/> on top so conditional transitions can branch
-    /// on just-submitted values. Form keys that collide with entity keys
-    /// logically win — the form value is the newer signal from the user.
+    /// on just-submitted values. Only keys that appear in
+    /// <paramref name="declaredFields"/> are merged — undeclared keys are
+    /// silently dropped to prevent attacker-supplied form fields from
+    /// influencing downstream conditional transitions (e.g. injecting
+    /// `isManagerApproved=true` through a submitter-facing form).
     /// </summary>
     private Dictionary<string, object> MergeFormDataIntoContext(
         string? contextJson,
-        Dictionary<string, object>? formData)
+        Dictionary<string, object>? formData,
+        IReadOnlyCollection<string>? declaredFields)
     {
         var merged = contextJson is not null
             ? JsonSerializer.Deserialize<Dictionary<string, object>>(contextJson, JsonOpts) ?? new()
@@ -1254,8 +1284,19 @@ internal sealed class WorkflowEngine(
 
         if (formData is null) return merged;
 
+        var allowed = declaredFields is null
+            ? new HashSet<string>(StringComparer.Ordinal)
+            : new HashSet<string>(declaredFields, StringComparer.Ordinal);
+
         foreach (var (key, value) in formData)
         {
+            if (!allowed.Contains(key))
+            {
+                logger.LogWarning(
+                    "Dropping undeclared form field '{Key}' during task execution — not present in state form definition.",
+                    key);
+                continue;
+            }
             if (merged.ContainsKey(key))
             {
                 logger.LogDebug(
