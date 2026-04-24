@@ -28,6 +28,8 @@ public sealed class AiDbContext : DbContext, IModuleDbContext
     public DbSet<AiAgentTask> AiAgentTasks => Set<AiAgentTask>();
     public DbSet<AiAgentTrigger> AiAgentTriggers => Set<AiAgentTrigger>();
     public DbSet<AiUsageLog> AiUsageLogs => Set<AiUsageLog>();
+    public DbSet<AiPersona> AiPersonas => Set<AiPersona>();
+    public DbSet<UserPersona> UserPersonas => Set<UserPersona>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -46,6 +48,10 @@ public sealed class AiDbContext : DbContext, IModuleDbContext
         modelBuilder.Entity<AiAgentTrigger>().HasQueryFilter(e =>
             CurrentTenantId == null || e.TenantId == CurrentTenantId);
         modelBuilder.Entity<AiUsageLog>().HasQueryFilter(e =>
+            CurrentTenantId == null || e.TenantId == CurrentTenantId);
+        modelBuilder.Entity<AiPersona>().HasQueryFilter(e =>
+            CurrentTenantId == null || e.TenantId == CurrentTenantId);
+        modelBuilder.Entity<UserPersona>().HasQueryFilter(e =>
             CurrentTenantId == null || e.TenantId == CurrentTenantId);
     }
 }
