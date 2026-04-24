@@ -31,6 +31,11 @@ public static class AiToolSchemaGenerator
         "actorUserId",
         "impersonatedBy",
         "isSystemAdmin",
+        // Ownership / assignment identity — should be server-resolved, never LLM-supplied.
+        "authorId",
+        "assigneeUserId",
+        "deletedBy",
+        "ownerUserId",
     };
 
     private static readonly JsonSerializerOptions SchemaOptions = new(JsonSerializerDefaults.Web)
