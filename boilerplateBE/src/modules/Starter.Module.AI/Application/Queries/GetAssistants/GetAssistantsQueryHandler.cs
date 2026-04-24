@@ -7,6 +7,7 @@ using Starter.Application.Common.Extensions;
 using Starter.Application.Common.Interfaces;
 using Starter.Domain.Common.Access.Enums;
 using Starter.Module.AI.Application.DTOs;
+using Starter.Module.AI.Application.Services.Personas;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Shared.Results;
 
@@ -15,7 +16,8 @@ namespace Starter.Module.AI.Application.Queries.GetAssistants;
 internal sealed class GetAssistantsQueryHandler(
     AiDbContext context,
     IResourceAccessService access,
-    ICurrentUserService currentUser)
+    ICurrentUserService currentUser,
+    IPersonaContextAccessor personaContextAccessor)
     : IRequestHandler<GetAssistantsQuery, Result<PaginatedList<AiAssistantDto>>>
 {
     public async Task<Result<PaginatedList<AiAssistantDto>>> Handle(
@@ -49,6 +51,28 @@ internal sealed class GetAssistantsQueryHandler(
         }
 
         query = query.OrderByDescending(a => a.CreatedAt);
+
+        // Plan 5b — persona visibility filter (post-materialisation because JSONB arrays
+        // don't translate through EF Core providers cleanly). Applied at tenant scale so
+        // the cost is bounded by (tenant's assistant count).
+        var personaCtx = personaContextAccessor.Current;
+        if (personaCtx is not null)
+        {
+            var materialised = await query.ToListAsync(cancellationToken);
+            var visible = materialised
+                .Where(a => a.IsVisibleToPersona(personaCtx.Slug, personaCtx.PermittedAgentSlugs))
+                .ToList();
+
+            var total = visible.Count;
+            var pageItems = visible
+                .Skip((request.PageNumber - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .Select(a => a.ToDto())
+                .ToList();
+            var paged = new PaginatedList<AiAssistantDto>(
+                pageItems, total, request.PageNumber, request.PageSize);
+            return Result.Success(paged);
+        }
 
         var page = await query.ToPaginatedListAsync(
             request.PageNumber, request.PageSize, cancellationToken);
