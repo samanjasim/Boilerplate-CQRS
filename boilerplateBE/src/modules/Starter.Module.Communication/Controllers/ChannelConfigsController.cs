@@ -67,7 +67,7 @@ public sealed class ChannelConfigsController(ISender mediator) : Starter.Abstrac
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateChannelConfigCommand command, CancellationToken ct = default)
     {
-        if (id != command.Id) return BadRequest();
+        if (ValidateRouteId(id, command.Id) is { } mismatch) return mismatch;
         var result = await Mediator.Send(command, ct);
         return HandleResult(result);
     }

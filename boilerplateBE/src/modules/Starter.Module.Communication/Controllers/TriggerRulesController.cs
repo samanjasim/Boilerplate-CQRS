@@ -64,7 +64,7 @@ public sealed class TriggerRulesController(ISender mediator) : Starter.Abstracti
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateTriggerRuleCommand command, CancellationToken ct = default)
     {
-        if (id != command.Id) return BadRequest();
+        if (ValidateRouteId(id, command.Id) is { } mismatch) return mismatch;
         var result = await Mediator.Send(command, ct);
         return HandleResult(result);
     }

@@ -57,7 +57,7 @@ public sealed class CommentsActivityController(ISender mediator) : BaseApiContro
     public async Task<IActionResult> EditComment(
         Guid id, [FromBody] EditCommentCommand command, CancellationToken ct = default)
     {
-        if (id != command.Id) return BadRequest();
+        if (ValidateRouteId(id, command.Id) is { } mismatch) return mismatch;
         var result = await Mediator.Send(command, ct);
         return HandleResult(result);
     }

@@ -74,7 +74,7 @@ public sealed class FeatureFlagsController(ISender mediator) : BaseApiController
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Update(Guid id, UpdateFeatureFlagCommand command, CancellationToken ct = default)
     {
-        if (id != command.Id) return BadRequest();
+        if (ValidateRouteId(id, command.Id) is { } mismatch) return mismatch;
         var result = await Mediator.Send(command, ct);
         return HandleResult(result);
     }

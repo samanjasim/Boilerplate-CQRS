@@ -167,7 +167,9 @@ export const routes: RouteObject[] = [
 
           // ── Core feature routes (always present) ──
 
-          // Notifications
+          // Notifications — self-service: every authenticated user can read their own
+          // notifications. Backend enforces per-user scoping; no permission gate needed
+          // (same as ProfilePage). No PermissionGuard is intentional.
           { path: ROUTES.NOTIFICATIONS, element: <NotificationsPage /> },
 
           // Audit Logs
