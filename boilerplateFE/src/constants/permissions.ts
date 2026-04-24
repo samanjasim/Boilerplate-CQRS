@@ -122,6 +122,9 @@ export const PERMISSIONS = {
     ManageSettings: 'Ai.ManageSettings',
     SearchKnowledgeBase: 'Ai.SearchKnowledgeBase',
     RunEval: 'Ai.RunEval',
+    ViewPersonas: 'Ai.ViewPersonas',
+    ManagePersonas: 'Ai.ManagePersonas',
+    AssignPersona: 'Ai.AssignPersona',
   },
   Workflows: {
     View: 'Workflows.View',
