@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using MassTransit;
 using MassTransit.EntityFrameworkCoreIntegration;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -65,10 +66,57 @@ internal sealed class IntegrationEventOutboxInterceptor : SaveChangesInterceptor
                 .GetRequiredService<EntityFrameworkScopedBusContextProvider<IBus, ApplicationDbContext>>();
 
             var publishEndpoint = busContextProvider.Context.PublishEndpoint;
+            var conversationId = DeriveConversationIdFromActivity();
+
             foreach (var (evt, evtType) in pending)
-                await publishEndpoint.Publish(evt, evtType, cancellationToken);
+            {
+                if (conversationId.HasValue)
+                {
+                    await publishEndpoint.Publish(evt, evtType, ctx =>
+                    {
+                        // Every event scheduled during one HTTP request shares a
+                        // ConversationId derived from the originating trace. This
+                        // lets consumers, log aggregators, and MT's built-in traces
+                        // group the causal chain even when OpenTelemetry is off.
+                        // If a caller set CorrelationId upstream, preserve it.
+                        ctx.ConversationId ??= conversationId;
+                        ctx.CorrelationId ??= conversationId;
+                    }, cancellationToken);
+                }
+                else
+                {
+                    // Background/non-HTTP context (e.g. hosted service) — let MT
+                    // assign a fresh Guid. Still at-least-once-safe, just not
+                    // correlatable to an HTTP request.
+                    await publishEndpoint.Publish(evt, evtType, cancellationToken);
+                }
+            }
         }
 
         return await base.SavingChangesAsync(eventData, result, cancellationToken);
+    }
+
+    /// <summary>
+    /// Projects the current <see cref="Activity"/>'s 16-byte W3C TraceId into a
+    /// deterministic <see cref="Guid"/> for use as a MassTransit ConversationId.
+    /// Returns <c>null</c> when no ambient Activity exists (e.g. background work).
+    ///
+    /// The mapping is lossless from a trace-correlation perspective: two calls
+    /// within the same HTTP request observe the same Activity and therefore
+    /// produce the same ConversationId.
+    /// </summary>
+    internal static Guid? DeriveConversationIdFromActivity() =>
+        Activity.Current is { } activity
+            ? DeriveConversationIdFromTraceId(activity.TraceId)
+            : null;
+
+    /// <summary>
+    /// Pure function variant for unit testing without an ambient <see cref="Activity"/>.
+    /// </summary>
+    internal static Guid DeriveConversationIdFromTraceId(ActivityTraceId traceId)
+    {
+        Span<byte> traceIdBytes = stackalloc byte[16];
+        traceId.CopyTo(traceIdBytes);
+        return new Guid(traceIdBytes);
     }
 }
