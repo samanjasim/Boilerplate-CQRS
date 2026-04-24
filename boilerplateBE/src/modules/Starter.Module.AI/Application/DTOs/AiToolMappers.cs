@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Starter.Abstractions.Capabilities;
 using Starter.Module.AI.Domain.Entities;
 

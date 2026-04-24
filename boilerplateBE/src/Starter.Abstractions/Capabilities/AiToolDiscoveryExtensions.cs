@@ -16,9 +16,11 @@ public static class AiToolDiscoveryExtensions
     /// an <see cref="IAiToolDefinition"/> singleton. Validates each attributed type up-front:
     /// the type must implement <see cref="IBaseRequest"/>, <c>RequiredPermission</c> must be
     /// a non-empty string, and the schema must be generatable. Any failure throws from this
-    /// call — the service collection is not partially mutated. Idempotent per-call: calling
-    /// twice with the same assembly registers each tool twice, which is a collision detected
-    /// later by the registry (see <c>AiToolRegistryService</c>).
+    /// call — the service collection is not partially mutated. Each call registers every
+    /// attributed type found in the supplied assembly; calling twice with the same assembly
+    /// double-registers. Cross-assembly duplicate Names are caught by the registry/sync
+    /// services at startup (see <c>AiToolRegistryService</c> and
+    /// <c>AiToolRegistrySyncHostedService</c>).
     /// </summary>
     public static IServiceCollection AddAiToolsFromAssembly(
         this IServiceCollection services,
