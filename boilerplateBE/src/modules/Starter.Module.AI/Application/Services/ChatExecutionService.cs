@@ -490,6 +490,19 @@ internal sealed class ChatExecutionService(
 
         state.Conversation.AddMessageStats(inputTokens, outputTokens);
 
+        // Persona observability (Plan 5b).
+        if (state.Persona is { } p)
+        {
+            AiAgentMetrics.RunsByPersona.Add(1,
+                new KeyValuePair<string, object?>("persona_slug", p.Slug),
+                new KeyValuePair<string, object?>("audience", p.Audience.ToString()),
+                new KeyValuePair<string, object?>("safety", p.Safety.ToString()));
+
+            System.Diagnostics.Activity.Current?.SetTag("ai.persona.slug", p.Slug);
+            System.Diagnostics.Activity.Current?.SetTag("ai.persona.audience", p.Audience.ToString());
+            System.Diagnostics.Activity.Current?.SetTag("ai.persona.safety", p.Safety.ToString());
+        }
+
         // Auto-title on first assistant reply — truncate user message to MaxTitleLength chars
         if (state.Conversation.Title is null
             && state.UserMessage.Content is { Length: > 0 } text)

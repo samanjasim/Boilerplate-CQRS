@@ -30,5 +30,10 @@ internal static class AiAgentMetrics
         unit: "runs",
         description: "Runs terminated because MaxSteps was reached.");
 
+    public static readonly Counter<long> RunsByPersona = _meter.CreateCounter<long>(
+        name: "ai_agent_runs_by_persona_total",
+        unit: "{run}",
+        description: "Agent runs partitioned by persona (slug, audience, safety).");
+
     public static readonly ActivitySource Source = new(ActivitySourceName, "1.0.0");
 }
