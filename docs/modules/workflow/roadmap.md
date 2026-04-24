@@ -41,13 +41,13 @@ The following improvements were made after the initial Phase 1 implementation. T
 
 ## Phase 3 Shipped (merged 2026-04-22)
 
-- **WorkflowEngine extraction** — [`WorkflowEngine.cs`](../../boilerplateBE/src/modules/Starter.Module.Workflow/Infrastructure/Services/WorkflowEngine.cs) split into [`HumanTaskFactory`](../../boilerplateBE/src/modules/Starter.Module.Workflow/Infrastructure/Services/HumanTaskFactory.cs), [`AutoTransitionEvaluator`](../../boilerplateBE/src/modules/Starter.Module.Workflow/Infrastructure/Services/AutoTransitionEvaluator.cs), and [`ParallelApprovalCoordinator`](../../boilerplateBE/src/modules/Starter.Module.Workflow/Infrastructure/Services/ParallelApprovalCoordinator.cs). Each collaborator has its own tests (`HumanTaskFactoryTests`, `AutoTransitionEvaluatorTests`, `ParallelApprovalCoordinatorTests`). Unlocks Phase 4a/4c.
+- **WorkflowEngine extraction** — [`WorkflowEngine.cs`](../../../boilerplateBE/src/modules/Starter.Module.Workflow/Infrastructure/Services/WorkflowEngine.cs) split into [`HumanTaskFactory`](../../../boilerplateBE/src/modules/Starter.Module.Workflow/Infrastructure/Services/HumanTaskFactory.cs), [`AutoTransitionEvaluator`](../../../boilerplateBE/src/modules/Starter.Module.Workflow/Infrastructure/Services/AutoTransitionEvaluator.cs), and [`ParallelApprovalCoordinator`](../../../boilerplateBE/src/modules/Starter.Module.Workflow/Infrastructure/Services/ParallelApprovalCoordinator.cs). Each collaborator has its own tests (`HumanTaskFactoryTests`, `AutoTransitionEvaluatorTests`, `ParallelApprovalCoordinatorTests`). Unlocks Phase 4a/4c.
 - **Compound conditional expressions** — `ConditionConfig` extended with `Operator: And|Or|Not` + nested `Conditions[]`. `ConditionEvaluator` recurses with short-circuit semantics. Covered in `ConditionEvaluatorTests` (AND/OR/NOT/empty-conditions/threshold combinations).
 - **Bulk operations** — `BatchExecuteTasksCommand` + `POST /api/v1/workflow/tasks/batch-execute`. Per-task try/catch, neutralized error messages (no exception leak), 50-task cap, pre-flight "Skipped" for tasks with required form fields. Inbox UI: row checkboxes, bulk action bar, confirm dialog, result dialog with expandable per-task outcomes, retry-failed action, and stacked overdue/delegated badges. i18n in en/ar/ku.
 
 ---
 
-## Phase 4a Shipped (merged YYYY-MM-DD)
+## Phase 4a Shipped (merged 2026-04-22)
 
 **Dynamic forms — step data collection.** State definitions can declare `FormFields` whose submitted values merge into `WorkflowInstance.ContextJson` and become available to conditional transitions. Supported field types: `text`, `textarea`, `number`, `date`, `select`, `checkbox`.
 
@@ -57,9 +57,9 @@ Shipped components:
 - `IFormDataValidator` with type-specific validation (min/max, maxLength, required, select option membership, date parse).
 - `WorkflowEngine.ExecuteTaskAsync` merges submitted values into `ContextJson`; returns `Result<Result<bool>>` surfacing `ValidationErrors` via the standard API envelope.
 - FE: `DynamicFormRenderer` component rendering all 6 types; `ApprovalDialog` submits `formData` and renders inline field errors; `WorkflowStepTimeline` displays submitted data in instance history.
-- Documentation: `docs/features/workflow-forms.md`.
+- Documentation: `features/forms.md`.
 
-See `docs/superpowers/specs/2026-04-22-workflow-phase4a-dynamic-forms-finish-design.md` for the finish-line design.
+See `../../superpowers/specs/2026-04-22-workflow-phase4a-dynamic-forms-finish-design.md` for the finish-line design.
 
 ---
 
@@ -73,7 +73,7 @@ Shipped components:
 - `GET /api/v1/workflows/definitions/{id}/analytics?window={7d|30d|90d|all}` — returns 400 for missing/invalid window; 404 for template definitions.
 - `Workflows.ViewAnalytics` permission added to `Starter.Shared/Constants/Permissions.cs` and mirrored in `boilerplateFE/src/constants/permissions.ts`.
 - FE: `WorkflowAnalyticsTab` component with headline strip, bottleneck table, action-rate table, instance count chart, stuck-instances table, and approver-activity table. Low-data banner when fewer than 5 instances exist in the window.
-- Documentation: `docs/features/workflow-analytics.md`.
+- Documentation: `features/analytics.md`.
 
 ### Analytics follow-ups (deferred)
 
@@ -83,7 +83,7 @@ Shipped components:
 
 ---
 
-## Phase 4c Shipped (merged YYYY-MM-DD)
+## Phase 4c Shipped (merged 2026-04-23)
 
 **Visual workflow designer (MVP).** Drag-and-drop state-machine builder at `/workflows/definitions/:id/designer`. Produces the same `WorkflowStateConfig[]` + `WorkflowTransitionConfig[]` JSON the backend already accepts. First-class UI for common fields (identity, actions, assignee strategy + basic params, SLA, trigger); inline JSON blocks for advanced fields (hooks, form fields, parallel/quorum, compound conditions, fallback assignee, custom params). Node positions persist via optional `UiPosition` on `WorkflowStateConfig`. Auto-layout via dagre on first open; explicit toolbar button for reflow. Templates open in read-only mode with "Clone to edit".
 
@@ -92,9 +92,9 @@ Shipped components:
 - Optional `UiPosition` record on `WorkflowStateConfig` in `Starter.Abstractions`.
 - FE: `WorkflowDefinitionDesignerPage` + `DesignerCanvas` (React Flow) + `StateNode` / `TransitionEdge` custom renderers + `SidePanel` router + `StateEditor` + `TransitionEditor` + `JsonBlockField` + `DesignerToolbar` + `useDesignerStore` (zustand) + `useAutoLayout` (dagre) + `designerSchema.ts` (zod mirror).
 - i18n keys in en/ar/ku under `workflow.designer.*`.
-- Documentation: `docs/features/workflow-designer.md`.
+- Documentation: `features/designer.md`.
 
-See `docs/superpowers/specs/2026-04-23-workflow-phase4c-visual-designer-design.md` for the full design.
+See `../../superpowers/specs/2026-04-23-workflow-phase4c-visual-designer-design.md` for the full design.
 
 ### Designer follow-ups (deferred)
 
@@ -174,8 +174,8 @@ See `docs/superpowers/specs/2026-04-23-workflow-phase4c-visual-designer-design.m
 
 **Starting points:**
 - Define `HookType.AiAction` in the hook configuration model.
-- Implement `AiActionHookHandler` in [`Infrastructure/Services/HookExecutor.cs`](../../boilerplateBE/src/modules/Starter.Module.Workflow/Infrastructure/Services/HookExecutor.cs) that calls an `IAiActionProvider` capability (Null Object fallback = no-op).
-- Register `NullAiActionProvider` in [`Starter.Infrastructure/Capabilities/NullObjects`](../../boilerplateBE/src/Starter.Infrastructure/Capabilities/NullObjects).
+- Implement `AiActionHookHandler` in [`Infrastructure/Services/HookExecutor.cs`](../../../boilerplateBE/src/modules/Starter.Module.Workflow/Infrastructure/Services/HookExecutor.cs) that calls an `IAiActionProvider` capability (Null Object fallback = no-op).
+- Register `NullAiActionProvider` in [`Starter.Infrastructure/Capabilities/NullObjects`](../../../boilerplateBE/src/Starter.Infrastructure/Capabilities/NullObjects).
 
 ---
 

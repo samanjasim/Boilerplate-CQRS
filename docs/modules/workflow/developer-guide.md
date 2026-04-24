@@ -6,27 +6,35 @@ This module provides a composable state-machine workflow engine. Other modules r
 **Capability contract:** [`IWorkflowService`](../../../boilerplateBE/src/Starter.Abstractions/Capabilities/IWorkflowService.cs)
 **Null-object fallback:** [`NullWorkflowService`](../../../boilerplateBE/src/Starter.Infrastructure/Capabilities/NullObjects/NullWorkflowService.cs)
 
-## Architecture overview
+## Shipped features (Phases 1–4c)
+
+- ✅ **Phase 1** — State-machine engine, templates, inbox, entity integration, comments
+- ✅ **Phase 2a** — SLA tracking, escalation, delegation, parallel approvals
+- ✅ **Phase 2b** — Transactional outbox, denormalized inbox for scale
+- ✅ **Phase 3** — Engine refactoring, compound conditions, bulk operations
+- ✅ **Phase 4a** — Dynamic forms (step data collection)
+- ✅ **Phase 4b** — Analytics dashboard (per-definition metrics)
+- ✅ **Phase 4c** — Visual workflow designer (drag-and-drop at `/workflows/definitions/:id/designer`)
+
+See [Feature Overview](README.md) for detailed descriptions. Next phases are documented in [Roadmap](roadmap.md#phase-4-deferred-items).
+
+## Architecture & core concepts
+
+For detailed entity relationships, execution flow, assignee resolution, conditions, SLA, hooks, and events, see **[Workflow Engine](features/engine.md)**.
+
+Quick summary:
 
 ```
-WorkflowDefinition (template)
-        │
-        │ is instantiated as
-        ▼
-WorkflowInstance (one per request)
-        │
-        │ contains many
-        ▼
-WorkflowStep (completed transitions, history)
-        │
-        │ creates at each HumanTask state
-        ▼
-ApprovalTask (what the assignee sees in their inbox)
+WorkflowDefinition (template) → WorkflowInstance (submitted workflow)
+                                         ↓
+                                    WorkflowStep (history)
+                                         ↓
+                                    ApprovalTask (inbox item)
 ```
 
-- **WorkflowEngine** (`Infrastructure/Services/WorkflowEngine.cs`) is the core — it starts instances, creates tasks, executes user actions, evaluates conditions, advances state, raises events.
-- **ApprovalTask** is the unit of assignment. One task per assignee per step (multiple per step when parallel approvals are configured).
-- **WorkflowStep** is the audit/history entity — one row per completed transition.
+- **WorkflowEngine** (`Infrastructure/Services/WorkflowEngine.cs` + collaborators `HumanTaskFactory`, `AutoTransitionEvaluator`, `ParallelApprovalCoordinator`) — handles state transitions, task creation, condition evaluation, SLA tracking.
+- **ApprovalTask** — unit of assignment. One per assignee per step.
+- **WorkflowStep** — immutable audit record per completed transition.
 
 ## Registering an entity as workflowable
 
@@ -173,33 +181,15 @@ Domain events raised (see [`Domain/Events/WorkflowDomainEvents.cs`](../../../boi
 - `ApprovalTaskCompletedEvent`
 - `WorkflowTaskEscalatedEvent` — raised by `SlaEscalationJob` when a task is escalated with a resolved fallback assignee.
 
-## Known issues
+## Engine structure (Phase 3+)
 
-### #6: `WorkflowEngine.cs` is 1200+ lines
+The `WorkflowEngine` was refactored in Phase 3 to extract focused collaborators:
 
-The engine currently mixes several responsibilities:
+- **`HumanTaskFactory`** — task creation, assignee resolution, SLA snapshot, denormalization (Phase 2b)
+- **`AutoTransitionEvaluator`** — condition-driven next-state progression
+- **`ParallelApprovalCoordinator`** — quorum evaluation and task-group advancement
 
-- Sequential transition evaluation + execution
-- Parallel-approval task-group coordination (quorum evaluation, sibling-task advancement)
-- Auto-transition evaluation (condition-driven state progression without a human action)
-- Task creation with assignee resolution, SLA due-date calculation, delegation lookup
-
-Extraction candidates for a future refactor:
-
-- `ParallelApprovalCoordinator` — quorum evaluation and task-group advancement.
-- `AutoTransitionEvaluator` — condition-driven next-state progression.
-- `HumanTaskFactory` — task creation with assignee resolution, SLA, delegation.
-
-**Status:** Deferred. Current code is well test-covered and working. Extraction is a pure refactor with no capability added.
-
-**Roadmap entry:** [`docs/roadmaps/workflow.md`](../../roadmaps/workflow.md)
-
-**Pick this up when:** Phase 2b integration work needs to modify the engine, OR when the file next needs substantive modification (≥200 new lines).
-
-**Starting points:**
-- Group the engine's private methods visually — parallel-coordination, auto-transition, and task-creation clusters are already distinct.
-- Introduce one collaborator at a time behind a package-internal interface; existing tests stay green.
-- No public-interface change on `IWorkflowService` or the controller.
+These are package-internal classes registered as scoped services. `WorkflowEngine` retains its public `IWorkflowService` surface — no call-site changes. The refactoring improved testability and reduced cyclomatic complexity while preserving all existing behavior.
 
 ## Testing
 

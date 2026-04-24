@@ -96,7 +96,7 @@ The `WorkflowStepTimeline` component renders submitted form data via `FormDataDi
 
 ## Limitations (tracked in roadmap)
 
-See `docs/roadmaps/workflow.md` → "Phase 4+ Deferred — Forms" for scheduled additions:
+See `../roadmap.md` → "Phase 4+ Deferred — Forms" for scheduled additions:
 
 - Multiselect, file upload, array-of-object (repeating fieldsets).
 - Conditional field visibility (show/hide based on other field values).

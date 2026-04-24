@@ -2,7 +2,7 @@
 
 Deliberately deferred improvements for module maintainers. Each entry names the trigger that flips it from "defer" to "do now" and points at the starting files so the next developer does not have to rediscover context.
 
-Integrator-facing integration docs live in [`developer-guide/modules/comments-activity.md`](../developer-guide/modules/comments-activity.md). This file is maintainer-facing.
+Integrator-facing integration docs live in [`developer-guide/modules/comments-activity.md`](developer-guide.md). This file is maintainer-facing.
 
 ---
 
