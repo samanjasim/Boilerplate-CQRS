@@ -10,7 +10,7 @@ using Starter.Module.Communication.Infrastructure.Services;
 
 namespace Starter.Module.Communication.Infrastructure.Consumers;
 
-internal sealed class DispatchIntegrationConsumer(
+public sealed class DispatchIntegrationConsumer(
     CommunicationDbContext dbContext,
     IIntegrationProviderFactory providerFactory,
     ICredentialEncryptionService encryptionService,
