@@ -41,6 +41,43 @@ public sealed class UnassignPersonaCommandTests
     }
 
     [Fact]
+    public async Task Cross_Tenant_Unassign_Returns_NotFound()
+    {
+        // Tenant A owns the assignment; Tenant B admin tries to unassign.
+        var tenantA = Guid.NewGuid();
+        var tenantB = Guid.NewGuid();
+        var user = Guid.NewGuid();
+
+        // Build with tenantB's context (caller)
+        var cu = new Mock<ICurrentUserService>();
+        cu.SetupGet(x => x.TenantId).Returns(tenantB);
+        var opts = new DbContextOptionsBuilder<AiDbContext>()
+            .UseInMemoryDatabase($"xt-{Guid.NewGuid()}").Options;
+        var db = new AiDbContext(opts, cu.Object);
+
+        // Tenant A's persona + assignment (written under null tenant context to bypass filter)
+        var cuNull = new Mock<ICurrentUserService>();
+        cuNull.SetupGet(x => x.TenantId).Returns((Guid?)null);
+        using (var seedDb = new AiDbContext(opts, cuNull.Object))
+        {
+            var p = AiPersona.Create(tenantA, "teacher", "Teacher", null,
+                PersonaAudienceType.Internal, SafetyPreset.Standard, Guid.NewGuid());
+            seedDb.AiPersonas.Add(p);
+            seedDb.UserPersonas.Add(UserPersona.Create(user, p.Id, tenantA, true, null));
+            await seedDb.SaveChangesAsync();
+        }
+
+        // Tenant B calls unassign — should NotFound via query filter
+        var handler = new UnassignPersonaCommandHandler(db);
+        var result = await handler.Handle(new UnassignPersonaCommand(
+            PersonaId: await db.AiPersonas.IgnoreQueryFilters().Select(p => p.Id).FirstAsync(),
+            UserId: user), default);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Persona.NotFound");
+    }
+
+    [Fact]
     public async Task Removing_Default_Promotes_Other_To_Default()
     {
         var t = Guid.NewGuid();

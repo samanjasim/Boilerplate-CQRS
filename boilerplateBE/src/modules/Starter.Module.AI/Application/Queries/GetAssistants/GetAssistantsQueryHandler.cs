@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Starter.Abstractions.Paging;
 using Starter.Application.Common.Access;
 using Starter.Application.Common.Access.Contracts;
@@ -8,6 +9,7 @@ using Starter.Application.Common.Interfaces;
 using Starter.Domain.Common.Access.Enums;
 using Starter.Module.AI.Application.DTOs;
 using Starter.Module.AI.Application.Services.Personas;
+using Starter.Module.AI.Application.Services.Runtime;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Shared.Results;
 
@@ -17,7 +19,9 @@ internal sealed class GetAssistantsQueryHandler(
     AiDbContext context,
     IResourceAccessService access,
     ICurrentUserService currentUser,
-    IPersonaContextAccessor personaContextAccessor)
+    IPersonaResolver personaResolver,
+    IPersonaContextAccessor personaContextAccessor,
+    IConfiguration configuration)
     : IRequestHandler<GetAssistantsQuery, Result<PaginatedList<AiAssistantDto>>>
 {
     public async Task<Result<PaginatedList<AiAssistantDto>>> Handle(
@@ -52,11 +56,23 @@ internal sealed class GetAssistantsQueryHandler(
 
         query = query.OrderByDescending(a => a.CreatedAt);
 
-        // Plan 5b — persona visibility filter (post-materialisation because JSONB arrays
-        // don't translate through EF Core providers cleanly). Applied at tenant scale so
-        // the cost is bounded by (tenant's assistant count).
-        var personaCtx = personaContextAccessor.Current;
-        if (personaCtx is not null)
+        // Plan 5b — persona visibility filter. Resolve the caller's persona here instead of
+        // relying on ChatExecutionService to have populated the accessor — list endpoints
+        // don't go through the chat pipeline. Feature flag Ai:Personas:Enabled (default true)
+        // short-circuits persona filtering when the kill-switch is active.
+        var personasEnabled = configuration.GetValue<bool?>("AI:Personas:Enabled") ?? true;
+        PersonaContext? personaCtx = personaContextAccessor.Current;
+        if (personasEnabled && personaCtx is null && currentUser.UserId.HasValue)
+        {
+            var resolved = await personaResolver.ResolveAsync(explicitPersonaId: null, cancellationToken);
+            if (resolved.IsSuccess)
+            {
+                personaCtx = resolved.Value;
+                personaContextAccessor.Set(personaCtx);
+            }
+        }
+
+        if (personasEnabled && personaCtx is not null)
         {
             var materialised = await query.ToListAsync(cancellationToken);
             var visible = materialised
@@ -69,9 +85,8 @@ internal sealed class GetAssistantsQueryHandler(
                 .Take(request.PageSize)
                 .Select(a => a.ToDto())
                 .ToList();
-            var paged = new PaginatedList<AiAssistantDto>(
-                pageItems, total, request.PageNumber, request.PageSize);
-            return Result.Success(paged);
+            return Result.Success(new PaginatedList<AiAssistantDto>(
+                pageItems, total, request.PageNumber, request.PageSize));
         }
 
         var page = await query.ToPaginatedListAsync(

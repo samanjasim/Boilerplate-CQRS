@@ -11,12 +11,14 @@ internal sealed class UnassignPersonaCommandHandler(AiDbContext db)
 {
     public async Task<Result> Handle(UnassignPersonaCommand request, CancellationToken ct)
     {
-        var target = await db.UserPersonas.IgnoreQueryFilters()
+        // Tenant query filter enforces scope — callers from other tenants see NotFound,
+        // preventing cross-tenant assignment deletion.
+        var target = await db.UserPersonas
             .FirstOrDefaultAsync(up => up.UserId == request.UserId && up.PersonaId == request.PersonaId, ct);
         if (target is null)
             return Result.Failure(PersonaErrors.NotFound);
 
-        var userAssignments = await db.UserPersonas.IgnoreQueryFilters()
+        var userAssignments = await db.UserPersonas
             .Where(up => up.UserId == request.UserId && up.TenantId == target.TenantId)
             .ToListAsync(ct);
 
