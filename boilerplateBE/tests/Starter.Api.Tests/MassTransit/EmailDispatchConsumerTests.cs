@@ -74,11 +74,13 @@ public sealed class EmailDispatchConsumerTests
     }
 
     [Fact]
-    public async Task Consume_DoesNotThrow_WhenEmailServiceReturnsFalse()
+    public async Task Consume_Throws_WhenEmailServiceReturnsFalse()
     {
-        // IEmailService returns false for non-retriable non-exception cases
-        // (e.g. provider rejected address format, feature flag disabled).
-        // MT should ack, not retry.
+        // IEmailService catches its own SMTP exceptions internally and reports
+        // failure via a `false` return. The consumer treats that as transient
+        // and throws so MT's retry policy fires. Without this, a brief SMTP
+        // outage during tenant registration would silently drop the
+        // verification email — exactly the failure mode A1 was meant to fix.
         var emailService = new Mock<IEmailService>();
         emailService
             .Setup(s => s.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()))
@@ -88,8 +90,8 @@ public sealed class EmailDispatchConsumerTests
 
         var act = async () => await consumer.Consume(ContextFor(SampleEvent()));
 
-        await act.Should().NotThrowAsync(
-            "a 'false' return is a policy decision, not an exception — it must not trigger retry");
+        await act.Should().ThrowAsync<InvalidOperationException>(
+            "swallowing 'false' would defeat MT's retry policy and lose the email on transient SMTP outages");
     }
 
     [Fact]

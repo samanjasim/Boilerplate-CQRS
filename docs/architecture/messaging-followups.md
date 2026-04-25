@@ -110,6 +110,36 @@ grep -rn "DateTime\.UtcNow\|DateTime\.Now" boilerplateBE/src/Starter.Application
 
 ---
 
+## E1 — Migrate remaining `IPublishEndpoint` injections to `IIntegrationEventCollector` — **Critical**
+
+**Why it matters:** the silent-drop bug PR #18 was meant to fix exists in **6 places** beyond `RegisterTenantCommandHandler`. PR #20 caught the remaining one (`UploadDocumentCommandHandler`) during integration testing because of the test app crash; the others were not exercised. Each is a ticking bug — it works in dev today (because in dev no second outbox replaces the first) but breaks the moment any future module adds its own `AddEntityFrameworkOutbox`.
+
+Audited remaining offenders:
+
+```
+src/modules/Starter.Module.AI/Application/Commands/ReprocessDocument/ReprocessDocumentCommandHandler.cs
+src/modules/Starter.Module.Communication/Application/Commands/ResendDelivery/ResendDeliveryCommandHandler.cs
+src/modules/Starter.Module.Communication/Infrastructure/Services/TriggerRuleEvaluator.cs
+src/modules/Starter.Module.Communication/Infrastructure/Services/MessageDispatcher.cs
+src/Starter.Infrastructure/Services/MassTransitMessagePublisher.cs   ← internal core service used by other modules
+```
+
+**Shape:** the migration is mechanical, identical to what was done in this PR for the email-side handlers and `UploadDocumentCommandHandler`:
+
+1. Replace `IPublishEndpoint bus` with `IIntegrationEventCollector eventCollector` in the constructor
+2. Replace `await bus.Publish(new MyMessage(...), ct);` with `eventCollector.Schedule(new MyMessage(...));`
+3. Ensure `await context.SaveChangesAsync(ct)` is called on `IApplicationDbContext` afterwards (for the interceptor to flush)
+4. Verify the `MessagingArchitectureTests` ArchUnit test still passes — Application stays MassTransit-free
+
+**Caveats:**
+
+- `MassTransitMessagePublisher` implements `IMessagePublisher` from the Application layer. Its sole job is to wrap MT — it might be the right place to *change the implementation* to use the collector internally, leaving the abstraction intact.
+- `TriggerRuleEvaluator` and `MessageDispatcher` are in the Communication module's Infrastructure layer (not Application). They publish from inside other consumer pipelines, where direct `IPublishEndpoint` is OK by design (MT's outbox is already in scope). **Verify case-by-case** before migrating these — they may not need to change.
+
+**Estimated effort:** half a day plus a focused QA pass on each migration.
+
+---
+
 ## Deferred / explicitly NOT on the radar
 
 **Consumer-side shared idempotency helper** — the current domain-uniqueness-check pattern (`AnyAsync(e => e.TenantId == evt.TenantId)`) is simpler, more correct, and doesn't couple modules via a shared `ProcessedMessages` table. Adding a generic helper would duplicate MassTransit's `InboxState` and add cross-DbContext complexity without benefit. Keep the current convention.

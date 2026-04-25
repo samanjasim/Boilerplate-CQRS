@@ -218,6 +218,25 @@ public static class DependencyInjection
                 o.UseBusOutbox();
             });
 
+            // MT 8.x's UseBusOutbox does:
+            //   services.ReplaceScoped<IScopedBusContextProvider<IBus>,
+            //                          EntityFrameworkScopedBusContextProvider<IBus, TDbContext>>()
+            // — the abstract interface mapping is REPLACED on every call. With
+            // multiple AddEntityFrameworkOutbox<T> calls (we have core + Workflow),
+            // the last one wins and IPublishEndpoint silently routes core events
+            // through Workflow's outbox, which is never saved → events vanish.
+            //
+            // The concrete closed-generic type is NOT registered by MT as a
+            // separately resolvable service. We register it explicitly here so
+            // IntegrationEventOutboxInterceptor can resolve the *exact* outbox
+            // provider that targets ApplicationDbContext — bypassing whatever
+            // last-write-wins provider the abstract interface points at.
+            //
+            // Constructor parameters resolve naturally from the same DI scope:
+            //   IBus, ApplicationDbContext, IBusOutboxNotification, Bind<...> etc.
+            // — all already registered by AddMassTransit + AddDbContext above.
+            services.AddScoped<EntityFrameworkScopedBusContextProvider<IBus, ApplicationDbContext>>();
+
             // Default retry + dead-letter policy applied to every receive endpoint.
             // Individual consumers can override via their own ConsumerDefinition.
             //

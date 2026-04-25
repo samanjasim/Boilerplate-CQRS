@@ -24,7 +24,7 @@ namespace Starter.Infrastructure.Consumers;
 /// TTL expires, so a duplicate is harmless.
 /// </para>
 /// </summary>
-internal sealed class EmailDispatchConsumer(
+public sealed class EmailDispatchConsumer(
     IEmailService emailService,
     ILogger<EmailDispatchConsumer> logger) : IConsumer<SendEmailRequestedEvent>
 {
@@ -36,13 +36,17 @@ internal sealed class EmailDispatchConsumer(
 
         if (!sent)
         {
-            // IEmailService returns false for "not-sent-but-no-exception" paths
-            // (e.g. disabled provider, invalid address format caught by provider).
-            // That's not a retry candidate — log at warn and let MT ack normally.
-            logger.LogWarning(
-                "Email dispatch returned false for recipient {To} subject {Subject} — not retrying",
-                message.To, message.Subject);
-            return;
+            // IEmailService catches internal SMTP exceptions and signals failure
+            // via a `false` return. Treat that as a transient failure so MT's
+            // retry policy fires (3× 1s/5s/15s, then `_error` queue).
+            //
+            // We can't distinguish "transient" (broker down) from "permanent"
+            // (malformed address) at this layer because the EmailService API
+            // is binary. The retry burns at most ~21 s for permanent failures —
+            // an acceptable cost for never silently dropping a verification
+            // email when SMTP is briefly unreachable.
+            throw new InvalidOperationException(
+                $"IEmailService reported failure sending '{message.Subject}' to {message.To}");
         }
 
         logger.LogInformation(
