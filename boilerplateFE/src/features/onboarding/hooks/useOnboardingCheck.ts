@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useAuthStore, selectUser } from '@/stores';
 import { useMarkTenantOnboarded } from '@/features/tenants/api';
 
@@ -48,13 +48,17 @@ function clearRemindLater() {
 export function useOnboardingCheck() {
   const user = useAuthStore(selectUser);
   const { mutateAsync: markOnboarded } = useMarkTenantOnboarded();
+  // Bumping this forces showOnboarding to recompute when localStorage-only
+  // dismissals (remind-later) fire — useMemo on `user` alone would miss them.
+  const [dismissTick, setDismissTick] = useState(0);
 
   const showOnboarding = useMemo(() => {
     if (!user?.tenantId) return false;
     if (user.tenantOnboardedAt) return false;
     if (isRemindLaterActive()) return false;
     return true;
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, dismissTick]);
 
   const completeOnboarding = async () => {
     if (!user?.tenantId) return;
@@ -64,6 +68,7 @@ export function useOnboardingCheck() {
 
   const remindLater = () => {
     setRemindLater();
+    setDismissTick((n) => n + 1);
   };
 
   /** Re-runs the wizard. Used from Profile/Settings ("Run setup again"). */

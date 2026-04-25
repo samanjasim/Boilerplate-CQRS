@@ -126,7 +126,7 @@ export function FeatureFlagsList({ flags, pagination, onPageChange, onPageSizeCh
                       <Button
                         variant="ghost"
                         size="icon"
-                        aria-label={t('featureFlags.tenantOverrides')}
+                        aria-label={t('featureFlags.tenantOverride')}
                         onClick={() => setOverrideTarget(flag)}
                       >
                         <Layers className="h-4 w-4" />
