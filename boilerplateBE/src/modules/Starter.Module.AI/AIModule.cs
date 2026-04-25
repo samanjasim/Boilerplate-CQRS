@@ -138,6 +138,8 @@ public sealed class AIModule : IModule
 
         services.AddSingleton<IAiToolRegistry, AiToolRegistryService>();
         services.AddAiToolsFromAssembly(typeof(AIModule).Assembly);
+        services.AddAiAgentTemplatesFromAssembly(typeof(AIModule).Assembly);
+        services.AddSingleton<IAiAgentTemplateRegistry, AiAgentTemplateRegistry>();
         services.AddHostedService<AiToolRegistrySyncHostedService>();
 
         services.AddScoped<IResourceOwnershipHandler, AiAssistantOwnershipHandler>();
