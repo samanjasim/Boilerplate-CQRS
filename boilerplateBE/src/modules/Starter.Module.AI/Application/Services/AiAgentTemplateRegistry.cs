@@ -24,6 +24,12 @@ internal sealed class AiAgentTemplateRegistry : IAiAgentTemplateRegistry
     private static Dictionary<string, IAiAgentTemplate> BuildDictionary(
         IEnumerable<IAiAgentTemplate> templates)
     {
+        // Template slugs are case-sensitive (Ordinal). Authors register slugs in
+        // lower_snake_case as the canonical identity; downstream consumers
+        // (`AiAssistant.Slug`, install commands, persona PermittedAgentSlugs)
+        // store and compare the slug exactly as authored. This differs from
+        // 5c-1's tool registry, which uses OrdinalIgnoreCase to tolerate
+        // model-generated tool calls that may vary in casing.
         var dict = new Dictionary<string, IAiAgentTemplate>(StringComparer.Ordinal);
         foreach (var t in templates)
         {

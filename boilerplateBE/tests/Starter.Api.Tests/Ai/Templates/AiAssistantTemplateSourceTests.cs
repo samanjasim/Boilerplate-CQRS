@@ -50,4 +50,21 @@ public class AiAssistantTemplateSourceTests
 
         Assert.Equal("v1", a.TemplateSourceVersion);
     }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void StampTemplateSource_rejects_empty_or_whitespace_slug(string slug)
+    {
+        var a = AiAssistant.Create(
+            tenantId: Guid.NewGuid(),
+            name: "X",
+            description: null,
+            systemPrompt: "You are X.",
+            createdByUserId: Guid.NewGuid());
+
+        var ex = Assert.Throws<ArgumentException>(() =>
+            a.StampTemplateSource(slug, version: null));
+        Assert.Equal("templateSlug", ex.ParamName);
+    }
 }
