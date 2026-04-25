@@ -12,18 +12,9 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { usePermissions } from '@/hooks';
-import { PERMISSIONS } from '@/constants';
+import { PERMISSIONS, STATUS_BADGE_VARIANT } from '@/constants';
 import { useDeliveryLog, useResendDelivery } from '../api';
 import type { DeliveryStatus } from '@/types/communication.types';
-
-const STATUS_VARIANTS: Record<DeliveryStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  Pending: 'outline',
-  Queued: 'secondary',
-  Sending: 'secondary',
-  Delivered: 'default',
-  Failed: 'destructive',
-  Bounced: 'destructive',
-};
 
 const STATUS_ICONS: Record<DeliveryStatus, typeof CheckCircle2> = {
   Pending: Clock,
@@ -82,7 +73,7 @@ export function DeliveryDetailModal({ id, open, onOpenChange }: DeliveryDetailMo
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">{t('communication.deliveryLog.columns.status')}</p>
-                <Badge variant={STATUS_VARIANTS[log.status]}>
+                <Badge variant={STATUS_BADGE_VARIANT[log.status]}>
                   {t(`communication.deliveryLog.statusLabels.${log.status}`)}
                 </Badge>
               </div>
@@ -159,7 +150,7 @@ export function DeliveryDetailModal({ id, open, onOpenChange }: DeliveryDetailMo
                             </span>
                           </div>
                           <div className="flex items-center gap-2 mt-1">
-                            <Badge variant={STATUS_VARIANTS[attempt.status]} className="text-xs">
+                            <Badge variant={STATUS_BADGE_VARIANT[attempt.status]} className="text-xs">
                               {t(`communication.deliveryLog.statusLabels.${attempt.status}`)}
                             </Badge>
                             {attempt.provider && (
