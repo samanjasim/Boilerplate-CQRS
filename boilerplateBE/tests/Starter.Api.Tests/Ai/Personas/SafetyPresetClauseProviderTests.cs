@@ -1,5 +1,6 @@
 using System.Globalization;
 using FluentAssertions;
+using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Services.Personas;
 using Xunit;

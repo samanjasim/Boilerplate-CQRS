@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Starter.Module.AI.Application.Services.Runtime;
+using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
 
 namespace Starter.Module.AI.Infrastructure.Runtime;

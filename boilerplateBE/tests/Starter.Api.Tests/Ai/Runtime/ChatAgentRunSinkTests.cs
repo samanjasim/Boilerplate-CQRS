@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Starter.Module.AI.Application.Services;
 using Starter.Module.AI.Application.Services.Runtime;
 using Starter.Module.AI.Domain.Entities;
+using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Providers;

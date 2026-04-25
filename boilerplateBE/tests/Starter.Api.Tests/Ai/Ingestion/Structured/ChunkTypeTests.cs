@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
 using Xunit;
 

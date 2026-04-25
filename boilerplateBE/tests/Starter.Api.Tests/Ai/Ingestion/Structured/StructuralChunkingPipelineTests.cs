@@ -2,6 +2,7 @@ using System.Linq;
 using FluentAssertions;
 using Starter.Module.AI.Application.Services.Ingestion;
 using Starter.Module.AI.Application.Services.Retrieval;
+using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Ingestion;
 using Starter.Module.AI.Infrastructure.Ingestion.Structured;

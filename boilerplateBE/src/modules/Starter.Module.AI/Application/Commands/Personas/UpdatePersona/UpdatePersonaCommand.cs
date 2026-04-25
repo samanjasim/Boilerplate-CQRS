@@ -1,5 +1,6 @@
 using MediatR;
 using Starter.Module.AI.Application.DTOs;
+using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Shared.Results;
 

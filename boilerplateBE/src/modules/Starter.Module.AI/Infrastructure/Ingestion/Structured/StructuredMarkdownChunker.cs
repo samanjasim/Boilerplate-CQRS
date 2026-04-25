@@ -1,4 +1,5 @@
 using Starter.Module.AI.Application.Services.Ingestion;
+using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
 
 namespace Starter.Module.AI.Infrastructure.Ingestion.Structured;
