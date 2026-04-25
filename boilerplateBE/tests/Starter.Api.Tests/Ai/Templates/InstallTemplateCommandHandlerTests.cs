@@ -274,4 +274,29 @@ public class InstallTemplateCommandHandlerTests
         assistant.CreatedByUserId.Should().Be(Guid.Empty);
         cu.VerifyGet(x => x.UserId, Times.Never);
     }
+
+    [Fact]
+    public async Task Seed_path_bypasses_cross_tenant_guard()
+    {
+        var targetTenant = Guid.NewGuid();
+        var template = MakeTemplate(slug: "x", personas: new[] { "default" });
+        var (handler, db, _, _) = Setup(
+            callerTenantId: null,
+            templates: new[] { template },
+            callerIsSuperAdmin: false);
+
+        db.AiPersonas.Add(MakeDefaultPersona(targetTenant));
+        await db.SaveChangesAsync();
+
+        var result = await handler.Handle(
+            new InstallTemplateCommand("x",
+                TargetTenantId: targetTenant,
+                CreatedByUserIdOverride: Guid.Empty),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        var assistant = await db.AiAssistants.IgnoreQueryFilters().SingleAsync();
+        assistant.TenantId.Should().Be(targetTenant);
+        assistant.CreatedByUserId.Should().Be(Guid.Empty);
+    }
 }

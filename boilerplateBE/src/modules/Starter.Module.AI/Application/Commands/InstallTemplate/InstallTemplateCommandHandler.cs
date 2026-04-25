@@ -23,10 +23,17 @@ internal sealed class InstallTemplateCommandHandler(
     public async Task<Result<Guid>> Handle(
         InstallTemplateCommand request, CancellationToken ct)
     {
-        // 1. Resolve target tenant
+        // 1. Resolve target tenant.
+        // The cross-tenant guard is bypassed for the seed path: when
+        // CreatedByUserIdOverride is provided, the caller is an internal seed
+        // actor (AIModule.SeedDataAsync passes Guid.Empty). The HTTP controller
+        // never passes CreatedByUserIdOverride from request bodies, so this
+        // bypass cannot be triggered from the network.
         var callerTenantId = currentUser.TenantId;
         var targetTenantId = request.TargetTenantId ?? callerTenantId;
-        if (request.TargetTenantId is { } explicitTarget
+        var isSystemSeedActor = request.CreatedByUserIdOverride.HasValue;
+        if (!isSystemSeedActor
+            && request.TargetTenantId is { } explicitTarget
             && explicitTarget != callerTenantId
             && !currentUser.IsInRole(Roles.SuperAdmin))
         {
