@@ -5,6 +5,7 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useOnboardingCheck } from '@/features/onboarding/hooks/useOnboardingCheck';
 import { OnboardingWizard } from '@/features/onboarding/components/OnboardingWizard';
+import { RouteErrorBoundary } from '@/components/common';
 
 export function MainLayout() {
   const isCollapsed = useUIStore(selectSidebarCollapsed);
@@ -30,7 +31,9 @@ export function MainLayout() {
         )}
       >
         <div className="p-8">
-          <Outlet />
+          <RouteErrorBoundary>
+            <Outlet />
+          </RouteErrorBoundary>
         </div>
       </main>
     </div>
