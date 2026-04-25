@@ -10,6 +10,8 @@ import {
   Pagination,
   ListPageState,
   ListToolbar,
+  DateRangePicker,
+  type DateRange,
 } from '@/components/common';
 import { usePermissions, useListPage } from '@/hooks';
 import { PERMISSIONS, AUDIT_ACTION_VARIANTS } from '@/constants';
@@ -35,6 +37,8 @@ interface AuditLogFilters {
   searchTerm?: string;
   entityType?: string;
   action?: string;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 function ChangesDetail({ changes }: { changes: string | null }) {
@@ -97,8 +101,20 @@ export default function AuditLogsPage() {
     if (list.filters.entityType) f.entityType = list.filters.entityType;
     if (list.filters.action) f.action = list.filters.action;
     if (list.filters.searchTerm) f.searchTerm = list.filters.searchTerm;
+    if (list.filters.dateFrom) f.dateFrom = list.filters.dateFrom;
+    if (list.filters.dateTo) f.dateTo = list.filters.dateTo;
     return f;
   }, [list.filters]);
+
+  const dateRange: DateRange = {
+    from: list.filters.dateFrom,
+    to: list.filters.dateTo,
+  };
+
+  const handleDateRangeChange = (next: DateRange) => {
+    list.setFilter('dateFrom', next.from ?? '');
+    list.setFilter('dateTo', next.to ?? '');
+  };
 
   const toggleRow = (id: string) => {
     setExpandedRow((prev) => (prev === id ? null : id));
@@ -146,6 +162,12 @@ export default function AuditLogsPage() {
                 <SelectItem value="Deleted">{t('auditLogs.deleted')}</SelectItem>
               </SelectContent>
             </Select>
+
+            <DateRangePicker
+              value={dateRange}
+              onChange={handleDateRangeChange}
+              placeholder={t('auditLogs.dateRange')}
+            />
           </>
         }
       />

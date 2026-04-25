@@ -10,7 +10,7 @@ const LOCALES: Record<string, Locale> = {
 };
 
 function resolveLocale(lng: string): Locale {
-  const key = lng.toLowerCase().split('-')[0];
+  const key = lng.toLowerCase().split('-')[0] ?? '';
   return LOCALES[key] ?? enUS;
 }
 

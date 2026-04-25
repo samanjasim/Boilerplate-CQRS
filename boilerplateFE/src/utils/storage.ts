@@ -9,7 +9,8 @@ const STORAGE_KEYS = {
 
 function getCookie(name: string): string | null {
   const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : null;
+  if (!match || match[1] === undefined) return null;
+  return decodeURIComponent(match[1]);
 }
 
 function setCookie(name: string, value: string): void {

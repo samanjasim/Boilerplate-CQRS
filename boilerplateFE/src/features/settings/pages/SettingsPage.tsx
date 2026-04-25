@@ -21,7 +21,7 @@ function resolveLabel(
   setting: SystemSetting
 ): string {
   const parts = setting.key.split('.');
-  const lastPart = parts[parts.length - 1];
+  const lastPart = parts[parts.length - 1] ?? setting.key;
   // Convert PascalCase to camelCase for i18n key
   const camelKey = lastPart.charAt(0).toLowerCase() + lastPart.slice(1);
   const i18nKey = `settings.${camelKey}`;
@@ -194,7 +194,7 @@ export default function SettingsPage() {
       }
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalValues(values);
-      if (groups.length > 0 && !activeTab) {
+      if (!activeTab && groups[0]) {
         setActiveTab(groups[0].category);
       }
     }
@@ -230,8 +230,9 @@ export default function SettingsPage() {
 
   const handleReset = useCallback(
     (key: string) => {
-      if (!settingsMap[key]) return;
-      setLocalValues((prev) => ({ ...prev, [key]: settingsMap[key].value }));
+      const setting = settingsMap[key];
+      if (!setting) return;
+      setLocalValues((prev) => ({ ...prev, [key]: setting.value }));
     },
     [settingsMap]
   );
@@ -262,8 +263,9 @@ export default function SettingsPage() {
     const changed: UpdateSettingData[] = [];
     for (const group of groups) {
       for (const setting of group.settings) {
-        if (localValues[setting.key] !== setting.value) {
-          changed.push({ key: setting.key, value: localValues[setting.key] });
+        const newValue = localValues[setting.key];
+        if (newValue !== undefined && newValue !== setting.value) {
+          changed.push({ key: setting.key, value: newValue });
         }
       }
     }

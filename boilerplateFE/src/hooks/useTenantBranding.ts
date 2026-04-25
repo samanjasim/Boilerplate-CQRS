@@ -4,10 +4,12 @@ import { useAuthStore, selectUser } from '@/stores';
 function hexToHSL(hex: string): string {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   if (!result) return '';
+  const [, rHex, gHex, bHex] = result;
+  if (!rHex || !gHex || !bHex) return '';
 
-  const r = parseInt(result[1], 16) / 255;
-  const g = parseInt(result[2], 16) / 255;
-  const b = parseInt(result[3], 16) / 255;
+  const r = parseInt(rHex, 16) / 255;
+  const g = parseInt(gHex, 16) / 255;
+  const b = parseInt(bHex, 16) / 255;
 
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);

@@ -10,8 +10,9 @@ interface EventSelectorProps {
 
 function groupEventTypes(eventTypes: WebhookEventType[]): Record<string, WebhookEventType[]> {
   return eventTypes.reduce<Record<string, WebhookEventType[]>>((acc, et) => {
-    if (!acc[et.resource]) acc[et.resource] = [];
-    acc[et.resource].push(et);
+    const bucket = acc[et.resource] ?? [];
+    bucket.push(et);
+    acc[et.resource] = bucket;
     return acc;
   }, {});
 }

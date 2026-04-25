@@ -31,11 +31,20 @@ internal sealed class GetAuditLogsQueryHandler(
         if (request.PerformedBy.HasValue)
             query = query.Where(a => a.PerformedBy == request.PerformedBy.Value);
 
+        // Query-string binding gives DateTime.Kind=Unspecified; Npgsql rejects it
+        // for `timestamp with time zone` columns. Normalize to UTC before filtering.
         if (request.DateFrom.HasValue)
-            query = query.Where(a => a.PerformedAt >= request.DateFrom.Value);
+        {
+            var from = DateTime.SpecifyKind(request.DateFrom.Value, DateTimeKind.Utc);
+            query = query.Where(a => a.PerformedAt >= from);
+        }
 
         if (request.DateTo.HasValue)
-            query = query.Where(a => a.PerformedAt <= request.DateTo.Value);
+        {
+            // Inclusive end-of-day so a single-day filter (from=X, to=X) returns same-day rows.
+            var to = DateTime.SpecifyKind(request.DateTo.Value, DateTimeKind.Utc).AddDays(1).AddTicks(-1);
+            query = query.Where(a => a.PerformedAt <= to);
+        }
 
         if (!string.IsNullOrWhiteSpace(request.SearchTerm))
         {

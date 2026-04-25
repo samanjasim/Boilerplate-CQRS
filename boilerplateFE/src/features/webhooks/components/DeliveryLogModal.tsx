@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useTimeAgo } from '@/hooks';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useTimeAgo, usePermissions } from '@/hooks';
+import { ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
+import { PERMISSIONS } from '@/constants';
 import {
   Dialog,
   DialogContent,
@@ -27,7 +28,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { Pagination, getPersistedPageSize } from '@/components/common';
-import { useWebhookDeliveries } from '../api';
+import { useWebhookDeliveries, useRedeliverWebhook } from '../api';
 import { statusBadge } from '../utils/badges';
 import { tryPrettyJson } from '../utils/format';
 import type { WebhookEndpoint, WebhookDelivery, PaginationMeta } from '@/types';
@@ -42,8 +43,12 @@ type DeliveryStatus = 'All' | 'Success' | 'Failed' | 'Pending';
 function DeliveryRow({ delivery }: { delivery: WebhookDelivery }) {
   const [expanded, setExpanded] = useState(false);
   const { t } = useTranslation();
+  const { hasPermission } = usePermissions();
+  const redeliver = useRedeliverWebhook();
 
   const timeAgo = useTimeAgo(delivery.createdAt);
+  const canRedeliver =
+    hasPermission(PERMISSIONS.Webhooks.Update) && delivery.status === 'Failed';
 
   return (
     <>
@@ -68,11 +73,28 @@ function DeliveryRow({ delivery }: { delivery: WebhookDelivery }) {
           {delivery.attemptCount}
         </TableCell>
         <TableCell className="text-end">
-          {expanded ? (
-            <ChevronUp className="h-4 w-4 text-muted-foreground ml-auto" />
-          ) : (
-            <ChevronDown className="h-4 w-4 text-muted-foreground ml-auto" />
-          )}
+          <div className="flex items-center justify-end gap-1">
+            {canRedeliver && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                aria-label={t('webhooks.redeliver')}
+                disabled={redeliver.isPending}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  redeliver.mutate(delivery.id);
+                }}
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            {expanded ? (
+              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            )}
+          </div>
         </TableCell>
       </TableRow>
 

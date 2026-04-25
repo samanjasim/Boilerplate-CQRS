@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Starter.Module.Webhooks.Domain.Enums;
 using Starter.Module.Webhooks.Application.Commands.CreateWebhookEndpoint;
 using Starter.Module.Webhooks.Application.Commands.DeleteWebhookEndpoint;
+using Starter.Module.Webhooks.Application.Commands.RedeliverWebhook;
 using Starter.Module.Webhooks.Application.Commands.RegenerateWebhookSecret;
 using Starter.Module.Webhooks.Application.Commands.TestWebhookEndpoint;
 using Starter.Module.Webhooks.Application.Commands.UpdateWebhookEndpoint;
@@ -185,6 +186,20 @@ public sealed class WebhooksController(ISender mediator) : Starter.Abstractions.
     public async Task<IActionResult> GetEventTypes(CancellationToken ct = default)
     {
         var result = await Mediator.Send(new GetWebhookEventTypesQuery(), ct);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Redeliver a failed webhook delivery using the original payload.
+    /// </summary>
+    [HttpPost("deliveries/{deliveryId:guid}/redeliver")]
+    [Authorize(Policy = WebhookPermissions.Update)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Redeliver(Guid deliveryId, CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(new RedeliverWebhookCommand(deliveryId), ct);
         return HandleResult(result);
     }
 }
