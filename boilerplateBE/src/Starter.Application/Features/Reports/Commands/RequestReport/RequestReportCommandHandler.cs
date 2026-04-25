@@ -64,9 +64,14 @@ internal sealed class RequestReportCommandHandler(
             filterHash);
 
         context.Set<ReportRequest>().Add(reportRequest);
-        await context.SaveChangesAsync(cancellationToken);
 
+        // Publish before SaveChanges so the message is scheduled on the
+        // collector and flushed atomically with the report_requests row by the
+        // IntegrationEventOutboxInterceptor. The previous "Save → Publish"
+        // order dropped the message because the publisher schedules but the
+        // collector is drained only during SaveChanges.
         await messagePublisher.PublishAsync(new GenerateReportMessage(reportRequest.Id), cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
 
         return Result.Success(reportRequest.ToDto());
     }
