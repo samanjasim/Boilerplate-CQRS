@@ -1,11 +1,14 @@
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Modularity;
 using Starter.Application.Common.Access;
 using Starter.Application.Common.Interfaces;
 using Starter.Domain.Common.Access.Enums;
+using Starter.Module.AI.Application.Commands.InstallTemplate;
 using Starter.Module.AI.Application.Services;
 using Starter.Module.AI.Application.Services.Ingestion;
 using Starter.Module.AI.Application.Services.Retrieval;
@@ -225,43 +228,44 @@ public sealed class AIModule : IModule
     {
         using var scope = services.CreateScope();
         var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
-        if (!configuration.GetValue<bool>("AI:SeedSampleAssistant"))
+        if (!configuration.GetValue<bool>("AI:InstallDemoTemplatesOnStartup"))
             return;
 
-        var context = scope.ServiceProvider.GetRequiredService<AiDbContext>();
-        const string SampleName = "AI Tools Demo";
-        var exists = await context.AiAssistants
-            .AnyAsync(a => a.Name == SampleName, cancellationToken);
-
-        if (exists)
+        var registry = scope.ServiceProvider.GetRequiredService<IAiAgentTemplateRegistry>();
+        var demoSlugs = registry.GetAll().Select(t => t.Slug).ToList();
+        if (demoSlugs.Count == 0)
             return;
 
         var appDb = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
-        var ownerId = await appDb.Users
-            .OrderBy(u => u.CreatedAt)
-            .Select(u => u.Id)
-            .FirstOrDefaultAsync(cancellationToken);
-        if (ownerId == Guid.Empty)
+        var tenantIds = await appDb.Tenants
+            .IgnoreQueryFilters()
+            .Select(t => t.Id)
+            .ToListAsync(cancellationToken);
+        if (tenantIds.Count == 0)
             return;
 
-        var sample = AiAssistant.Create(
-            tenantId: null,
-            name: SampleName,
-            description: "Demonstrates AI function calling. Ask about your conversations.",
-            systemPrompt:
-                "You are a friendly assistant. When the user asks about their own " +
-                "conversations, call the list_my_conversations tool and summarise the results.",
-            createdByUserId: ownerId,
-            provider: null,
-            model: null,
-            temperature: 0.2,
-            maxTokens: 1024,
-            executionMode: AssistantExecutionMode.Chat,
-            maxAgentSteps: 5,
-            isActive: true);
-        sample.SetEnabledTools(new[] { "list_my_conversations" });
-        sample.SetVisibility(ResourceVisibility.TenantWide);
-        context.AiAssistants.Add(sample);
-        await context.SaveChangesAsync(cancellationToken);
+        var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+        var logger = scope.ServiceProvider.GetService<ILogger<AIModule>>();
+
+        foreach (var tenantId in tenantIds)
+        {
+            foreach (var slug in demoSlugs)
+            {
+                var result = await mediator.Send(
+                    new InstallTemplateCommand(slug, TargetTenantId: tenantId, CreatedByUserIdOverride: Guid.Empty),
+                    cancellationToken);
+
+                if (result.IsFailure)
+                {
+                    var code = result.Error.Code;
+                    if (code == "Template.AlreadyInstalled")
+                        logger?.LogDebug("Demo template {Slug} already installed in tenant {TenantId}; skipping.",
+                            slug, tenantId);
+                    else
+                        logger?.LogWarning("Demo template install failed: tenant={TenantId} slug={Slug} code={Code} message={Message}",
+                            tenantId, slug, code, result.Error.Description);
+                }
+            }
+        }
     }
 }
