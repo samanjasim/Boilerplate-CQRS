@@ -87,6 +87,7 @@ export function CreateWebhookDialog({ open, onOpenChange }: CreateWebhookDialogP
                   variant="outline"
                   size="icon"
                   onClick={handleCopy}
+                  aria-label={t('common.copy', 'Copy')}
                   className="shrink-0"
                 >
                   {copied ? (

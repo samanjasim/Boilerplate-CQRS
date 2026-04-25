@@ -13,11 +13,16 @@ export function useNotifications(params?: PaginationParams & { isRead?: boolean 
   });
 }
 
-export function useUnreadCount() {
+/**
+ * Polls the unread count every 30s by default. Pass `refetchInterval: false`
+ * when Ably push is connected so we don't double-poll the server — the Ably
+ * channel will invalidate this query on the relevant events.
+ */
+export function useUnreadCount(options?: { refetchInterval?: number | false }) {
   return useQuery({
     queryKey: queryKeys.notifications.unreadCount(),
     queryFn: () => notificationsApi.getUnreadCount(),
-    refetchInterval: 30000,
+    refetchInterval: options?.refetchInterval ?? 30000,
   });
 }
 

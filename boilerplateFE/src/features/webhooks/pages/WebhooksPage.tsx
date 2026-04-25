@@ -194,6 +194,7 @@ export default function WebhooksPage() {
                         variant="ghost"
                         size="icon"
                         title={t('webhooks.deliveries')}
+                        aria-label={t('webhooks.deliveries')}
                         onClick={() => setDeliveriesTarget(endpoint)}
                       >
                         <List className="h-4 w-4" />
@@ -204,6 +205,7 @@ export default function WebhooksPage() {
                         variant="ghost"
                         size="icon"
                         title={t('webhooks.sendTest')}
+                        aria-label={t('webhooks.sendTest')}
                         onClick={() => handleTest(endpoint)}
                         disabled={testMutation.isPending}
                       >
@@ -216,6 +218,7 @@ export default function WebhooksPage() {
                           variant="ghost"
                           size="icon"
                           title={t('webhooks.editEndpoint')}
+                          aria-label={t('webhooks.editEndpoint')}
                           onClick={() => setEditTarget(endpoint)}
                         >
                           <Pencil className="h-4 w-4" />
@@ -228,6 +231,7 @@ export default function WebhooksPage() {
                           variant="ghost"
                           size="icon"
                           title={t('webhooks.regenerateSecret')}
+                          aria-label={t('webhooks.regenerateSecret')}
                           onClick={() => setRegenerateTarget(endpoint)}
                         >
                           <KeyRound className="h-4 w-4" />
@@ -240,6 +244,7 @@ export default function WebhooksPage() {
                           variant="ghost"
                           size="icon"
                           title={t('webhooks.deleteEndpoint')}
+                          aria-label={t('webhooks.deleteEndpoint')}
                           onClick={() => setDeleteTarget(endpoint)}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />

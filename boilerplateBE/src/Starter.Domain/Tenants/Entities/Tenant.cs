@@ -32,6 +32,9 @@ public sealed class Tenant : AggregateRoot
     public string? LoginPageSubtitle { get; private set; }
     public string? EmailFooterText { get; private set; }
 
+    // Onboarding
+    public DateTimeOffset? OnboardedAt { get; private set; }
+
     private Tenant() { }
 
     private Tenant(
@@ -110,5 +113,15 @@ public sealed class Tenant : AggregateRoot
     public void Suspend()
     {
         Status = TenantStatus.Suspended;
+    }
+
+    public void MarkOnboarded(DateTimeOffset at)
+    {
+        OnboardedAt = at;
+    }
+
+    public void ClearOnboarded()
+    {
+        OnboardedAt = null;
     }
 }

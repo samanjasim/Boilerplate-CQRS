@@ -1,4 +1,3 @@
-import { useState, useCallback } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useUIStore, selectSidebarCollapsed } from '@/stores';
 import { cn } from '@/lib/utils';
@@ -9,16 +8,15 @@ import { OnboardingWizard } from '@/features/onboarding/components/OnboardingWiz
 
 export function MainLayout() {
   const isCollapsed = useUIStore(selectSidebarCollapsed);
-  const { showOnboarding, dismissOnboarding } = useOnboardingCheck();
-  const [wizardDismissed, setWizardDismissed] = useState(false);
+  const { showOnboarding, completeOnboarding, remindLater } = useOnboardingCheck();
 
-  const handleOnboardingComplete = useCallback(() => {
-    dismissOnboarding();
-    setWizardDismissed(true);
-  }, [dismissOnboarding]);
-
-  if (showOnboarding && !wizardDismissed) {
-    return <OnboardingWizard onComplete={handleOnboardingComplete} />;
+  if (showOnboarding) {
+    return (
+      <OnboardingWizard
+        onComplete={completeOnboarding}
+        onRemindLater={remindLater}
+      />
+    );
   }
 
   return (

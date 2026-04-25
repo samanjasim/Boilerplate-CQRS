@@ -196,6 +196,7 @@ export function ImportsTab() {
                         variant="ghost"
                         size="icon"
                         title={t('importExport.downloadErrors')}
+                        aria-label={t('importExport.downloadErrors')}
                         onClick={() => handleDownloadErrors(job)}
                       >
                         <Download className="h-4 w-4" />
@@ -205,6 +206,7 @@ export function ImportsTab() {
                       variant="ghost"
                       size="icon"
                       title={t('common.delete')}
+                      aria-label={t('common.delete')}
                       onClick={() => setDeleteTarget(job)}
                       disabled={['Validating', 'Processing'].includes(job.status)}
                     >

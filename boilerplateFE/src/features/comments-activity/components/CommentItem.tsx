@@ -94,7 +94,12 @@ export function CommentItem({ comment, isReply, onReply, onEditStart }: CommentI
               <div className="ltr:ml-auto rtl:mr-auto opacity-0 transition-opacity duration-150 group-hover:opacity-100">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-7 w-7">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      aria-label={t('common.actions')}
+                    >
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>

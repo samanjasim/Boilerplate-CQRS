@@ -14,6 +14,7 @@ export interface User {
   tenantSlug?: string | null;
   tenantLogoUrl?: string;
   tenantPrimaryColor?: string;
+  tenantOnboardedAt?: string | null;
   roles?: string[];
   permissions?: string[];
   lastLoginAt?: string;

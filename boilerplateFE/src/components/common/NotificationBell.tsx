@@ -63,7 +63,9 @@ export function NotificationBell() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { connected: ablyConnected } = useAblyNotifications();
-  const { data: unreadCount = 0 } = useUnreadCount();
+  const { data: unreadCount = 0 } = useUnreadCount({
+    refetchInterval: ablyConnected ? false : 30000,
+  });
   const { data: notificationsData } = useNotifications(
     { pageSize: 5 },
     { refetchInterval: ablyConnected ? false : 30000 }

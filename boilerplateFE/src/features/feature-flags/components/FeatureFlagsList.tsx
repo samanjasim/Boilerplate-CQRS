@@ -123,17 +123,32 @@ export function FeatureFlagsList({ flags, pagination, onPageChange, onPageSizeCh
                 <TableCell className="text-end">
                   <div className="flex items-center justify-end gap-1">
                     {hasPermission(PERMISSIONS.FeatureFlags.ManageTenantOverrides) && (
-                      <Button variant="ghost" size="icon" onClick={() => setOverrideTarget(flag)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={t('featureFlags.tenantOverride')}
+                        onClick={() => setOverrideTarget(flag)}
+                      >
                         <Layers className="h-4 w-4" />
                       </Button>
                     )}
                     {hasPermission(PERMISSIONS.FeatureFlags.Update) && (
-                      <Button variant="ghost" size="icon" onClick={() => setEditTarget(flag)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={t('common.edit')}
+                        onClick={() => setEditTarget(flag)}
+                      >
                         <Pencil className="h-4 w-4" />
                       </Button>
                     )}
                     {hasPermission(PERMISSIONS.FeatureFlags.Delete) && !flag.isSystem && (
-                      <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(flag)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={t('common.delete')}
+                        onClick={() => setDeleteTarget(flag)}
+                      >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     )}

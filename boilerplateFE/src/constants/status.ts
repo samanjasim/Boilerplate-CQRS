@@ -27,4 +27,8 @@ export const STATUS_BADGE_VARIANT: Record<string, 'default' | 'secondary' | 'des
 
   // Workflow statuses
   Cancelled: 'destructive',
+
+  // Product statuses
+  Draft: 'secondary',
+  Archived: 'outline',
 };

@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Spinner } from '@/components/ui/spinner';
 import { ROUTES } from '@/config';
 import { Slot } from '@/lib/extensions';
 import { useBackNavigation, usePermissions } from '@/hooks';
@@ -43,7 +44,11 @@ export default function ProductDetailPage() {
   const { data: product, isLoading } = useProduct(id!);
 
   if (isLoading || !product) {
-    return <div className="flex items-center justify-center py-12 text-muted-foreground">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Spinner size="lg" />
+      </div>
+    );
   }
 
   return <ProductDetailForm product={product} />;
@@ -315,7 +320,7 @@ function ProductImagePreview({ imageFileId, productName }: { imageFileId?: strin
   if (isLoading) {
     return (
       <div className="flex h-48 items-center justify-center rounded-xl bg-muted/50">
-        <p className="text-sm text-muted-foreground">{t('common.loading', 'Loading...')}</p>
+        <Spinner size="md" />
       </div>
     );
   }

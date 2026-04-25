@@ -31,18 +31,20 @@ internal sealed class GetCurrentUserQueryHandler(
         string? tenantName = null;
         string? tenantLogoUrl = null;
         string? tenantPrimaryColor = null;
+        DateTimeOffset? tenantOnboardedAt = null;
 
         if (user.TenantId.HasValue)
         {
             var tenant = await context.Tenants
                 .AsNoTracking()
                 .Where(t => t.Id == user.TenantId.Value)
-                .Select(t => new { t.Slug, t.Name, t.LogoFileId, t.PrimaryColor })
+                .Select(t => new { t.Slug, t.Name, t.LogoFileId, t.PrimaryColor, t.OnboardedAt })
                 .FirstOrDefaultAsync(cancellationToken);
 
             tenantSlug = tenant?.Slug;
             tenantName = tenant?.Name;
             tenantPrimaryColor = tenant?.PrimaryColor;
+            tenantOnboardedAt = tenant?.OnboardedAt;
 
             if (tenant?.LogoFileId.HasValue == true)
                 tenantLogoUrl = await fileService.GetUrlAsync(tenant.LogoFileId.Value, cancellationToken);
@@ -53,6 +55,7 @@ internal sealed class GetCurrentUserQueryHandler(
             tenantSlug: tenantSlug,
             tenantName: tenantName,
             tenantLogoUrl: tenantLogoUrl,
-            tenantPrimaryColor: tenantPrimaryColor));
+            tenantPrimaryColor: tenantPrimaryColor,
+            tenantOnboardedAt: tenantOnboardedAt));
     }
 }

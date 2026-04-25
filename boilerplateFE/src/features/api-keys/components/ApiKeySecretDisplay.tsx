@@ -50,7 +50,12 @@ export function ApiKeySecretDisplay({ open, onOpenChange, response }: ApiKeySecr
               <code className="flex-1 rounded-xl bg-secondary p-3 text-xs break-all font-mono text-foreground">
                 {response.fullKey}
               </code>
-              <Button variant="outline" size="icon" onClick={handleCopy}>
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label={t('common.copy', 'Copy')}
+                onClick={handleCopy}
+              >
                 {copied ? (
                   <Check className="h-4 w-4 text-green-600" />
                 ) : (

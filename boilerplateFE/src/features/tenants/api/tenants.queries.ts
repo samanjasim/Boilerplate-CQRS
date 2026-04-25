@@ -115,3 +115,20 @@ export function useTenantBranding(slug?: string) {
     staleTime: 5 * 60 * 1000,
   });
 }
+
+/**
+ * Mark the current tenant as onboarded (or clear the flag to re-trigger
+ * the wizard). Invalidates the current-user query so `tenantOnboardedAt`
+ * refreshes and the wizard hides without a page reload.
+ */
+export function useMarkTenantOnboarded() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, onboarded }: { id: string; onboarded: boolean }) =>
+      tenantsApi.markOnboarded(id, onboarded),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.auth.me() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tenants.detail(variables.id) });
+    },
+  });
+}

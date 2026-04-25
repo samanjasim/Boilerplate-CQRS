@@ -1,41 +1,87 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useAuthStore, selectUser } from '@/stores';
-import { useUsers } from '@/features/users/api';
+import { useMarkTenantOnboarded } from '@/features/tenants/api';
 
-const STORAGE_KEY = 'onboarding-complete';
+const REMIND_LATER_KEY = 'onboarding-remind-later';
+const REMIND_LATER_HOURS = 24;
 
-function isOnboardingDismissed(): boolean {
+function isRemindLaterActive(): boolean {
   try {
-    return !!localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(REMIND_LATER_KEY);
+    if (!raw) return false;
+    const remindUntil = Number(raw);
+    if (Number.isNaN(remindUntil)) return false;
+    return Date.now() < remindUntil;
   } catch {
     return false;
   }
 }
 
+function setRemindLater() {
+  try {
+    const expires = Date.now() + REMIND_LATER_HOURS * 60 * 60 * 1000;
+    localStorage.setItem(REMIND_LATER_KEY, String(expires));
+  } catch {
+    /* ignore */
+  }
+}
+
+function clearRemindLater() {
+  try {
+    localStorage.removeItem(REMIND_LATER_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 /**
- * Determines if the onboarding wizard should be shown.
- * Shows when: tenant user, tenant has 1 user (just registered), no logo, not dismissed.
+ * Drives the post-registration onboarding wizard. Truth lives on the
+ * backend (`Tenant.OnboardedAt`); a 24h "Remind me later" cookie suppresses
+ * the wizard locally without writing to the BE so a user who clicks
+ * "Remind me later" isn't permanently dismissed across devices.
+ *
+ * Wizard shows when:
+ *   1. user is a tenant user (has tenantId), AND
+ *   2. tenant has never been marked onboarded (`tenantOnboardedAt == null`), AND
+ *   3. the local "remind me later" cookie has not fired or has expired.
  */
 export function useOnboardingCheck() {
   const user = useAuthStore(selectUser);
-  const { data: usersData } = useUsers({ enabled: !!user?.tenantId });
+  const { mutateAsync: markOnboarded } = useMarkTenantOnboarded();
+  // Bumping this forces showOnboarding to recompute when localStorage-only
+  // dismissals (remind-later) fire — useMemo on `user` alone would miss them.
+  const [dismissTick, setDismissTick] = useState(0);
 
   const showOnboarding = useMemo(() => {
     if (!user?.tenantId) return false;
-    if (isOnboardingDismissed()) return false;
-    if (!usersData?.data) return false;
+    if (user.tenantOnboardedAt) return false;
+    if (isRemindLaterActive()) return false;
+    return true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, dismissTick]);
 
-    const userCount = usersData?.data?.length ?? 0;
-    const hasLogo = !!user.tenantLogoUrl;
-
-    return userCount <= 1 && !hasLogo;
-  }, [user, usersData]);
-
-  const dismissOnboarding = () => {
-    try {
-      localStorage.setItem(STORAGE_KEY, 'true');
-    } catch { /* ignore */ }
+  const completeOnboarding = async () => {
+    if (!user?.tenantId) return;
+    clearRemindLater();
+    await markOnboarded({ id: user.tenantId, onboarded: true });
   };
 
-  return { showOnboarding, dismissOnboarding };
+  const remindLater = () => {
+    setRemindLater();
+    setDismissTick((n) => n + 1);
+  };
+
+  /** Re-runs the wizard. Used from Profile/Settings ("Run setup again"). */
+  const reopenOnboarding = async () => {
+    if (!user?.tenantId) return;
+    clearRemindLater();
+    await markOnboarded({ id: user.tenantId, onboarded: false });
+  };
+
+  return {
+    showOnboarding,
+    completeOnboarding,
+    remindLater,
+    reopenOnboarding,
+  };
 }

@@ -14,14 +14,8 @@ import {
 } from '../api';
 import { IntegrationSetupDialog } from '../components/IntegrationSetupDialog';
 import { usePermissions } from '@/hooks';
-import { PERMISSIONS } from '@/constants';
+import { PERMISSIONS, STATUS_BADGE_VARIANT } from '@/constants';
 import type { IntegrationConfigDto, IntegrationType } from '@/types/communication.types';
-
-const STATUS_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive'> = {
-  Active: 'default',
-  Inactive: 'secondary',
-  Error: 'destructive',
-};
 
 const INTEGRATION_TYPE_ORDER: IntegrationType[] = ['Slack', 'Telegram', 'Discord', 'MicrosoftTeams'];
 
@@ -128,7 +122,7 @@ export default function IntegrationsPage() {
                               {t(`communication.integrations.types.${cfg.integrationType}`)}
                             </p>
                           </div>
-                          <Badge variant={STATUS_VARIANTS[cfg.status] ?? 'secondary'}>
+                          <Badge variant={STATUS_BADGE_VARIANT[cfg.status] ?? 'secondary'}>
                             {cfg.status}
                           </Badge>
                         </div>

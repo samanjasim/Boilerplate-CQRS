@@ -12,6 +12,7 @@ using Starter.Application.Features.Tenants.Queries.GetTenants;
 using Starter.Application.Features.Tenants.Queries.GetTenantById;
 using Starter.Application.Features.Tenants.Queries.GetTenantBranding;
 using Starter.Application.Features.Tenants.Commands.SetTenantDefaultRole;
+using Starter.Application.Features.Tenants.Commands.MarkTenantOnboarded;
 using Starter.Shared.Constants;
 
 namespace Starter.Api.Controllers;
@@ -203,6 +204,24 @@ public sealed class TenantsController(ISender mediator) : BaseApiController(medi
         var result = await Mediator.Send(new GetTenantBrandingQuery(slug, tenantId));
         return HandleResult(result);
     }
+
+    /// <summary>
+    /// Mark a tenant as onboarded (or clear the flag to re-trigger the wizard).
+    /// Called by the post-registration wizard on Complete or Skip; can also be
+    /// called by an admin who wants to re-run setup.
+    /// </summary>
+    [HttpPut("{id:guid}/onboarded")]
+    [Authorize(Policy = Permissions.Tenants.Update)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> MarkOnboarded(Guid id, [FromBody] MarkOnboardedRequest request)
+    {
+        var command = new MarkTenantOnboardedCommand(id, request.Onboarded);
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
 }
 
 #region Request DTOs
@@ -247,5 +266,10 @@ public sealed record UpdateTenantCustomTextRequest(
 /// Request to set a tenant's default registration role.
 /// </summary>
 public sealed record SetDefaultRoleRequest(Guid? RoleId);
+
+/// <summary>
+/// Request to mark a tenant onboarded (or clear the flag to re-run setup).
+/// </summary>
+public sealed record MarkOnboardedRequest(bool Onboarded);
 
 #endregion

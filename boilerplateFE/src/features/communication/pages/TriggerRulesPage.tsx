@@ -20,13 +20,8 @@ import {
 } from '../api';
 import { TriggerRuleFormDialog } from '../components/TriggerRuleFormDialog';
 import { usePermissions } from '@/hooks';
-import { PERMISSIONS } from '@/constants';
+import { PERMISSIONS, STATUS_BADGE_VARIANT } from '@/constants';
 import type { TriggerRuleDto } from '@/types/communication.types';
-
-const STATUS_VARIANTS: Record<string, 'default' | 'secondary'> = {
-  Active: 'default',
-  Inactive: 'secondary',
-};
 
 export default function TriggerRulesPage() {
   const { t } = useTranslation();
@@ -129,7 +124,7 @@ export default function TriggerRulesPage() {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={STATUS_VARIANTS[rule.status] ?? 'secondary'}>
+                  <Badge variant={STATUS_BADGE_VARIANT[rule.status] ?? 'secondary'}>
                     {rule.status}
                   </Badge>
                 </TableCell>

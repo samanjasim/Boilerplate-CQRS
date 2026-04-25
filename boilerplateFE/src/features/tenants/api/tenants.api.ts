@@ -33,6 +33,9 @@ export const tenantsApi = {
   setDefaultRole: (id: string, roleId: string | null) =>
     apiClient.put(API_ENDPOINTS.TENANTS.DEFAULT_ROLE(id), { roleId }).then((r) => r.data),
 
+  markOnboarded: (id: string, onboarded: boolean) =>
+    apiClient.put(API_ENDPOINTS.TENANTS.ONBOARDED(id), { onboarded }).then((r) => r.data),
+
   getBranding: async (slug?: string): Promise<TenantBranding> => {
     const publicClient = axios.create({
       baseURL: API_CONFIG.BASE_URL,

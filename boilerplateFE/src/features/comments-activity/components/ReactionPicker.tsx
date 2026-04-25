@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
@@ -27,6 +28,7 @@ interface ReactionPickerProps {
 }
 
 export function ReactionPicker({ commentId, reactions }: ReactionPickerProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const { mutate: toggleReaction } = useToggleReaction();
   const { hasPermission } = usePermissions();
@@ -65,6 +67,7 @@ export function ReactionPicker({ commentId, reactions }: ReactionPickerProps) {
               variant="ghost"
               size="icon"
               className="h-7 w-7 rounded-full"
+              aria-label={t('commentsActivity.addReaction', 'Add reaction')}
             >
               <Plus className="h-3.5 w-3.5" />
             </Button>

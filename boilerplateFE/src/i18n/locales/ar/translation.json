@@ -858,6 +858,28 @@
     "displayLabels": "تسميات العرض",
     "noFeatureOptions": "لا تتوفر خيارات ميزات."
   },
+  "onboarding": {
+    "profileTitle": "أعدّ مؤسستك",
+    "profileDesc": "أضف شعار شركتك ووصفاً موجزاً",
+    "companyName": "اسم الشركة",
+    "logo": "الشعار",
+    "description": "الوصف",
+    "descriptionPlaceholder": "أخبرنا عن مؤسستك...",
+    "teamTitle": "ادعُ فريقك",
+    "teamDesc": "أضف أعضاء فريقك للبدء معاً",
+    "emailPlaceholder": "team@company.com",
+    "role": "الدور",
+    "addAnother": "إضافة آخر",
+    "sendInvites": "إرسال الدعوات",
+    "skip": "تخطّ في الوقت الحالي",
+    "skipAll": "تخطّ الإعداد",
+    "remindLater": "ذكّرني لاحقاً",
+    "doneTitle": "كل شيء جاهز!",
+    "doneDesc": "مؤسستك جاهزة. يمكنك دائماً تحديث هذه الإعدادات لاحقاً.",
+    "goToDashboard": "اذهب إلى لوحة التحكم",
+    "rerun": "أعد تشغيل الإعداد",
+    "rerunDesc": "إعادة فتح معالج الإعداد بعد التسجيل."
+  },
   "importExport": {
     "title": "الاستيراد / التصدير",
     "subtitle": "استيراد البيانات من ملفات CSV أو تصدير البيانات من المنصة",

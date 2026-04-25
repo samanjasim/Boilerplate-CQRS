@@ -13,7 +13,8 @@ public static partial class UserMapper
         string? tenantSlug = null,
         string? tenantName = null,
         string? tenantLogoUrl = null,
-        string? tenantPrimaryColor = null)
+        string? tenantPrimaryColor = null,
+        DateTimeOffset? tenantOnboardedAt = null)
     {
         return new UserDto(
             user.Id,
@@ -37,7 +38,8 @@ public static partial class UserMapper
             TenantSlug: tenantSlug,
             TenantLogoUrl: tenantLogoUrl,
             TenantPrimaryColor: tenantPrimaryColor,
-            TwoFactorEnabled: user.TwoFactorEnabled);
+            TwoFactorEnabled: user.TwoFactorEnabled,
+            TenantOnboardedAt: tenantOnboardedAt);
     }
 
     public static IReadOnlyList<UserDto> ToDtoList(this IEnumerable<User> users)
