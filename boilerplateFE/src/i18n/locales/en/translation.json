@@ -756,6 +756,8 @@
     "endpointUpdated": "Webhook endpoint updated successfully",
     "endpointDeleted": "Webhook endpoint deleted successfully",
     "testSent": "Test event sent successfully",
+    "redeliver": "Redeliver",
+    "redeliverQueued": "Delivery queued for retry",
     "regenerateSecret": "Regenerate Secret",
     "regenerateSecretConfirm": "Regenerating invalidates the current signing secret. Existing subscribers must be updated with the new value. Continue?",
     "secretRegenerated": "Webhook secret regenerated",

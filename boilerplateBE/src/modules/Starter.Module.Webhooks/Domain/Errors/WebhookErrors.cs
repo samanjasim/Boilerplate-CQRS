@@ -12,6 +12,14 @@ public static class WebhookErrors
         "Webhook.EndpointNotActive",
         "The specified webhook endpoint is not active.");
 
+    public static readonly Error DeliveryNotFound = Error.NotFound(
+        "Webhook.DeliveryNotFound",
+        "The specified webhook delivery was not found.");
+
+    public static readonly Error DeliveryNotRedeliverable = Error.Validation(
+        "Webhook.DeliveryNotRedeliverable",
+        "Only failed deliveries can be redelivered.");
+
     public static readonly Error InvalidUrl = Error.Validation(
         "Webhook.InvalidUrl",
         "The provided webhook URL is not valid.");

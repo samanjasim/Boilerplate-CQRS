@@ -85,6 +85,19 @@ export function useTestWebhook() {
   });
 }
 
+export function useRedeliverWebhook() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (deliveryId: string) => webhooksApi.redeliverDelivery(deliveryId),
+    onSuccess: () => {
+      // Re-queue happens server-side; invalidate so the new attempt shows up
+      queryClient.invalidateQueries({ queryKey: queryKeys.webhooks.deliveries.all });
+      toast.success(i18n.t('webhooks.redeliverQueued'));
+    },
+    // onError is handled by the global axios error interceptor (error.interceptor.ts)
+  });
+}
+
 export function useRegenerateWebhookSecret() {
   const queryClient = useQueryClient();
   return useMutation({

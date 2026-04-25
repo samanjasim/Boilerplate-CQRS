@@ -117,6 +117,7 @@ export const API_ENDPOINTS = {
     LIST: '/Webhooks',
     DETAIL: (id: string) => `/Webhooks/${id}`,
     DELIVERIES: (id: string) => `/Webhooks/${id}/deliveries`,
+    REDELIVER: (deliveryId: string) => `/Webhooks/deliveries/${deliveryId}/redeliver`,
     TEST: (id: string) => `/Webhooks/${id}/test`,
     REGENERATE_SECRET: (id: string) => `/Webhooks/${id}/regenerate-secret`,
     EVENTS: '/Webhooks/events',
