@@ -7,16 +7,10 @@ using Xunit;
 namespace Starter.Api.Tests.MassTransit;
 
 /// <summary>
-/// Unit tests for <see cref="MassTransitMessagePublisher"/> — the
-/// <see cref="IMessagePublisher"/> implementation routes through
-/// <see cref="IIntegrationEventCollector"/> instead of <c>IPublishEndpoint</c>
-/// to avoid the dual-outbox silent-drop bug.
-///
-/// <para>
-/// Every existing caller of <c>IMessagePublisher.PublishAsync</c> now flows
-/// through the outbox transparently — no caller had to change. These tests
-/// pin that contract.
-/// </para>
+/// Unit tests for <see cref="MassTransitMessagePublisher"/> — schedules messages
+/// on <see cref="IIntegrationEventCollector"/> instead of using
+/// <c>IPublishEndpoint</c> directly. Routes through the same outbox pipeline
+/// as <see cref="IIntegrationEventCollector"/> users for consistency.
 /// </summary>
 public sealed class MassTransitMessagePublisherTests
 {
@@ -29,47 +23,40 @@ public sealed class MassTransitMessagePublisherTests
         var publisher = new MassTransitMessagePublisher(collector.Object);
 
         var msg = new SampleMessage(Guid.NewGuid(), "test");
-
         await publisher.PublishAsync(msg);
 
         collector.Verify(
             c => c.Schedule(It.Is<SampleMessage>(m => m == msg)),
             Times.Once,
-            "the publisher must hand the message to the collector unmodified — " +
-            "the interceptor flushes it during ApplicationDbContext.SaveChangesAsync");
+            "the publisher must hand the message to the collector unmodified");
     }
 
     [Fact]
-    public async Task PublishAsync_DoesNotInteractWith_Anything_Else()
+    public async Task PublishAsync_PreservesGenericTypeInfo()
     {
-        // Strict mock with no setup beyond Schedule — proves the publisher
-        // doesn't touch any other API on the collector.
-        var collector = new Mock<IIntegrationEventCollector>(MockBehavior.Strict);
-        collector.Setup(c => c.Schedule(It.IsAny<SampleMessage>()));
-
-        var publisher = new MassTransitMessagePublisher(collector.Object);
-
-        var act = async () => await publisher.PublishAsync(new SampleMessage(Guid.NewGuid(), "x"));
-
-        await act.Should().NotThrowAsync();
-    }
-
-    [Fact]
-    public async Task PublishAsync_PreservesGenericTypeInfo_OnSchedule()
-    {
-        // The collector's Schedule<T> signature carries TypeOf<T> for downstream
-        // routing. Verify the publisher's generic invocation reaches Schedule
-        // with the *concrete* T (not 'object').
+        // Verify the publisher's generic invocation reaches Schedule with the
+        // concrete T (not 'object'), so the interceptor publishes with the
+        // correct MT message type and consumers route correctly.
         var collector = new Mock<IIntegrationEventCollector>();
         var publisher = new MassTransitMessagePublisher(collector.Object);
 
         await publisher.PublishAsync(new SampleMessage(Guid.NewGuid(), "abc"));
 
-        // We can't observe the generic argument directly via Moq, but we can
-        // verify the invocation matched the exact runtime type by setting up
-        // a strongly-typed match.
         collector.Verify(
             c => c.Schedule<SampleMessage>(It.IsAny<SampleMessage>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task PublishAsync_DoesNotInteract_With_Anything_Else()
+    {
+        var collector = new Mock<IIntegrationEventCollector>(MockBehavior.Strict);
+        collector.Setup(c => c.Schedule(It.IsAny<SampleMessage>()));
+        var publisher = new MassTransitMessagePublisher(collector.Object);
+
+        var act = async () => await publisher.PublishAsync(new SampleMessage(Guid.NewGuid(), "x"));
+
+        await act.Should().NotThrowAsync(
+            "the publisher should only call Schedule on the collector — nothing else");
     }
 }

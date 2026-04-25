@@ -10,22 +10,25 @@ namespace Starter.Infrastructure.Services;
 /// outbox table atomically with the originating handler's business data.
 ///
 /// <para>
-/// <b>Why not <c>IPublishEndpoint</c> directly?</b><br/>
-/// Same reason as the broader collector pattern: with multiple
-/// <c>AddEntityFrameworkOutbox&lt;T&gt;()</c> registrations,
-/// <c>IPublishEndpoint</c> resolves to whichever DbContext registered last,
-/// which silently drops messages from handlers that don't save through that
-/// context. Routing through the collector forces the message into
-/// <c>ApplicationDbContext</c>'s outbox unambiguously.
+/// <b>Caller contract:</b> publish must be scheduled BEFORE the originating
+/// <c>SaveChangesAsync</c> on <c>ApplicationDbContext</c>. The legacy
+/// "Save then Publish" order silently dropped messages even with the old
+/// <c>IPublishEndpoint</c> implementation when multiple EF outboxes were
+/// registered. The current implementation surfaces the bug consistently:
+/// callers must flip to <c>Publish → Save</c>. Notification / event
+/// handlers fired during the outer <c>SavingChangesAsync</c> are correct
+/// by construction — the outer save flushes the collector after they return.
 /// </para>
 ///
 /// <para>
-/// <b>Caller contract:</b> the originating command handler (or a MediatR
-/// notification fired during its <c>SaveChangesAsync</c>) must drive
-/// <c>ApplicationDbContext.SaveChangesAsync</c> at some point in the same DI
-/// scope — that's when the interceptor runs and the message is committed.
-/// In practice every caller already does, because publishing without an
-/// associated save makes no sense.
+/// <b>Why not <c>IPublishEndpoint</c> directly?</b> MT 8.x's
+/// <c>UseBusOutbox()</c> uses <c>ReplaceScoped&lt;IScopedBusContextProvider&lt;IBus&gt;,
+/// EntityFrameworkScopedBusContextProvider&lt;IBus, TDbContext&gt;&gt;()</c> —
+/// the abstract slot is replaced on every <c>AddEntityFrameworkOutbox&lt;T&gt;</c>
+/// call. With multiple outboxes (core + Workflow), the last call wins and
+/// <c>IPublishEndpoint</c> would route messages through the wrong DbContext,
+/// silently dropping them. The collector → interceptor path explicitly
+/// targets <c>ApplicationDbContext</c>'s outbox.
 /// </para>
 /// </summary>
 public sealed class MassTransitMessagePublisher(IIntegrationEventCollector eventCollector) : IMessagePublisher

@@ -115,7 +115,12 @@ internal sealed class StartImportCommandHandler(
         importExportContext.ImportJobs.Add(job);
         await importExportContext.SaveChangesAsync(cancellationToken);
 
+        // Schedule via collector + flush appContext to commit the outbox row.
+        // Two separate commits (ImportExport + Application) — not atomic across
+        // both DBs, but ImportJob is durable before this point and a delayed
+        // appContext save just defers consumer pickup, never loses the job.
         await messagePublisher.PublishAsync(new ProcessImportMessage(job.Id), cancellationToken);
+        await appContext.SaveChangesAsync(cancellationToken);
 
         return Result.Success(job.Id);
     }
