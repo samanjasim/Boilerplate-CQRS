@@ -26,36 +26,36 @@ export function useAblyNotifications(): { connected: boolean } {
       client.connection.on('disconnected', () => setConnected(false));
       client.connection.on('failed', () => setConnected(false));
 
+      // Maps notification type → query keys to invalidate.
+      // Add a new type → resource invalidation here when BE adds new push events.
+      const TYPE_INVALIDATIONS: Record<string, ReadonlyArray<readonly unknown[]>> = {
+        ReportReady: [queryKeys.reports.all],
+        ReportFailed: [queryKeys.reports.all],
+        ReportCompleted: [queryKeys.reports.all],
+        import_completed: [queryKeys.importExport.imports.all],
+        import_partial: [queryKeys.importExport.imports.all],
+        import_failed: [queryKeys.importExport.imports.all],
+        WorkflowTaskAssigned: [queryKeys.workflow.tasks.all],
+      };
+
       channel.subscribe('notification', (message) => {
         try {
           const data = typeof message.data === 'string' ? JSON.parse(message.data) : message.data;
 
-          // Invalidate notification queries to refresh the list and unread count
+          // Always refresh notification list + unread badge
           queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
 
-          // If this is a report-related notification, also invalidate reports
           const notificationType = data?.type ?? data?.notificationType ?? '';
-          if (
-            notificationType === 'ReportReady' ||
-            notificationType === 'ReportFailed' ||
-            notificationType === 'ReportCompleted'
-          ) {
-            queryClient.invalidateQueries({ queryKey: queryKeys.reports.all });
+          for (const key of TYPE_INVALIDATIONS[notificationType] ?? []) {
+            queryClient.invalidateQueries({ queryKey: key });
           }
 
-          // If this is an import-related notification, also invalidate import jobs
-          if (['import_completed', 'import_partial', 'import_failed'].includes(data?.type)) {
-            queryClient.invalidateQueries({ queryKey: queryKeys.importExport.imports.all });
-          }
-
-          // Show a toast for the new notification
           if (data?.title) {
             toast.info(data.title, {
               description: data.message,
             });
           }
         } catch {
-          // Still invalidate on parse error
           queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
         }
       });
