@@ -52,6 +52,7 @@ public sealed class ProductsModule : IModule
         });
 
         services.AddAiToolsFromAssembly(typeof(ProductsModule).Assembly);
+        services.AddAiAgentTemplatesFromAssembly(typeof(ProductsModule).Assembly);
 
         return services;
     }
