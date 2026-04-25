@@ -52,7 +52,11 @@
     "export": "هەناردەکردن",
     "exportCsv": "هەناردەکردنی CSV",
     "exportPdf": "هەناردەکردنی PDF",
-    "exporting": "هەناردەکردن..."
+    "exporting": "هەناردەکردن...",
+    "clear": "پاککردنەوە",
+    "from": "لە",
+    "to": "بۆ",
+    "dateRange": "ماوەی بەروار"
   },
   "auth": {
     "welcomeBack": "بەخێربێیتەوە",
@@ -322,7 +326,8 @@
     "user": "بەکارهێنەر",
     "role": "ڕۆڵ",
     "permission": "مۆڵەت",
-    "tenant": "خاوەنکار"
+    "tenant": "خاوەنکار",
+    "dateRange": "ماوەی بەروار"
   },
   "twoFactor": {
     "title": "ناسینەوەی دوو هەنگاوی",

@@ -52,7 +52,11 @@
     "export": "Export",
     "exportCsv": "Export CSV",
     "exportPdf": "Export PDF",
-    "exporting": "Exporting..."
+    "exporting": "Exporting...",
+    "clear": "Clear",
+    "from": "From",
+    "to": "To",
+    "dateRange": "Date range"
   },
   "auth": {
     "welcomeBack": "Welcome back",
@@ -326,7 +330,8 @@
     "user": "User",
     "role": "Role",
     "permission": "Permission",
-    "tenant": "Tenant"
+    "tenant": "Tenant",
+    "dateRange": "Date range"
   },
   "twoFactor": {
     "title": "Two-Factor Authentication",

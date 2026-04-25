@@ -52,7 +52,11 @@
     "export": "تصدير",
     "exportCsv": "تصدير CSV",
     "exportPdf": "تصدير PDF",
-    "exporting": "جاري التصدير..."
+    "exporting": "جاري التصدير...",
+    "clear": "مسح",
+    "from": "من",
+    "to": "إلى",
+    "dateRange": "نطاق التاريخ"
   },
   "auth": {
     "welcomeBack": "مرحباً بعودتك",
@@ -322,7 +326,8 @@
     "user": "مستخدم",
     "role": "دور",
     "permission": "صلاحية",
-    "tenant": "مستأجر"
+    "tenant": "مستأجر",
+    "dateRange": "نطاق التاريخ"
   },
   "twoFactor": {
     "title": "المصادقة الثنائية",

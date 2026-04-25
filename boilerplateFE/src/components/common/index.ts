@@ -1,4 +1,5 @@
 export * from './ConfirmDialog';
+export * from './DateRangePicker';
 export * from './EmptyState';
 export * from './ListPageState';
 export * from './ListToolbar';
