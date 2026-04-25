@@ -56,6 +56,9 @@ public sealed class AiAssistant : AggregateRoot, ITenantEntity, IShareable
     public AssistantAccessMode AccessMode { get; private set; } = AssistantAccessMode.CallerPrincipal;
     public Guid CreatedByUserId { get; private set; }
 
+    public string? TemplateSourceSlug { get; private set; }
+    public string? TemplateSourceVersion { get; private set; }
+
     private AiAssistant() { }
 
     private AiAssistant(
@@ -220,6 +223,14 @@ public sealed class AiAssistant : AggregateRoot, ITenantEntity, IShareable
             .Distinct()
             .ToList();
         ModifiedAt = DateTime.UtcNow;
+    }
+
+    public void StampTemplateSource(string templateSlug, string? version = null)
+    {
+        if (string.IsNullOrWhiteSpace(templateSlug))
+            throw new ArgumentException("Template slug must be non-empty.", nameof(templateSlug));
+        TemplateSourceSlug = templateSlug;
+        TemplateSourceVersion = version;
     }
 
     public bool IsVisibleToPersona(string personaSlug, IReadOnlyList<string> personaPermittedAgentSlugs)

@@ -25,4 +25,6 @@ public sealed record AiAssistantDto(
     AssistantAccessMode AccessMode,
     Guid CreatedByUserId,
     string Slug,
-    IReadOnlyList<string> PersonaTargetSlugs);
+    IReadOnlyList<string> PersonaTargetSlugs,
+    string? TemplateSourceSlug = null,
+    string? TemplateSourceVersion = null);
