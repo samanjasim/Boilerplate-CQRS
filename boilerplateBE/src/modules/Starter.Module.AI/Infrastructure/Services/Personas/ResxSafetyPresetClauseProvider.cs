@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Resources;
 using Starter.Module.AI.Application.Services.Personas;
+using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
 
 namespace Starter.Module.AI.Infrastructure.Services.Personas;

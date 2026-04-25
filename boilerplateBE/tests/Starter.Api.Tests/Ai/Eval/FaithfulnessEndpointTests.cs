@@ -88,7 +88,7 @@ public sealed class FaithfulnessEndpointTests
             model: "claude-opus-4-7",
             temperature: 0.0,
             maxTokens: 1024,
-            executionMode: Starter.Module.AI.Domain.Enums.AssistantExecutionMode.Chat,
+            executionMode: Starter.Abstractions.Ai.AssistantExecutionMode.Chat,
             maxAgentSteps: 1,
             isActive: true);
 

@@ -1,4 +1,4 @@
-namespace Starter.Module.AI.Domain.Enums;
+namespace Starter.Abstractions.Ai;
 
 public enum SafetyPreset
 {

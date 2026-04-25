@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Starter.Api.Tests.Ai.Fakes;
 using Starter.Module.AI.Application.Services.Runtime;
+using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Runtime;

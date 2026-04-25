@@ -3,6 +3,7 @@ using Starter.Domain.Common.Access;
 using Starter.Domain.Common.Access.Enums;
 using Starter.Domain.Common.Access.Errors;
 using Starter.Domain.Exceptions;
+using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Domain.Errors;
 
@@ -54,6 +55,9 @@ public sealed class AiAssistant : AggregateRoot, ITenantEntity, IShareable
     public ResourceVisibility Visibility { get; private set; } = ResourceVisibility.Private;
     public AssistantAccessMode AccessMode { get; private set; } = AssistantAccessMode.CallerPrincipal;
     public Guid CreatedByUserId { get; private set; }
+
+    public string? TemplateSourceSlug { get; private set; }
+    public string? TemplateSourceVersion { get; private set; }
 
     private AiAssistant() { }
 
@@ -219,6 +223,14 @@ public sealed class AiAssistant : AggregateRoot, ITenantEntity, IShareable
             .Distinct()
             .ToList();
         ModifiedAt = DateTime.UtcNow;
+    }
+
+    public void StampTemplateSource(string templateSlug, string? version = null)
+    {
+        if (string.IsNullOrWhiteSpace(templateSlug))
+            throw new ArgumentException("Template slug must be non-empty.", nameof(templateSlug));
+        TemplateSourceSlug = templateSlug;
+        TemplateSourceVersion = version;
     }
 
     public bool IsVisibleToPersona(string personaSlug, IReadOnlyList<string> personaPermittedAgentSlugs)

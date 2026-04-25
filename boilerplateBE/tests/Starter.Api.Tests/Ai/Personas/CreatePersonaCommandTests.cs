@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Commands.Personas.CreatePersona;
+using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Services.Personas;

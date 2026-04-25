@@ -10,6 +10,7 @@ using Starter.Module.AI.Application.DTOs;
 using Starter.Module.AI.Application.Queries.Personas.GetPersonaById;
 using Starter.Module.AI.Application.Queries.Personas.GetPersonas;
 using Starter.Module.AI.Constants;
+using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Shared.Models;
 

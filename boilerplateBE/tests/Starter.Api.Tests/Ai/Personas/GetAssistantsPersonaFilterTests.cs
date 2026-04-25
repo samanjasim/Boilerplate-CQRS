@@ -9,6 +9,7 @@ using Starter.Module.AI.Application.Queries.GetAssistants;
 using Starter.Module.AI.Application.Services.Personas;
 using Starter.Module.AI.Application.Services.Runtime;
 using Starter.Module.AI.Domain.Entities;
+using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Services.Personas;

@@ -1,4 +1,5 @@
 using Starter.Module.AI.Application.Services.Retrieval;
+using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
 
 namespace Starter.Api.Tests.Ai.Fakes;

@@ -128,6 +128,14 @@ internal sealed class AiAssistantConfiguration : IEntityTypeConfiguration<AiAssi
             .HasColumnName("created_by_user_id")
             .IsRequired();
 
+        builder.Property(e => e.TemplateSourceSlug)
+            .HasColumnName("template_source_slug")
+            .HasMaxLength(128);
+
+        builder.Property(e => e.TemplateSourceVersion)
+            .HasColumnName("template_source_version")
+            .HasMaxLength(32);
+
         builder.Property(e => e.CreatedAt)
             .HasColumnName("created_at")
             .IsRequired();

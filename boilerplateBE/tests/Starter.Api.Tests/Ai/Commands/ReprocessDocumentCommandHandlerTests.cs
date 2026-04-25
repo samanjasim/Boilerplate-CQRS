@@ -7,6 +7,7 @@ using Starter.Module.AI.Application.Commands.ReprocessDocument;
 using Starter.Module.AI.Application.Messages;
 using Starter.Module.AI.Application.Services.Ingestion;
 using Starter.Module.AI.Domain.Entities;
+using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Xunit;

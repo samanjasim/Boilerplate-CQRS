@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Starter.Module.AI.Domain.Entities;
+using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
 using Xunit;
 

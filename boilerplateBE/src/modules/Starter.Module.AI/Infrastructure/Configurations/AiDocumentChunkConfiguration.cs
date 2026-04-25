@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using NpgsqlTypes;
 using Starter.Module.AI.Domain.Entities;
+using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
 
 namespace Starter.Module.AI.Infrastructure.Configurations;

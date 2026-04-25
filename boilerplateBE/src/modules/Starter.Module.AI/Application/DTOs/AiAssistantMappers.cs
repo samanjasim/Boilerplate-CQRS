@@ -26,5 +26,7 @@ internal static class AiAssistantMappers
             a.AccessMode,
             a.CreatedByUserId,
             a.Slug,
-            a.PersonaTargetSlugs);
+            a.PersonaTargetSlugs,
+            a.TemplateSourceSlug,
+            a.TemplateSourceVersion);
 }

@@ -1,4 +1,5 @@
 using Starter.Domain.Common.Access.Enums;
+using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
 
 namespace Starter.Module.AI.Application.DTOs;
@@ -24,4 +25,6 @@ public sealed record AiAssistantDto(
     AssistantAccessMode AccessMode,
     Guid CreatedByUserId,
     string Slug,
-    IReadOnlyList<string> PersonaTargetSlugs);
+    IReadOnlyList<string> PersonaTargetSlugs,
+    string? TemplateSourceSlug = null,
+    string? TemplateSourceVersion = null);

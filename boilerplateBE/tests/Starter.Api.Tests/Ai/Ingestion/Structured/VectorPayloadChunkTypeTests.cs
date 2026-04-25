@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Starter.Domain.Common.Access.Enums;
 using Starter.Module.AI.Application.Services.Ingestion;
+using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
 using Xunit;
 
