@@ -78,12 +78,12 @@ export default function AcceptInvitePage() {
               <div className="space-y-2">
                 <Label htmlFor="firstName">{t('auth.firstName')}</Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <User className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     id="firstName"
                     type="text"
                     placeholder={t('auth.firstName')}
-                    className="pl-10"
+                    className="ps-10"
                     {...register('firstName')}
                   />
                 </div>
@@ -95,12 +95,12 @@ export default function AcceptInvitePage() {
               <div className="space-y-2">
                 <Label htmlFor="lastName">{t('auth.lastName')}</Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <User className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     id="lastName"
                     type="text"
                     placeholder={t('auth.lastName')}
-                    className="pl-10"
+                    className="ps-10"
                     {...register('lastName')}
                   />
                 </div>
@@ -113,19 +113,19 @@ export default function AcceptInvitePage() {
             <div className="space-y-2">
               <Label htmlFor="password">{t('auth.password')}</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Lock className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   placeholder={t('auth.createPassword')}
-                  className="pl-10 pr-10"
+                  className="ps-10 pe-10"
                   {...register('password')}
                 />
                 <button
                   type="button"
                   aria-label={showPassword ? t('common.hidePassword') : t('common.showPassword')}
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -138,19 +138,19 @@ export default function AcceptInvitePage() {
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">{t('auth.confirmPassword')}</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Lock className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="confirmPassword"
                   type={showConfirmPassword ? 'text' : 'password'}
                   placeholder={t('auth.confirmYourPassword')}
-                  className="pl-10 pr-10"
+                  className="ps-10 pe-10"
                   {...register('confirmPassword')}
                 />
                 <button
                   type="button"
                   aria-label={showConfirmPassword ? t('common.hidePassword') : t('common.showPassword')}
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -161,7 +161,7 @@ export default function AcceptInvitePage() {
             </div>
 
             <Button type="submit" className="w-full" disabled={isPending}>
-              <UserPlus className="mr-2 h-4 w-4" />
+              <UserPlus className="me-2 h-4 w-4" />
               {isPending ? t('common.loading') : t('invitations.acceptInvite')}
             </Button>
           </form>

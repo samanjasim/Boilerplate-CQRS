@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Package } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
+import { Spinner } from '@/components/ui/spinner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { EmptyState, Pagination } from '@/components/common';
 import { getPersistedPageSize } from '@/components/common/pagination-utils';
@@ -20,7 +21,11 @@ export function TenantProductsTab({ tenantId }: TenantProductsTabProps) {
   const { data, isLoading } = useProducts({ pageNumber, pageSize, tenantId });
 
   if (isLoading) {
-    return <div className="flex items-center justify-center py-8 text-muted-foreground">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Spinner size="md" />
+      </div>
+    );
   }
 
   const products: Product[] = data?.data ?? [];

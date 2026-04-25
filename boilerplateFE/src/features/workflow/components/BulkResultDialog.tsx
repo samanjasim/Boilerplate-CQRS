@@ -58,7 +58,7 @@ export function BulkResultDialog({ result, taskLabels, onRetry, isRetrying, onCl
               {expanded ? (
                 <ChevronDown className="h-4 w-4" />
               ) : (
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-4 w-4 rtl:rotate-180" />
               )}
               {t('workflow.inbox.bulkViewDetails')}
             </button>

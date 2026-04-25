@@ -125,12 +125,12 @@ export function LoginForm() {
       <div className="space-y-2">
         <Label htmlFor="email">{t('auth.email')}</Label>
         <div className="relative">
-          <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Mail className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             id="email"
             type="email"
             placeholder={t('auth.enterEmail')}
-            className="pl-10"
+            className="ps-10"
             {...register('email')}
           />
         </div>
@@ -142,19 +142,19 @@ export function LoginForm() {
       <div className="space-y-2">
         <Label htmlFor="password">{t('auth.password')}</Label>
         <div className="relative">
-          <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Lock className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             id="password"
             type={showPassword ? 'text' : 'password'}
             placeholder={t('auth.enterPassword')}
-            className="pl-10 pr-10"
+            className="ps-10 pe-10"
             {...register('password')}
           />
           <button
             type="button"
             aria-label={showPassword ? t('common.hidePassword') : t('common.showPassword')}
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           >
             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>

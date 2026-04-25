@@ -74,12 +74,12 @@ export default function ForgotPasswordPage() {
               <div className="space-y-2">
                 <Label htmlFor="email">{t('auth.email')}</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Mail className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     id="email"
                     type="email"
                     placeholder={t('auth.enterEmail')}
-                    className="pl-10"
+                    className="ps-10"
                     {...emailForm.register('email')}
                   />
                 </div>
@@ -101,13 +101,13 @@ export default function ForgotPasswordPage() {
               <div className="space-y-2">
                 <Label htmlFor="code">{t('auth.resetCode')}</Label>
                 <div className="relative">
-                  <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <KeyRound className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     id="code"
                     type="text"
                     placeholder="000000"
                     maxLength={6}
-                    className="pl-10"
+                    className="ps-10"
                     {...resetForm.register('code')}
                   />
                 </div>
@@ -121,19 +121,19 @@ export default function ForgotPasswordPage() {
               <div className="space-y-2">
                 <Label htmlFor="newPassword">{t('auth.newPassword')}</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Lock className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     id="newPassword"
                     type={showPassword ? 'text' : 'password'}
                     placeholder={t('auth.newPassword')}
-                    className="pl-10 pr-10"
+                    className="ps-10 pe-10"
                     {...resetForm.register('newPassword')}
                   />
                   <button
                     type="button"
                     aria-label={showPassword ? t('common.hidePassword') : t('common.showPassword')}
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -148,19 +148,19 @@ export default function ForgotPasswordPage() {
               <div className="space-y-2">
                 <Label htmlFor="confirmNewPassword">{t('auth.confirmNewPassword')}</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Lock className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     id="confirmNewPassword"
                     type={showConfirmPassword ? 'text' : 'password'}
                     placeholder={t('auth.confirmNewPassword')}
-                    className="pl-10 pr-10"
+                    className="ps-10 pe-10"
                     {...resetForm.register('confirmNewPassword')}
                   />
                   <button
                     type="button"
                     aria-label={showConfirmPassword ? t('common.hidePassword') : t('common.showPassword')}
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
                     {showConfirmPassword ? (
                       <EyeOff className="h-4 w-4" />

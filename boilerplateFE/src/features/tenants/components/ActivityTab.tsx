@@ -97,11 +97,11 @@ export function ActivityTab() {
                 <TableCell>
                   {expandedRow === log.id
                     ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                    : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                    : <ChevronRight className="h-4 w-4 text-muted-foreground rtl:rotate-180" />}
                 </TableCell>
                 <TableCell className="text-foreground">
                   {log.entityType}
-                  <span className="text-muted-foreground text-xs ml-1">{log.entityId?.substring(0, 8)}...</span>
+                  <span className="text-muted-foreground text-xs ms-1">{log.entityId?.substring(0, 8)}...</span>
                 </TableCell>
                 <TableCell>
                   <Badge variant={AUDIT_ACTION_VARIANTS[log.action] ?? 'secondary'}>
