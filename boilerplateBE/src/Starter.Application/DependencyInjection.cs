@@ -32,6 +32,7 @@ public static class DependencyInjection
             services.AddValidatorsFromAssembly(assembly);
 
         services.AddAiToolsFromAssembly(typeof(DependencyInjection).Assembly);
+        services.AddAiAgentTemplatesFromAssembly(typeof(DependencyInjection).Assembly);
 
         return services;
     }
