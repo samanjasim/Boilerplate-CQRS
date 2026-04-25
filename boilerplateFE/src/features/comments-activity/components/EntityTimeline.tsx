@@ -110,6 +110,7 @@ export function EntityTimeline({ entityType, entityId, tenantId }: EntityTimelin
       if (event.key === 'Home') nextIndex = 0;
       if (event.key === 'End') nextIndex = filters.length - 1;
       const next = filters[nextIndex];
+      if (!next) return;
       handleFilterChange(next.key);
       const tab = event.currentTarget.querySelector<HTMLButtonElement>(
         `[data-filter-key="${next.key}"]`,

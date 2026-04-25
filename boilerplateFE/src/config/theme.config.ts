@@ -6,13 +6,16 @@ interface ThemeMode {
   ring: string;
 }
 
+type ColorScaleShade = '50' | '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900' | '950';
+type ColorScale = Record<ColorScaleShade, string>;
+
 interface ThemePreset {
   name: ThemePresetName;
   label: string;
   light: ThemeMode;
   dark: ThemeMode;
-  primaryScale: Record<string, string>;
-  accentScale: Record<string, string>;
+  primaryScale: ColorScale;
+  accentScale: ColorScale;
 }
 
 export const presets: Record<ThemePresetName, ThemePreset> = {

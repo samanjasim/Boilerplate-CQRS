@@ -111,9 +111,9 @@ export function OnboardingWizard({ onComplete, onRemindLater }: OnboardingWizard
   };
 
   const updateInvite = (index: number, field: 'email' | 'roleId', value: string) => {
-    const updated = [...invites];
-    updated[index] = { ...updated[index], [field]: value };
-    setInvites(updated);
+    setInvites((prev) =>
+      prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)),
+    );
   };
 
   const stepIndex = STEPS.indexOf(currentStep);

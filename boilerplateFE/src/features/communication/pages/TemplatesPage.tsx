@@ -37,8 +37,9 @@ export default function TemplatesPage() {
 
   // Group templates by category
   const grouped = templates.reduce<Record<string, MessageTemplateDto[]>>((acc, tpl) => {
-    if (!acc[tpl.category]) acc[tpl.category] = [];
-    acc[tpl.category].push(tpl);
+    const bucket = acc[tpl.category] ?? [];
+    bucket.push(tpl);
+    acc[tpl.category] = bucket;
     return acc;
   }, {});
 

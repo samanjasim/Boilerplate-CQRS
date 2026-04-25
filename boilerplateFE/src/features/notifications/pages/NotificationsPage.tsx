@@ -80,7 +80,7 @@ export default function NotificationsPage() {
           ) : (
             <div className="divide-y">
               {notifications.map((notification) => {
-                const Icon = NOTIFICATION_ICONS[notification.type] || NOTIFICATION_ICONS.default;
+                const Icon = NOTIFICATION_ICONS[notification.type] ?? Bell;
                 const timeAgo = formatTimeAgo(notification.createdAt);
 
                 return (
