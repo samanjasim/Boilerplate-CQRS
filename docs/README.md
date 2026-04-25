@@ -25,6 +25,7 @@ Each module folder contains a README (overview), user-guide (end-user), develope
 - **[Module Development](architecture/module-development.md)** — adding a new module end-to-end.
 - **[Cross-Module Communication](architecture/cross-module-communication.md)** — capability contracts, null objects, events.
 - **[Domain Module Example](architecture/domain-module-example.md)** — walking through the domain module template.
+- **[Codebase Assessment](architecture/codebase-assessment.md)** — production-readiness score, risks, weaknesses, mitigation roadmap.
 
 ## Guides
 
