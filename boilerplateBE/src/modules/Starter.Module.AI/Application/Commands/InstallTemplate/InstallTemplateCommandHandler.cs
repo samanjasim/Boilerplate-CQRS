@@ -50,7 +50,20 @@ internal sealed class InstallTemplateCommandHandler(
             return Result<Guid>.Failure(
                 TemplateErrors.AlreadyInstalled(template.Slug, targetTenantId.Value));
 
-        // 4. Persona validation: every target slug must reference a real persona OR be system-reserved
+        // 4. Name-collision guard: AiAssistant has a unique index on (TenantId, Name).
+        // A tenant may have manually created an assistant whose Name matches the
+        // template's DisplayName even with a different Slug — catch that cleanly
+        // instead of letting EF throw a DbUpdateException at SaveChangesAsync.
+        var nameTaken = await db.AiAssistants
+            .IgnoreQueryFilters()
+            .AnyAsync(
+                a => a.TenantId == targetTenantId.Value && a.Name == template.DisplayName,
+                ct);
+        if (nameTaken)
+            return Result<Guid>.Failure(
+                TemplateErrors.AlreadyInstalled(template.Slug, targetTenantId.Value));
+
+        // 5. Persona validation: every target slug must reference a real persona OR be system-reserved
         var tenantPersonas = await db.AiPersonas
             .IgnoreQueryFilters()
             .Where(p => p.TenantId == targetTenantId.Value)
@@ -64,20 +77,20 @@ internal sealed class InstallTemplateCommandHandler(
                 return Result<Guid>.Failure(TemplateErrors.PersonaTargetMissing(slug));
         }
 
-        // 5. Tool validation: every tool slug must be registered
+        // 6. Tool validation: every tool slug must be registered
         foreach (var toolName in template.EnabledToolNames)
         {
             if (tools.FindByName(toolName) is null)
                 return Result<Guid>.Failure(TemplateErrors.ToolMissing(toolName));
         }
 
-        // 6. Resolve owner
+        // 7. Resolve owner
         var ownerId = request.CreatedByUserIdOverride
             ?? currentUser.UserId
             ?? throw new InvalidOperationException(
                 "InstallTemplateCommand requires either an authenticated user or CreatedByUserIdOverride.");
 
-        // 7. Create assistant
+        // 8. Create assistant
         var assistant = AiAssistant.Create(
             tenantId: targetTenantId.Value,
             name: template.DisplayName,
@@ -99,10 +112,10 @@ internal sealed class InstallTemplateCommandHandler(
             assistant.SetPersonaTargets(template.PersonaTargetSlugs);
         assistant.SetVisibility(ResourceVisibility.TenantWide);
 
-        // 8. Stamp provenance
+        // 9. Stamp provenance
         assistant.StampTemplateSource(template.Slug, version: null);
 
-        // 9. Persist
+        // 10. Persist
         db.AiAssistants.Add(assistant);
         await db.SaveChangesAsync(ct);
 

@@ -131,6 +131,36 @@ public class InstallTemplateCommandHandlerTests
     }
 
     [Fact]
+    public async Task Returns_AlreadyInstalled_when_assistant_with_matching_name_exists()
+    {
+        var tenantId = Guid.NewGuid();
+        var template = MakeTemplate(slug: "x", personas: new[] { "default" });
+        var (handler, db, _, _) = Setup(
+            callerTenantId: tenantId,
+            templates: new[] { template });
+
+        db.AiPersonas.Add(MakeDefaultPersona(tenantId));
+        // Pre-existing assistant with the same NAME but different SLUG.
+        // template.DisplayName comes from TestTemplate's default — verify what it is.
+        // For TestTemplate(slug: "x"), DisplayName is "x" (because displayName ?? slug).
+        var existing = AiAssistant.Create(
+            tenantId: tenantId,
+            name: "x",                  // matches template.DisplayName for TestTemplate(slug: "x")
+            description: null,
+            systemPrompt: "Existing assistant",
+            createdByUserId: Guid.NewGuid(),
+            slug: "different_slug");
+        db.AiAssistants.Add(existing);
+        await db.SaveChangesAsync();
+
+        var result = await handler.Handle(
+            new InstallTemplateCommand("x"), CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Template.AlreadyInstalled");
+    }
+
+    [Fact]
     public async Task Returns_PersonaTargetMissing_when_persona_slug_does_not_exist()
     {
         var tenantId = Guid.NewGuid();
