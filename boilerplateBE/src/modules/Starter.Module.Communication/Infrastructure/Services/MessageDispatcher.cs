@@ -1,5 +1,4 @@
 using System.Text.Json;
-using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Starter.Abstractions.Capabilities;
@@ -16,7 +15,7 @@ internal sealed class MessageDispatcher(
     ITemplateEngine templateEngine,
     ICurrentUserService currentUserService,
     IRecipientResolver recipientResolver,
-    IPublishEndpoint publishEndpoint,
+    IIntegrationEventCollector eventCollector,
     ILogger<MessageDispatcher> logger) : IMessageDispatcher
 {
     public async Task<Guid> SendAsync(
@@ -192,8 +191,12 @@ internal sealed class MessageDispatcher(
         dbContext.DeliveryLogs.Add(deliveryLog);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        // Publish to MassTransit for async delivery
-        await publishEndpoint.Publish(new DispatchMessageMessage(
+        // Schedule on the request-scoped collector. The originating handler's
+        // ApplicationDbContext.SaveChangesAsync runs the IntegrationEventOutboxInterceptor
+        // which writes the outbox row atomically — even though this dispatcher
+        // operates on its own CommunicationDbContext, the interceptor lives on
+        // the appDb side and shares the DI scope.
+        eventCollector.Schedule(new DispatchMessageMessage(
             deliveryLog.Id,
             resolvedTenantId,
             recipientUserId,
@@ -204,7 +207,7 @@ internal sealed class MessageDispatcher(
             channel,
             fallbackChannels,
             -1,
-            DateTime.UtcNow), cancellationToken);
+            DateTime.UtcNow));
 
         logger.LogInformation(
             "Message queued: DeliveryLog={Id}, Template={Template}, Channel={Channel}, Recipient={UserId}",

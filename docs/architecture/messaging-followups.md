@@ -32,26 +32,9 @@ Tracks remaining work identified during the April 2026 messaging review. Items a
 
 ---
 
-## B2 — Publish `Outbox:HealthCheck:*` defaults into `appsettings` — **Queued**
+## ~~B2~~ — Surface `Outbox:HealthCheck:*` defaults in appsettings — **Done (PR #TBD)**
 
-**Why it matters:** thresholds (`MaxPendingRows` = 1000, `MaxOldestAge` = 5 min) are hardcoded defaults in `OutboxHealthCheckOptions`. Ops can tune them via configuration but it's not discoverable — there's no appsettings entry showing the knob exists.
-
-**Shape:** add to `boilerplateBE/src/Starter.Api/appsettings.json` and `appsettings.Production.json`:
-
-```json
-{
-  "Outbox": {
-    "HealthCheck": {
-      "MaxPendingRows": 1000,
-      "MaxOldestAge": "00:05:00"
-    }
-  }
-}
-```
-
-Development can have more lenient values (say 5000 / 30 min) to avoid noise during demo flows. Add a one-line commentary in CLAUDE.md pointing to the knobs.
-
-**Estimated effort:** 20 minutes.
+Defaults (`MaxPendingRows = 1000`, `MaxOldestAge = 00:05:00`) are now in both `appsettings.json` and `appsettings.Production.json`. Ops can tune per-environment without a code change.
 
 ---
 
@@ -110,33 +93,15 @@ grep -rn "DateTime\.UtcNow\|DateTime\.Now" boilerplateBE/src/Starter.Application
 
 ---
 
-## E1 — Migrate remaining `IPublishEndpoint` injections to `IIntegrationEventCollector` — **Critical**
+## ~~E1~~ — Migrate remaining `IPublishEndpoint` injections to collector — **Done (PR #TBD)**
 
-**Why it matters:** the silent-drop bug PR #18 was meant to fix exists in **6 places** beyond `RegisterTenantCommandHandler`. PR #20 caught the remaining one (`UploadDocumentCommandHandler`) during integration testing because of the test app crash; the others were not exercised. Each is a ticking bug — it works in dev today (because in dev no second outbox replaces the first) but breaks the moment any future module adds its own `AddEntityFrameworkOutbox`.
+Closed by the follow-up PR. All 5 audited sites migrated:
 
-Audited remaining offenders:
+- `MassTransitMessagePublisher` — implementation swapped to use the collector internally; ~10 callers (`RequestReportCommandHandler`, `StartImportCommandHandler`, multiple module event handlers) now flow through the outbox transparently with no caller changes.
+- `ReprocessDocumentCommandHandler`, `ResendDeliveryCommandHandler` — direct migrations.
+- `TriggerRuleEvaluator`, `MessageDispatcher` — confirmed as request-scope publishers (called from MediatR notification handlers during `SavingChangesAsync`), not consumer-scope; migrated.
 
-```
-src/modules/Starter.Module.AI/Application/Commands/ReprocessDocument/ReprocessDocumentCommandHandler.cs
-src/modules/Starter.Module.Communication/Application/Commands/ResendDelivery/ResendDeliveryCommandHandler.cs
-src/modules/Starter.Module.Communication/Infrastructure/Services/TriggerRuleEvaluator.cs
-src/modules/Starter.Module.Communication/Infrastructure/Services/MessageDispatcher.cs
-src/Starter.Infrastructure/Services/MassTransitMessagePublisher.cs   ← internal core service used by other modules
-```
-
-**Shape:** the migration is mechanical, identical to what was done in this PR for the email-side handlers and `UploadDocumentCommandHandler`:
-
-1. Replace `IPublishEndpoint bus` with `IIntegrationEventCollector eventCollector` in the constructor
-2. Replace `await bus.Publish(new MyMessage(...), ct);` with `eventCollector.Schedule(new MyMessage(...));`
-3. Ensure `await context.SaveChangesAsync(ct)` is called on `IApplicationDbContext` afterwards (for the interceptor to flush)
-4. Verify the `MessagingArchitectureTests` ArchUnit test still passes — Application stays MassTransit-free
-
-**Caveats:**
-
-- `MassTransitMessagePublisher` implements `IMessagePublisher` from the Application layer. Its sole job is to wrap MT — it might be the right place to *change the implementation* to use the collector internally, leaving the abstraction intact.
-- `TriggerRuleEvaluator` and `MessageDispatcher` are in the Communication module's Infrastructure layer (not Application). They publish from inside other consumer pipelines, where direct `IPublishEndpoint` is OK by design (MT's outbox is already in scope). **Verify case-by-case** before migrating these — they may not need to change.
-
-**Estimated effort:** half a day plus a focused QA pass on each migration.
+The architecture test was strengthened to cover all module assemblies, not just Application. Any future `*CommandHandler` / `*QueryHandler` that injects `IPublishEndpoint` fails the build.
 
 ---
 

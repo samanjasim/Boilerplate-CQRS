@@ -1,8 +1,8 @@
 using System.Text.Json;
-using MassTransit;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Starter.Application.Common.Interfaces;
 using Starter.Module.Communication.Application.DTOs;
 using Starter.Module.Communication.Application.Messages;
 using Starter.Module.Communication.Domain.Enums;
@@ -14,8 +14,9 @@ namespace Starter.Module.Communication.Application.Commands.ResendDelivery;
 
 internal sealed class ResendDeliveryCommandHandler(
     CommunicationDbContext context,
+    IApplicationDbContext appDb,
     ITemplateEngine templateEngine,
-    IPublishEndpoint publishEndpoint,
+    IIntegrationEventCollector eventCollector,
     ILogger<ResendDeliveryCommandHandler> logger)
     : IRequestHandler<ResendDeliveryCommand, Result<DeliveryLogDto>>
 {
@@ -101,7 +102,12 @@ internal sealed class ResendDeliveryCommandHandler(
         deliveryLog.MarkQueued();
         await context.SaveChangesAsync(cancellationToken);
 
-        await publishEndpoint.Publish(message, cancellationToken);
+        // Schedule via outbox collector. appDb.SaveChangesAsync flushes the
+        // message into ApplicationDbContext's outbox atomically — even though
+        // we have no other entity changes on appDb here, the SaveChanges fires
+        // IntegrationEventOutboxInterceptor which writes the outbox row.
+        eventCollector.Schedule(message);
+        await appDb.SaveChangesAsync(cancellationToken);
 
         var attemptCount = deliveryLog.Attempts.Count;
         return Result.Success(deliveryLog.ToDto(attemptCount));

@@ -1,5 +1,4 @@
 using FluentAssertions;
-using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using Starter.Application.Common.Interfaces;
@@ -38,10 +37,9 @@ public sealed class ReprocessDocumentCommandHandlerTests
             .Which.Should()
             .Be((doc.TenantId!.Value, doc.Id));
 
-        harness.Bus.Verify(
-            b => b.Publish(
-                It.Is<ProcessDocumentMessage>(m => m.DocumentId == doc.Id),
-                It.IsAny<CancellationToken>()),
+        harness.EventCollector.Verify(
+            c => c.Schedule(
+                It.Is<ProcessDocumentMessage>(m => m.DocumentId == doc.Id)),
             Times.Once);
 
         // The handler must wipe vectors before publishing the reprocess message,
@@ -81,8 +79,8 @@ public sealed class ReprocessDocumentCommandHandlerTests
 
         result.IsSuccess.Should().BeFalse();
         harness.VectorStore.DeleteCalls.Should().BeEmpty();
-        harness.Bus.Verify(
-            b => b.Publish(It.IsAny<ProcessDocumentMessage>(), It.IsAny<CancellationToken>()),
+        harness.EventCollector.Verify(
+            c => c.Schedule(It.IsAny<ProcessDocumentMessage>()),
             Times.Never);
     }
 
@@ -98,8 +96,8 @@ public sealed class ReprocessDocumentCommandHandlerTests
 
         result.IsSuccess.Should().BeFalse();
         harness.VectorStore.DeleteCalls.Should().BeEmpty();
-        harness.Bus.Verify(
-            b => b.Publish(It.IsAny<ProcessDocumentMessage>(), It.IsAny<CancellationToken>()),
+        harness.EventCollector.Verify(
+            c => c.Schedule(It.IsAny<ProcessDocumentMessage>()),
             Times.Never);
     }
 
@@ -108,7 +106,7 @@ public sealed class ReprocessDocumentCommandHandlerTests
         public AiDbContext Db { get; }
         public Mock<IApplicationDbContext> AppDb { get; } = new();
         public RecordingVectorStore VectorStore { get; }
-        public Mock<IPublishEndpoint> Bus { get; } = new();
+        public Mock<IIntegrationEventCollector> EventCollector { get; } = new();
         public List<string> CallLog { get; } = new();
 
         public ReprocessHarness()
@@ -122,11 +120,8 @@ public sealed class ReprocessDocumentCommandHandlerTests
             AppDb.Setup(a => a.SaveChangesAsync(It.IsAny<CancellationToken>()))
                  .ReturnsAsync(0);
 
-            Bus.Setup(b => b.Publish(
-                    It.IsAny<ProcessDocumentMessage>(),
-                    It.IsAny<CancellationToken>()))
-               .Callback(() => CallLog.Add("publish"))
-               .Returns(Task.CompletedTask);
+            EventCollector.Setup(c => c.Schedule(It.IsAny<ProcessDocumentMessage>()))
+                          .Callback(() => CallLog.Add("publish"));
         }
 
         public AiDocument SeedCompletedDocumentWithChunks(int chunkCount, bool nullTenant = false)
@@ -162,7 +157,7 @@ public sealed class ReprocessDocumentCommandHandlerTests
 
         public Task<Starter.Shared.Results.Result> Handle(ReprocessDocumentCommand command)
         {
-            var handler = new ReprocessDocumentCommandHandler(Db, AppDb.Object, VectorStore, Bus.Object);
+            var handler = new ReprocessDocumentCommandHandler(Db, AppDb.Object, VectorStore, EventCollector.Object);
             return handler.Handle(command, CancellationToken.None);
         }
     }

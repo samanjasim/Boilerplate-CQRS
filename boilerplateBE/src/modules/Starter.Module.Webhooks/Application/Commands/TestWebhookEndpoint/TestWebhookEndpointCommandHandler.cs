@@ -12,6 +12,7 @@ namespace Starter.Module.Webhooks.Application.Commands.TestWebhookEndpoint;
 
 public sealed class TestWebhookEndpointCommandHandler(
     WebhooksDbContext dbContext,
+    IApplicationDbContext appContext,
     ICurrentUserService currentUser,
     IBus bus)
     : IRequestHandler<TestWebhookEndpointCommand, Result<Unit>>
@@ -52,6 +53,11 @@ public sealed class TestWebhookEndpointCommandHandler(
                 Payload: payload,
                 OccurredAt: DateTime.UtcNow),
             cancellationToken);
+
+        // Flush appContext to commit the outbox row scheduled by PublishAsync.
+        // No domain writes here — the SaveChangesAsync just runs the
+        // IntegrationEventOutboxInterceptor.
+        await appContext.SaveChangesAsync(cancellationToken);
 
         return Result.Success(Unit.Value);
     }

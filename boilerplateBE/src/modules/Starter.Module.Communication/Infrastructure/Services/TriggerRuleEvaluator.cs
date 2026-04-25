@@ -1,8 +1,8 @@
 using System.Text.Json;
-using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Starter.Abstractions.Capabilities;
+using Starter.Application.Common.Interfaces;
 using Starter.Module.Communication.Application.Messages;
 using Starter.Module.Communication.Domain.Enums;
 using Starter.Module.Communication.Infrastructure.Persistence;
@@ -22,7 +22,7 @@ internal interface ITriggerRuleEvaluator
 internal sealed class TriggerRuleEvaluator(
     CommunicationDbContext dbContext,
     IMessageDispatcher messageDispatcher,
-    IPublishEndpoint publishEndpoint,
+    IIntegrationEventCollector eventCollector,
     ILogger<TriggerRuleEvaluator> logger) : ITriggerRuleEvaluator, ICommunicationEventNotifier
 {
     public async Task EvaluateAsync(
@@ -152,13 +152,18 @@ internal sealed class TriggerRuleEvaluator(
                 dbContext.DeliveryLogs.Add(deliveryLog);
                 await dbContext.SaveChangesAsync(ct);
 
-                await publishEndpoint.Publish(new DispatchIntegrationMessage(
+                // Scheduled on the request-scoped collector; flushed when the
+                // outer ApplicationDbContext.SaveChangesAsync runs the
+                // IntegrationEventOutboxInterceptor (this evaluator runs from
+                // a MediatR notification handler, which fires during the
+                // originating handler's SavingChangesAsync).
+                eventCollector.Schedule(new DispatchIntegrationMessage(
                     deliveryLog.Id,
                     tenantId,
                     target.IntegrationConfigId,
                     target.TargetChannelId ?? "",
                     message,
-                    DateTime.UtcNow), ct);
+                    DateTime.UtcNow));
 
                 logger.LogInformation(
                     "Dispatched integration message for rule {RuleName} to integration {IntegrationId}",
