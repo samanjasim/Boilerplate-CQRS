@@ -1,4 +1,5 @@
 using Starter.Application.Common.Constants;
+using Starter.Application.Common.Events;
 using Starter.Application.Common.Interfaces;
 using Starter.Domain.Identity.ValueObjects;
 using Starter.Shared.Results;
@@ -10,8 +11,8 @@ namespace Starter.Application.Features.Auth.Commands.ForgotPassword;
 internal sealed class ForgotPasswordCommandHandler(
     IApplicationDbContext context,
     IOtpService otpService,
-    IEmailService emailService,
-    IEmailTemplateService emailTemplateService) : IRequestHandler<ForgotPasswordCommand, Result>
+    IEmailTemplateService emailTemplateService,
+    IIntegrationEventCollector eventCollector) : IRequestHandler<ForgotPasswordCommand, Result>
 {
     public async Task<Result> Handle(ForgotPasswordCommand request, CancellationToken cancellationToken)
     {
@@ -25,7 +26,13 @@ internal sealed class ForgotPasswordCommandHandler(
 
         var otpCode = await otpService.GenerateAsync(OtpPurpose.PasswordReset, Email.Normalize(request.Email), cancellationToken);
         var emailMessage = emailTemplateService.RenderPasswordReset(user.Email.Value, user.FullName.GetFullName(), otpCode);
-        await emailService.SendAsync(emailMessage, cancellationToken);
+        eventCollector.Schedule(new SendEmailRequestedEvent(emailMessage, DateTime.UtcNow));
+
+        // No domain state to write here; SaveChangesAsync is called solely to flush
+        // the scheduled event into the ApplicationDbContext outbox. The interceptor
+        // writes a single OutboxMessage row in one round trip — equivalent cost to
+        // the inline SMTP call we replaced, with full retry + DLQ coverage added.
+        await context.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }

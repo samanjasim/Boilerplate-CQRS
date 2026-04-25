@@ -1,3 +1,4 @@
+using Starter.Application.Common.Events;
 using Starter.Application.Common.Interfaces;
 using Starter.Domain.Identity.Entities;
 using Starter.Domain.Identity.Errors;
@@ -14,8 +15,8 @@ internal sealed class InviteUserCommandHandler(
     IApplicationDbContext context,
     ICurrentUserService currentUserService,
     IPermissionHierarchyService permissionHierarchyService,
-    IEmailService emailService,
     IEmailTemplateService emailTemplateService,
+    IIntegrationEventCollector eventCollector,
     IConfiguration configuration) : IRequestHandler<InviteUserCommand, Result<Guid>>
 {
     public async Task<Result<Guid>> Handle(InviteUserCommand request, CancellationToken cancellationToken)
@@ -124,9 +125,8 @@ internal sealed class InviteUserCommandHandler(
             inviterId);
 
         context.Invitations.Add(invitation);
-        await context.SaveChangesAsync(cancellationToken);
 
-        // 6. Send email
+        // 6. Render invitation email and schedule dispatch event
         var frontendUrl = configuration["AppSettings:FrontendUrl"] ?? "http://localhost:3000";
         var acceptUrl = $"{frontendUrl}/accept-invite?token={invitation.Token}";
 
@@ -155,7 +155,11 @@ internal sealed class InviteUserCommandHandler(
             role.Name,
             acceptUrl);
 
-        await emailService.SendAsync(emailMessage, cancellationToken);
+        // Email dispatched via outbox — EmailDispatchConsumer handles SMTP with
+        // MT's retry policy. Invitation row + dispatch event commit atomically.
+        eventCollector.Schedule(new SendEmailRequestedEvent(emailMessage, DateTime.UtcNow));
+
+        await context.SaveChangesAsync(cancellationToken);
 
         return Result.Success(invitation.Id);
     }

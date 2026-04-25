@@ -18,7 +18,6 @@ internal sealed class RegisterTenantCommandHandler(
     IApplicationDbContext context,
     IPasswordService passwordService,
     IOtpService otpService,
-    IEmailService emailService,
     IEmailTemplateService emailTemplateService,
     IIntegrationEventCollector eventCollector) : IRequestHandler<RegisterTenantCommand, Result<Guid>>
 {
@@ -67,13 +66,19 @@ internal sealed class RegisterTenantCommandHandler(
 
         context.Users.Add(user);
 
-        // Schedule TenantRegisteredEvent for transactional outbox delivery.
-        // IntegrationEventOutboxInterceptor flushes this into the ApplicationDbContext
-        // outbox table during SavingChangesAsync, so the event row is committed
-        // atomically with the tenant + user rows — guaranteed delivery iff the
-        // business transaction commits, regardless of how many EF outboxes are
-        // registered (dual-outbox with WorkflowDbContext would silently discard
-        // events published via IPublishEndpoint directly).
+        // Generate OTP + render email BEFORE the commit. OTP write is to Redis
+        // (its own TTL); rendering is pure. The resulting EmailMessage rides on
+        // a SendEmailRequestedEvent that lands in the outbox atomically with the
+        // tenant + user rows — so if SMTP is briefly down at dispatch time,
+        // MT's retry + DLQ handle it without the tenant being stranded without
+        // a verification email.
+        var otpCode = await otpService.GenerateAsync(OtpPurpose.EmailVerification, user.Email.Value, cancellationToken);
+        var emailMessage = emailTemplateService.RenderEmailVerification(user.Email.Value, user.FullName.GetFullName(), otpCode);
+
+        // Schedule integration events for transactional-outbox delivery.
+        // IntegrationEventOutboxInterceptor drains the collector during
+        // SavingChangesAsync and writes outbox rows on the same DbContext
+        // transaction — see docs/architecture/cross-module-communication.md.
         eventCollector.Schedule(
             new TenantRegisteredEvent(
                 tenant.Id,
@@ -81,13 +86,9 @@ internal sealed class RegisterTenantCommandHandler(
                 tenant.Slug ?? string.Empty,
                 user.Id,
                 DateTime.UtcNow));
+        eventCollector.Schedule(new SendEmailRequestedEvent(emailMessage, DateTime.UtcNow));
 
         await context.SaveChangesAsync(cancellationToken);
-
-        // Send email verification OTP
-        var otpCode = await otpService.GenerateAsync(OtpPurpose.EmailVerification, user.Email.Value, cancellationToken);
-        var emailMessage = emailTemplateService.RenderEmailVerification(user.Email.Value, user.FullName.GetFullName(), otpCode);
-        await emailService.SendAsync(emailMessage, cancellationToken);
 
         return Result.Success(tenant.Id);
     }

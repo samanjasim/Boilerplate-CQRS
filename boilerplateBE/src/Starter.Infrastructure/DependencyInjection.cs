@@ -245,6 +245,13 @@ public static class DependencyInjection
                     cb.ActiveThreshold = 10;    // require at least 10 messages before tripping
                     cb.ResetInterval = TimeSpan.FromMinutes(5);
                 });
+
+                // Push ConversationId / MessageId / MessageType into ILogger scope
+                // for the entire Consume pipeline. Serilog's FromLogContext enricher
+                // picks these up, so every log line inside a consumer carries the
+                // correlation tokens — grep one ConversationId and you see the full
+                // causal chain from HTTP request through each consumer.
+                endpoint.UseConsumeFilter(typeof(LogContextEnrichmentFilter<>), ctx);
             });
 
             // Auto-discover consumers from core Infrastructure assembly

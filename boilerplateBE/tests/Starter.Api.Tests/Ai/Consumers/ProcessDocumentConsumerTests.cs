@@ -98,8 +98,14 @@ public sealed class ProcessDocumentConsumerTests
     }
 
     [Fact]
-    public async Task Marks_Document_Failed_And_Rethrows_When_Extractor_Throws()
+    public async Task Rethrows_And_Leaves_Document_In_Processing_On_Transient_Failure()
     {
+        // On a non-terminal retry attempt (retry attempt 0, 1, 2 with our default
+        // policy of 3 retries), the consumer rethrows but leaves the document in
+        // Processing state so MT retry can run without the UI flickering through
+        // Failed. Only the FINAL attempt marks the document Failed — see the
+        // consumer's catch block. This mock harness defaults retry attempt to 0,
+        // which simulates the first attempt.
         var harness = new ConsumerHarness();
         var doc = harness.SeedDocument("broken.pdf", "application/pdf");
 
@@ -109,11 +115,14 @@ public sealed class ProcessDocumentConsumerTests
 
         var act = async () => await harness.Consume(new ProcessDocumentMessage(doc.Id, doc.TenantId, Guid.NewGuid()));
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        await act.Should().ThrowAsync<InvalidOperationException>(
+            "the consumer must propagate so MT's retry policy fires");
 
         var saved = await harness.Db.AiDocuments.IgnoreQueryFilters().AsNoTracking().SingleAsync(d => d.Id == doc.Id);
-        saved.EmbeddingStatus.Should().Be(EmbeddingStatus.Failed);
-        saved.ErrorMessage.Should().Contain("simulated extraction failure");
+        saved.EmbeddingStatus.Should().Be(
+            EmbeddingStatus.Processing,
+            "MarkFailed on every attempt would flicker Processing→Failed→Processing in the UI " +
+            "during retry backoff — it is deferred to the terminal attempt only");
     }
 
     [Fact]
