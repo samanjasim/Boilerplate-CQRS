@@ -19,4 +19,5 @@ public sealed record UserDto(
     string? TenantSlug = null,
     string? TenantLogoUrl = null,
     string? TenantPrimaryColor = null,
-    bool TwoFactorEnabled = false);
+    bool TwoFactorEnabled = false,
+    DateTimeOffset? TenantOnboardedAt = null);

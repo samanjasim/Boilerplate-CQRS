@@ -53,6 +53,7 @@ export const API_ENDPOINTS = {
     CUSTOM_TEXT: (id: string) => `/Tenants/${id}/custom-text`,
     PUBLIC_BRANDING: '/Tenants/branding',
     DEFAULT_ROLE: (id: string) => `/Tenants/${id}/default-role`,
+    ONBOARDED: (id: string) => `/Tenants/${id}/onboarded`,
   },
   PERMISSIONS: {
     LIST: '/Permissions',

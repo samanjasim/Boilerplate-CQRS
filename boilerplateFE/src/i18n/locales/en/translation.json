@@ -901,9 +901,12 @@
     "sendInvites": "Send Invites",
     "skip": "Skip for now",
     "skipAll": "Skip setup",
+    "remindLater": "Remind me later",
     "doneTitle": "You're All Set!",
     "doneDesc": "Your organization is ready. You can always update these settings later.",
-    "goToDashboard": "Go to Dashboard"
+    "goToDashboard": "Go to Dashboard",
+    "rerun": "Run setup again",
+    "rerunDesc": "Re-open the post-registration setup wizard."
   },
   "importExport": {
     "title": "Import / Export",

@@ -16,15 +16,50 @@ import {
 
 interface OnboardingWizardProps {
   onComplete: () => void;
+  /**
+   * Optional. When provided, a "Remind me later" button shows on the first
+   * step and dismisses the wizard for 24h without marking the tenant
+   * onboarded.
+   */
+  onRemindLater?: () => void;
 }
 
 const STEPS = ['profile', 'team', 'done'] as const;
 type Step = typeof STEPS[number];
+const PROGRESS_KEY = 'onboarding-wizard-step';
 
-export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
+function readPersistedStep(): Step {
+  try {
+    const raw = sessionStorage.getItem(PROGRESS_KEY);
+    if (raw && (STEPS as readonly string[]).includes(raw)) return raw as Step;
+  } catch {
+    /* ignore */
+  }
+  return 'profile';
+}
+
+export function OnboardingWizard({ onComplete, onRemindLater }: OnboardingWizardProps) {
   const { t } = useTranslation();
   const user = useAuthStore(selectUser);
-  const [currentStep, setCurrentStep] = useState<Step>('profile');
+  const [currentStep, setCurrentStepState] = useState<Step>(readPersistedStep);
+
+  const setCurrentStep = (step: Step) => {
+    setCurrentStepState(step);
+    try {
+      sessionStorage.setItem(PROGRESS_KEY, step);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const handleComplete = () => {
+    try {
+      sessionStorage.removeItem(PROGRESS_KEY);
+    } catch {
+      /* ignore */
+    }
+    onComplete();
+  };
 
   // Step 1: Profile
   const [description, setDescription] = useState('');
@@ -137,13 +172,20 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
               </div>
             </div>
 
-            <div className="flex justify-between">
-              <Button variant="ghost" onClick={() => { onComplete(); }}>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Button variant="ghost" onClick={handleComplete}>
                 {t('onboarding.skipAll')}
               </Button>
-              <Button onClick={handleSaveProfile} disabled={isSavingBranding}>
-                {t('common.next')} <ArrowRight className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                {onRemindLater && (
+                  <Button variant="outline" onClick={onRemindLater}>
+                    {t('onboarding.remindLater')}
+                  </Button>
+                )}
+                <Button onClick={handleSaveProfile} disabled={isSavingBranding}>
+                  {t('common.next')} <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
         )}
@@ -205,7 +247,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
             </div>
             <h2 className="text-2xl font-bold tracking-tight">{t('onboarding.doneTitle')}</h2>
             <p className="text-sm text-muted-foreground">{t('onboarding.doneDesc')}</p>
-            <Button size="lg" onClick={onComplete}>
+            <Button size="lg" onClick={handleComplete}>
               {t('onboarding.goToDashboard')}
             </Button>
           </div>
