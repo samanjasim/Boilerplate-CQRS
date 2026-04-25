@@ -1,4 +1,5 @@
 using System.Text.Json;
+using MassTransit;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
@@ -12,7 +13,7 @@ namespace Starter.Module.Webhooks.Application.Commands.TestWebhookEndpoint;
 public sealed class TestWebhookEndpointCommandHandler(
     WebhooksDbContext dbContext,
     ICurrentUserService currentUser,
-    IMessagePublisher messagePublisher)
+    IBus bus)
     : IRequestHandler<TestWebhookEndpointCommand, Result<Unit>>
 {
     public async Task<Result<Unit>> Handle(
@@ -37,7 +38,14 @@ public sealed class TestWebhookEndpointCommandHandler(
             data = new { message = "This is a test webhook delivery" }
         });
 
-        await messagePublisher.PublishAsync(
+        // Publish directly via IBus, not IMessagePublisher. The Webhooks module
+        // doesn't register its own AddEntityFrameworkOutbox<WebhooksDbContext>,
+        // so IPublishEndpoint (which IMessagePublisher wraps) routes through the
+        // last-registered outbox (WorkflowDbContext) — never saved by this handler
+        // → message vanishes silently. Bypassing the outbox is fine here: the user
+        // initiated the test and is awaiting feedback; if the broker is down the
+        // request fails and they retry. No business-data atomicity to preserve.
+        await bus.Publish(
             new DeliverWebhookMessage(
                 TenantId: endpoint.TenantId,
                 EventType: "webhook.test",

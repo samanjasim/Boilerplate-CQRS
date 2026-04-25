@@ -90,8 +90,15 @@ export function useRedeliverWebhook() {
   return useMutation({
     mutationFn: (deliveryId: string) => webhooksApi.redeliverDelivery(deliveryId),
     onSuccess: () => {
-      // Re-queue happens server-side; invalidate so the new attempt shows up
+      // The redeliver endpoint returns 200 the moment the message is queued, but
+      // the consumer creates the new delivery row asynchronously. Invalidating
+      // immediately would refetch before the row exists. Invalidate now (best
+      // effort) and again after a short delay to catch the typical consumer
+      // round-trip — a single timeout covers ~95% of real-world latencies.
       queryClient.invalidateQueries({ queryKey: queryKeys.webhooks.deliveries.all });
+      window.setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.webhooks.deliveries.all });
+      }, 2500);
       toast.success(i18n.t('webhooks.redeliverQueued'));
     },
     // onError is handled by the global axios error interceptor (error.interceptor.ts)
