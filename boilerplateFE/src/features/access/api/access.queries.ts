@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import i18n from '@/i18n';
 import { accessApi } from './access.api';
+import { queryKeys } from '@/lib/query/keys';
 import type { ResourceType, ResourceVisibility, GrantSubjectType, AccessLevel } from '../types';
 
 const qk = {
@@ -45,7 +46,7 @@ export function useSetResourceVisibility(resourceType: ResourceType, resourceId:
     mutationFn: (visibility: ResourceVisibility) =>
       accessApi.setVisibility(resourceType, resourceId, visibility),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['files'] });
+      qc.invalidateQueries({ queryKey: queryKeys.files.all });
       qc.invalidateQueries({ queryKey: qk.grants(resourceType, resourceId) });
       toast.success(i18n.t('access.visibilityUpdated'));
     },
@@ -57,7 +58,7 @@ export function useTransferResourceOwnership(resourceType: ResourceType, resourc
   return useMutation({
     mutationFn: (newOwnerId: string) => accessApi.transferOwnership(resourceType, resourceId, newOwnerId),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['files'] });
+      qc.invalidateQueries({ queryKey: queryKeys.files.all });
       toast.success(i18n.t('access.ownershipTransferred'));
     },
   });

@@ -104,3 +104,42 @@ No multi-select on FilesPage (parallel to bulk users in scope).
 - Each deferred item should pass through brainstorm → spec → plan when prioritized.
 - Items 1–6 are sized as their own branches.
 - Items 8–18 can be bundled into a follow-up "frontend-enhancements-2" sweep if accumulated.
+
+---
+
+## Audit corrections (recorded after implementation pass)
+
+The original four-dimensional audit overstated several gaps. Reality check from this branch's implementation:
+
+**Already implemented — audit was wrong:**
+- D.1 Feature flag CRUD — `EditFeatureFlagDialog` and delete are already wired in `FeatureFlagsList.tsx`.
+- D.3 Tenant branding / business info / custom text / default role — `TenantDetailPage` already has tabs for all four with full mutations wired.
+- D.4 Audit log row detail — already has expandable rows showing JSON diff (arguably better UX than a side drawer).
+- D.5 Notification preferences write — `NotificationPreferences.tsx` already calls `useUpdateNotificationPreferences`.
+- D.6 Emergency API key revoke — `EmergencyRevokeDialog` already exists, gated by `ApiKeys.EmergencyRevoke`.
+- D.7 Webhook admin in sidebar — already linked at `Sidebar.tsx:123`.
+- B detail-page back navigation — `WebhookAdminDetailPage`, `WorkflowDefinitionDetailPage`, `WorkflowInstanceDetailPage` all already use `useBackNavigation`.
+
+**Genuinely missing — deferred for capacity:**
+
+### 19. Bulk user actions (UsersListPage)
+Real gap. No `BulkUpdateUserStatusCommand` on the BE; no checkbox/multi-select toolbar on the FE. Sized as ~1 day BE + 1 day FE because:
+- BE: command + handler + validator + permission scoping + tenant isolation + tests
+- FE: row checkboxes + selection state + sticky action bar + confirm dialog with count + progress feedback for partial-failure scenarios
+- i18n in 3 languages
+
+Defer until requested by a tenant with >20 users hitting the one-by-one UX wall.
+
+### 20. Enable `noUncheckedIndexedAccess` in tsconfig
+Attempted in this branch — surfaces ~18 errors across 11 files. Each fix is safe but careful (regex `match[1]`, `arr.split(...)[0]`, `MAP[key]` patterns). Worth doing as a focused half-day pass with proper verification at each site rather than rushing `!` non-null assertions that mask real bugs. Files needing fixes:
+- `src/components/common/NotificationBell.tsx:23` — `NOTIFICATION_ICONS[type]` lookup
+- `src/features/comments-activity/components/EntityTimeline.tsx:113-115` — `next` array access
+- `src/features/communication/pages/TemplatesPage.tsx:41` — possibly-undefined object
+- `src/features/notifications/pages/NotificationsPage.tsx:96` — `NOTIFICATION_ICONS` lookup
+- `src/features/onboarding/components/OnboardingWizard.tsx:115` — invite element shape
+- `src/features/settings/pages/SettingsPage.tsx:26,32,198,234,266` — multiple
+- `src/features/webhooks/components/EventSelector.tsx:14` — possibly-undefined
+- `src/hooks/useTenantBranding.ts:8-10` — three string lookups
+- `src/hooks/useThemePreset.ts:22,24` — string lookups
+- `src/hooks/useTimeAgo.ts:14` — `lng.split('-')[0]`
+- `src/utils/storage.ts:12` — regex `match[1]`
