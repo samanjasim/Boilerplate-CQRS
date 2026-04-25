@@ -159,6 +159,10 @@ internal sealed class RegisterTenantCommandHandler(
 
 **Operational monitoring:** the `outbox-delivery-lag` check at `/health` reports `Degraded` (never `Unhealthy`) when the outbox backlog exceeds `Outbox:HealthCheck:MaxPendingRows` (default 1000) or `MaxOldestAge` (default 5 min). Liveness probes must not restart the pod on this signal.
 
+**Emails and other external side effects:** same rule as events — schedule `SendEmailRequestedEvent` (render the template synchronously in the handler, schedule the pre-rendered `EmailMessage`) instead of calling `IEmailService.SendAsync` inline after `SaveChangesAsync`. A transient SMTP failure must not leave a registered user without a verification email. `EmailDispatchConsumer` handles the SMTP call with full retry + DLQ.
+
+**Log correlation in consumers:** `LogContextEnrichmentFilter` pushes `ConversationId`, `MessageId`, and `MessageType` into the `ILogger` scope for every consumer's lifetime. Grep logs by `ConversationId` to trace one HTTP request across every downstream consumer it triggered.
+
 ## Frontend Development Patterns
 
 ### Adding a New Feature (End-to-End)

@@ -239,6 +239,60 @@ The `outbox-delivery-lag` health check at `/health`:
 
 Thresholds default to 1000 pending rows / 5 minutes oldest age. Tune in `appsettings.json` per environment. Liveness probes should treat this as informational — a lagging outbox is a delivery problem, not an API-readiness problem.
 
+### Log correlation
+
+A MassTransit consume filter (`LogContextEnrichmentFilter`) pushes three properties into the `ILogger` scope for every consumer invocation:
+
+- `ConversationId` — derived from the originating HTTP request's `Activity.TraceId` by the outbox interceptor. All events emitted from one request share this ID.
+- `MessageId` — unique per message.
+- `MessageType` — short CLR type name.
+
+Serilog's `FromLogContext()` enricher picks these up, so every log line inside a consumer carries the correlation tokens. Operational recipe: when debugging a broken request, grep the API logs for its trace ID, pull `ConversationId` from any matching line, then grep the consumer logs for that `ConversationId` to see the full downstream chain.
+
+### External side effects (emails, notifications, webhooks)
+
+Anything that touches a flaky external system should ride on the outbox instead of being called inline after `SaveChangesAsync`:
+
+```csharp
+// WRONG — inline after commit. If SMTP is briefly down the tenant has been
+// created but can never verify their email.
+await context.SaveChangesAsync(ct);
+var otpCode = await otpService.GenerateAsync(...);
+var emailMessage = emailTemplateService.RenderEmailVerification(...);
+await emailService.SendAsync(emailMessage, ct);  // ← no retry, no DLQ
+
+// RIGHT — render synchronously, schedule the dispatch event, commit once.
+var otpCode = await otpService.GenerateAsync(...);
+var emailMessage = emailTemplateService.RenderEmailVerification(...);
+eventCollector.Schedule(new SendEmailRequestedEvent(emailMessage, DateTime.UtcNow));
+await context.SaveChangesAsync(ct);   // commits business data + outbox row atomically
+```
+
+The `EmailDispatchConsumer` in `Starter.Infrastructure/Consumers/` performs the SMTP call with the bus-level retry and DLQ protection. For other external side effects — HTTP webhooks, SMS, push notifications — follow the same pattern: schedule an integration event, let a consumer handle the external call.
+
+### Consumer retry attempts and user-visible state
+
+Consumers that persist progress state (AI ingestion, import jobs, report generation, etc.) should only flip the domain entity to a terminal `Failed` state on the **last** retry attempt. Flipping on every attempt causes UI flicker — `Processing → Failed → Processing → Failed → Completed` — during a transient outage that recovers.
+
+Pattern (see `ProcessDocumentConsumer.Consume` for the live example):
+
+```csharp
+catch (OperationCanceledException) when (ct.IsCancellationRequested)
+{
+    throw;  // not a failure — just propagate
+}
+catch (Exception ex)
+{
+    const int MaxRetries = 3;    // matches the default bus policy
+    if (context.GetRetryAttempt() >= MaxRetries)
+    {
+        entity.MarkFailed(ex.Message);
+        await db.SaveChangesAsync(CancellationToken.None);
+    }
+    throw;  // always propagate — MT decides retry vs dead-letter
+}
+```
+
 ### Event schema evolution
 
 Treat every event as a **public contract** the moment it's published once. The rules:
@@ -270,6 +324,10 @@ When all three apply, define an integration event in `Starter.Application/Common
 ### Scalability consideration
 
 Each new integration event adds **one event type** to `Starter.Application/Common/Events/`. That file ships with every build of the boilerplate, even builds that don't include the subscribing modules. That's fine for truly shared events (tenant registration, user registration) but can get noisy if you reach for Pattern 2 for every cross-module trigger. **Pattern 1 is strictly better when the consumer count is exactly 1**, because Pattern 1 adds nothing to core for that single-consumer case.
+
+### Known follow-ups
+
+Pending production-hardening items — dead-letter replay tooling, published health-check thresholds, analyzer for event contracts, etc. — are tracked in [messaging-followups.md](messaging-followups.md).
 
 ### Files involved
 

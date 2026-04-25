@@ -24,8 +24,8 @@ public sealed class IntegrationEventCollectorTests
         var result = sut.TakeAll();
 
         result.Should().HaveCount(1);
-        result[0].Event.Should().BeSameAs(evt);
-        result[0].EventType.Should().Be(typeof(TenantRegisteredEvent));
+        result[0].Message.Should().BeSameAs(evt);
+        result[0].MessageType.Should().Be(typeof(TenantRegisteredEvent));
     }
 
     [Fact]
@@ -53,8 +53,8 @@ public sealed class IntegrationEventCollectorTests
         var result = sut.TakeAll();
 
         result.Should().HaveCount(2);
-        result[0].Event.Should().BeSameAs(e1);
-        result[1].Event.Should().BeSameAs(e2);
+        result[0].Message.Should().BeSameAs(e1);
+        result[1].Message.Should().BeSameAs(e2);
     }
 
     [Fact]
@@ -71,7 +71,7 @@ public sealed class IntegrationEventCollectorTests
         var result = sut.TakeAll();
 
         result.Should().HaveCount(1);
-        result[0].Event.Should().BeSameAs(second);
+        result[0].Message.Should().BeSameAs(second);
     }
 
     [Fact]
@@ -83,6 +83,6 @@ public sealed class IntegrationEventCollectorTests
 
         var result = sut.TakeAll();
 
-        result[0].EventType.Should().Be(typeof(TenantRegisteredEvent));
+        result[0].MessageType.Should().Be(typeof(TenantRegisteredEvent));
     }
 }

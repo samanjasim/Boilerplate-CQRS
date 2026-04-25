@@ -73,6 +73,15 @@ After a feature is fully implemented (backend + frontend builds pass), invoke th
 - [ ] Dead-letter reason is understood (check the `_error` queue on RabbitMQ management UI at `localhost:15672`)
 - [ ] Consumer is genuinely idempotent — re-delivery from DLQ won't double-write
 
+**External side effects (email, SMS, webhooks, push notifications):**
+- [ ] **Never** called inline after `SaveChangesAsync` — always via an integration event
+- [ ] For email: schedule `SendEmailRequestedEvent` (render the template synchronously, embed the rendered `EmailMessage` in the event body); `EmailDispatchConsumer` handles SMTP
+- [ ] Same rule for new side-effect types — add a new event + consumer rather than calling the flaky dependency from inside the handler
+
+**Consumers that persist progress state (ingestion, imports, reports):**
+- [ ] Terminal state flip (e.g. `MarkFailed`) is gated on the final retry attempt using `context.GetRetryAttempt() >= MaxRetries` — otherwise the UI flickers between Processing and Failed during retry backoff
+- [ ] `OperationCanceledException` is caught separately and rethrown without marking the entity Failed (cancellation is not a failure)
+
 ### 5. User Flow Completeness
 - [ ] No dead ends — every action has feedback (success toast or error toast)
 - [ ] Loading states shown during async operations (Spinner component)

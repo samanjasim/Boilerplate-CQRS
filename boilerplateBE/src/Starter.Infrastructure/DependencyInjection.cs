@@ -218,6 +218,25 @@ public static class DependencyInjection
                 o.UseBusOutbox();
             });
 
+            // MT 8.x's UseBusOutbox does:
+            //   services.ReplaceScoped<IScopedBusContextProvider<IBus>,
+            //                          EntityFrameworkScopedBusContextProvider<IBus, TDbContext>>()
+            // — the abstract interface mapping is REPLACED on every call. With
+            // multiple AddEntityFrameworkOutbox<T> calls (we have core + Workflow),
+            // the last one wins and IPublishEndpoint silently routes core events
+            // through Workflow's outbox, which is never saved → events vanish.
+            //
+            // The concrete closed-generic type is NOT registered by MT as a
+            // separately resolvable service. We register it explicitly here so
+            // IntegrationEventOutboxInterceptor can resolve the *exact* outbox
+            // provider that targets ApplicationDbContext — bypassing whatever
+            // last-write-wins provider the abstract interface points at.
+            //
+            // Constructor parameters resolve naturally from the same DI scope:
+            //   IBus, ApplicationDbContext, IBusOutboxNotification, Bind<...> etc.
+            // — all already registered by AddMassTransit + AddDbContext above.
+            services.AddScoped<EntityFrameworkScopedBusContextProvider<IBus, ApplicationDbContext>>();
+
             // Default retry + dead-letter policy applied to every receive endpoint.
             // Individual consumers can override via their own ConsumerDefinition.
             //
@@ -245,6 +264,13 @@ public static class DependencyInjection
                     cb.ActiveThreshold = 10;    // require at least 10 messages before tripping
                     cb.ResetInterval = TimeSpan.FromMinutes(5);
                 });
+
+                // Push ConversationId / MessageId / MessageType into ILogger scope
+                // for the entire Consume pipeline. Serilog's FromLogContext enricher
+                // picks these up, so every log line inside a consumer carries the
+                // correlation tokens — grep one ConversationId and you see the full
+                // causal chain from HTTP request through each consumer.
+                endpoint.UseConsumeFilter(typeof(LogContextEnrichmentFilter<>), ctx);
             });
 
             // Auto-discover consumers from core Infrastructure assembly

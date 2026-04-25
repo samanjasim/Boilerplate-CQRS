@@ -310,12 +310,40 @@ public sealed class ProcessDocumentConsumer(IServiceScopeFactory scopeFactory)
                 "Processed document {Id}: parents={Parents}, children={Children}, ocr={Ocr}",
                 doc.Id, parentEntities.Count, childEntities.Count, extracted.UsedOcr);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Cancellation is not a processing failure — just propagate so MT acks.
+            throw;
+        }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to process document {Id}", doc.Id);
-            doc.MarkFailed(ex.Message);
-            await db.SaveChangesAsync(CancellationToken.None);
-            throw;
+            // Default bus policy (configured in Infrastructure.DependencyInjection.AddMessaging)
+            // retries every consumer 3 times at 1s / 5s / 15s before MT routes the
+            // message to the endpoint's `_error` dead-letter queue.
+            //
+            // We only flip the document to Failed on the FINAL attempt so the UI doesn't
+            // flicker Processing→Failed→Processing during retry backoff. On earlier
+            // attempts we just log and let MT retry — doc state stays Processing.
+            const int MaxRetries = 3;
+            var retryAttempt = context.GetRetryAttempt();
+            var isTerminalAttempt = retryAttempt >= MaxRetries;
+
+            if (isTerminalAttempt)
+            {
+                logger.LogError(ex,
+                    "Document {Id} failed to process after {Attempts} attempts — marking Failed and dead-lettering",
+                    doc.Id, retryAttempt + 1);
+                doc.MarkFailed(ex.Message);
+                await db.SaveChangesAsync(CancellationToken.None);
+            }
+            else
+            {
+                logger.LogWarning(ex,
+                    "Document {Id} transient failure on attempt {Attempt} — MT will retry",
+                    doc.Id, retryAttempt + 1);
+            }
+
+            throw; // always propagate — MT's retry policy decides retry vs dead-letter
         }
     }
 }

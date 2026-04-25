@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using MassTransit;
 using MediatR;
 using Starter.Application.Common.Interfaces;
 using Starter.Domain.Common.Access.Enums;
@@ -17,7 +16,7 @@ internal sealed class UploadDocumentCommandHandler(
     IApplicationDbContext appDb,
     IFileService fileService,
     ICurrentUserService currentUser,
-    IPublishEndpoint bus)
+    IIntegrationEventCollector eventCollector)
     : IRequestHandler<UploadDocumentCommand, Result<AiDocumentDto>>
 {
     public async Task<Result<AiDocumentDto>> Handle(UploadDocumentCommand request, CancellationToken ct)
@@ -61,7 +60,11 @@ internal sealed class UploadDocumentCommandHandler(
 
         await fileService.AttachToEntityAsync(managed.Id, doc.Id, "AiDocument", ct);
 
-        await bus.Publish(new ProcessDocumentMessage(doc.Id, doc.TenantId, userId), ct);
+        // Schedule the ProcessDocumentMessage on the outbox; the interceptor
+        // writes it to ApplicationDbContext atomically with appDb's commit.
+        // Direct bus.Publish would silently drop here when multiple EF outboxes
+        // are registered (last-wins on IScopedBusContextProvider<IBus>).
+        eventCollector.Schedule(new ProcessDocumentMessage(doc.Id, doc.TenantId, userId));
         await appDb.SaveChangesAsync(ct);
 
         return Result.Success(doc.ToDto());

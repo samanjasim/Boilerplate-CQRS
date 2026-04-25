@@ -1,4 +1,5 @@
 using Starter.Application.Common.Constants;
+using Starter.Application.Common.Events;
 using Starter.Application.Common.Interfaces;
 using Starter.Domain.FeatureFlags.Errors;
 using Starter.Domain.Identity.Entities;
@@ -15,8 +16,8 @@ internal sealed class RegisterUserCommandHandler(
     IApplicationDbContext context,
     IPasswordService passwordService,
     IOtpService otpService,
-    IEmailService emailService,
     IEmailTemplateService emailTemplateService,
+    IIntegrationEventCollector eventCollector,
     IFeatureFlagService flags,
     IUsageTracker usageTracker,
     ICurrentUserService currentUser) : IRequestHandler<RegisterUserCommand, Result<Guid>>
@@ -57,14 +58,19 @@ internal sealed class RegisterUserCommandHandler(
             user.AddRole(defaultRole);
 
         context.Users.Add(user);
+
+        // Generate OTP + render email before commit, then schedule the dispatch
+        // event onto the outbox. SMTP call happens in EmailDispatchConsumer with
+        // retry + DLQ — the user row is never persisted without the email path
+        // being reliable.
+        var otpCode = await otpService.GenerateAsync(OtpPurpose.EmailVerification, user.Email.Value, cancellationToken);
+        var emailMessage = emailTemplateService.RenderEmailVerification(user.Email.Value, user.FullName.GetFullName(), otpCode);
+        eventCollector.Schedule(new SendEmailRequestedEvent(emailMessage, DateTime.UtcNow));
+
         await context.SaveChangesAsync(cancellationToken);
 
         if (tenantId.HasValue)
             await usageTracker.IncrementAsync(tenantId.Value, "users", ct: cancellationToken);
-
-        var otpCode = await otpService.GenerateAsync(OtpPurpose.EmailVerification, user.Email.Value, cancellationToken);
-        var emailMessage = emailTemplateService.RenderEmailVerification(user.Email.Value, user.FullName.GetFullName(), otpCode);
-        await emailService.SendAsync(emailMessage, cancellationToken);
 
         return Result.Success(user.Id);
     }
