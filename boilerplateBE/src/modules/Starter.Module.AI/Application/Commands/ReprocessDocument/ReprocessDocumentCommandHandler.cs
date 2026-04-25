@@ -1,4 +1,3 @@
-using MassTransit;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
@@ -16,7 +15,7 @@ internal sealed class ReprocessDocumentCommandHandler(
     AiDbContext db,
     IApplicationDbContext appDb,
     IVectorStore vectors,
-    IPublishEndpoint bus) : IRequestHandler<ReprocessDocumentCommand, Result>
+    IIntegrationEventCollector eventCollector) : IRequestHandler<ReprocessDocumentCommand, Result>
 {
     public async Task<Result> Handle(ReprocessDocumentCommand request, CancellationToken ct)
     {
@@ -35,7 +34,11 @@ internal sealed class ReprocessDocumentCommandHandler(
         doc.ResetForReprocessing();
         await db.SaveChangesAsync(ct);
 
-        await bus.Publish(new ProcessDocumentMessage(doc.Id, doc.TenantId, doc.UploadedByUserId), ct);
+        // Schedule via the outbox collector — appDb.SaveChangesAsync below
+        // flushes the message into ApplicationDbContext's outbox atomically.
+        // Direct bus.Publish would silently drop here when multiple EF outboxes
+        // are registered (last-wins on IScopedBusContextProvider<IBus>).
+        eventCollector.Schedule(new ProcessDocumentMessage(doc.Id, doc.TenantId, doc.UploadedByUserId));
         await appDb.SaveChangesAsync(ct);
 
         return Result.Success();
