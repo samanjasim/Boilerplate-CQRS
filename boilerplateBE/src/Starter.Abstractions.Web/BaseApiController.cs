@@ -83,6 +83,7 @@ public abstract class BaseApiController(ISender mediator) : ControllerBase
             ErrorType.NotFound => NotFound(ApiResponse.Fail(result.Error.Description)),
             ErrorType.Unauthorized => Unauthorized(ApiResponse.Fail(result.Error.Description)),
             ErrorType.Forbidden => StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Fail(result.Error.Description)),
+            ErrorType.TooManyRequests => StatusCode(StatusCodes.Status429TooManyRequests, ApiResponse.Fail(result.Error.Description)),
             ErrorType.Conflict => Conflict(ApiResponse.Fail(result.Error.Description)),
             ErrorType.Validation => BadRequest(ApiResponse.Fail(result.Error.Description)),
             _ => BadRequest(ApiResponse.Fail(result.Error.Description))
