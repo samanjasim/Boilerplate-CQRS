@@ -20,6 +20,9 @@ Thumbs.db
 !.claude/skills/
 .superpowers/
 
+# Local git worktrees
+.worktrees/
+
 # Build artifacts
 **/bin/
 **/obj/
