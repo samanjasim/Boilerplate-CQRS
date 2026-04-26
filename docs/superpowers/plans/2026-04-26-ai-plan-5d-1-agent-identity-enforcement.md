@@ -14,7 +14,20 @@
 
 ## Conventions used by every task
 
-- Tests live under `boilerplateBE/tests/Starter.Api.Tests/Ai/<area>/`. Use `AiDbContext` over `UseInMemoryDatabase($"<test-id>-{Guid.NewGuid()}")` for isolation. Mock `ICurrentUserService` via Moq.
+- Tests live under `boilerplateBE/tests/Starter.Api.Tests/Ai/<area>/`. Use `AiDbContext` over `UseInMemoryDatabase($"<test-id>-{Guid.NewGuid()}")` for isolation. Mock `ICurrentUserService` via Moq. Existing AI tests (e.g. `CreatePersonaCommandTests`) build the context inline; do **not** assume a `TestDb<T>()` helper exists — the snippet below is the canonical setup, copied verbatim into every test that needs an `AiDbContext`:
+
+  ```csharp
+  static (AiDbContext db, Mock<ICurrentUserService> cu) MakeAiDb(Guid? tenant)
+  {
+      var cu = new Mock<ICurrentUserService>();
+      cu.SetupGet(x => x.TenantId).Returns(tenant);
+      var opts = new DbContextOptionsBuilder<AiDbContext>()
+          .UseInMemoryDatabase($"db-{Guid.NewGuid()}").Options;
+      return (new AiDbContext(opts, cu.Object), cu);
+  }
+  ```
+
+  Where the plan body uses `TestDb<AiDbContext>(tenant)` as shorthand, mentally substitute `MakeAiDb(tenant)` defined inline at the top of the test file. Do not create a shared helper unless the test in question also needs Redis or HTTP context — in those cases copy the existing `AiPostgresFixture`/Testcontainers pattern (`tests/Starter.Api.Tests/Ai/Retrieval/AiPostgresFixture.cs`).
 - Entities follow the existing pattern: `private set` properties, private parameterless ctor, static `Create(...)` factory.
 - Errors use `Starter.Shared.Results.Error` with stable `Code` strings (`"AiAgent.<Reason>"`).
 - Migrations are generated locally for verification but **not committed** (per CLAUDE.md: this is boilerplate; consuming apps generate their own migrations).
@@ -89,76 +102,138 @@ git add -p && git commit -m "feat(ai): 5d-1 — add agent permissions, run statu
 
 ---
 
-### Task A2: Add `Role.IsAgentAssignable` flag and seed update
+### Task A2: Add `AiRoleMetadata` table (AI module) + seed for SuperAdmin/TenantAdmin
+
+> **Boundary note:** the previous draft put `IsAgentAssignable` on the core `Role` entity. That violates CLAUDE.md's "core must NOT depend on a module" rule (the flag is purely an AI concern; core has no concept of agents). We replace the core change with a new AI-module table that maps `RoleId → IsAgentAssignable`. Default behaviour when no row exists: assignable. To lock a role out of agent assignment, insert/update an `AiRoleMetadata` row with `IsAgentAssignable=false`.
 
 **Files:**
-- Modify: `boilerplateBE/src/Starter.Domain/Identity/Role.cs`
-- Modify: `boilerplateBE/src/Starter.Infrastructure/Persistence/Configurations/RoleConfiguration.cs` (or its equivalent — locate via `grep -l "EntityTypeConfiguration<Role>"`)
-- Modify: role seed file (locate via `grep -rln "new Role(\|Role.Create" boilerplateBE/src/Starter.Infrastructure/`)
-- Test: `boilerplateBE/tests/Starter.Api.Tests/Ai/Identity/AgentRoleAssignableTests.cs`
+- Create: `boilerplateBE/src/modules/Starter.Module.AI/Domain/Entities/AiRoleMetadata.cs`
+- Create: `boilerplateBE/src/modules/Starter.Module.AI/Infrastructure/Configurations/AiRoleMetadataConfiguration.cs`
+- Create: `boilerplateBE/src/modules/Starter.Module.AI/Infrastructure/Persistence/Seed/AiRoleMetadataSeed.cs`
+- Modify: `boilerplateBE/src/modules/Starter.Module.AI/Infrastructure/Persistence/AiDbContext.cs` (DbSet)
+- Modify: `boilerplateBE/src/modules/Starter.Module.AI/AiModule.cs` (call seed after `ModelPricingSeed.SeedAsync`)
+- Test: `boilerplateBE/tests/Starter.Api.Tests/Ai/Identity/AiRoleMetadataTests.cs`
 
 - [ ] **Step 1: Write failing test**
 
-Create the test file:
-
 ```csharp
 using FluentAssertions;
-using Starter.Domain.Identity;
+using Microsoft.EntityFrameworkCore;
+using Starter.Application.Common.Interfaces;
+using Starter.Module.AI.Domain.Entities;
+using Starter.Module.AI.Infrastructure.Persistence;
 using Xunit;
+using Moq;
 
 namespace Starter.Api.Tests.Ai.Identity;
 
-public sealed class AgentRoleAssignableTests
+public sealed class AiRoleMetadataTests
 {
     [Fact]
-    public void Default_Role_IsAgentAssignable_True()
+    public async Task Round_Trip_Persists_Flag()
     {
-        var role = new Role { Name = "Editor", IsActive = true };
-        role.IsAgentAssignable.Should().BeTrue();
+        var cu = new Mock<ICurrentUserService>();
+        var opts = new DbContextOptionsBuilder<AiDbContext>()
+            .UseInMemoryDatabase($"meta-{Guid.NewGuid()}").Options;
+        await using var db = new AiDbContext(opts, cu.Object);
+
+        var roleId = Guid.NewGuid();
+        db.AiRoleMetadata.Add(AiRoleMetadata.Create(roleId, isAgentAssignable: false));
+        await db.SaveChangesAsync();
+
+        var found = await db.AiRoleMetadata.FirstAsync(m => m.RoleId == roleId);
+        found.IsAgentAssignable.Should().BeFalse();
     }
 }
 ```
 
-- [ ] **Step 2: Run test — expect FAIL**
+- [ ] **Step 2: Run test — expect FAIL** (entity doesn't exist).
 
-```bash
-dotnet test boilerplateBE/tests/Starter.Api.Tests --filter "FullyQualifiedName~AgentRoleAssignableTests"
-```
-
-Expected: build error — `'Role' does not contain a definition for 'IsAgentAssignable'`.
-
-- [ ] **Step 3: Add property to Role**
-
-In `Role.cs`, add:
+- [ ] **Step 3: Create entity**
 
 ```csharp
-public bool IsAgentAssignable { get; set; } = true;
+using Starter.Domain.Common;
+
+namespace Starter.Module.AI.Domain.Entities;
+
+public sealed class AiRoleMetadata : BaseEntity
+{
+    public Guid RoleId { get; private set; }
+    public bool IsAgentAssignable { get; private set; }
+
+    private AiRoleMetadata() { }
+    private AiRoleMetadata(Guid id, Guid roleId, bool isAgentAssignable) : base(id)
+    {
+        RoleId = roleId;
+        IsAgentAssignable = isAgentAssignable;
+    }
+
+    public static AiRoleMetadata Create(Guid roleId, bool isAgentAssignable) =>
+        new(Guid.NewGuid(), roleId, isAgentAssignable);
+
+    public void SetAgentAssignable(bool value) => IsAgentAssignable = value;
+}
 ```
 
-- [ ] **Step 4: Update EF configuration**
-
-In `RoleConfiguration.cs`:
+- [ ] **Step 4: Configure**
 
 ```csharp
-builder.Property(r => r.IsAgentAssignable)
-       .IsRequired()
-       .HasDefaultValue(true);
+internal sealed class AiRoleMetadataConfiguration : IEntityTypeConfiguration<AiRoleMetadata>
+{
+    public void Configure(EntityTypeBuilder<AiRoleMetadata> b)
+    {
+        b.ToTable("AiRoleMetadata");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.RoleId).IsRequired();
+        b.Property(x => x.IsAgentAssignable).IsRequired();
+        b.HasIndex(x => x.RoleId).IsUnique();
+        // No EF FK to core Role.Id — same pattern as AiUsageLog.TenantId (spec §4.1).
+    }
+}
 ```
 
-- [ ] **Step 5: Update seed**
+- [ ] **Step 5: Add DbSet and seed**
 
-Find SuperAdmin / TenantAdmin role seed and set `IsAgentAssignable = false` on each.
-
-- [ ] **Step 6: Run test — expect PASS**
-
-```bash
-dotnet test boilerplateBE/tests/Starter.Api.Tests --filter "FullyQualifiedName~AgentRoleAssignableTests"
+```csharp
+// AiDbContext
+public DbSet<AiRoleMetadata> AiRoleMetadata => Set<AiRoleMetadata>();
 ```
 
-- [ ] **Step 7: Commit**
+`AiRoleMetadataSeed.cs`:
+
+```csharp
+public static class AiRoleMetadataSeed
+{
+    public static async Task SeedAsync(AiDbContext aiDb, IApplicationDbContext appDb, CancellationToken ct = default)
+    {
+        // Look up SuperAdmin and TenantAdmin role IDs in core
+        var lockedRoleNames = new[] { "SuperAdmin", "TenantAdmin" };
+        var lockedRoles = await appDb.Roles
+            .Where(r => lockedRoleNames.Contains(r.Name))
+            .Select(r => r.Id)
+            .ToListAsync(ct);
+
+        foreach (var roleId in lockedRoles)
+        {
+            var existing = await aiDb.AiRoleMetadata.FirstOrDefaultAsync(m => m.RoleId == roleId, ct);
+            if (existing is null)
+            {
+                aiDb.AiRoleMetadata.Add(AiRoleMetadata.Create(roleId, isAgentAssignable: false));
+            }
+            else if (existing.IsAgentAssignable)
+            {
+                existing.SetAgentAssignable(false);
+            }
+        }
+        await aiDb.SaveChangesAsync(ct);
+    }
+}
+```
+
+- [ ] **Step 6: Run test — expect PASS**, build, commit.
 
 ```bash
-git add -p && git commit -m "feat(ai): 5d-1 — Role.IsAgentAssignable flag with SuperAdmin/TenantAdmin seed false"
+git commit -m "feat(ai): 5d-1 — AiRoleMetadata table for IsAgentAssignable (AI-module-owned, not core)"
 ```
 
 ---
@@ -791,15 +866,15 @@ public interface IModelPricingService
 }
 ```
 
-- [ ] **Step 4: Implement service** with 60s `IMemoryCache` keyed by `(Provider, Model)`. Failure-closed: throw `InvalidOperationException` (handler converts to `Result.Failure(AiErrors.PricingMissing(...))`).
+- [ ] **Step 4: Implement service** with `ICacheService.GetOrSetAsync` (TTL 5 min) keyed by `"ai:pricing:{provider}:{model}"` — same caching abstraction as `CachingEmbeddingService`. Failure-closed: throw `InvalidOperationException` (handler converts to `Result.Failure(AiErrors.PricingMissing(...))`).
 
 - [ ] **Step 5: Register in DI** (`AiModule.cs`):
 
 ```csharp
-services.AddSingleton<IModelPricingService, ModelPricingService>();
+services.AddScoped<IModelPricingService, ModelPricingService>();
 ```
 
-(Singleton because `IMemoryCache` is shared and the service is stateless beyond the cache.)
+(Scoped to match the `IUsageMetricCalculator` precedent in `AiModule.cs`. The service uses `AiDbContext` (scoped) and reads through `ICacheService` (singleton-backed) — so per-request scoping is correct. Caching the pricing-per-request avoids N+1 issues without service-lifetime gymnastics.)
 
 - [ ] **Step 6: Run — PASS**, commit.
 
@@ -912,6 +987,58 @@ git commit -m "feat(ai): 5d-1 — plan tiers seed AI cost/agent feature entries"
 
 ## Phase E — Cost cap resolver and accountant
 
+### Task E0: `AssistantUpdatedEvent` domain event
+
+**Files:**
+- Create: `boilerplateBE/src/modules/Starter.Module.AI/Domain/Events/AssistantUpdatedEvent.cs`
+- Modify: `boilerplateBE/src/modules/Starter.Module.AI/Domain/Entities/AiAssistant.cs` (raise event from `SetBudget` and any other mutator the resolver should invalidate on)
+- Test: `boilerplateBE/tests/Starter.Api.Tests/Ai/Identity/AssistantUpdatedEventTests.cs`
+
+The cap resolver's cache must invalidate when an assistant's budget changes or its tenant's subscription tier changes. `SubscriptionChangedEvent` already exists (Billing module). We need a counterpart in AI for assistant-level updates. Existing pattern: events implement `IDomainEvent : INotification` (locate via `grep -rn "IDomainEvent" boilerplateBE/src/Starter.Domain/`).
+
+- [ ] **Step 1: Write failing test**
+
+```csharp
+[Fact]
+public void SetBudget_Raises_AssistantUpdatedEvent()
+{
+    var a = AiAssistant.CreateMinimal(/* ... */);
+    a.SetBudget(monthlyUsd: 50m, dailyUsd: 5m, requestsPerMinute: 30);
+    a.DomainEvents.Should().ContainSingle(e => e is AssistantUpdatedEvent);
+}
+```
+
+(Use whatever `DomainEvents` collection / `RaiseDomainEvent` mechanism the codebase uses on `BaseEntity` / `AggregateRoot`. Locate via `grep -rn "DomainEvents\|RaiseDomainEvent" boilerplateBE/src/Starter.Domain/Common/`.)
+
+- [ ] **Step 2: Run — FAIL.**
+
+- [ ] **Step 3: Create event**
+
+```csharp
+namespace Starter.Module.AI.Domain.Events;
+
+public sealed record AssistantUpdatedEvent(Guid TenantId, Guid AssistantId) : IDomainEvent;
+```
+
+- [ ] **Step 4: Raise from `AiAssistant.SetBudget`**
+
+```csharp
+public void SetBudget(decimal? monthlyUsd, decimal? dailyUsd, int? requestsPerMinute)
+{
+    /* ...validation as in B1... */
+    MonthlyCostCapUsd = monthlyUsd; DailyCostCapUsd = dailyUsd; RequestsPerMinute = requestsPerMinute;
+    RaiseDomainEvent(new AssistantUpdatedEvent(TenantId!.Value, Id));
+}
+```
+
+- [ ] **Step 5: Run — PASS**, build, commit.
+
+```bash
+git commit -m "feat(ai): 5d-1 — AssistantUpdatedEvent raised from AiAssistant.SetBudget"
+```
+
+---
+
 ### Task E1: `ICostCapResolver` + `EffectiveCaps` record + impl + cache
 
 **Files:**
@@ -930,11 +1057,11 @@ public async Task Resolve_Returns_Min_Of_Plan_And_PerAgent()
     var tenant = Guid.NewGuid();
     var assistantId = Guid.NewGuid();
     var ff = new Mock<IFeatureFlagService>();
-    ff.Setup(x => x.GetValueAsync<decimal>("ai.cost.tenant_monthly_usd", tenant, default))
+    ff.Setup(x => x.GetValueAsync<decimal>("ai.cost.tenant_monthly_usd", default))
       .ReturnsAsync(20m);
-    ff.Setup(x => x.GetValueAsync<decimal>("ai.cost.tenant_daily_usd", tenant, default))
+    ff.Setup(x => x.GetValueAsync<decimal>("ai.cost.tenant_daily_usd", default))
       .ReturnsAsync(2m);
-    ff.Setup(x => x.GetValueAsync<int>("ai.agents.requests_per_minute_default", tenant, default))
+    ff.Setup(x => x.GetValueAsync<int>("ai.agents.requests_per_minute_default", default))
       .ReturnsAsync(60);
     var (db, _) = TestDb<AiDbContext>(tenant);
     var assistant = AiAssistant.CreateMinimal(/* with id = assistantId */);
@@ -942,7 +1069,10 @@ public async Task Resolve_Returns_Min_Of_Plan_And_PerAgent()
     db.AiAssistants.Add(assistant);
     await db.SaveChangesAsync();
 
-    var sut = new CostCapResolver(db, ff.Object, new MemoryCache(new MemoryCacheOptions()));
+    var cache = new Mock<ICacheService>();
+    cache.Setup(c => c.GetOrSetAsync(It.IsAny<string>(), It.IsAny<Func<Task<EffectiveCaps>>>(), It.IsAny<TimeSpan>(), default))
+         .Returns<string, Func<Task<EffectiveCaps>>, TimeSpan, CancellationToken>((_, factory, _, _) => factory());
+    var sut = new CostCapResolver(db, ff.Object, cache.Object);
     var caps = await sut.ResolveAsync(tenant, assistantId, default);
     caps.MonthlyUsd.Should().Be(5m);   // per-agent wins
     caps.DailyUsd.Should().Be(2m);     // plan wins (per-agent null)
@@ -964,7 +1094,9 @@ public interface ICostCapResolver
 }
 ```
 
-- [ ] **Step 4: Implement** with `IMemoryCache`, key `("cap", tenantId, assistantId)`, TTL 60s. `min_nonnull` helper (treats null as "no constraint at this tier").
+- [ ] **Step 4: Implement** using `ICacheService` (the canonical cache abstraction; matches `CachingEmbeddingService` precedent in `AiModule.cs`). Cache key `"ai:cap:{tenantId}:{assistantId}"`, TTL 60s via `cache.GetOrSetAsync`. `min_nonnull` helper (treats null as "no constraint at this tier"). The `Invalidate(tenantId, assistantId)` method calls `cache.RemoveAsync` for the same key.
+
+> **Caching note:** the rest of the codebase uses `ICacheService` as the canonical wrapper (the embedding cache pattern). We follow that here. The cap *accountant* and *rate limiter* (Tasks E2, E3) intentionally bypass `ICacheService` and reach `IConnectionMultiplexer` directly because they need atomic Lua scripts / sorted-set operations that `ICacheService`'s simple get/set surface doesn't expose. This is the only place in 5d-1 where raw Redis appears, and the rationale is documented inline.
 
 - [ ] **Step 5: DI registration + invalidation hook**
 
@@ -972,15 +1104,15 @@ public interface ICostCapResolver
 
 ```csharp
 services.AddScoped<ICostCapResolver, CostCapResolver>();
-services.AddSingleton<IMemoryCache>(_ => new MemoryCache(new MemoryCacheOptions()));
+// ICacheService is registered globally — do not re-register here.
 ```
 
-Plus a domain-event handler for `SubscriptionChangedEvent` (existing event from billing) that calls `resolver.Invalidate` for every assistant in that tenant. Same handler hooks `AssistantUpdatedEvent` (which fires on `SetBudget`).
+Plus a domain-event handler for `SubscriptionChangedEvent` (existing event from billing) that calls `resolver.Invalidate` for every assistant in that tenant. Same handler hooks `AssistantUpdatedEvent` (created in Task E0 below — fires on `SetBudget`).
 
 - [ ] **Step 6: Run — PASS**, commit.
 
 ```bash
-git commit -m "feat(ai): 5d-1 — ICostCapResolver with plan+agent min, IMemoryCache, invalidation"
+git commit -m "feat(ai): 5d-1 — ICostCapResolver with plan+agent min, ICacheService-backed, invalidation hook"
 ```
 
 ---
@@ -1072,7 +1204,11 @@ public interface ICostCapAccountant
 }
 ```
 
-- [ ] **Step 4: Implement with `IConnectionMultiplexer`** (existing DI from Redis cache). Lua scripts loaded once via `LoadAsync` and executed via `EvaluateAsync`. Key format: `ai:cost:{tenantId}:{assistantId}:{monthly|daily}:{yyyy-MM | yyyy-MM-dd}`.
+- [ ] **Step 4: Implement with `IConnectionMultiplexer`** (existing DI from Redis cache).
+
+> **Why bypass `ICacheService` here:** the canonical wrapper exposes get/set/remove only. Atomic check-and-increment requires a Lua script (`EvaluateAsync`) which is not in the wrapper's API. Using `IConnectionMultiplexer` directly is the right escape hatch and the only place 5d-1 needs it. The trade-off is acceptable because (a) atomicity is non-negotiable per spec §6.5 and (b) the dependency is sealed inside this single class — no other code reaches into raw Redis.
+
+Lua scripts loaded once via `LoadAsync` and executed via `EvaluateAsync`. Key format: `ai:cost:{tenantId}:{assistantId}:{monthly|daily}:{yyyy-MM | yyyy-MM-dd}`.
 
 ```lua
 -- claim.lua
@@ -1143,7 +1279,7 @@ public interface IAgentRateLimiter
 }
 ```
 
-Sliding-window via Redis sorted set: ZADD a timestamp, ZREMRANGEBYSCORE to drop entries older than 60s, ZCARD to count. If count > rpm, refuse.
+Sliding-window via Redis sorted set: ZADD a timestamp, ZREMRANGEBYSCORE to drop entries older than 60s, ZCARD to count. If count > rpm, refuse. Like the accountant, this bypasses `ICacheService` because sorted-set ops aren't on the wrapper's API. Document the rationale inline.
 
 - [ ] **Step 4: Run — PASS**, commit.
 
@@ -1789,15 +1925,20 @@ public async Task Install_Refused_When_Operational_Disabled_For_Plan()
 In install handler, before creating the assistant:
 
 ```csharp
-var max = await featureFlagService.GetValueAsync<int>("ai.agents.max_count", tenantId, ct);
+var max = await featureFlagService.GetValueAsync<int>("ai.agents.max_count", ct);
 var current = await db.AiAssistants.CountAsync(a => a.TenantId == tenantId, ct);
 if (current >= max) return Result.Failure(PlanErrors.LimitExceeded("ai.agents.max_count", max, current));
 
 if (template.IsOperational)
 {
-    var allowed = await featureFlagService.GetValueAsync<bool>("ai.agents.operational_enabled", tenantId, ct);
+    var allowed = await featureFlagService.GetValueAsync<bool>("ai.agents.operational_enabled", ct);
     if (!allowed) return Result.Failure(PlanErrors.LimitExceeded("ai.agents.operational_enabled", 0, 1));
 }
+
+// Note: IFeatureFlagService resolves tenant from ICurrentUserService implicitly. For operational
+// agents (no HTTP context), the trigger handler must wrap the call site in an
+// ICurrentUserService scope that returns the trigger's tenant id (existing trigger
+// infrastructure already does this — see AiAgentTrigger handlers).
 ```
 
 (Adjust to existing `PlanErrors` shape; create if missing.)
@@ -1812,45 +1953,155 @@ git commit -m "feat(ai): 5d-1 — enforce ai.agents.max_count and operational_en
 
 ## Phase K — Audit dual-attribution writer
 
-### Task K1: Audit log writer extension for agent context
+### Task K1: EF `SaveChangesInterceptor` for audit dual-attribution
 
 **Files:**
-- Locate audit writer via `grep -rln "AuditLogs.Add(\|new AuditLog {" boilerplateBE/src/`
-- Often there's a `IAuditService` or similar; if present extend its signature; if not, the existing call sites build `AuditLog` manually
-- Test: `boilerplateBE/tests/Starter.Api.Tests/Ai/Identity/AuditDualAttributionTests.cs`
+- Create: `boilerplateBE/src/Starter.Infrastructure/Persistence/Interceptors/AuditLogAgentAttributionInterceptor.cs`
+- Modify: `boilerplateBE/src/modules/Starter.Module.AI/Infrastructure/Runtime/AmbientExecutionContext.cs` (extend Task F2's class with `AgentRunId` + `AttachRunId`)
+- Modify: `boilerplateBE/src/Starter.Infrastructure/Persistence/ApplicationDbContext.cs` (register interceptor) and `AiDbContext.cs` (the same — both contexts can write audit logs)
+- Modify: `Starter.Infrastructure/DependencyInjection.cs` to register the interceptor as a scoped service
+- Test: `boilerplateBE/tests/Starter.Api.Tests/Ai/Identity/AuditDualAttributionInterceptorTests.cs`
 
-The minimal change: when `AmbientExecutionContext.Current` is set during a write, the writer copies `AgentPrincipalId` / `OnBehalfOfUserId` / a per-run `AgentRunId` onto the row.
+> **Why an interceptor:** the audit-writer audit found that the codebase has **no central `IAuditLogger` service** — every handler does `db.AuditLogs.Add(new AuditLog { ... })` inline. Modifying every existing call site to plumb agent context is wrong (huge blast radius, regression risk for non-agent code paths). An `EF Core SaveChangesInterceptor` is the canonical way to enrich entities at save-time without touching call sites: when an `AuditLog` is added and `AmbientExecutionContext.Current` is set, the interceptor populates the three new nullable columns. Outside an agent run, `Current` is null and the interceptor is a no-op — existing behaviour is preserved.
 
-- [ ] **Step 1: Write failing test**
+- [ ] **Step 1: Extend `AmbientExecutionContext` with `AgentRunId` + `AttachRunId`**
 
 ```csharp
-[Fact]
-public async Task Audit_Inside_Agent_Run_Records_Dual_Attribution()
+public Guid? AgentRunId { get; private set; }
+
+public void AttachRunId(Guid runId) => AgentRunId = runId;
+```
+
+(Begin signature unchanged — runtime calls `AttachRunId` once it generates the run id at the top of `RunAsync`, before any tool dispatch.)
+
+- [ ] **Step 2: Write failing test for the interceptor**
+
+```csharp
+using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Starter.Domain.Common;
+using Starter.Module.AI.Infrastructure.Runtime;
+using Xunit;
+
+namespace Starter.Api.Tests.Ai.Identity;
+
+public sealed class AuditDualAttributionInterceptorTests
 {
-    using (var scope = AmbientExecutionContext.Begin(
-        userId: chatCallerId, agentPrincipalId: principalId,
-        tenantId: tenantId, callerHasPermission: _ => true, agentHasPermission: _ => true))
+    [Fact]
+    public async Task Inside_Agent_Scope_Audit_Row_Is_Enriched()
     {
-        AmbientExecutionContext.AttachRunId(runId);  // helper to be added below
-        await mediator.Send(new SomeAuditedCommand());
+        var caller = Guid.NewGuid();
+        var principalId = Guid.NewGuid();
+        var runId = Guid.NewGuid();
+
+        await using var db = TestApplicationDb.WithInterceptor();   // helper from Step 5
+
+        using (var scope = AmbientExecutionContext.Begin(
+            userId: caller, agentPrincipalId: principalId,
+            tenantId: Guid.NewGuid(),
+            callerHasPermission: _ => true, agentHasPermission: _ => true))
+        {
+            scope.AttachRunId(runId);
+            db.AuditLogs.Add(new AuditLog
+            {
+                EntityType = AuditEntityType.User,
+                EntityId = Guid.NewGuid(),
+                Action = AuditAction.Read,
+                PerformedBy = caller,
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var row = await db.AuditLogs.AsNoTracking().FirstAsync();
+        row.AgentPrincipalId.Should().Be(principalId);
+        row.OnBehalfOfUserId.Should().Be(caller);
+        row.AgentRunId.Should().Be(runId);
     }
-    var row = await db.AuditLogs.LastAsync();
-    row.AgentPrincipalId.Should().Be(principalId);
-    row.OnBehalfOfUserId.Should().Be(chatCallerId);
-    row.AgentRunId.Should().Be(runId);
+
+    [Fact]
+    public async Task Outside_Agent_Scope_Audit_Row_Is_Untouched()
+    {
+        await using var db = TestApplicationDb.WithInterceptor();
+        db.AuditLogs.Add(new AuditLog
+        {
+            EntityType = AuditEntityType.User,
+            EntityId = Guid.NewGuid(),
+            Action = AuditAction.Read,
+            PerformedBy = Guid.NewGuid(),
+        });
+        await db.SaveChangesAsync();
+
+        var row = await db.AuditLogs.AsNoTracking().FirstAsync();
+        row.AgentPrincipalId.Should().BeNull();
+        row.OnBehalfOfUserId.Should().BeNull();
+        row.AgentRunId.Should().BeNull();
+    }
 }
 ```
 
-- [ ] **Step 2: Run — FAIL.**
+- [ ] **Step 3: Run — FAIL.**
 
-- [ ] **Step 3: Add `AgentRunId` property + `AttachRunId(Guid runId)` method to `AmbientExecutionContext`** (extending Task F2's class). After this task, `AmbientExecutionContext` exposes `Guid? AgentRunId { get; private set; }` and a setter `public void AttachRunId(Guid runId)`. The audit writer in Step 4 reads it. No change to `Begin(...)` signature — RunId is set in a separate call after the scope is opened (the runtime knows the principal at scope-open time but doesn't yet know the run ID until it begins the loop).
+- [ ] **Step 4: Implement the interceptor**
 
-- [ ] **Step 4: Modify the audit-writing code path** (whether central service or inline) to consult `AmbientExecutionContext.Current` when present and copy the three fields. Where audit is written *outside* an agent run, `Current` is null and the existing behavior is unchanged.
+```csharp
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Starter.Domain.Common;
+using Starter.Module.AI.Infrastructure.Runtime;
 
-- [ ] **Step 5: Run — PASS**, commit.
+namespace Starter.Infrastructure.Persistence.Interceptors;
+
+public sealed class AuditLogAgentAttributionInterceptor : SaveChangesInterceptor
+{
+    public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+        DbContextEventData eventData, InterceptionResult<int> result, CancellationToken ct = default)
+    {
+        Apply(eventData.Context?.ChangeTracker);
+        return base.SavingChangesAsync(eventData, result, ct);
+    }
+
+    public override InterceptionResult<int> SavingChanges(
+        DbContextEventData eventData, InterceptionResult<int> result)
+    {
+        Apply(eventData.Context?.ChangeTracker);
+        return base.SavingChanges(eventData, result);
+    }
+
+    private static void Apply(ChangeTracker? tracker)
+    {
+        var ctx = AmbientExecutionContext.Current;
+        if (ctx is null || tracker is null) return;
+
+        foreach (var entry in tracker.Entries<AuditLog>())
+        {
+            if (entry.State != EntityState.Added) continue;
+            entry.Entity.AgentPrincipalId ??= ctx.AgentPrincipalId;
+            entry.Entity.OnBehalfOfUserId ??= ctx.UserId;
+            entry.Entity.AgentRunId ??= ctx.AgentRunId;
+        }
+    }
+}
+```
+
+- [ ] **Step 5: Wire the interceptor into both DbContexts**
+
+In `Starter.Infrastructure/DependencyInjection.cs` where `AddDbContext` is called:
+
+```csharp
+services.AddSingleton<AuditLogAgentAttributionInterceptor>();
+services.AddDbContext<ApplicationDbContext>((sp, opt) =>
+    opt.UseNpgsql(...)
+       .AddInterceptors(sp.GetRequiredService<AuditLogAgentAttributionInterceptor>()));
+```
+
+Same for `AiDbContext` registration in `AiModule.cs` (since `AuditLog` lives in core, AiDbContext does not own it directly — but if any code path writes audit through `AiDbContext` via a shared base, register there too). Verify by reading the existing context registrations.
+
+Add a `TestApplicationDb.WithInterceptor()` helper in `tests/Starter.Api.Tests/Shared/` that builds an in-memory `ApplicationDbContext` with the interceptor attached, so the test can use it without bootstrapping the full host.
+
+- [ ] **Step 6: Run — PASS**, commit.
 
 ```bash
-git commit -m "feat(ai): 5d-1 — audit log dual-attribution from AmbientExecutionContext"
+git commit -m "feat(ai): 5d-1 — EF SaveChangesInterceptor enriches AuditLog with ambient agent context"
 ```
 
 ---
@@ -1879,25 +2130,25 @@ public sealed record SetAgentBudgetCommand(
 
 public sealed class SetAgentBudgetCommandValidator : AbstractValidator<SetAgentBudgetCommand>
 {
-    public SetAgentBudgetCommandValidator(IFeatureFlagService ff, ICurrentUserService cu)
+    public SetAgentBudgetCommandValidator(IFeatureFlagService ff)
     {
         RuleFor(x => x.MonthlyCostCapUsd)
             .GreaterThanOrEqualTo(0)
             .MustAsync(async (cap, ct) =>
                 cap is null ||
-                cap <= await ff.GetValueAsync<decimal>("ai.cost.tenant_monthly_usd", cu.TenantId!.Value, ct))
+                cap <= await ff.GetValueAsync<decimal>("ai.cost.tenant_monthly_usd", ct))
             .WithMessage("Per-agent monthly cap cannot exceed plan ceiling.");
         RuleFor(x => x.DailyCostCapUsd)
             .GreaterThanOrEqualTo(0)
             .MustAsync(async (cap, ct) =>
                 cap is null ||
-                cap <= await ff.GetValueAsync<decimal>("ai.cost.tenant_daily_usd", cu.TenantId!.Value, ct))
+                cap <= await ff.GetValueAsync<decimal>("ai.cost.tenant_daily_usd", ct))
             .WithMessage("Per-agent daily cap cannot exceed plan ceiling.");
         RuleFor(x => x.RequestsPerMinute)
             .GreaterThanOrEqualTo(0)
             .MustAsync(async (rpm, ct) =>
                 rpm is null ||
-                rpm <= await ff.GetValueAsync<int>("ai.agents.requests_per_minute_default", cu.TenantId!.Value, ct))
+                rpm <= await ff.GetValueAsync<int>("ai.agents.requests_per_minute_default", ct))
             .WithMessage("Per-agent rate limit cannot exceed plan default.");
     }
 }
@@ -1963,17 +2214,29 @@ git commit -m "feat(ai): 5d-1 — GET /ai/assistants/{id}/budget returns effecti
 - Modify: `AiAssistantsController.cs` for the three routes
 - Test: `boilerplateBE/tests/Starter.Api.Tests/Ai/Endpoints/AgentRoleEndpointsTests.cs`
 
-Validator on AssignAgentRole must check `Role.IsAgentAssignable == true`.
+Validator on AssignAgentRole must check the `AiRoleMetadata` lookup (default-true when no row exists; explicit `false` for SuperAdmin/TenantAdmin per Task A2 seed).
 
 - [ ] **Steps 1–5 (TDD cycle for each command/query — combined into one task because they're symmetric).**
 
 ```csharp
 // AssignAgentRole — validator
-RuleFor(x => x.RoleId).MustAsync(async (id, ct) =>
+public sealed class AssignAgentRoleCommandValidator : AbstractValidator<AssignAgentRoleCommand>
 {
-    var role = await appDb.Roles.FindAsync(new object?[] { id }, ct);
-    return role?.IsAgentAssignable == true;
-}).WithErrorCode("AiAgent.RoleAssignmentNotPermitted");
+    public AssignAgentRoleCommandValidator(IApplicationDbContext appDb, AiDbContext aiDb)
+    {
+        RuleFor(x => x.RoleId)
+            .MustAsync(async (id, ct) =>
+            {
+                var roleExists = await appDb.Roles.AnyAsync(r => r.Id == id, ct);
+                if (!roleExists) return false;
+                var meta = await aiDb.AiRoleMetadata.FirstOrDefaultAsync(m => m.RoleId == id, ct);
+                // No row → default true (assignable). Row with IsAgentAssignable=false → blocked.
+                return meta is null || meta.IsAgentAssignable;
+            })
+            .WithErrorCode("AiAgent.RoleAssignmentNotPermitted")
+            .WithMessage("This role cannot be assigned to agent principals.");
+    }
+}
 ```
 
 - [ ] **Commit**
@@ -2111,12 +2374,12 @@ git commit -m "feat(ai): 5d-1 — nightly AiCostReconciliationJob corrects Redis
 ## Self-Review Checklist (run after writing the plan)
 
 - **Spec coverage**: every numbered item in spec §3, §4, §5, §6, §7, §8 must map to at least one task. Run a quick eyeball:
-  - §3 (services) → E1, E2, E3, F1, F2 ✓
+  - §3 (services) → E0, E1, E2, E3, F1, F2 ✓
   - §4 (entities) → A2, A3, B1–B5 ✓
-  - §5 (identity + intersection) → I1–I3, F1–F3, G1–G2 ✓
-  - §6 (cost) → D1, D2, E1, E2, H1, N1 ✓
+  - §5 (identity + intersection) → A2 (`AiRoleMetadata`), I1–I3, F1–F3, G1–G2 ✓
+  - §6 (cost) → D1, D2, E0, E1, E2, H1, N1 ✓
   - §7 (API) → L1–L5 ✓
-  - §8 (migration/seed) → B4, D1, D2, I3 ✓
+  - §8 (migration/seed) → A2, B4, D1, D2, I3 ✓
   - §9 (acid tests) → M1–M4 ✓
 - **Placeholder scan**: search for `TBD`, `TODO`, `add validation` (without code) — none should remain.
 - **Type consistency**: `EffectiveCaps`, `ClaimResult`, `CapWindow`, `IExecutionContext`, `AmbientExecutionContext.Begin` shapes match across all tasks they appear in.
@@ -2125,7 +2388,7 @@ git commit -m "feat(ai): 5d-1 — nightly AiCostReconciliationJob corrects Redis
 
 ## Definition of Done for 5d-1
 
-1. All 35 tasks above merged to `feature/ai-phase-5d-1`.
+1. All 36 tasks above merged to `feature/ai-phase-5d-1`.
 2. `dotnet build boilerplateBE/Starter.sln` succeeds at every commit.
 3. All new tests green; existing test suite green.
 4. RAG eval harness still green (`AI_EVAL_ENABLED=1 dotnet test ...` per CLAUDE.md).

@@ -112,7 +112,7 @@ Notes:
 - `AiAgentRole.RoleId`, `AiAgentPrincipal.TenantId`, and `AiAgentRole.AssignedByUserId` reference rows in `ApplicationDbContext` (core), but EF cannot enforce cross-context navigation. They are stored as bare `Guid` values with **no EF navigation property**; integrity is enforced by command validators (`role exists`, `tenant exists`, `assigner is current tenant admin`). This matches the existing `AiUsageLog.TenantId` pattern from 4b. Database-level FK constraints are not declared because the two contexts may eventually live in separate schemas/databases — the module boundary forbids the assumption.
 - Permission resolution for an agent principal is performed by a new helper (`IAgentPermissionResolver` in `Starter.Application.Common.Interfaces`), implemented in `Starter.Infrastructure.Identity` (which already owns role-permission joins). It loads `Role` + `RolePermission` from `ApplicationDbContext`. The AI module never queries core tables directly.
 - `AiModelPricing` is versioned by `EffectiveFrom`. Cost calculation picks the pricing row with the latest `EffectiveFrom <= now` for `(Provider, Model)`. This lets superadmin set a future-dated price change without a flag day.
-- All three new entities live in `Starter.Module.AI/Domain/Entities/` and are configured in `AiDbContext`. The Core changes (audit columns + `Role.IsAgentAssignable`) live in `Starter.Domain` / `ApplicationDbContext`.
+- All four new entities (`AiAgentPrincipal`, `AiAgentRole`, `AiModelPricing`, `AiRoleMetadata`) live in `Starter.Module.AI/Domain/Entities/` and are configured in `AiDbContext`. The only Core change is the audit-log dual-attribution columns (§4.2) — agent-specific concerns (including the role-assignability flag, see §5.2) stay in the AI module.
 
 ### 4.2 Modifications
 
@@ -133,7 +133,7 @@ Notes:
 - `AgentPrincipalId` `Guid?`
 - `AgentRunId` `Guid?`
 
-This — together with `Role.IsAgentAssignable` (§5.2) — is the full extent of changes 5d-1 makes in core. Both are additive (the audit columns are nullable; the role flag defaults to `true`) and do not break any existing pipeline.
+These three nullable columns are the **only** core changes 5d-1 makes; everything else (including the role-assignability flag, see §5.2) lives in the AI module to respect the Core/Module boundary rule. The audit columns are module-agnostic metadata (in the same family as the existing `CorrelationId` column) and additive — no existing pipeline breaks.
 
 ### 4.3 Enums / errors
 
@@ -171,9 +171,11 @@ There is no login flow, no password, no email, no session, no 2FA, no refresh-to
 
 New endpoints (§7) let tenant admins assign roles to an agent principal. The role list available for assignment is the same list available for human users — `Role.IsActive AND Role.TenantId IN (currentTenant, null)`.
 
-**Constraint: agents cannot be assigned `SuperAdmin` or `TenantAdmin`.** A new `Role.IsAgentAssignable` boolean (default true; false for SuperAdmin and TenantAdmin in seed) gates this. Trying to assign returns `AgentRoleAssignmentNotPermitted`.
+**Constraint: agents cannot be assigned `SuperAdmin` or `TenantAdmin`.** A new AI-module table `AiRoleMetadata { RoleId, IsAgentAssignable }` gates this. Default behaviour when no row exists for a `RoleId`: assignable. The 5d-1 seed inserts rows for the SuperAdmin and TenantAdmin core roles with `IsAgentAssignable = false`. The validator (§7.1 `POST /assistants/{id}/roles`) consults `AiRoleMetadata` and rejects with `AgentRoleAssignmentNotPermitted` if the matched row is `false`.
 
-**Rationale:** preventing the trivial privilege escalation where a tenant admin gives the Tutor agent `TenantAdmin` and any user who can chat with Tutor inherits it through intersection (which collapses to `caller_perms ∩ tenant_admin_perms = caller_perms` — silently fine for that case, but enables the operational variant where the agent runs without a caller and acquires full admin power). Belt-and-suspenders against accidental escalation.
+**Why it lives in the AI module, not on the core `Role` entity:** "is this role assignable to a non-human principal" is an AI-specific business rule. Core knows nothing about agent principals; putting the flag on `Role` would leak module vocabulary into core and violate the Core/Module boundary rule. The `AiRoleMetadata` table is the right shape — it lets future modules (e.g., a hypothetical "service account" module) layer their own role-assignability rules in the same way without editing core.
+
+**Rationale for the constraint itself:** preventing the trivial privilege escalation where a tenant admin gives the Tutor agent `TenantAdmin` and any user who can chat with Tutor inherits it through intersection (which collapses to `caller_perms ∩ tenant_admin_perms = caller_perms` — silently fine for that case, but enables the operational variant where the agent runs without a caller and acquires full admin power). Belt-and-suspenders against accidental escalation.
 
 ### 5.3 Execution context
 
@@ -259,7 +261,7 @@ rpm     = min_nonnull(plan_rpm,     agent.RequestsPerMinute)
 
 `min_nonnull` treats `null` as "no constraint at this tier." If both tiers are null for a dimension, that dimension is uncapped (rare; superadmin oversight).
 
-Cached 60 s via `IMemoryCache` (per-instance; eventual consistency is acceptable at this TTL), invalidated explicitly when `AiAssistant` is updated or when `TenantSubscription.SubscriptionPlanId` changes (existing `SubscriptionChangedEvent`).
+Cached 60 s via the codebase's canonical `ICacheService` wrapper (matches `CachingEmbeddingService` precedent in the AI module). Invalidated explicitly when `AiAssistant` is updated (new `AssistantUpdatedEvent` raised from `SetBudget`) or when `TenantSubscription.SubscriptionPlanId` changes (existing `SubscriptionChangedEvent`). The cap accountant (§6.5) and rate limiter intentionally bypass `ICacheService` and use `IConnectionMultiplexer` directly because they need atomic Lua scripts / sorted-set ops that the wrapper does not expose; this is the only place 5d-1 reaches into raw Redis and the rationale is documented inline at the call site.
 
 ### 6.3 Plan-feature seed
 
@@ -402,11 +404,11 @@ Two migrations.
 - `AuditLog.OnBehalfOfUserId Guid?`
 - `AuditLog.AgentPrincipalId Guid?`
 - `AuditLog.AgentRunId Guid?`
-- `Role.IsAgentAssignable bool NOT NULL DEFAULT true`
-- Update Role seed: `SuperAdmin`, `TenantAdmin` → `IsAgentAssignable=false`
+- (No changes to `Role` — see §5.2: role-assignability lives in the AI module's new `AiRoleMetadata` table.)
 
 **AI-module migration** (`Starter.Module.AI`, name suggestion: `Ai_5d1_AgentIdentityEnforcement`):
-- New tables: `AiAgentPrincipal`, `AiAgentRole`, `AiModelPricing`
+- New tables: `AiAgentPrincipal`, `AiAgentRole`, `AiModelPricing`, `AiRoleMetadata`
+- Seed `AiRoleMetadata` rows for SuperAdmin and TenantAdmin core roles → `IsAgentAssignable=false` (the seeder looks them up by name in `ApplicationDbContext`)
 - `AiAssistant`: add `MonthlyCostCapUsd`, `DailyCostCapUsd`, `RequestsPerMinute`
 - `AiUsageLog`: add `AiAssistantId`, `AgentPrincipalId`, plus indexes
 - Seed: `AiModelPricing` rows for currently-supported models (OpenAI gpt-4o family, Claude Sonnet/Opus/Haiku, Ollama default = $0/$0, OpenAI `text-embedding-3-*`)
