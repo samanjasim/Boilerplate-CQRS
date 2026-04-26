@@ -33,6 +33,7 @@ using Starter.Module.AI.Application.Services.Runtime;
 using Starter.Module.AI.Infrastructure.Runtime;
 using Starter.Module.AI.Infrastructure.Services.Personas;
 using Starter.Module.AI.Infrastructure.Settings;
+using Starter.Module.AI.Infrastructure.Persistence.Seed;
 
 namespace Starter.Module.AI;
 
@@ -226,6 +227,12 @@ public sealed class AIModule : IModule
     public async Task SeedDataAsync(IServiceProvider services, CancellationToken cancellationToken = default)
     {
         using var scope = services.CreateScope();
+
+        // Always seed role metadata (idempotent — locks SuperAdmin/TenantAdmin from agent assignment)
+        var aiDb = scope.ServiceProvider.GetRequiredService<AiDbContext>();
+        var appDb = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
+        await AiRoleMetadataSeed.SeedAsync(aiDb, appDb, cancellationToken);
+
         var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
         if (!configuration.GetValue<bool>("AI:InstallDemoTemplatesOnStartup"))
             return;
@@ -235,7 +242,6 @@ public sealed class AIModule : IModule
         if (demoSlugs.Count == 0)
             return;
 
-        var appDb = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
         var tenantIds = await appDb.Tenants
             .IgnoreQueryFilters()
             .Select(t => t.Id)
