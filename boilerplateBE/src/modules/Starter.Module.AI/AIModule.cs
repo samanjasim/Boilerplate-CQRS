@@ -11,6 +11,7 @@ using Starter.Domain.Common.Access.Enums;
 using Starter.Module.AI.Application.Commands.InstallTemplate;
 using Starter.Module.AI.Application.Services;
 using Starter.Module.AI.Application.Services.Ingestion;
+using Starter.Module.AI.Application.Services.Costs;
 using Starter.Module.AI.Application.Services.Pricing;
 using Starter.Module.AI.Application.Services.Retrieval;
 using Starter.Module.AI.Constants;
@@ -20,6 +21,7 @@ using Starter.Module.AI.Infrastructure.Access;
 using Starter.Module.AI.Infrastructure.Ingestion;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Providers;
+using Starter.Module.AI.Infrastructure.Services.Costs;
 using Starter.Module.AI.Infrastructure.Services.Pricing;
 using Starter.Module.AI.Infrastructure.Services;
 using Starter.Module.AI.Application.Eval;
@@ -98,6 +100,7 @@ public sealed class AIModule : IModule
 
         // Pricing + cost enforcement (Plan 5d-1)
         services.AddScoped<IModelPricingService, ModelPricingService>();
+        services.AddScoped<ICostCapResolver, CostCapResolver>();
 
         services.AddSingleton<TokenCounter>();
 
