@@ -233,6 +233,9 @@ public sealed class AIModule : IModule
         var appDb = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
         await AiRoleMetadataSeed.SeedAsync(aiDb, appDb, cancellationToken);
 
+        // Always seed model pricing (idempotent — skips if any rows already exist)
+        await ModelPricingSeed.SeedAsync(aiDb, cancellationToken);
+
         var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
         if (!configuration.GetValue<bool>("AI:InstallDemoTemplatesOnStartup"))
             return;
