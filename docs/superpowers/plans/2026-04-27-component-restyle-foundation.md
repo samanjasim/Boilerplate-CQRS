@@ -223,11 +223,16 @@ Place it logically (e.g. near `LANDING`). The exact insertion point depends on t
 
 In `boilerplateFE/src/routes/routes.tsx`:
 
-a) Add the lazy import alongside other landing/auth lazy imports (near the top):
+a) Add the lazy import alongside other landing/auth lazy imports (near the top). **Gate the lazy import itself, not just the route entry** — otherwise the dynamic import lives at module top-level and Vite emits the Styleguide chunk into prod even with a gated route. Pattern:
 
 ```ts
-const StyleguidePage = lazy(() => import('@/features/styleguide/pages/StyleguidePage'));
+// eslint-disable-next-line react-refresh/only-export-components
+const StyleguidePage = import.meta.env.DEV
+  ? lazy(() => import('@/features/styleguide/pages/StyleguidePage'))
+  : (() => null);
 ```
+
+In prod, `StyleguidePage` resolves to `() => null` and Vite tree-shakes the dynamic import entirely — `dist/` ends up with zero Styleguide references.
 
 b) Find the `routes: RouteObject[]` array. The first entry currently registers `PublicLayout` with `LANDING` (and conditionally `PRICING`). After the closing `]` of that `children` array but before the closing `}` of that route entry, the cleanest pattern is to add `/styleguide` as a sibling top-level route — or extend the public-layout children. Use the **public-layout children** pattern so `/styleguide` is reachable when logged out:
 
