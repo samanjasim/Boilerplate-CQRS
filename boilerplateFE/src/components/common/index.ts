@@ -5,6 +5,7 @@ export * from './ListPageState';
 export * from './ListToolbar';
 export * from './ErrorBoundary';
 export * from './RouteErrorBoundary';
+export * from './ScrollToTopOnNavigate';
 export * from './ExportButton';
 export * from './InfoField';
 export * from './LanguageSwitcher';

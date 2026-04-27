@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Outlet } from 'react-router-dom';
 
-import { RouteErrorBoundary } from '@/components/common';
+import { RouteErrorBoundary, ScrollToTopOnNavigate } from '@/components/common';
 import { OnboardingWizard } from '@/features/onboarding/components/OnboardingWizard';
 import { useOnboardingCheck } from '@/features/onboarding/hooks/useOnboardingCheck';
 import { cn } from '@/lib/utils';
@@ -39,6 +39,7 @@ export function MainLayout() {
       className="aurora-canvas min-h-screen bg-background overflow-x-clip"
       data-page-style="dense"
     >
+      <ScrollToTopOnNavigate />
       <Sidebar />
       <Header />
       {/* Mobile drawer backdrop */}
