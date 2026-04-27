@@ -70,6 +70,10 @@ internal sealed class PendingApprovalService(
         // Atomic claim with FOR UPDATE SKIP LOCKED — multi-replica safe by construction.
         // We hydrate the matching entities (limit batchSize), call TryExpire to raise events,
         // then SaveChanges. Rows that another replica already grabbed are skipped.
+        // Wrap SELECT FOR UPDATE + SaveChanges in an explicit transaction so the row-lock
+        // is held until the state mutation commits — atomic by contract, not by autocommit.
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+
         var due = await db.AiPendingApprovals
             .FromSqlRaw(
                 """
@@ -81,13 +85,18 @@ internal sealed class PendingApprovalService(
                 """, batchSize)
             .ToListAsync(ct);
 
-        if (due.Count == 0) return 0;
+        if (due.Count == 0)
+        {
+            await tx.CommitAsync(ct);
+            return 0;
+        }
 
         var expired = 0;
         foreach (var row in due)
             if (row.TryExpire()) expired++;
 
         await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
         logger.LogInformation("Expired {Count} pending approvals.", expired);
         return expired;
     }

@@ -20,7 +20,7 @@ public sealed class ApproveDenyPendingActionTests
         var opts = new DbContextOptionsBuilder<AiDbContext>().UseInMemoryDatabase($"db-{Guid.NewGuid()}").Options;
         var db = new AiDbContext(opts, cu.Object);
         var svc = new PendingApprovalService(db, NullLogger<PendingApprovalService>.Instance);
-        var handler = new DenyPendingActionCommandHandler(svc, cu.Object);
+        var handler = new DenyPendingActionCommandHandler(svc, cu.Object, db);
 
         var result = await handler.Handle(new DenyPendingActionCommand(Guid.NewGuid(), ""), default);
         result.IsFailure.Should().BeTrue();

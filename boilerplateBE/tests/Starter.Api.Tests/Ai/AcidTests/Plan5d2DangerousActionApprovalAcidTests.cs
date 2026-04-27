@@ -193,7 +193,7 @@ public sealed class Plan5d2DangerousActionApprovalAcidTests
         var svc = new PendingApprovalService(db, NullLogger<PendingApprovalService>.Instance);
         var cu = new Mock<ICurrentUserService>();
         cu.SetupGet(x => x.UserId).Returns(Guid.NewGuid());
-        var handler = new DenyPendingActionCommandHandler(svc, cu.Object);
+        var handler = new DenyPendingActionCommandHandler(svc, cu.Object, db);
 
         // Act
         var result = await handler.Handle(new DenyPendingActionCommand(Guid.NewGuid(), ""), default);
