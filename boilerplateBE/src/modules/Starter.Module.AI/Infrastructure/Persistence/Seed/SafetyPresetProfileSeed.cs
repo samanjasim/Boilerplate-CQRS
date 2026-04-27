@@ -9,7 +9,7 @@ namespace Starter.Module.AI.Infrastructure.Persistence.Seed;
 /// Seeds the three platform-default `AiSafetyPresetProfile` rows (one per `SafetyPreset`).
 /// Idempotent — skips if any platform-default row (`TenantId == null`) already exists.
 /// </summary>
-internal static class SafetyPresetProfileSeed
+public static class SafetyPresetProfileSeed
 {
     public static async Task SeedAsync(AiDbContext db, CancellationToken ct = default)
     {
