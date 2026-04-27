@@ -20,6 +20,7 @@ using Starter.Abstractions.Ai;
 using Starter.Module.AI.Infrastructure.Access;
 using Starter.Module.AI.Infrastructure.Ingestion;
 using Starter.Module.AI.Infrastructure.Persistence;
+using Starter.Module.AI.Infrastructure.Identity;
 using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Services.Costs;
 using Starter.Module.AI.Infrastructure.Services.Pricing;
@@ -103,6 +104,7 @@ public sealed class AIModule : IModule
         services.AddScoped<ICostCapResolver, CostCapResolver>();
         services.AddSingleton<ICostCapAccountant, RedisCostCapAccountant>();
         services.AddSingleton<IAgentRateLimiter, RedisAgentRateLimiter>();
+        services.AddScoped<IAgentPermissionResolver, AgentPermissionResolver>();
 
         services.AddSingleton<TokenCounter>();
 

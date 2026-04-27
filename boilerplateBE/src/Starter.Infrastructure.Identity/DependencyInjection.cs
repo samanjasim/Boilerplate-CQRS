@@ -38,6 +38,10 @@ public static class DependencyInjection
         services.AddScoped<IPasswordService, PasswordService>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<IAuditContextProvider, AuditContextProvider>();
+        services.AddScoped<HttpExecutionContext>();
+        services.AddScoped<IExecutionContext>(sp =>
+            AmbientExecutionContext.Current
+                ?? (IExecutionContext)sp.GetRequiredService<HttpExecutionContext>());
         services.AddSingleton<ITotpService, TotpService>();
 
         // Authentication — composite: JWT (default) + API Key
