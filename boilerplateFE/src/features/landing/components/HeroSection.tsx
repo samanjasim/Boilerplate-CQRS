@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight, Github, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { PulseGrid } from './PulseGrid';
+import { NetworkBackground } from './NetworkBackground';
 import { ScrambleText } from './ScrambleText';
 
 export function HeroSection() {
   return (
     <section className="relative isolate">
-      <PulseGrid />
+      <NetworkBackground />
       <div className="mx-auto max-w-6xl px-7 py-20 lg:py-28 grid lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)] gap-12 items-center relative z-[1]">
         <HeroCopy />
         <div className="hidden lg:block animate-fade-up-delay-3">

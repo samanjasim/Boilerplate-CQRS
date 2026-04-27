@@ -1,5 +1,6 @@
 import { Server, Smartphone, Monitor, Layers } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { BlueprintBackground } from './BlueprintBackground';
 import { useReveal } from './useReveal';
 
 const CELLS: { label: string; name: string; meta: string; icon: LucideIcon; accent: string }[] = [
@@ -13,8 +14,9 @@ export function ArchitectureSection() {
   const head = useReveal<HTMLDivElement>();
   const cards = useReveal<HTMLDivElement>();
   return (
-    <section id="architecture" className="relative">
-      <div className="mx-auto max-w-6xl px-7 py-20 lg:py-24">
+    <section id="architecture" className="relative isolate">
+      <BlueprintBackground />
+      <div className="mx-auto max-w-6xl px-7 py-20 lg:py-24 relative z-[1]">
         <div ref={head.ref} data-revealed={head.revealed} className="reveal-up">
           <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary mb-3">
             Architecture at a glance

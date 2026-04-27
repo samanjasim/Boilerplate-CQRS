@@ -604,20 +604,25 @@ button { font-family: inherit; }
     }
   }
 
-  /* ── J4 motion: ambient pulse grid ──
-   * Squares light up across an SVG grid at staggered intervals; a periodic
-   * "scan wave" sweeps left-to-right adding rhythmic motion. CSS-only. */
-  .pulse-grid-cell {
+  /* ── J4 motion: connection network (hero) + geometric blueprint (architecture) ── */
+  .net-node {
     transform-origin: center;
-    animation: pulse-grid-fade 4.2s ease-in-out infinite;
+    animation: net-node-pulse 3.6s ease-in-out infinite;
   }
-  .pulse-grid-scan {
-    animation: pulse-grid-scan 8s linear infinite;
-    transform-origin: 0 50%;
+  .net-link {
+    animation: net-link-fade 5.4s ease-in-out infinite;
+  }
+  .blueprint-line {
+    stroke-dasharray: var(--bp-len, 240);
+    stroke-dashoffset: var(--bp-len, 240);
+    animation: blueprint-draw 14s ease-in-out infinite;
+  }
+  .blueprint-node {
+    animation: net-node-pulse 4s ease-in-out infinite;
   }
   @media (prefers-reduced-motion: reduce) {
-    .pulse-grid-cell { animation: none; opacity: 0.18; }
-    .pulse-grid-scan { animation: none; opacity: 0; }
+    .net-node, .net-link, .blueprint-line, .blueprint-node { animation: none; }
+    .blueprint-line { stroke-dashoffset: 0; }
   }
 
   /* ── J4 motion: snap-in (overshoot scale on scroll-reveal) ── */
@@ -694,17 +699,21 @@ button { font-family: inherit; }
   50%, 100% { opacity: 0; }
 }
 
-@keyframes pulse-grid-fade {
-  0%, 88%, 100% { opacity: 0.10; }
-  44%           { opacity: 0.85; }
+@keyframes net-node-pulse {
+  0%, 100% { transform: scale(1);   opacity: 0.55; }
+  50%      { transform: scale(1.6); opacity: 1; }
 }
 
-@keyframes pulse-grid-scan {
-  0%   { transform: translateX(-30%); opacity: 0; }
-  10%  { opacity: 0.7; }
-  60%  { opacity: 0.7; }
-  90%  { opacity: 0; }
-  100% { transform: translateX(130%); opacity: 0; }
+@keyframes net-link-fade {
+  0%, 100% { stroke-opacity: 0.10; }
+  50%      { stroke-opacity: 0.50; }
+}
+
+@keyframes blueprint-draw {
+  0%   { stroke-dashoffset: var(--bp-len, 240); }
+  35%  { stroke-dashoffset: 0; }
+  65%  { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: calc(-1 * var(--bp-len, 240)); }
 }
 
 @keyframes aurora-drift-counter {
