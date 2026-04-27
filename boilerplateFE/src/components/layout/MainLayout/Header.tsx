@@ -46,11 +46,12 @@ export function Header() {
       {/* Left side: back button or mobile menu toggle */}
       <div className="flex items-center gap-3">
         <Button
+          type="button"
           variant="ghost"
           size="icon"
           onClick={toggleSidebar}
           className="lg:hidden"
-          aria-label={sidebarOpen ? 'Close navigation' : 'Open navigation'}
+          aria-label={sidebarOpen ? t('nav.toggle.close') : t('nav.toggle.open')}
           aria-expanded={sidebarOpen}
         >
           {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}

@@ -157,6 +157,10 @@
       "people": "People",
       "content": "Content",
       "platform": "Platform"
+    },
+    "toggle": {
+      "open": "Open navigation",
+      "close": "Close navigation"
     }
   },
   "header": {

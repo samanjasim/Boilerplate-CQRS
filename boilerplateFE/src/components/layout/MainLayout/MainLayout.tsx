@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Outlet } from 'react-router-dom';
 
 import { RouteErrorBoundary } from '@/components/common';
@@ -15,6 +16,7 @@ export function MainLayout() {
   const sidebarOpen = useUIStore(selectSidebarOpen);
   const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
   const { showOnboarding, completeOnboarding, remindLater } = useOnboardingCheck();
+  const { t } = useTranslation();
 
   // Lock body scroll while the mobile drawer is open. The `lg:hidden` backdrop
   // already gates the visual; this prevents the page behind from scrolling on touch.
@@ -41,7 +43,7 @@ export function MainLayout() {
       {sidebarOpen && (
         <button
           type="button"
-          aria-label="Close navigation"
+          aria-label={t('nav.toggle.close')}
           className="fixed inset-0 z-30 bg-background/60 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />

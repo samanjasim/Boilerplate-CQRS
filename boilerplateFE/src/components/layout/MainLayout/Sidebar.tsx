@@ -91,7 +91,10 @@ export function Sidebar() {
               groupIndex > 0 && (
                 isCollapsed
                   ? 'mx-3 my-2 border-t border-border/40'
-                  : 'mt-4 border-t border-border/40 pt-2'
+                  : cn(
+                      'mt-4 pt-2',
+                      groupIndex > 1 && 'border-t border-border/40'
+                    )
               )
             )}
           >
