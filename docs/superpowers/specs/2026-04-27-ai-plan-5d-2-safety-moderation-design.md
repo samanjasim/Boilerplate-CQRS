@@ -223,6 +223,21 @@ public interface IExecutionContext
 
 `InputBlocked` and `ModerationProviderUnavailable` short-circuit *before* the inner runtime is called (no cost claim). `OutputBlocked` happens after the inner runtime returns; cost is recorded as actual.
 
+### 4.7 Approval lifecycle domain events
+
+Four new events raised by `AiPendingApproval` state transitions. All implement `INotification` (MediatR domain event, in-process). The Communication module subscribes via `INotificationHandler<T>` to convert each into channel-aware notifications (see §11).
+
+| Event | Raised when | Payload |
+|---|---|---|
+| `AgentApprovalPendingEvent` | `IPendingApprovalService.CreateAsync` after `SaveChangesAsync` | `TenantId, ApprovalId, AssistantId, AssistantName, ToolName, Reason?, RequestingUserId?, ConversationId?, AgentTaskId?, ExpiresAt` |
+| `AgentApprovalApprovedEvent` | `AiPendingApproval.Approve` | `TenantId, ApprovalId, AssistantId, AssistantName, ToolName, RequestingUserId?, DecisionUserId, DecisionReason?, ConversationId?` |
+| `AgentApprovalDeniedEvent` | `AiPendingApproval.Deny` | same shape as Approved + `DecisionReason` (mandatory) |
+| `AgentApprovalExpiredEvent` | `AiPendingApproval.Expire` (called by the expiration job) | `TenantId, ApprovalId, AssistantId, AssistantName, ToolName, RequestingUserId?, ExpiredAt` |
+
+These events are pure in-process notifications — they do not cross the MassTransit bus. Per CLAUDE.md's outbox rule, MediatR handlers must not inject `IPublishEndpoint`. Cross-replica delivery for notifications happens inside the Communication module via its existing `MessageDispatcher` + outbox path, which is the documented seam.
+
+A single `IPendingApprovalService` orchestrates the entity transition + event raising + `ISender.Send` re-dispatch (on Approve), so individual command handlers stay thin. All status transitions on `AiPendingApproval` use **optimistic concurrency** — `Approve` / `Deny` / `Expire` use a `WHERE status = Pending` clause in the `SaveChanges` projection so a race between an admin clicking "Approve" and the expiration job catching the same row resolves cleanly: the second writer gets `Result.Failure(PendingApproval.NotPending)` and a 409 Conflict.
+
 ---
 
 ## 5. Configuration
@@ -379,8 +394,8 @@ Resolved profile carries `FailureMode`. On `IContentModerator.ScanAsync` excepti
 
 | Verb | Path | Permission | Purpose |
 |---|---|---|---|
-| GET | `` | `Ai.Agents.ApproveAction` | Inbox: paginated `AiPendingApproval`s for current tenant. Filters: `status`, `assistantId?`. |
-| GET | `/{id}` | `Ai.Agents.ApproveAction` | Detail: full args, conversation/task linkage, expiration. |
+| GET | `` | `Ai.Agents.ViewApprovals` | Inbox: paginated `AiPendingApproval`s. Users with only `ViewApprovals` see rows where `RequestingUserId == caller`. Users with `Ai.Agents.ApproveAction` see all rows in their tenant (or all tenants for SuperAdmin). Filters: `status`, `assistantId?`. |
+| GET | `/{id}` | `Ai.Agents.ViewApprovals` | Detail: full args, conversation/task linkage, expiration. Same row-level scoping as the list endpoint. |
 | POST | `/{id}/approve` | `Ai.Agents.ApproveAction` | Approve + execute the tool. Returns the conversation message produced. |
 | POST | `/{id}/deny` | `Ai.Agents.ApproveAction` | Deny with mandatory reason. |
 
@@ -409,15 +424,16 @@ All handlers return `Result<T>` and follow the `private set` + static `Create` f
 
 ### 7.3 Permissions
 
-Three new entries in `AiPermissions`:
+Four new entries in `AiPermissions`:
 - `Ai.SafetyProfiles.Manage`
 - `Ai.Agents.ApproveAction`
+- `Ai.Agents.ViewApprovals`
 - `Ai.Moderation.View`
 
 Default role bindings (`AIModule.GetDefaultRolePermissions`):
-- **SuperAdmin** — all three.
-- **Admin** — all three (tenant-scoped at handler level for `SafetyProfiles.Manage`).
-- **User** — none. (`Ai.Agents.ApproveOwnAction` for end-users is **out of scope**, deferred to 7b feedback.)
+- **SuperAdmin** — all four.
+- **Admin** — all four (tenant-scoped at handler level for `SafetyProfiles.Manage`).
+- **User** — `Ai.Agents.ViewApprovals` only. End users see their own pending approvals (read-only) so they know an action is gated, but cannot approve/deny. (`Ai.Agents.ApproveOwnAction` for end-user self-approval is **out of scope**, deferred to 7b feedback.)
 
 ### 7.4 Streaming SSE frame additions
 
@@ -429,11 +445,51 @@ Default role bindings (`AIModule.GetDefaultRolePermissions`):
 
 ## 8. Background services
 
-`AiPendingApprovalExpirationJob` — `IHostedService` registered via `services.AddHostedService<...>()` mirroring `AiCostReconciliationJob`. Tick interval 5 minutes. Per tick:
+### 8.1 `AiPendingApprovalExpirationJob`
 
-1. Query `AiPendingApproval` where `status=Pending AND expires_at < now()`.
-2. For each: invoke `IPendingApprovalService.ExpireAsync(id)` which sets status=Expired, writes `AuditLog` row, and (if `ConversationId` is set) appends a `tool` message with `"approval expired"` so the agent loop on the next user turn sees the closure.
-3. Bounded batch size 100 per tick to avoid long-running transactions.
+`IHostedService` registered via `services.AddHostedService<...>()`, mirroring `AiCostReconciliationJob` from 5d-1. Five-minute tick. Per tick:
+
+1. **Atomic claim + expire.** Single SQL statement using `UPDATE ... RETURNING`:
+   ```sql
+   UPDATE ai_pending_approvals
+   SET status = 3 /* Expired */, decided_at = now(), modified_at = now()
+   WHERE id IN (
+       SELECT id FROM ai_pending_approvals
+       WHERE status = 0 /* Pending */ AND expires_at < now()
+       ORDER BY expires_at ASC
+       LIMIT 100
+       FOR UPDATE SKIP LOCKED
+   )
+   RETURNING id, tenant_id, assistant_id, agent_principal_id, conversation_id, agent_task_id, requesting_user_id, tool_name, expires_at;
+   ```
+   Skip-locked + atomic update is the gate. No additional locking needed.
+
+2. **Per expired row:** raise `AgentApprovalExpiredEvent` (in-process MediatR notification → Communication module sends notification per §11; webhook event `ai.agent.approval.expired` published in the same handler). If `ConversationId` is set, append a `tool` message containing `"approval expired"` so the agent loop on the next user turn sees the closure.
+
+3. **AuditLog row** per expired approval, written via the existing `AuditLogAgentAttributionInterceptor` from 5d-1 (dual-attribution: agent principal + null caller, since this is a system action).
+
+### 8.2 Scaling, idempotency, and multi-replica safety
+
+The API runs as multiple replicas behind a load balancer. Every replica starts the hosted service. Three properties make this safe by construction:
+
+| Property | Mechanism |
+|---|---|
+| **Multi-replica safe** | The `UPDATE ... WHERE status = Pending FOR UPDATE SKIP LOCKED ... RETURNING` pattern guarantees each pending row is processed by exactly one replica per tick. Replicas that lose the race for a row simply move on to the next. No leader election, no Redis lock, no Postgres advisory lock. |
+| **Crash-safe** | Mid-tick crash leaves any partially-updated rows in `Pending` (transaction rolled back). Next tick on any replica re-claims. No "stuck in Expiring" intermediate state. |
+| **Bounded blast radius** | `LIMIT 100` per tick caps transaction duration. With 5-min ticks and N replicas this is `N × 100 × 12 = 1200N` expirations/hour — orders of magnitude above any plausible production volume. |
+
+**Why no distributed lock.** Distributed locks (Redis SETNX with TTL, Postgres advisory lock, leader election via heartbeat) are required when the work itself isn't naturally idempotent (e.g., reading a counter, computing, writing it back). Here the work IS the atomic SQL statement; concurrent execution is provably correct. Adding a lock would introduce a *new* failure mode (lock-holder dies → 5-min freeze on expirations) without removing any existing one.
+
+**Why bounded batch size.** Holding a row-level lock on 1000+ rows for several seconds while we publish events and write audit rows would block any concurrent admin trying to approve/deny one of those same rows. 100 rows/tick keeps each transaction sub-second. Domain events fire *outside* the transaction (after `SaveChangesAsync`), so notification dispatch latency doesn't affect lock duration.
+
+**Future scaling lever.** If approval volume ever reaches the point where 100/tick can't keep up:
+- Drop tick interval to 1 minute (12000N/hour without code changes).
+- Increase `LIMIT` to 500 (reasonable as long as event-publishing stays fast).
+- Move event publication to the integration-event outbox (already wired for the Communication module's downstream consumers — current 5d-2 design uses in-process `INotification` for simplicity).
+
+### 8.3 Other 5d-2-related background work
+
+No other hosted services added in 5d-2. The cost-reconciliation, tool-registry-sync, and content-ingestion background paths from earlier plans are untouched.
 
 ---
 
@@ -488,14 +544,61 @@ Live under `boilerplateBE/tests/Starter.Api.Tests/Ai/AcidTests/Plan5d2*.cs`, mir
 
 ---
 
-## 11. Cross-references
+## 11. Cross-module integration
 
-- **5b (Persona)** — Persona's `SafetyPreset` is the inheritance source for the agent override. Resolution order in §5.3 must stay aligned.
-- **5d-1 (Identity + Enforcement)** — Decorator stack order in §3 layers on top of `CostCapEnforcingAgentRuntime`. `AgentExecutionScope` / `IExecutionContext` carry the approval grant flag for re-dispatch.
+### 11.1 Communication module (notifications)
+
+5d-2 raises the four `AgentApproval*Event` MediatR notifications from §4.7. The Communication module subscribes to them via a new `CommunicationAiEventHandler : INotificationHandler<AgentApprovalPendingEvent>, INotificationHandler<AgentApprovalApprovedEvent>, INotificationHandler<AgentApprovalDeniedEvent>, INotificationHandler<AgentApprovalExpiredEvent>` (sibling to the existing `Communication*EventHandler` files). For each event the handler:
+
+1. **Resolves recipients.**
+   - `AgentApprovalPendingEvent` → all tenant users with `Ai.Agents.ApproveAction` (so admins see the inbox alert). The requesting user is *not* notified — they already saw the approval card inline in chat.
+   - `AgentApprovalApprovedEvent` / `AgentApprovalDeniedEvent` → the `RequestingUserId` (chat caller). For operational agents (no requesting user) → tenant users with `Ai.Agents.ApproveAction`, so they see what their colleague decided.
+   - `AgentApprovalExpiredEvent` → the `RequestingUserId` if present, otherwise tenant approvers.
+
+2. **Builds the event-data dictionary** (`assistantName`, `toolName`, `reason`, `approvalId`, deep-link URL `/ai/agents/approvals/{id}`, `expiresAt`) and calls `ITriggerRuleEvaluator.EvaluateAsync(eventName, tenantId, requestingUserId, eventData, ct)`.
+
+3. **Event keys registered with the trigger-rule system** (seeded once, no migration cost):
+   - `ai.agent.approval.pending`
+   - `ai.agent.approval.approved`
+   - `ai.agent.approval.denied`
+   - `ai.agent.approval.expired`
+
+   Tenant admins configure preferred channels (email, in-app, push) per event key via the existing notification-preferences UI. **No 5d-2 UI work required** — the existing Communication admin pages already handle channel routing.
+
+4. **Default channel routing seed.** `RequiredNotification` rows are seeded for the four event keys with `NotificationChannel.InApp` as the default for every tenant (so admins see something in the bell icon out of the box). Email is opt-in per tenant. The seed is idempotent.
+
+The Communication module's existing `MessageDispatcher` + outbox pattern handles the actual delivery (cross-replica safe, persistent, retry-aware). This is the single integration seam — 5d-2 does not add direct email/push code paths.
+
+### 11.2 Webhook event integration (existing AI module pattern)
+
+Mirroring `ai.chat.completed`, `ai.quota.exceeded`, `ai.rag.completed/degraded/failed` already published by `IWebhookPublisher` from `ChatExecutionService`, 5d-2 adds:
+
+| Event name | Published from | Payload |
+|---|---|---|
+| `ai.moderation.blocked` | `ContentModerationEnforcingAgentRuntime` after writing the moderation event row | `{ tenantId, assistantId, agentPrincipalId?, conversationId?, stage, preset, categories, reason }` |
+| `ai.agent.approval.pending` | `IPendingApprovalService.CreateAsync` | `{ tenantId, approvalId, assistantId, toolName, reason?, requestingUserId?, expiresAt }` |
+| `ai.agent.approval.approved` | `ApprovePendingActionCommandHandler` | `{ tenantId, approvalId, decisionUserId, decidedAt }` |
+| `ai.agent.approval.denied` | `DenyPendingActionCommandHandler` | `{ tenantId, approvalId, decisionUserId, decisionReason, decidedAt }` |
+| `ai.agent.approval.expired` | `AiPendingApprovalExpirationJob` | `{ tenantId, approvalId, expiredAt }` |
+
+All publish failures are caught + logged warnings (fire-and-forget), matching the existing pattern in `ChatExecutionService`. Tenants subscribe via the existing `WebhookEndpoint` admin page — no 5d-2 UI work required.
+
+### 11.3 Adjacent plans (forward and backward)
+
+- **5b (Persona)** — `Persona.SafetyPreset` is the inheritance source for the agent override. Resolution order in §5.3 stays aligned.
+- **5d-1 (Identity + Enforcement)** — Decorator stack in §3 wraps on top of `CostCapEnforcingAgentRuntime`. `AgentExecutionScope` / `IExecutionContext` extended in §4.4 to carry the approval grant flag.
 - **5e (Bundled Platform Agents)** — The `Teacher Tutor` and `Brand Content Agent` starter templates ship with explicit `SafetyPresetOverride` set in the template definition.
-- **5f (Admin AI Settings backend)** — Will surface tenant-level safety preset defaults and per-widget API keys; the threshold-profile editing UI lands here. 5d-2 backend endpoints in §7.1 are sufficient for the Plan 6 chat sidebar.
+- **5f (Admin AI Settings backend)** — Surfaces tenant-level safety preset defaults; the threshold-profile editing UI lands here. 5d-2 backend endpoints in §7.1 are sufficient for the Plan 6 chat sidebar to render approval cards.
 - **6 (Chat Sidebar UI)** — Renders `awaiting_approval` SSE frame as inline approval card; renders `moderation_blocked` as a refusal toast.
 - **7b (Advanced Admin Pages)** — Content Moderation Config UI binds to §7.1 endpoints. Moderation event dashboard binds to `GetModerationEventsQuery`.
+- **11 (Marketplace + Cost Governance)** — Future: per-tenant moderation budgets if LLM-based moderation is ever enabled. Not relevant in 5d-2 (OpenAI moderation is free).
+
+### 11.4 Modules NOT changed by 5d-2
+
+- **Billing** — no changes. Plan ceilings (`SubscriptionPlan.Features` JSON) added in 5d-1 are sufficient; 5d-2 introduces no new plan-level limits.
+- **Webhooks** — no controller / DI changes; only the new event-name strings published through the existing `IWebhookPublisher`.
+- **Notifications** (core, not the Communication module) — the core `Notification` / `NotificationPreference` entities are not extended. 5d-2 routes everything through Communication's `TriggerRuleEvaluator`, which already writes to the core Notification table for the in-app channel.
+- **Audit Logs** — no schema changes. Approve/deny/expire decisions write via the existing 5d-1 `AuditLogAgentAttributionInterceptor`.
 
 ---
 
@@ -510,6 +613,7 @@ Live under `boilerplateBE/tests/Starter.Api.Tests/Ai/AcidTests/Plan5d2*.cs`, mir
 - **Mobile chat UI for pending approvals.** Plan 9.
 - **Custom presets beyond `Standard` / `ChildSafe` / `ProfessionalModerated`.** Preset is a fixed enum. Tenant-tunable threshold profiles are the only configurability.
 - **Audit-log integration of moderation events.** Moderation events live in their own table; they are *not* duplicated into `AuditLog`. Approve/deny *decisions* on `AiPendingApproval` *do* write to `AuditLog` (handled by the existing `AuditLogAgentAttributionInterceptor`).
+- **Per-block user notifications for moderation events.** `ai.moderation.blocked` is published as a webhook (so ops can wire alerting) but does **not** trigger user-visible notifications via the Communication module. Volume could be high and noisy; tenants who want this can register their own trigger rule against the webhook. Revisit on real-world feedback.
 - **PII redactor false-negative tuning beyond the canonical formats.** v1 ships email, E.164 phone, SSN-style, Luhn-validated card, IBAN. Locale-specific government-id formats are deferred.
 
 ---
