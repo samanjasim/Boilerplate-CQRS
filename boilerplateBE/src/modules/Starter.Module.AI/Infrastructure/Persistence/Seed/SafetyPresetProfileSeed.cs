@@ -24,7 +24,7 @@ public static class SafetyPresetProfileSeed
             """{"sexual":0.5,"hate":0.5,"violence":0.5,"self-harm":0.3,"harassment":0.5}""";
         const string emptyBlocked = "[]";
         const string childSafeBlocked =
-            """["sexual-minors","violence-graphic"]""";
+            """["sexual/minors","violence/graphic"]""";
 
         db.AiSafetyPresetProfiles.AddRange(
             AiSafetyPresetProfile.Create(
