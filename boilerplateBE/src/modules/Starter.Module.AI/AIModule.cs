@@ -33,9 +33,11 @@ using Starter.Module.AI.Infrastructure.Eval.Fixtures;
 using Starter.Module.AI.Infrastructure.Retrieval;
 using Starter.Module.AI.Infrastructure.Retrieval.Classification;
 using Starter.Module.AI.Infrastructure.Retrieval.Resilience;
+using Starter.Module.AI.Application.Services.Moderation;
 using Starter.Module.AI.Application.Services.Personas;
 using Starter.Module.AI.Application.Services.Runtime;
 using Starter.Module.AI.Infrastructure.Runtime;
+using Starter.Module.AI.Infrastructure.Services.Moderation;
 using Starter.Module.AI.Infrastructure.Services.Personas;
 using Starter.Module.AI.Infrastructure.Settings;
 using Starter.Module.AI.Infrastructure.Persistence.Seed;
@@ -112,6 +114,9 @@ public sealed class AIModule : IModule
         services.AddSingleton<IAgentRateLimiter, RedisAgentRateLimiter>();
         services.AddScoped<IAgentPermissionResolver, AgentPermissionResolver>();
         services.AddHostedService<Infrastructure.Background.AiCostReconciliationJob>();
+
+        // Moderation + safety profile resolution (Plan 5d-2)
+        services.AddScoped<ISafetyProfileResolver, SafetyProfileResolver>();
 
         services.AddSingleton<TokenCounter>();
 
