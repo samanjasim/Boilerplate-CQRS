@@ -30,7 +30,7 @@ internal sealed class ModelPricingService(
         string model,
         CancellationToken ct = default)
     {
-        var key = $"ai:pricing:{provider}:{model}";
+        var key = BuildKey(provider, model);
         var pricing = await cache.GetOrSetAsync(key, async () =>
         {
             var now = DateTimeOffset.UtcNow;
@@ -50,6 +50,12 @@ internal sealed class ModelPricingService(
 
         return (pricing.Input, pricing.Output);
     }
+
+    public Task InvalidateAsync(AiProviderType provider, string model, CancellationToken ct = default) =>
+        cache.RemoveAsync(BuildKey(provider, model), ct);
+
+    private static string BuildKey(AiProviderType provider, string model) =>
+        $"ai:pricing:{provider}:{model}";
 
     private sealed record PricingEntry(decimal Input, decimal Output);
 }

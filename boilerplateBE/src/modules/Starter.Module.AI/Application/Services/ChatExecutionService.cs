@@ -116,6 +116,25 @@ internal sealed class ChatExecutionService(
             return Result.Failure<AiChatReplyDto>(AiErrors.ProviderError("cancelled"));
         }
 
+        // Plan 5d-1: surface cost-cap and rate-limit refusals as proper errors so the
+        // controller maps them to HTTP 429 (via ErrorType.TooManyRequests). Without this
+        // the run silently completes with empty content + 0-token AiUsageLog + 200 OK.
+        if (runResult.Status == AgentRunStatus.CostCapExceeded)
+        {
+            await FailTurnAsync(state);
+            return Result.Failure<AiChatReplyDto>(Error.TooManyRequests(
+                "AiAgent.CostCapExceeded",
+                runResult.TerminationReason ?? "Cost cap exceeded."));
+        }
+
+        if (runResult.Status == AgentRunStatus.RateLimitExceeded)
+        {
+            await FailTurnAsync(state);
+            return Result.Failure<AiChatReplyDto>(Error.TooManyRequests(
+                "AiAgent.RateLimitExceeded",
+                runResult.TerminationReason ?? "Rate limit exceeded."));
+        }
+
         var finalContent = runResult.Status switch
         {
             AgentRunStatus.Completed => runResult.FinalContent ?? "",
@@ -261,6 +280,30 @@ internal sealed class ChatExecutionService(
             {
                 Code = "Ai.ProviderError",
                 Message = runResult.TerminationReason ?? "provider error"
+            });
+            yield break;
+        }
+
+        // Plan 5d-1: emit explicit error frames for cap/rate-limit refusals so the
+        // streaming client surfaces the correct error and doesn't get a phantom done event.
+        if (runResult.Status == AgentRunStatus.CostCapExceeded)
+        {
+            await FailTurnAsync(state);
+            yield return new ChatStreamEvent("error", new
+            {
+                Code = "AiAgent.CostCapExceeded",
+                Message = runResult.TerminationReason ?? "Cost cap exceeded."
+            });
+            yield break;
+        }
+
+        if (runResult.Status == AgentRunStatus.RateLimitExceeded)
+        {
+            await FailTurnAsync(state);
+            yield return new ChatStreamEvent("error", new
+            {
+                Code = "AiAgent.RateLimitExceeded",
+                Message = runResult.TerminationReason ?? "Rate limit exceeded."
             });
             yield break;
         }
@@ -528,6 +571,19 @@ internal sealed class ChatExecutionService(
 
         var estimatedCost = EstimateCost(resolvedProvider, inputTokens, outputTokens);
 
+        // Plan 5d-1: stamp the usage log with the assistant + paired agent principal so
+        // GetAgentUsage queries and AiCostReconciliationJob can attribute spend to the
+        // right agent. Lookup is one-shot per turn (small) and the FK is nullable to
+        // preserve compatibility with non-agent code paths.
+        Guid? agentPrincipalId = null;
+        if (state.Assistant.Id != Guid.Empty)
+        {
+            agentPrincipalId = await context.AiAgentPrincipals
+                .Where(p => p.AiAssistantId == state.Assistant.Id)
+                .Select(p => (Guid?)p.Id)
+                .FirstOrDefaultAsync(ct);
+        }
+
         var usageLog = AiUsageLog.Create(
             tenantId: currentUser.TenantId,
             userId: currentUser.UserId!.Value,   // safe — PrepareTurnAsync already guarded
@@ -537,7 +593,9 @@ internal sealed class ChatExecutionService(
             outputTokens: outputTokens,
             estimatedCost: estimatedCost,
             requestType: AiRequestType.Chat,
-            conversationId: state.Conversation.Id);
+            conversationId: state.Conversation.Id,
+            aiAssistantId: state.Assistant.Id,
+            agentPrincipalId: agentPrincipalId);
 
         context.AiUsageLogs.Add(usageLog);
 

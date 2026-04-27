@@ -62,8 +62,14 @@ public sealed class AIModule : IModule
         services.Configure<AiRagEvalSettings>(
             configuration.GetSection(AiRagEvalSettings.SectionName));
 
-        services.AddDbContext<AiDbContext>(options =>
+        services.AddDbContext<AiDbContext>((sp, options) =>
         {
+            // Subscribe to all registered ISaveChangesInterceptors (DomainEventDispatcher,
+            // IntegrationEventOutbox, AuditLogAgentAttribution, ...). Without this the AI
+            // module's own AssistantUpdatedEvent never publishes and downstream cache
+            // invalidation handlers never fire. Matches every other module's registration.
+            options.AddInterceptors(sp.GetServices<Microsoft.EntityFrameworkCore.Diagnostics.ISaveChangesInterceptor>());
+
             options.UseNpgsql(
                 configuration.GetConnectionString("DefaultConnection"),
                 npgsqlOptions =>

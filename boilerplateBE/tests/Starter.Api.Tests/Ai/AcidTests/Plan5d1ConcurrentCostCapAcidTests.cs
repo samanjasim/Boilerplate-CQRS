@@ -22,17 +22,12 @@ public sealed class Plan5d1ConcurrentCostCapAcidTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        try
-        {
-            _multiplexer = await ConnectionMultiplexer.ConnectAsync(RedisConn);
-            _sut = new RedisCostCapAccountant(_multiplexer, NullLogger<RedisCostCapAccountant>.Instance);
-        }
-        catch (RedisConnectionException)
-        {
-            // Skip: Redis not reachable in this environment.
-            _multiplexer = null;
-            _sut = null;
-        }
+        // Plan 5d-1 acid tests require the docker-compose `starter-redis` instance on
+        // localhost:6379. We fail hard if Redis is unreachable rather than silently skip:
+        // a missing instance means cap enforcement is untested and CI MUST surface that.
+        // Run `docker compose up -d redis` from boilerplateBE/ before these tests.
+        _multiplexer = await ConnectionMultiplexer.ConnectAsync(RedisConn);
+        _sut = new RedisCostCapAccountant(_multiplexer, NullLogger<RedisCostCapAccountant>.Instance);
     }
 
     public Task DisposeAsync()
@@ -41,16 +36,9 @@ public sealed class Plan5d1ConcurrentCostCapAcidTests : IAsyncLifetime
         return Task.CompletedTask;
     }
 
-    private static void RequireRedis(RedisCostCapAccountant? sut)
-    {
-        if (sut is null)
-            Skip.Inconclusive("Redis at localhost:6379 not reachable.");
-    }
-
     [Fact]
     public async Task Acid_M2_1_Concurrent_Claims_Never_Exceed_Cap()
     {
-        RequireRedis(_sut);
         var tenant = Guid.NewGuid();
         var assistant = Guid.NewGuid();
         const decimal cap = 5m;
@@ -72,7 +60,6 @@ public sealed class Plan5d1ConcurrentCostCapAcidTests : IAsyncLifetime
     [Fact]
     public async Task Acid_M2_2_Rollback_Restores_Counter()
     {
-        RequireRedis(_sut);
         var tenant = Guid.NewGuid();
         var assistant = Guid.NewGuid();
 
@@ -88,7 +75,6 @@ public sealed class Plan5d1ConcurrentCostCapAcidTests : IAsyncLifetime
     [Fact]
     public async Task Acid_M2_3_RecordActual_Adjusts_Counter_By_Delta()
     {
-        RequireRedis(_sut);
         var tenant = Guid.NewGuid();
         var assistant = Guid.NewGuid();
 
@@ -103,7 +89,6 @@ public sealed class Plan5d1ConcurrentCostCapAcidTests : IAsyncLifetime
     [Fact]
     public async Task Acid_M2_4_Refusal_Does_Not_Increment_Counter()
     {
-        RequireRedis(_sut);
         var tenant = Guid.NewGuid();
         var assistant = Guid.NewGuid();
 
@@ -114,23 +99,5 @@ public sealed class Plan5d1ConcurrentCostCapAcidTests : IAsyncLifetime
         refused.CurrentUsd.Should().Be(4m); // unchanged after refusal
         var current = await _sut.GetCurrentAsync(tenant, assistant, CapWindow.Monthly);
         current.Should().Be(4m);
-    }
-}
-
-/// <summary>Helper that mirrors xUnit's Skip semantics. xUnit doesn't support skip-from-fact,
-/// so we throw a SkipException-like sentinel (`Xunit.SkipException` lives in Xunit.SkippableFact;
-/// the test project may not have that). For our purposes, treat unreachable Redis as a
-/// silent pass — the assertions in `RequireRedis` simply throw a clear message that surfaces
-/// in CI logs but doesn't fail the test run.</summary>
-internal static class Skip
-{
-    public static void Inconclusive(string reason)
-    {
-        // xUnit treats throw-from-fact as failure; better to let the test no-op when
-        // Redis isn't present. Using xUnit's Skip pattern requires Xunit.SkippableFact.
-        // We log and pass.
-        Console.WriteLine($"[Skip] {reason}");
-        // To actually skip in xUnit you'd need a SkippableFact attribute; without it,
-        // we just no-op. The test will appear as Passed but with the message logged.
     }
 }

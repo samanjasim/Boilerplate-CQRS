@@ -1,6 +1,7 @@
 using MediatR;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Queries.GetModelPricing;
+using Starter.Module.AI.Application.Services.Pricing;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Shared.Results;
@@ -9,7 +10,8 @@ namespace Starter.Module.AI.Application.Commands.UpsertModelPricing;
 
 internal sealed class UpsertModelPricingCommandHandler(
     AiDbContext db,
-    ICurrentUserService currentUser) : IRequestHandler<UpsertModelPricingCommand, Result<ModelPricingDto>>
+    ICurrentUserService currentUser,
+    IModelPricingService pricingCache) : IRequestHandler<UpsertModelPricingCommand, Result<ModelPricingDto>>
 {
     public async Task<Result<ModelPricingDto>> Handle(UpsertModelPricingCommand request, CancellationToken ct)
     {
@@ -29,6 +31,10 @@ internal sealed class UpsertModelPricingCommandHandler(
 
         db.AiModelPricings.Add(entry);
         await db.SaveChangesAsync(ct);
+
+        // Invalidate the pricing cache so the new rate is picked up immediately rather
+        // than waiting for the 5-minute TTL.
+        await pricingCache.InvalidateAsync(entry.Provider, entry.Model, ct);
 
         return Result.Success(new ModelPricingDto(
             entry.Id,

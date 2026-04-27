@@ -29,10 +29,14 @@ internal sealed class AssignAgentRoleCommandHandler(
             return Result.Failure(Error.NotFound("Role.NotFound", $"Role '{request.RoleId}' not found."));
 
         // Plan 5d-1: AiRoleMetadata gates which roles can be assigned to agents.
-        // Default behaviour when no row: assignable. Explicit `false` blocks.
+        // Default behaviour when no row exists: NOT assignable (fail-closed). The seed
+        // inserts an explicit row for every core role; locked roles (SuperAdmin, TenantAdmin)
+        // are seeded with IsAgentAssignable=false. A new core role created at runtime
+        // requires an explicit AiRoleMetadata insert before it can be assigned to agents,
+        // matching the "explicit allow" pattern used elsewhere in the security model.
         var meta = await aiDb.AiRoleMetadataEntries
             .FirstOrDefaultAsync(m => m.RoleId == request.RoleId, ct);
-        if (meta is { IsAgentAssignable: false })
+        if (meta is null || !meta.IsAgentAssignable)
             return Result.Failure(AiAgentErrors.AgentRoleAssignmentNotPermitted(request.RoleId));
 
         // Idempotent: if assignment already exists, return success.

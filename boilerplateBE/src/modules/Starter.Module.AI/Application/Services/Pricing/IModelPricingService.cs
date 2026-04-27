@@ -20,4 +20,11 @@ public interface IModelPricingService
         AiProviderType provider,
         string model,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Removes the cached pricing entry for `(provider, model)`. Called by the upsert
+    /// and deactivate handlers so superadmin pricing changes propagate without a 5-minute
+    /// TTL lag.
+    /// </summary>
+    Task InvalidateAsync(AiProviderType provider, string model, CancellationToken ct = default);
 }

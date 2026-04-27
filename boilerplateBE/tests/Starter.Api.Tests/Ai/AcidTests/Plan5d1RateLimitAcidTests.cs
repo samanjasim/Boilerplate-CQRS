@@ -11,8 +11,9 @@ namespace Starter.Api.Tests.Ai.AcidTests;
 /// - Up to `rpm` requests within 60 s are admitted; the next is refused.
 /// - After the window slides past, capacity is restored.
 ///
-/// Connects to docker-compose redis on localhost:6379. No-ops gracefully when
-/// redis is unreachable.
+/// Requires the docker-compose `starter-redis` instance on localhost:6379. The fixture
+/// fails hard if Redis is unreachable — silent skip would hide a critical rate-limit
+/// regression. Run `docker compose up -d redis` from boilerplateBE/ before these tests.
 /// </summary>
 public sealed class Plan5d1RateLimitAcidTests : IAsyncLifetime
 {
@@ -22,16 +23,8 @@ public sealed class Plan5d1RateLimitAcidTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        try
-        {
-            _multiplexer = await ConnectionMultiplexer.ConnectAsync(RedisConn);
-            _sut = new RedisAgentRateLimiter(_multiplexer, NullLogger<RedisAgentRateLimiter>.Instance);
-        }
-        catch (RedisConnectionException)
-        {
-            _multiplexer = null;
-            _sut = null;
-        }
+        _multiplexer = await ConnectionMultiplexer.ConnectAsync(RedisConn);
+        _sut = new RedisAgentRateLimiter(_multiplexer, NullLogger<RedisAgentRateLimiter>.Instance);
     }
 
     public Task DisposeAsync()
@@ -43,28 +36,24 @@ public sealed class Plan5d1RateLimitAcidTests : IAsyncLifetime
     [Fact]
     public async Task Acid_M3_1_Admits_Up_To_Rpm_Then_Refuses()
     {
-        if (_sut is null) { Console.WriteLine("[Skip] Redis unreachable."); return; }
-
         var assistant = Guid.NewGuid();
         const int rpm = 5;
 
         for (var i = 0; i < rpm; i++)
         {
-            (await _sut.TryAcquireAsync(assistant, rpm))
+            (await _sut!.TryAcquireAsync(assistant, rpm))
                 .Should().BeTrue($"the {i + 1}th call within the window should be admitted");
         }
 
-        (await _sut.TryAcquireAsync(assistant, rpm))
+        (await _sut!.TryAcquireAsync(assistant, rpm))
             .Should().BeFalse("the (rpm+1)th call within the same 60s window must be refused");
     }
 
     [Fact]
     public async Task Acid_M3_2_Zero_Rpm_Refuses_All()
     {
-        if (_sut is null) { Console.WriteLine("[Skip] Redis unreachable."); return; }
-
         var assistant = Guid.NewGuid();
         // RPM = 0 means "blocked" (consistent with Free plan default per spec §6.5).
-        (await _sut.TryAcquireAsync(assistant, rpm: 0)).Should().BeFalse();
+        (await _sut!.TryAcquireAsync(assistant, rpm: 0)).Should().BeFalse();
     }
 }

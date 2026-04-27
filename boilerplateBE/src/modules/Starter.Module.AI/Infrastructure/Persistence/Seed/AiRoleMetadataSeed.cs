@@ -6,29 +6,43 @@ namespace Starter.Module.AI.Infrastructure.Persistence.Seed;
 
 public static class AiRoleMetadataSeed
 {
+    private static readonly HashSet<string> LockedRoleNames =
+        new(new[] { "SuperAdmin", "TenantAdmin" }, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Seeds an `AiRoleMetadata` row for every core role so the assignment validator
+    /// (`AssignAgentRoleCommandHandler`) can fail-closed when no row is present.
+    /// SuperAdmin and TenantAdmin are seeded `IsAgentAssignable=false`; all others
+    /// default to `true`. Idempotent: existing rows are reconciled to the expected
+    /// value if locked-role membership has changed since the previous seed.
+    /// </summary>
     public static async Task SeedAsync(AiDbContext aiDb, IApplicationDbContext appDb, CancellationToken ct = default)
     {
-        // Look up SuperAdmin and TenantAdmin role IDs in core
-        var lockedRoleNames = new[] { "SuperAdmin", "TenantAdmin" };
-        var lockedRoles = await appDb.Roles
+        var allRoles = await appDb.Roles
             .IgnoreQueryFilters()
             .AsNoTracking()
-            .Where(r => lockedRoleNames.Contains(r.Name))
-            .Select(r => r.Id)
+            .Select(r => new { r.Id, r.Name })
             .ToListAsync(ct);
 
-        foreach (var roleId in lockedRoles)
+        if (allRoles.Count == 0) return;
+
+        var existingByRoleId = await aiDb.AiRoleMetadataEntries
+            .ToDictionaryAsync(m => m.RoleId, ct);
+
+        foreach (var role in allRoles)
         {
-            var existing = await aiDb.AiRoleMetadataEntries.FirstOrDefaultAsync(m => m.RoleId == roleId, ct);
-            if (existing is null)
+            var shouldBeAssignable = !LockedRoleNames.Contains(role.Name);
+
+            if (!existingByRoleId.TryGetValue(role.Id, out var existing))
             {
-                aiDb.AiRoleMetadataEntries.Add(AiRoleMetadata.Create(roleId, isAgentAssignable: false));
+                aiDb.AiRoleMetadataEntries.Add(AiRoleMetadata.Create(role.Id, shouldBeAssignable));
             }
-            else if (existing.IsAgentAssignable)
+            else if (existing.IsAgentAssignable != shouldBeAssignable)
             {
-                existing.SetAgentAssignable(false);
+                existing.SetAgentAssignable(shouldBeAssignable);
             }
         }
+
         await aiDb.SaveChangesAsync(ct);
     }
 }
