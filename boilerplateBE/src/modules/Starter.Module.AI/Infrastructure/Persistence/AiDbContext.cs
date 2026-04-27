@@ -34,6 +34,7 @@ public sealed class AiDbContext : DbContext, IModuleDbContext
     public DbSet<AiAgentPrincipal> AiAgentPrincipals => Set<AiAgentPrincipal>();
     public DbSet<AiAgentRole> AiAgentRoles => Set<AiAgentRole>();
     public DbSet<AiModelPricing> AiModelPricings => Set<AiModelPricing>();
+    public DbSet<AiSafetyPresetProfile> AiSafetyPresetProfiles => Set<AiSafetyPresetProfile>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
