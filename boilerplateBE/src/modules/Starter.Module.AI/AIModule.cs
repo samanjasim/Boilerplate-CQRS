@@ -115,6 +115,7 @@ public sealed class AIModule : IModule
         services.AddSingleton<IAgentRateLimiter, RedisAgentRateLimiter>();
         services.AddScoped<IAgentPermissionResolver, AgentPermissionResolver>();
         services.AddHostedService<Infrastructure.Background.AiCostReconciliationJob>();
+        services.AddHostedService<Infrastructure.Background.AiPendingApprovalExpirationJob>();
 
         // Moderation + safety profile resolution (Plan 5d-2)
         services.AddScoped<ISafetyProfileResolver, SafetyProfileResolver>();
