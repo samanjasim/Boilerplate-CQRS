@@ -15,4 +15,9 @@ public class AuditLog : ITenantEntity
     public string? IpAddress { get; set; }
     public string? CorrelationId { get; set; }
     public Guid? TenantId { get; set; }
+
+    // Dual-attribution: populated when an agent acts on behalf of a human user.
+    public Guid? OnBehalfOfUserId { get; set; }
+    public Guid? AgentPrincipalId { get; set; }
+    public Guid? AgentRunId { get; set; }
 }
