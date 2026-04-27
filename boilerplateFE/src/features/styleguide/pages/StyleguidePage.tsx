@@ -8,6 +8,7 @@ import { BadgesSection } from '../components/sections/BadgesSection';
 import { TablesSection } from '../components/sections/TablesSection';
 import { DialogsSection } from '../components/sections/DialogsSection';
 import { DropdownsSection } from '../components/sections/DropdownsSection';
+import { AvatarsSection } from '../components/sections/AvatarsSection';
 
 const SECTIONS: { id: string; label: string }[] = [
   { id: 'tokens', label: 'Tokens' },
@@ -19,6 +20,7 @@ const SECTIONS: { id: string; label: string }[] = [
   { id: 'tables', label: 'Tables' },
   { id: 'dialogs', label: 'Dialogs' },
   { id: 'dropdowns', label: 'Dropdowns' },
+  { id: 'avatars', label: 'Avatars + small' },
 ];
 
 export default function StyleguidePage() {
@@ -69,6 +71,7 @@ export default function StyleguidePage() {
             <TablesSection />
             <DialogsSection />
             <DropdownsSection />
+            <AvatarsSection />
           </div>
         </main>
       </div>
