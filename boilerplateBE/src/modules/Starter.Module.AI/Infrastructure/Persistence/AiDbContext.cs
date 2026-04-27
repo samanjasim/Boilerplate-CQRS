@@ -42,7 +42,7 @@ public sealed class AiDbContext : DbContext, IModuleDbContext
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
 
-        // Tenant query filters — 6 entities are tenant-scoped
+        // Tenant query filters — 10 entities are tenant-scoped
         modelBuilder.Entity<AiAssistant>().HasQueryFilter(e =>
             CurrentTenantId == null || e.TenantId == CurrentTenantId);
         modelBuilder.Entity<AiConversation>().HasQueryFilter(e =>
@@ -60,6 +60,8 @@ public sealed class AiDbContext : DbContext, IModuleDbContext
         modelBuilder.Entity<UserPersona>().HasQueryFilter(e =>
             CurrentTenantId == null || e.TenantId == CurrentTenantId);
         modelBuilder.Entity<AiAgentPrincipal>().HasQueryFilter(e =>
+            CurrentTenantId == null || e.TenantId == CurrentTenantId);
+        modelBuilder.Entity<AiModerationEvent>().HasQueryFilter(e =>
             CurrentTenantId == null || e.TenantId == CurrentTenantId);
     }
 }

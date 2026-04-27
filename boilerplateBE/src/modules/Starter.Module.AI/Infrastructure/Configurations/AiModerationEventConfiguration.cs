@@ -27,6 +27,7 @@ internal sealed class AiModerationEventConfiguration : IEntityTypeConfiguration<
         b.Property(x => x.RedactionFailed).HasColumnName("redaction_failed").IsRequired();
         b.Property(x => x.LatencyMs).HasColumnName("latency_ms").IsRequired();
         b.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+        b.Property(x => x.ModifiedAt).HasColumnName("modified_at");
 
         b.HasIndex(x => new { x.TenantId, x.CreatedAt })
             .HasDatabaseName("ix_ai_moderation_events_tenant_id_created_at")
