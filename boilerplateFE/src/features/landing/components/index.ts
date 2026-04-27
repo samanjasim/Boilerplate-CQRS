@@ -1,7 +1,7 @@
 export { LandingNav } from './LandingNav';
 export { HeroSection } from './HeroSection';
 export { ScrambleText } from './ScrambleText';
-export { NetworkBackground } from './NetworkBackground';
+export { HeroLinesBackground } from './HeroLinesBackground';
 export { BlueprintBackground } from './BlueprintBackground';
 export { TechStrip } from './TechStrip';
 export { FeatureGrid } from './FeatureGrid';

@@ -604,24 +604,27 @@ button { font-family: inherit; }
     }
   }
 
-  /* ── J4 motion: connection network (hero) + geometric blueprint (architecture) ── */
-  .net-node {
-    transform-origin: center;
-    animation: net-node-pulse 3.6s ease-in-out infinite;
+  /* ── J4 motion: hero traces (glowing lines drawing themselves) ──
+   * Used by <HeroLinesBackground />. Each path has pathLength="100" so the
+   * normalized dasharray=100 / dashoffset cycle works regardless of actual length. */
+  .hero-trace {
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    opacity: 0;
+    animation: hero-trace var(--ht-dur, 11s) ease-in-out infinite;
   }
-  .net-link {
-    animation: net-link-fade 5.4s ease-in-out infinite;
-  }
+  /* ── J4 motion: blueprint (architecture section) ── */
   .blueprint-line {
     stroke-dasharray: var(--bp-len, 240);
     stroke-dashoffset: var(--bp-len, 240);
     animation: blueprint-draw 14s ease-in-out infinite;
   }
   .blueprint-node {
-    animation: net-node-pulse 4s ease-in-out infinite;
+    animation: blueprint-node-pulse 4s ease-in-out infinite;
   }
   @media (prefers-reduced-motion: reduce) {
-    .net-node, .net-link, .blueprint-line, .blueprint-node { animation: none; }
+    .hero-trace, .blueprint-line, .blueprint-node { animation: none; }
+    .hero-trace { stroke-dashoffset: 0; opacity: 0.4; }
     .blueprint-line { stroke-dashoffset: 0; }
   }
 
@@ -699,14 +702,18 @@ button { font-family: inherit; }
   50%, 100% { opacity: 0; }
 }
 
-@keyframes net-node-pulse {
-  0%, 100% { transform: scale(1);   opacity: 0.55; }
-  50%      { transform: scale(1.6); opacity: 1; }
+@keyframes hero-trace {
+  0%   { stroke-dashoffset: 100; opacity: 0; }
+  8%   { opacity: 1; }
+  38%  { stroke-dashoffset: 0;   opacity: 1; }
+  68%  { stroke-dashoffset: 0;   opacity: 1; }
+  92%  { opacity: 0.6; }
+  100% { stroke-dashoffset: -100; opacity: 0; }
 }
 
-@keyframes net-link-fade {
-  0%, 100% { stroke-opacity: 0.10; }
-  50%      { stroke-opacity: 0.50; }
+@keyframes blueprint-node-pulse {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 0.55; }
 }
 
 @keyframes blueprint-draw {
