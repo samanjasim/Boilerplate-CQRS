@@ -44,12 +44,15 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        'fixed top-0 z-40 flex h-screen flex-col surface-glass',
+        // floating geometry — 14px margin, no longer edge-to-edge
+        'fixed top-3.5 bottom-3.5 z-40 flex flex-col rounded-[18px]',
+        'surface-floating',
         'motion-safe:transition-all motion-safe:duration-300',
-        'ltr:border-r rtl:border-l border-border/40',
+        // width: drawer always w-60 on <lg; lg+ follows collapse state
         'w-60',
         isCollapsed && 'lg:w-16',
-        'lg:translate-x-0 ltr:left-0 rtl:right-0',
+        // position: 14px from start edge in both ltr / rtl
+        'ltr:left-3.5 rtl:right-3.5 lg:translate-x-0',
         !sidebarOpen && 'max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full'
       )}
     >
@@ -60,11 +63,11 @@ export function Sidebar() {
           onClick={isCollapsed ? toggleCollapse : undefined}
           className={cn('flex items-center gap-2.5 min-w-0', isCollapsed && 'cursor-pointer')}
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg btn-primary-gradient glow-primary-sm shrink-0">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg btn-primary-gradient glow-primary-md shrink-0">
             {tenantLogoUrl ? (
-              <img src={tenantLogoUrl} alt={appName} className="h-7 w-7 rounded object-cover" />
+              <img src={tenantLogoUrl} alt={appName} className="h-8 w-8 rounded object-cover" />
             ) : (
-              <span className="text-sm font-bold text-white">{appName.charAt(0)}</span>
+              <span className="text-[15px] font-bold text-white">{appName.charAt(0)}</span>
             )}
           </div>
           {!isCollapsed && (
@@ -91,15 +94,16 @@ export function Sidebar() {
               groupIndex > 0 && (
                 isCollapsed
                   ? 'mx-3 my-2 border-t border-border/40'
-                  : cn(
-                      'mt-4 pt-2',
-                      groupIndex > 1 && 'border-t border-border/40'
-                    )
+                  : 'mt-4'
               )
             )}
           >
             {!isCollapsed && group.label && (
-              <div className="px-3 pb-1.5 pt-1 text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+              <div className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                <span
+                  className="inline-block w-1 h-1 rounded-full bg-primary/70 me-1.5 align-middle"
+                  style={{ transform: 'translateY(-1px)' }}
+                />
                 {group.label}
               </div>
             )}
@@ -111,9 +115,9 @@ export function Sidebar() {
                     end={item.end}
                     className={({ isActive }) =>
                       cn(
-                        'flex items-center gap-2.5 rounded-lg h-10 px-3 text-sm motion-safe:transition-all motion-safe:duration-150 cursor-pointer',
+                        'flex items-center gap-2.5 rounded-[10px] h-10 px-3 text-sm motion-safe:transition-all motion-safe:duration-150 cursor-pointer',
                         isCollapsed && 'justify-center px-0',
-                        isActive ? 'state-active' : 'state-hover'
+                        isActive ? 'pill-active' : 'state-hover'
                       )
                     }
                   >
