@@ -1,3 +1,5 @@
+using Starter.Module.AI.Domain.Entities;
+
 namespace Starter.Module.AI.Application.Services.Runtime;
 
 internal sealed record AgentRunResult(
@@ -7,9 +9,7 @@ internal sealed record AgentRunResult(
     long TotalInputTokens,
     long TotalOutputTokens,
     string? TerminationReason,
-    // Placeholder until Task B2 introduces Domain.Entities.AiModerationEvent.
-    // Tightened to IReadOnlyList<Domain.Entities.AiModerationEvent>? once the entity lands.
-    IReadOnlyList<object>? ModerationEvents = null);
+    IReadOnlyList<AiModerationEvent>? ModerationEvents = null);
 
 internal enum AgentRunStatus
 {
