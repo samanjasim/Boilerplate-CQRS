@@ -37,7 +37,7 @@ export function LanguageSwitcher({ variant = 'ghost' }: LanguageSwitcherProps) {
           <span>{LANGUAGES.find((l) => l.code === language)?.label}</span>
         </button>
         {isOpen && (
-          <div className="absolute end-0 top-full mt-1.5 z-50 w-36 rounded-xl border border-border/30 bg-popover p-1.5 shadow-float">
+          <div className="absolute end-0 top-full mt-1.5 z-50 w-36 rounded-xl surface-glass p-1.5 shadow-float">
             {LANGUAGES.map((lang) => (
               <button
                 key={lang.code}
@@ -65,7 +65,7 @@ export function LanguageSwitcher({ variant = 'ghost' }: LanguageSwitcherProps) {
         <span className="hidden sm:inline text-xs uppercase">{language}</span>
       </Button>
       {isOpen && (
-        <div className="absolute ltr:right-0 rtl:left-0 mt-1.5 w-36 rounded-xl border border-border/30 bg-popover p-1.5 shadow-float z-50">
+        <div className="absolute ltr:right-0 rtl:left-0 mt-1.5 w-36 rounded-xl surface-glass p-1.5 shadow-float z-50">
           {LANGUAGES.map((lang) => (
             <button
               key={lang.code}
