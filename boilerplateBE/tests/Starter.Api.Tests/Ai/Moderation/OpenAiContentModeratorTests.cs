@@ -12,17 +12,17 @@ public sealed class OpenAiContentModeratorTests
     private static ResolvedSafetyProfile ChildSafe() => new(
         SafetyPreset.ChildSafe, ModerationProvider.OpenAi,
         new Dictionary<string, double> { ["sexual"] = 0.5, ["violence"] = 0.5 },
-        new[] { "sexual-minors" },
+        new[] { "sexual/minors" },
         ModerationFailureMode.FailClosed,
         RedactPii: false);
 
     [Fact]
     public void EvaluateScores_Blocks_On_Always_Block_Category()
     {
-        var scores = new Dictionary<string, double> { ["sexual-minors"] = 0.4, ["sexual"] = 0.1 };
+        var scores = new Dictionary<string, double> { ["sexual/minors"] = 0.4, ["sexual"] = 0.1 };
         var v = OpenAiContentModerator.EvaluateScores(scores, ChildSafe(), 10);
         v.Outcome.Should().Be(ModerationOutcome.Blocked);
-        v.BlockedReason.Should().Contain("sexual-minors");
+        v.BlockedReason.Should().Contain("sexual/minors");
     }
 
     [Fact]

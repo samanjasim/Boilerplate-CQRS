@@ -1,5 +1,10 @@
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Moq;
+using Starter.Application.Common.Interfaces;
+using Starter.Module.AI.Infrastructure.Persistence;
+using Starter.Module.AI.Infrastructure.Persistence.Seed;
 using Xunit;
 
 namespace Starter.Api.Tests.Ai.Moderation;
@@ -46,5 +51,31 @@ public sealed class SeedCategoriesAlignedWithOpenAiWireKeysTests
         var keys = JsonSerializer.Deserialize<List<string>>(blockedJson)!;
         foreach (var key in keys)
             CanonicalKeys.Should().Contain(key, $"always-block key '{key}' must match an OpenAI wire-format category");
+    }
+
+    [Fact]
+    public async Task Seeded_Profiles_Use_Canonical_Keys()
+    {
+        var cu = new Mock<ICurrentUserService>();
+        var opts = new DbContextOptionsBuilder<AiDbContext>()
+            .UseInMemoryDatabase($"seed-keys-{Guid.NewGuid()}").Options;
+        using var db = new AiDbContext(opts, cu.Object);
+        await SafetyPresetProfileSeed.SeedAsync(db, default);
+
+        var profiles = await db.AiSafetyPresetProfiles.IgnoreQueryFilters().ToListAsync();
+        profiles.Should().HaveCount(3);
+
+        foreach (var profile in profiles)
+        {
+            var thresholds = JsonSerializer.Deserialize<Dictionary<string, double>>(profile.CategoryThresholdsJson)!;
+            foreach (var key in thresholds.Keys)
+                CanonicalKeys.Should().Contain(key,
+                    $"threshold key '{key}' on preset '{profile.Preset}' must match an OpenAI wire-format category");
+
+            var blocked = JsonSerializer.Deserialize<List<string>>(profile.BlockedCategoriesJson)!;
+            foreach (var key in blocked)
+                CanonicalKeys.Should().Contain(key,
+                    $"always-block key '{key}' on preset '{profile.Preset}' must match an OpenAI wire-format category");
+        }
     }
 }
