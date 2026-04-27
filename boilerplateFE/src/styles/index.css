@@ -124,6 +124,45 @@
     --hover-bg: hsl(var(--secondary));
     --gradient-from: var(--color-primary-800);
     --gradient-to: var(--color-primary-600);
+
+    /* ── J4 Spectrum tokens (dark overrides) ──
+     * Same structural recipe as :root, but with higher color-mix percentages
+     * to balance the deeper canvas, and lighter spectrum-text stops for legibility.
+     */
+    --aurora-1: radial-gradient(ellipse 800px 400px at 30% 0%,
+      color-mix(in srgb, var(--color-accent-400) 18%, transparent),
+      transparent 60%);
+    --aurora-2: radial-gradient(ellipse 700px 500px at 80% 30%,
+      color-mix(in srgb, var(--color-primary) 32%, transparent),
+      transparent 55%);
+    --aurora-3: radial-gradient(ellipse 600px 600px at 50% 100%,
+      color-mix(in srgb, var(--color-violet-400) 22%, transparent),
+      transparent 60%);
+    --aurora-corner: radial-gradient(circle at 100% 0%,
+      color-mix(in srgb, var(--color-primary) 45%, transparent) 0%,
+      color-mix(in srgb, var(--color-primary) 18%, transparent) 30%,
+      transparent 60%);
+
+    --spectrum-text: linear-gradient(135deg,
+      var(--color-primary-300) 0%,
+      var(--color-primary) 50%,
+      var(--color-violet-300) 100%);
+
+    --btn-primary-gradient: linear-gradient(135deg,
+      var(--color-primary-400),
+      var(--color-primary-700));
+
+    --glow-primary-sm: 0 0 12px color-mix(in srgb, var(--color-primary) 50%, transparent);
+    --glow-primary-md: 0 4px 16px color-mix(in srgb, var(--color-primary) 30%, transparent);
+    --glow-primary-lg: 0 0 0 1px color-mix(in srgb, var(--color-primary) 40%, transparent),
+                       0 8px 24px color-mix(in srgb, var(--color-primary) 35%, transparent),
+                       inset 0 1px 0 rgba(255,255,255,0.18);
+    --glow-emerald-sm: 0 0 8px var(--color-accent-300),
+                       0 0 0 3px color-mix(in srgb, var(--color-accent-300) 18%, transparent);
+
+    --surface-glass: rgba(255,255,255,0.04);
+    --surface-glass-strong: rgba(255,255,255,0.06);
+    --border-strong: rgba(255,255,255,0.10);
   }
 }
 
