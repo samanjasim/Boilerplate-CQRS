@@ -159,6 +159,8 @@ const ATMOSPHERIC: string[] = [
   'M -60 220 C 200 100 600 320 860 180',
   'M -60 360 C 220 320 580 240 860 380',
   'M 200 -60 C 260 200 480 280 540 560',
+  'M 860 100 C 600 220 200 280 -60 200',
+  'M 620 -60 C 600 200 540 320 480 560',
 ];
 
 /** Layer 2 — main network. Each carries a static guide + animated pulse.
@@ -215,6 +217,26 @@ const NETWORK: NetworkPath[] = [
   // Bottom accent arc
   { d: 'M 320 460 C 420 430 510 440 580 470',
     dir: 'rev', guideOpacity: 0.14, pulseLen: 14, delay: 7.6, duration: 7.5 },
+
+  // Top-left corner detail — short flowing curl
+  { d: 'M 60 80 C 100 100 140 90 200 110',
+    dir: 'fwd', guideOpacity: 0.16, pulseLen: 7,  delay: 8.4, duration: 8 },
+
+  // Top-right corner detail — mirrors top-left in feel
+  { d: 'M 600 90 C 660 105 700 96 740 120',
+    dir: 'rev', guideOpacity: 0.16, pulseLen: 7,  delay: 9.0, duration: 8.5 },
+
+  // Bottom-right tail
+  { d: 'M 540 460 C 580 440 620 444 680 462',
+    dir: 'fwd', guideOpacity: 0.18, pulseLen: 9,  delay: 9.6, duration: 9 },
+
+  // Left-side mid vertical accent — short, self-contained
+  { d: 'M 200 60 C 230 90 250 130 240 180',
+    dir: 'rev', guideOpacity: 0.14, pulseLen: 6,  delay: 10.2, duration: 7 },
+
+  // Right-side mid descender — counterpart to the left accent
+  { d: 'M 600 380 C 580 410 580 440 600 460',
+    dir: 'fwd', guideOpacity: 0.16, pulseLen: 6,  delay: 10.8, duration: 7.5 },
 ];
 
 /** Layer 3 — hub markers at deliberate peripheral intersection points. */
@@ -224,4 +246,6 @@ const HUBS: { x: number; y: number; delay: number }[] = [
   { x: 60,  y: 380, delay: 2.4 }, // left-mid where #4 + #6 meet
   { x: 740, y: 240, delay: 3.0 }, // right-mid where #5 + #6 meet
   { x: 380, y: 280, delay: 4.0 }, // mid-bottom-of-mid where #2 ends near #6
+  { x: 200, y: 110, delay: 5.0 }, // top-left where new corner curl meets sweep
+  { x: 600, y: 460, delay: 6.0 }, // bottom-right where new descender meets bottom
 ];
