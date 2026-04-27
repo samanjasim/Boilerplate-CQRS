@@ -265,6 +265,53 @@ export default function TenantDetailPage() {
         }
       />
 
+      {/* ─── Tenant hero card ─── */}
+      <Card variant="glass" className="border border-border/40 overflow-hidden relative">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-16 -right-12 h-48 w-48 rounded-full"
+          style={{
+            background:
+              'radial-gradient(circle, color-mix(in srgb, var(--color-primary) 12%, transparent) 0%, transparent 70%)',
+            filter: 'blur(20px)',
+          }}
+        />
+        <CardContent className="py-6 px-6 relative">
+          <div className="flex items-center gap-5">
+            {/* Logo or initials */}
+            {tenant.logoUrl ? (
+              <img
+                src={tenant.logoUrl}
+                alt={tenant.name}
+                className="h-14 w-14 rounded-2xl object-contain bg-background border border-border/40 shrink-0"
+              />
+            ) : (
+              <div className="h-14 w-14 rounded-2xl btn-primary-gradient glow-primary-sm flex items-center justify-center text-white text-xl font-bold shrink-0">
+                {tenant.name.slice(0, 2).toUpperCase()}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                <h2 className="text-[20px] font-semibold tracking-tight font-display text-foreground">
+                  {tenant.name}
+                </h2>
+                <Badge variant={STATUS_BADGE_VARIANT[tenant.status] || 'default'}>
+                  {tenant.status}
+                </Badge>
+              </div>
+              {tenant.slug && (
+                <p className="text-[12px] text-muted-foreground font-mono">/{tenant.slug}</p>
+              )}
+              {tenant.description && (
+                <p className="text-[13px] text-muted-foreground mt-1 leading-[1.4] line-clamp-2">
+                  {tenant.description}
+                </p>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Mobile: horizontal scrollable pills */}
       <div className="flex gap-2 overflow-x-auto pb-2 md:hidden">
         {TABS.map((tab) => (
@@ -309,7 +356,7 @@ export default function TenantDetailPage() {
         <div className="flex-1 min-w-0">
           {/* -- Overview Tab -- */}
           {activeTab === 'overview' && (
-            <Card>
+            <Card variant="glass" className="border border-border/40">
               <CardContent className="py-6">
                 <div className="flex items-start gap-4 mb-6">
                   <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-lg font-bold text-primary overflow-hidden">
@@ -404,7 +451,7 @@ export default function TenantDetailPage() {
 
           {/* -- Branding Tab -- */}
           {activeTab === 'branding' && (
-            <Card>
+            <Card variant="glass" className="border border-border/40">
               <CardContent className="py-6 space-y-6">
                 <h3 className="text-lg font-semibold text-foreground">
                   {t('tenants.branding')}
@@ -573,7 +620,7 @@ export default function TenantDetailPage() {
 
           {/* -- Business Info Tab -- */}
           {activeTab === 'businessInfo' && (
-            <Card>
+            <Card variant="glass" className="border border-border/40">
               <CardContent className="py-6 space-y-6">
                 <h3 className="text-lg font-semibold text-foreground">
                   {t('tenants.businessInfo')}
@@ -645,7 +692,7 @@ export default function TenantDetailPage() {
 
           {/* -- Custom Text Tab -- */}
           {activeTab === 'customText' && (
-            <Card>
+            <Card variant="glass" className="border border-border/40">
               <CardContent className="py-6 space-y-6">
                 <h3 className="text-lg font-semibold text-foreground">
                   {t('tenants.customText')}

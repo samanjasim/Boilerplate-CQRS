@@ -11,7 +11,12 @@ export interface PageHeaderBreadcrumb {
 
 export interface PageHeaderTab {
   label: string;
-  to: string;
+  /** Router link target — used when tabs correspond to separate routes. */
+  to?: string;
+  /** Click handler — used when tabs are local state (no route change). */
+  onClick?: () => void;
+  /** Marks this tab as selected when using onClick mode. */
+  active?: boolean;
   count?: number;
 }
 
@@ -80,29 +85,47 @@ export function PageHeader({ title, subtitle, actions, breadcrumbs, tabs }: Page
       {tabs && tabs.length > 0 && (
         <div className="mt-5 -mx-2 px-2 border-b border-border/40">
           <nav className="flex gap-1" aria-label="Tabs">
-            {tabs.map((tab) => (
-              <NavLink
-                key={tab.to}
-                to={tab.to}
-                end={false}
-                className={({ isActive }) =>
-                  cn(
-                    'inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium',
-                    'motion-safe:transition-colors motion-safe:duration-150',
-                    isActive
-                      ? 'border-b-2 border-primary text-foreground'
-                      : 'border-b-2 border-transparent text-muted-foreground hover:text-foreground'
-                  )
-                }
-              >
-                {tab.label}
-                {tab.count != null && (
-                  <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-normal">
-                    {tab.count}
-                  </span>
-                )}
-              </NavLink>
-            ))}
+            {tabs.map((tab) => {
+              const commonClass = (isActive: boolean) =>
+                cn(
+                  'inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium',
+                  'motion-safe:transition-colors motion-safe:duration-150',
+                  isActive
+                    ? 'border-b-2 border-primary text-foreground'
+                    : 'border-b-2 border-transparent text-muted-foreground hover:text-foreground',
+                );
+              const badge = tab.count != null && (
+                <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-normal">
+                  {tab.count}
+                </span>
+              );
+
+              if (tab.onClick) {
+                return (
+                  <button
+                    key={tab.label}
+                    type="button"
+                    onClick={tab.onClick}
+                    className={commonClass(!!tab.active)}
+                  >
+                    {tab.label}
+                    {badge}
+                  </button>
+                );
+              }
+
+              return (
+                <NavLink
+                  key={tab.to ?? tab.label}
+                  to={tab.to!}
+                  end={false}
+                  className={({ isActive }) => commonClass(isActive)}
+                >
+                  {tab.label}
+                  {badge}
+                </NavLink>
+              );
+            })}
           </nav>
         </div>
       )}

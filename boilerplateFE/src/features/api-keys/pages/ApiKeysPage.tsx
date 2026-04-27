@@ -40,31 +40,11 @@ function PlatformAdminView() {
       <PageHeader
         title={t('apiKeys.title')}
         subtitle={t('apiKeys.description')}
+        tabs={[
+          { label: t('apiKeys.platformKeys'), onClick: () => setActiveTab('platform'), active: activeTab === 'platform' },
+          { label: t('apiKeys.tenantKeys'), onClick: () => setActiveTab('tenant'), active: activeTab === 'tenant' },
+        ]}
       />
-
-      {/* Tabs */}
-      <div className="flex gap-1 border-b border-border">
-        <button
-          onClick={() => setActiveTab('platform')}
-          className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
-            activeTab === 'platform'
-              ? 'border-primary [color:var(--active-text)]'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          {t('apiKeys.platformKeys')}
-        </button>
-        <button
-          onClick={() => setActiveTab('tenant')}
-          className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
-            activeTab === 'tenant'
-              ? 'border-primary [color:var(--active-text)]'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          {t('apiKeys.tenantKeys')}
-        </button>
-      </div>
 
       {activeTab === 'platform' ? <PlatformKeysTab /> : <TenantKeysTab />}
     </div>
@@ -173,10 +153,10 @@ function TenantUserView() {
                 </TableCell>
                 <TableCell>
                   {key.isRevoked
-                    ? <Badge variant="destructive">{t('apiKeys.statusRevoked')}</Badge>
+                    ? <Badge variant="failed">{t('apiKeys.statusRevoked')}</Badge>
                     : key.isExpired
                       ? <Badge variant="secondary">{t('apiKeys.statusExpired')}</Badge>
-                      : <Badge variant="default">{t('apiKeys.statusActive')}</Badge>}
+                      : <Badge variant="healthy">{t('apiKeys.statusActive')}</Badge>}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {key.lastUsedAt ? formatDateTime(key.lastUsedAt) : t('apiKeys.never')}
