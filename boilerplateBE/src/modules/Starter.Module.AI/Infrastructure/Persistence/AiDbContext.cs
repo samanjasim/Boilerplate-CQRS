@@ -31,6 +31,7 @@ public sealed class AiDbContext : DbContext, IModuleDbContext
     public DbSet<AiPersona> AiPersonas => Set<AiPersona>();
     public DbSet<UserPersona> UserPersonas => Set<UserPersona>();
     public DbSet<AiRoleMetadata> AiRoleMetadataEntries => Set<AiRoleMetadata>();
+    public DbSet<AiAgentPrincipal> AiAgentPrincipals => Set<AiAgentPrincipal>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -53,6 +54,8 @@ public sealed class AiDbContext : DbContext, IModuleDbContext
         modelBuilder.Entity<AiPersona>().HasQueryFilter(e =>
             CurrentTenantId == null || e.TenantId == CurrentTenantId);
         modelBuilder.Entity<UserPersona>().HasQueryFilter(e =>
+            CurrentTenantId == null || e.TenantId == CurrentTenantId);
+        modelBuilder.Entity<AiAgentPrincipal>().HasQueryFilter(e =>
             CurrentTenantId == null || e.TenantId == CurrentTenantId);
     }
 }
