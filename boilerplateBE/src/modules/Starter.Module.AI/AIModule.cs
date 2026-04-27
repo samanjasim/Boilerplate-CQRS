@@ -263,6 +263,9 @@ public sealed class AIModule : IModule
         // Always seed model pricing (idempotent — skips if any rows already exist)
         await ModelPricingSeed.SeedAsync(aiDb, cancellationToken);
 
+        // Always seed platform-default safety preset profiles (idempotent — skips if any platform row exists)
+        await SafetyPresetProfileSeed.SeedAsync(aiDb, cancellationToken);
+
         // Plan 5d-1 backfill: pair any pre-existing assistant with an AiAgentPrincipal
         // (idempotent — only inserts for assistants without a paired principal).
         await AgentPrincipalBackfill.RunAsync(aiDb, cancellationToken);
