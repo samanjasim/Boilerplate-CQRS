@@ -1,146 +1,36 @@
 import { NavLink } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import {
-  LayoutDashboard,
-  Users,
-  Shield,
-  ChevronsLeft,
-  ChevronsRight,
-  ClipboardList,
-  Building,
-  FolderOpen,
-  Settings2,
-  KeyRound,
-  ToggleRight,
-  CreditCard,
-  ReceiptText,
-  ListChecks,
-  Webhook,
-  ArrowLeftRight,
-  Package,
-  MessageSquare,
-  FileText,
-  Zap,
-  Link2,
-  ScrollText,
-  ClipboardCheck,
-  History,
-  GitBranch,
-  FileBarChart2,
-  Bell,
-} from 'lucide-react';
+import { ChevronsLeft, ChevronsRight } from 'lucide-react';
+
 import { cn } from '@/lib/utils';
-import { useUIStore, useAuthStore, selectSidebarCollapsed, selectUser } from '@/stores';
-import { ROUTES } from '@/config';
-import { activeModules, isModuleActive } from '@/config/modules.config';
-import { usePermissions, useFeatureFlag } from '@/hooks';
-import { PERMISSIONS } from '@/constants';
-import { usePendingTaskCount } from '@/features/workflow/api';
+import { selectSidebarCollapsed, selectUser, useAuthStore, useUIStore } from '@/stores';
+import { useNavGroups } from './useNavGroups';
 
 export function Sidebar() {
-  const { t } = useTranslation();
   const isCollapsed = useUIStore(selectSidebarCollapsed);
   const toggleCollapse = useUIStore((state) => state.toggleSidebarCollapse);
-  const { hasPermission } = usePermissions();
   const user = useAuthStore(selectUser);
-
-  const webhooksFlag = useFeatureFlag('webhooks.enabled');
-  const importsFlag = useFeatureFlag('imports.enabled');
-  const exportsFlag = useFeatureFlag('exports.enabled');
-
-  const { data: pendingTaskCount = 0 } = usePendingTaskCount(isModuleActive('workflow'));
+  const groups = useNavGroups();
 
   const tenantLogoUrl = user?.tenantLogoUrl;
   const tenantName = user?.tenantName;
   const appName = tenantName ?? import.meta.env.VITE_APP_NAME ?? 'Starter';
 
-  const navItems = [
-    { label: t('nav.dashboard'), icon: LayoutDashboard, path: ROUTES.DASHBOARD },
-    ...(hasPermission(PERMISSIONS.Users.View)
-      ? [{ label: t('nav.users'), icon: Users, path: ROUTES.USERS.LIST }]
-      : []),
-    ...(hasPermission(PERMISSIONS.Roles.View)
-      ? [{ label: t('nav.roles'), icon: Shield, path: ROUTES.ROLES.LIST }]
-      : []),
-    ...(hasPermission(PERMISSIONS.Tenants.View)
-      ? [user?.tenantId
-        ? { label: t('nav.organization'), icon: Building, path: ROUTES.ORGANIZATION }
-        : { label: t('nav.tenants'), icon: Building, path: ROUTES.TENANTS.LIST }
-      ]
-      : []),
-    ...(hasPermission(PERMISSIONS.Files.View)
-      ? [{ label: t('nav.files'), icon: FolderOpen, path: ROUTES.FILES.LIST }]
-      : []),
-    ...(hasPermission(PERMISSIONS.System.ExportData)
-      ? [{ label: t('nav.reports'), icon: FileBarChart2, path: ROUTES.REPORTS.LIST }]
-      : []),
-    { label: t('nav.notifications'), icon: Bell, path: ROUTES.NOTIFICATIONS },
-    ...(activeModules.importExport && ((hasPermission(PERMISSIONS.System.ExportData) && exportsFlag.isEnabled) || (hasPermission(PERMISSIONS.System.ImportData) && importsFlag.isEnabled))
-      ? [{ label: t('nav.importExport'), icon: ArrowLeftRight, path: ROUTES.IMPORT_EXPORT }]
-      : []),
-    ...(hasPermission(PERMISSIONS.System.ViewAuditLogs)
-      ? [{ label: t('nav.auditLogs'), icon: ClipboardList, path: ROUTES.AUDIT_LOGS.LIST }]
-      : []),
-    ...(hasPermission(PERMISSIONS.ApiKeys.View)
-      ? [{ label: t('nav.apiKeys'), icon: KeyRound, path: ROUTES.API_KEYS.LIST }]
-      : []),
-    ...(activeModules.workflow && hasPermission(PERMISSIONS.Workflows.View)
-      ? [{ label: t('workflow.sidebar.taskInbox'), icon: ClipboardCheck, path: ROUTES.WORKFLOWS.INBOX, badge: pendingTaskCount > 0 ? pendingTaskCount : undefined }]
-      : []),
-    ...(activeModules.workflow && hasPermission(PERMISSIONS.Workflows.View)
-      ? [{ label: t('workflow.sidebar.history'), icon: History, path: ROUTES.WORKFLOWS.INSTANCES }]
-      : []),
-    ...(activeModules.workflow && hasPermission(PERMISSIONS.Workflows.ManageDefinitions)
-      ? [{ label: t('workflow.sidebar.definitions'), icon: GitBranch, path: ROUTES.WORKFLOWS.DEFINITIONS }]
-      : []),
-    ...(activeModules.products && hasPermission(PERMISSIONS.Products.View)
-      ? [{ label: t('nav.products', 'Products'), icon: Package, path: ROUTES.PRODUCTS.LIST }]
-      : []),
-    ...(activeModules.communication && hasPermission(PERMISSIONS.Communication.View) && user?.tenantId
-      ? [
-          { label: t('nav.channels'), icon: MessageSquare, path: ROUTES.COMMUNICATION.CHANNELS },
-          { label: t('nav.templates'), icon: FileText, path: ROUTES.COMMUNICATION.TEMPLATES },
-          { label: t('nav.triggerRules'), icon: Zap, path: ROUTES.COMMUNICATION.TRIGGER_RULES },
-          { label: t('nav.integrations'), icon: Link2, path: ROUTES.COMMUNICATION.INTEGRATIONS },
-        ]
-      : []),
-    ...(activeModules.communication && hasPermission(PERMISSIONS.Communication.ViewDeliveryLog) && user?.tenantId
-      ? [{ label: t('nav.deliveryLog'), icon: ScrollText, path: ROUTES.COMMUNICATION.DELIVERY_LOG }]
-      : []),
-    ...(activeModules.webhooks && hasPermission(PERMISSIONS.Webhooks.View) && user?.tenantId && webhooksFlag.isEnabled
-      ? [{ label: t('nav.webhooks'), icon: Webhook, path: ROUTES.WEBHOOKS }]
-      : []),
-    ...(activeModules.billing && hasPermission(PERMISSIONS.Billing.View) && user?.tenantId
-      ? [{ label: t('nav.billing'), icon: CreditCard, path: ROUTES.BILLING }]
-      : []),
-    ...(activeModules.billing && hasPermission(PERMISSIONS.Billing.ViewPlans)
-      ? [{ label: t('nav.billingPlans'), icon: ReceiptText, path: ROUTES.BILLING_PLANS }]
-      : []),
-    ...(activeModules.billing && hasPermission(PERMISSIONS.Billing.ManageTenantSubscriptions)
-      ? [{ label: t('nav.subscriptions'), icon: ListChecks, path: ROUTES.SUBSCRIPTIONS.LIST }]
-      : []),
-    ...(activeModules.webhooks && hasPermission(PERMISSIONS.Webhooks.ViewPlatform)
-      ? [{ label: t('nav.webhooksAdmin'), icon: Webhook, path: ROUTES.WEBHOOKS_ADMIN.LIST }]
-      : []),
-    ...(hasPermission(PERMISSIONS.FeatureFlags.View)
-      ? [{ label: t('nav.featureFlags'), icon: ToggleRight, path: ROUTES.FEATURE_FLAGS.LIST }]
-      : []),
-    ...(hasPermission(PERMISSIONS.System.ManageSettings)
-      ? [{ label: t('nav.settings'), icon: Settings2, path: ROUTES.SETTINGS }]
-      : []),
-  ];
-
   return (
     <aside
       className={cn(
-        'fixed top-0 z-40 flex h-screen flex-col surface-glass transition-all duration-300',
-        'ltr:left-0 ltr:border-r rtl:right-0 rtl:border-l border-border/40',
-        isCollapsed ? 'w-16' : 'w-60'
+        'fixed top-0 z-40 flex h-screen flex-col surface-glass',
+        'motion-safe:transition-all motion-safe:duration-300',
+        'ltr:border-r rtl:border-l border-border/40',
+        'w-60',
+        isCollapsed && 'lg:w-16',
+        'lg:translate-x-0 ltr:left-0 rtl:right-0'
+        // Mobile drawer translate (`!sidebarOpen` → off-screen) is added in Task 4.
       )}
     >
       {/* Logo */}
       <div className={cn('flex h-14 items-center gap-2.5 px-5', isCollapsed && 'justify-center px-0')}>
         <button
+          type="button"
           onClick={isCollapsed ? toggleCollapse : undefined}
           className={cn('flex items-center gap-2.5 min-w-0', isCollapsed && 'cursor-pointer')}
         >
@@ -157,8 +47,9 @@ export function Sidebar() {
         </button>
         {!isCollapsed && (
           <button
+            type="button"
             onClick={toggleCollapse}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors duration-150 shrink-0 ltr:ml-auto rtl:mr-auto"
+            className="hidden lg:flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground motion-safe:transition-colors motion-safe:duration-150 shrink-0 ltr:ml-auto rtl:mr-auto"
           >
             <ChevronsLeft className="h-[18px] w-[18px] rtl:rotate-180" />
           </button>
@@ -166,46 +57,62 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 pt-2">
-        <ul className="space-y-1">
-          {navItems.map((item) => (
-            <li key={item.path}>
-              <NavLink
-                to={item.path}
-                end={item.path === ROUTES.DASHBOARD || item.path === ROUTES.BILLING || item.path === ROUTES.SUBSCRIPTIONS?.LIST || item.path === ROUTES.WEBHOOKS_ADMIN?.LIST}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-2.5 rounded-lg h-10 px-3 text-sm transition-all duration-150 cursor-pointer',
-                    isCollapsed && 'justify-center px-0',
-                    isActive
-                      ? 'state-active'
-                      : 'state-hover'
-                  )
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    <item.icon className={cn('h-[18px] w-[18px] shrink-0', isActive && 'drop-shadow-[0_0_6px_color-mix(in_srgb,var(--color-primary)_45%,transparent)]')} />
-                    {!isCollapsed && <span className="flex-1">{item.label}</span>}
-                    {!isCollapsed && 'badge' in item && item.badge != null && (
-                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full btn-primary-gradient glow-primary-sm px-1.5 text-[10px] font-bold text-primary-foreground font-mono">
-                        {(item.badge as number) > 99 ? '99+' : item.badge}
-                      </span>
+      <nav className="flex-1 overflow-y-auto px-3 pt-2 pb-3">
+        {groups.map((group, groupIndex) => (
+          <div
+            key={group.id}
+            className={cn(groupIndex > 0 && !isCollapsed && 'mt-4 border-t border-border/40 pt-2')}
+          >
+            {!isCollapsed && group.label && (
+              <div className="px-3 pb-1.5 pt-1 text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+                {group.label}
+              </div>
+            )}
+            <ul className="space-y-1">
+              {group.items.map((item) => (
+                <li key={item.path}>
+                  <NavLink
+                    to={item.path}
+                    end={item.end}
+                    className={({ isActive }) =>
+                      cn(
+                        'flex items-center gap-2.5 rounded-lg h-10 px-3 text-sm motion-safe:transition-all motion-safe:duration-150 cursor-pointer',
+                        isCollapsed && 'justify-center px-0',
+                        isActive ? 'state-active' : 'state-hover'
+                      )
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <item.icon
+                          className={cn(
+                            'h-[18px] w-[18px] shrink-0',
+                            isActive && 'drop-shadow-[0_0_6px_color-mix(in_srgb,var(--color-primary)_45%,transparent)]'
+                          )}
+                        />
+                        {!isCollapsed && <span className="flex-1">{item.label}</span>}
+                        {!isCollapsed && item.badge != null && (
+                          <span className="flex h-5 min-w-5 items-center justify-center rounded-full btn-primary-gradient glow-primary-sm px-1.5 text-[10px] font-bold text-primary-foreground font-mono">
+                            {item.badge > 99 ? '99+' : item.badge}
+                          </span>
+                        )}
+                      </>
                     )}
-                  </>
-                )}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </nav>
 
-      {/* Collapsed: expand */}
+      {/* Collapsed: expand chevron (desktop only) */}
       {isCollapsed && (
-        <div className="p-2 border-t border-border">
+        <div className="hidden lg:block p-2 border-t border-border">
           <button
+            type="button"
             onClick={toggleCollapse}
-            className="flex w-full items-center justify-center rounded-lg h-9 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors duration-150 cursor-pointer"
+            className="flex w-full items-center justify-center rounded-lg h-9 text-muted-foreground hover:bg-secondary hover:text-foreground motion-safe:transition-colors motion-safe:duration-150 cursor-pointer"
           >
             <ChevronsRight className="h-4 w-4 rtl:rotate-180" />
           </button>
