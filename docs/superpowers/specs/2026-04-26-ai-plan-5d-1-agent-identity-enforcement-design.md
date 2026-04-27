@@ -85,7 +85,7 @@ AiAgentPrincipal
   AiAssistantId   Guid (FK → AiAssistant, unique)
   TenantId        Guid (FK)
   IsActive        bool
-  CreatedAt       DateTimeOffset
+  CreatedAt       DateTime          (inherited from BaseEntity — UTC; no offset semantics needed)
   RevokedAt       DateTimeOffset?
 
 AiAgentRole
