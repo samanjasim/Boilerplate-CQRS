@@ -1,8 +1,15 @@
-import { NavLink } from 'react-router-dom';
+import { useEffect } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { ChevronsLeft, ChevronsRight } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
-import { selectSidebarCollapsed, selectUser, useAuthStore, useUIStore } from '@/stores';
+import {
+  selectSidebarCollapsed,
+  selectSidebarOpen,
+  selectUser,
+  useAuthStore,
+  useUIStore,
+} from '@/stores';
 import { useNavGroups } from './useNavGroups';
 
 export function Sidebar() {
@@ -10,6 +17,25 @@ export function Sidebar() {
   const toggleCollapse = useUIStore((state) => state.toggleSidebarCollapse);
   const user = useAuthStore(selectUser);
   const groups = useNavGroups();
+  const sidebarOpen = useUIStore(selectSidebarOpen);
+  const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
+  const location = useLocation();
+
+  // Auto-close mobile drawer on route change. Harmless on desktop (`sidebarOpen`
+  // has no UI effect at lg+).
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname, setSidebarOpen]);
+
+  // Auto-close on Escape while the drawer is open.
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSidebarOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [sidebarOpen, setSidebarOpen]);
 
   const tenantLogoUrl = user?.tenantLogoUrl;
   const tenantName = user?.tenantName;
@@ -23,8 +49,8 @@ export function Sidebar() {
         'ltr:border-r rtl:border-l border-border/40',
         'w-60',
         isCollapsed && 'lg:w-16',
-        'lg:translate-x-0 ltr:left-0 rtl:right-0'
-        // Mobile drawer translate (`!sidebarOpen` → off-screen) is added in Task 4.
+        'lg:translate-x-0 ltr:left-0 rtl:right-0',
+        !sidebarOpen && 'max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full'
       )}
     >
       {/* Logo */}

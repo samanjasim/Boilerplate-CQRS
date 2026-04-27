@@ -1,7 +1,14 @@
-import { LogOut, User, Menu, ArrowLeft } from 'lucide-react';
+import { LogOut, User, Menu, X, ArrowLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuthStore, selectUser, useUIStore, selectSidebarCollapsed, selectBackNavigation } from '@/stores';
+import {
+  useAuthStore,
+  selectUser,
+  useUIStore,
+  selectSidebarCollapsed,
+  selectSidebarOpen,
+  selectBackNavigation,
+} from '@/stores';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -20,6 +27,7 @@ export function Header() {
   const { t } = useTranslation();
   const user = useAuthStore(selectUser);
   const isCollapsed = useUIStore(selectSidebarCollapsed);
+  const sidebarOpen = useUIStore(selectSidebarOpen);
   const backNavigation = useUIStore(selectBackNavigation);
   const toggleSidebar = useUIStore((state) => state.toggleSidebar);
   const navigate = useNavigate();
@@ -37,8 +45,15 @@ export function Header() {
     >
       {/* Left side: back button or mobile menu toggle */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={toggleSidebar} className="lg:hidden">
-          <Menu className="h-5 w-5" />
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleSidebar}
+          className="lg:hidden"
+          aria-label={sidebarOpen ? 'Close navigation' : 'Open navigation'}
+          aria-expanded={sidebarOpen}
+        >
+          {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </Button>
         {backNavigation && (
           <Link

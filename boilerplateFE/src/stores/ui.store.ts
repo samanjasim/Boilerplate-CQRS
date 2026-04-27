@@ -59,7 +59,7 @@ export const useUIStore = create<UIStore>()(
     (set) => ({
       theme: 'light',
       language: 'en',
-      sidebarOpen: true,
+      sidebarOpen: false,
       sidebarCollapsed: false,
       activeModal: null,
       modalData: null,
