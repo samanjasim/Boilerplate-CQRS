@@ -4,22 +4,38 @@
 
 **Goal:** Convert the flat 25-item sidebar into a modules-first grouped navigation with mobile drawer behavior, exactly as specified in §4 of `docs/superpowers/specs/2026-04-27-redesign-phase-1-design.md` (Plan A).
 
-**Architecture:** A typed `SidebarNavGroup[]` data structure replaces the current flat `navItems` array. Group eyebrow labels + 1px tinted dividers render in expanded mode; thin separators only in collapsed mode. Empty groups (all items filtered by permissions / module flags) hide entirely. On viewports `<lg`, the sidebar leaves the layout flow and becomes a slide-out drawer driven by the existing (currently unused) `useUIStore.sidebarOpen` state, with a backdrop click + Esc + route-change auto-close.
+**Architecture:**
+- Data-builder hook (`useNavGroups`) returns `SidebarNavGroup[]`, applying all permission / module / feature-flag / tenancy gates. Sidebar render becomes a pure consumer.
+- Group eyebrow labels + 1px tinted dividers in expanded mode; thin separators only in collapsed mode. Empty groups (zero visible items) hide entirely.
+- On viewports `<lg`, the sidebar leaves the layout flow and becomes a slide-out drawer driven by the existing `useUIStore.sidebarOpen` state. Backdrop click + Esc + route-change all close it. Body scroll locks while the drawer is open. The Header's mobile trigger swaps Menu ↔ X to mirror the drawer state.
 
-**Tech Stack:** React 19, TypeScript 5.9, Tailwind CSS 4, Zustand 5, react-router-dom 7, react-i18next 15, lucide-react.
+**Tech Stack:** React 19, TypeScript 5.9, Tailwind CSS 4 (with `motion-safe:` and `max-lg:` variants), Zustand 5, react-router-dom 7, react-i18next 15, lucide-react.
 
 **Verification model:** This codebase has no FE unit-test runner. Every task verifies with (1) `npm run build` (type/build check), (2) `npm run lint` (ESLint), and (3) a visual pass against the running test app at `http://localhost:3100`. The test app is the same Phase 0 harness — `_testJ4visual/` if it still exists, or re-spin via `pwsh scripts/rename.ps1 -Name "_testJ4visual" -OutputDir "."`. **All edits go in `boilerplateFE/src/...`** and are then copied (or hot-reloaded if symlinked) into `_testJ4visual/boilerplateFE/`.
 
-**Working directory for all commands:** `/Users/samanjasim/Projects/forme/cqrs/boilerplate-cqrs-fe/boilerplateFE` unless stated otherwise.
+**Working directory for all `npm` commands:** `/Users/samanjasim/Projects/forme/cqrs/boilerplate-cqrs-fe/boilerplateFE`. **Working directory for all `git` commands:** the repo root.
+
+**Naming conventions used throughout this plan** (chosen for consistency with the existing store / selector API in `src/stores/ui.store.ts`):
+
+| Concept | Identifier |
+|---|---|
+| Mobile drawer state in store | `sidebarOpen: boolean` (default **`false`**) |
+| Store action to toggle | `toggleSidebar()` |
+| Store action to set | `setSidebarOpen(open: boolean)` |
+| Selector | `selectSidebarOpen` |
+| Local React variables | `sidebarOpen`, `setSidebarOpen` (match store) |
+| Desktop collapsed-width state | `sidebarCollapsed`, `selectSidebarCollapsed` (unchanged) |
+| Group typescript types | `SidebarNavItem`, `SidebarNavGroup` |
+| Hook | `useNavGroups(): SidebarNavGroup[]` |
 
 ---
 
 ## Task 1: Add `nav.groups.*` i18n keys (EN only)
 
-**Why:** Sidebar groups need labels. Phase 1 spec §4.6 lists exactly these keys. AR/KU fall back to EN automatically via i18next — see deferred item in spec §3.
+**Why:** Sidebar groups need labels. Phase 1 spec §4.6 lists exactly these keys. AR / KU fall back to EN automatically via i18next — see deferred item in spec §3.
 
 **Files:**
-- Modify: `src/i18n/locales/en/translation.json` (add `nav.groups` block)
+- Modify: `src/i18n/locales/en/translation.json`
 
 - [ ] **Step 1.1: Add the keys**
 
@@ -49,17 +65,13 @@ Do not modify any existing keys. Do not touch `ar/translation.json` or `ku/trans
 
 - [ ] **Step 1.2: Build check**
 
-Run from `boilerplateFE/`:
-
 ```bash
 npm run build
 ```
 
-Expected: build succeeds with no errors. (No code changes consume the keys yet — this is purely a JSON addition.)
+Expected: build succeeds. (No code consumes the keys yet — purely a JSON addition.)
 
 - [ ] **Step 1.3: Commit**
-
-From the repo root:
 
 ```bash
 git add boilerplateFE/src/i18n/locales/en/translation.json
@@ -68,59 +80,57 @@ git commit -m "feat(fe/i18n): add nav.groups.* keys for sidebar grouping"
 
 ---
 
-## Task 2: Refactor Sidebar to grouped data + expanded-mode render
+## Task 2: Extract `useNavGroups` hook + adopt grouped data shape
 
-**Why:** Spec §4.1, §4.2, §4.3. Replace the flat `navItems` array with a typed `SidebarNavGroup[]`, render eyebrow labels and dividers in expanded mode, and ensure empty groups (all items filtered out) hide entirely.
+**Why:** Spec §4.1, §4.2. The existing `Sidebar.tsx` interleaves data-building with render across 130+ lines. Splitting the data builder into a hook gives Sidebar a single responsibility (rendering) and makes the gating logic testable / scannable in isolation. Hoisting the module flag to the group level (instead of repeating `activeModules.X && hasPermission(...)` per item) trims duplication and clarifies intent.
 
 **Files:**
-- Modify: `src/components/layout/MainLayout/Sidebar.tsx` (full rewrite of the body — keep imports + collapse-toggle UI as-is)
+- Create: `src/components/layout/MainLayout/useNavGroups.ts`
+- Modify: `src/components/layout/MainLayout/Sidebar.tsx` (rewrite)
 
-- [ ] **Step 2.1: Replace the body of Sidebar.tsx**
+- [ ] **Step 2.1: Create `useNavGroups.ts`**
 
-Open `src/components/layout/MainLayout/Sidebar.tsx`. Keep the existing imports block (lines 1-38) and the existing logo/toggle JSX. Replace the `navItems` array, the nav `<ul>` rendering, and the surrounding return statement so the file matches this structure end-to-end:
+Create `src/components/layout/MainLayout/useNavGroups.ts` with this exact content:
 
-```tsx
-import { NavLink } from 'react-router-dom';
+```ts
 import { useTranslation } from 'react-i18next';
 import {
-  LayoutDashboard,
-  Users,
-  Shield,
-  ChevronsLeft,
-  ChevronsRight,
-  ClipboardList,
-  Building,
-  FolderOpen,
-  Settings2,
-  KeyRound,
-  ToggleRight,
-  CreditCard,
-  ReceiptText,
-  ListChecks,
-  Webhook,
   ArrowLeftRight,
-  Package,
-  MessageSquare,
-  FileText,
-  Zap,
-  Link2,
-  ScrollText,
-  ClipboardCheck,
-  History,
-  GitBranch,
-  FileBarChart2,
   Bell,
+  Building,
+  ClipboardCheck,
+  ClipboardList,
+  CreditCard,
+  FileBarChart2,
+  FileText,
+  FolderOpen,
+  GitBranch,
+  History,
+  KeyRound,
+  LayoutDashboard,
+  Link2,
+  ListChecks,
+  MessageSquare,
+  Package,
+  ReceiptText,
+  ScrollText,
+  Settings2,
+  Shield,
+  ToggleRight,
+  Users,
+  Webhook,
+  Zap,
   type LucideIcon,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useUIStore, useAuthStore, selectSidebarCollapsed, selectUser } from '@/stores';
+
 import { ROUTES } from '@/config';
 import { activeModules, isModuleActive } from '@/config/modules.config';
-import { usePermissions, useFeatureFlag } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
 import { usePendingTaskCount } from '@/features/workflow/api';
+import { useFeatureFlag, usePermissions } from '@/hooks';
+import { selectUser, useAuthStore } from '@/stores';
 
-interface SidebarNavItem {
+export interface SidebarNavItem {
   label: string;
   icon: LucideIcon;
   path: string;
@@ -128,18 +138,21 @@ interface SidebarNavItem {
   badge?: number;
 }
 
-interface SidebarNavGroup {
+export interface SidebarNavGroup {
   id: string;
   label?: string;
   items: SidebarNavItem[];
 }
 
-export function Sidebar() {
+/**
+ * Builds the sidebar nav as a list of permission/module/flag-gated groups.
+ * Empty groups are stripped, so consumers can render the result directly.
+ */
+export function useNavGroups(): SidebarNavGroup[] {
   const { t } = useTranslation();
-  const isCollapsed = useUIStore(selectSidebarCollapsed);
-  const toggleCollapse = useUIStore((state) => state.toggleSidebarCollapse);
   const { hasPermission } = usePermissions();
   const user = useAuthStore(selectUser);
+  const tenantScoped = Boolean(user?.tenantId);
 
   const webhooksFlag = useFeatureFlag('webhooks.enabled');
   const importsFlag = useFeatureFlag('imports.enabled');
@@ -147,175 +160,197 @@ export function Sidebar() {
 
   const { data: pendingTaskCount = 0 } = usePendingTaskCount(isModuleActive('workflow'));
 
+  const groups: SidebarNavGroup[] = [];
+
+  // Top block (no label, no group divider above it)
+  groups.push({
+    id: 'top',
+    items: [
+      { label: t('nav.dashboard'), icon: LayoutDashboard, path: ROUTES.DASHBOARD, end: true },
+      { label: t('nav.notifications'), icon: Bell, path: ROUTES.NOTIFICATIONS },
+    ],
+  });
+
+  // Workflow module
+  if (activeModules.workflow) {
+    const items: SidebarNavItem[] = [];
+    if (hasPermission(PERMISSIONS.Workflows.View)) {
+      items.push({
+        label: t('workflow.sidebar.taskInbox'),
+        icon: ClipboardCheck,
+        path: ROUTES.WORKFLOWS.INBOX,
+        badge: pendingTaskCount > 0 ? pendingTaskCount : undefined,
+      });
+      items.push({
+        label: t('workflow.sidebar.history'),
+        icon: History,
+        path: ROUTES.WORKFLOWS.INSTANCES,
+      });
+    }
+    if (hasPermission(PERMISSIONS.Workflows.ManageDefinitions)) {
+      items.push({
+        label: t('workflow.sidebar.definitions'),
+        icon: GitBranch,
+        path: ROUTES.WORKFLOWS.DEFINITIONS,
+      });
+    }
+    groups.push({ id: 'workflow', label: t('nav.groups.workflow'), items });
+  }
+
+  // Communication module (tenant-scoped only)
+  if (activeModules.communication && tenantScoped) {
+    const items: SidebarNavItem[] = [];
+    if (hasPermission(PERMISSIONS.Communication.View)) {
+      items.push({ label: t('nav.channels'), icon: MessageSquare, path: ROUTES.COMMUNICATION.CHANNELS });
+      items.push({ label: t('nav.templates'), icon: FileText, path: ROUTES.COMMUNICATION.TEMPLATES });
+      items.push({ label: t('nav.triggerRules'), icon: Zap, path: ROUTES.COMMUNICATION.TRIGGER_RULES });
+      items.push({ label: t('nav.integrations'), icon: Link2, path: ROUTES.COMMUNICATION.INTEGRATIONS });
+    }
+    if (hasPermission(PERMISSIONS.Communication.ViewDeliveryLog)) {
+      items.push({ label: t('nav.deliveryLog'), icon: ScrollText, path: ROUTES.COMMUNICATION.DELIVERY_LOG });
+    }
+    groups.push({ id: 'communication', label: t('nav.groups.communication'), items });
+  }
+
+  // Products module
+  if (activeModules.products) {
+    const items: SidebarNavItem[] = [];
+    if (hasPermission(PERMISSIONS.Products.View)) {
+      items.push({ label: t('nav.products', 'Products'), icon: Package, path: ROUTES.PRODUCTS.LIST });
+    }
+    groups.push({ id: 'products', label: t('nav.groups.products'), items });
+  }
+
+  // Billing module (tenant-scoped only for the main Billing page; Plans/Subscriptions reachable by platform admins too)
+  if (activeModules.billing) {
+    const items: SidebarNavItem[] = [];
+    if (hasPermission(PERMISSIONS.Billing.View) && tenantScoped) {
+      items.push({ label: t('nav.billing'), icon: CreditCard, path: ROUTES.BILLING, end: true });
+    }
+    if (hasPermission(PERMISSIONS.Billing.ViewPlans)) {
+      items.push({ label: t('nav.billingPlans'), icon: ReceiptText, path: ROUTES.BILLING_PLANS });
+    }
+    if (hasPermission(PERMISSIONS.Billing.ManageTenantSubscriptions)) {
+      items.push({ label: t('nav.subscriptions'), icon: ListChecks, path: ROUTES.SUBSCRIPTIONS.LIST, end: true });
+    }
+    groups.push({ id: 'billing', label: t('nav.groups.billing'), items });
+  }
+
+  // Webhooks module — tenant-scoped link only (the platform-admin link lives in the Platform group).
+  if (activeModules.webhooks && tenantScoped && webhooksFlag.isEnabled) {
+    const items: SidebarNavItem[] = [];
+    if (hasPermission(PERMISSIONS.Webhooks.View)) {
+      items.push({ label: t('nav.webhooks'), icon: Webhook, path: ROUTES.WEBHOOKS });
+    }
+    groups.push({ id: 'webhooks', label: t('nav.groups.webhooks'), items });
+  }
+
+  // Import / Export module
+  if (activeModules.importExport) {
+    const items: SidebarNavItem[] = [];
+    const canExport = hasPermission(PERMISSIONS.System.ExportData) && exportsFlag.isEnabled;
+    const canImport = hasPermission(PERMISSIONS.System.ImportData) && importsFlag.isEnabled;
+    if (canExport || canImport) {
+      items.push({ label: t('nav.importExport'), icon: ArrowLeftRight, path: ROUTES.IMPORT_EXPORT });
+    }
+    groups.push({ id: 'importExport', label: t('nav.groups.importExport'), items });
+  }
+
+  // People (core)
+  {
+    const items: SidebarNavItem[] = [];
+    if (hasPermission(PERMISSIONS.Users.View)) {
+      items.push({ label: t('nav.users'), icon: Users, path: ROUTES.USERS.LIST });
+    }
+    if (hasPermission(PERMISSIONS.Roles.View)) {
+      items.push({ label: t('nav.roles'), icon: Shield, path: ROUTES.ROLES.LIST });
+    }
+    if (hasPermission(PERMISSIONS.Tenants.View)) {
+      items.push(
+        tenantScoped
+          ? { label: t('nav.organization'), icon: Building, path: ROUTES.ORGANIZATION }
+          : { label: t('nav.tenants'), icon: Building, path: ROUTES.TENANTS.LIST }
+      );
+    }
+    groups.push({ id: 'people', label: t('nav.groups.people'), items });
+  }
+
+  // Content (core)
+  {
+    const items: SidebarNavItem[] = [];
+    if (hasPermission(PERMISSIONS.Files.View)) {
+      items.push({ label: t('nav.files'), icon: FolderOpen, path: ROUTES.FILES.LIST });
+    }
+    if (hasPermission(PERMISSIONS.System.ExportData)) {
+      items.push({ label: t('nav.reports'), icon: FileBarChart2, path: ROUTES.REPORTS.LIST });
+    }
+    groups.push({ id: 'content', label: t('nav.groups.content'), items });
+  }
+
+  // Platform (core + cross-tenant admin)
+  {
+    const items: SidebarNavItem[] = [];
+    if (hasPermission(PERMISSIONS.System.ViewAuditLogs)) {
+      items.push({ label: t('nav.auditLogs'), icon: ClipboardList, path: ROUTES.AUDIT_LOGS.LIST });
+    }
+    if (hasPermission(PERMISSIONS.ApiKeys.View)) {
+      items.push({ label: t('nav.apiKeys'), icon: KeyRound, path: ROUTES.API_KEYS.LIST });
+    }
+    if (hasPermission(PERMISSIONS.FeatureFlags.View)) {
+      items.push({ label: t('nav.featureFlags'), icon: ToggleRight, path: ROUTES.FEATURE_FLAGS.LIST });
+    }
+    if (activeModules.webhooks && hasPermission(PERMISSIONS.Webhooks.ViewPlatform)) {
+      items.push({ label: t('nav.webhooksAdmin'), icon: Webhook, path: ROUTES.WEBHOOKS_ADMIN.LIST, end: true });
+    }
+    if (hasPermission(PERMISSIONS.System.ManageSettings)) {
+      items.push({ label: t('nav.settings'), icon: Settings2, path: ROUTES.SETTINGS });
+    }
+    groups.push({ id: 'platform', label: t('nav.groups.platform'), items });
+  }
+
+  // Strip empty groups so labels and dividers never render for nothing.
+  return groups.filter((g) => g.items.length > 0);
+}
+```
+
+- [ ] **Step 2.2: Rewrite `Sidebar.tsx` as a pure consumer**
+
+Replace the full contents of `src/components/layout/MainLayout/Sidebar.tsx` with:
+
+```tsx
+import { NavLink } from 'react-router-dom';
+import { ChevronsLeft, ChevronsRight } from 'lucide-react';
+
+import { cn } from '@/lib/utils';
+import { selectSidebarCollapsed, selectUser, useAuthStore, useUIStore } from '@/stores';
+import { useNavGroups } from './useNavGroups';
+
+export function Sidebar() {
+  const isCollapsed = useUIStore(selectSidebarCollapsed);
+  const toggleCollapse = useUIStore((state) => state.toggleSidebarCollapse);
+  const user = useAuthStore(selectUser);
+  const groups = useNavGroups();
+
   const tenantLogoUrl = user?.tenantLogoUrl;
   const tenantName = user?.tenantName;
   const appName = tenantName ?? import.meta.env.VITE_APP_NAME ?? 'Starter';
 
-  const groups: SidebarNavGroup[] = [
-    // Top block (no label)
-    {
-      id: 'top',
-      items: [
-        { label: t('nav.dashboard'), icon: LayoutDashboard, path: ROUTES.DASHBOARD, end: true },
-        { label: t('nav.notifications'), icon: Bell, path: ROUTES.NOTIFICATIONS },
-      ],
-    },
-    // Workflow module
-    {
-      id: 'workflow',
-      label: t('nav.groups.workflow'),
-      items: [
-        ...(activeModules.workflow && hasPermission(PERMISSIONS.Workflows.View)
-          ? [{
-              label: t('workflow.sidebar.taskInbox'),
-              icon: ClipboardCheck,
-              path: ROUTES.WORKFLOWS.INBOX,
-              badge: pendingTaskCount > 0 ? pendingTaskCount : undefined,
-            }]
-          : []),
-        ...(activeModules.workflow && hasPermission(PERMISSIONS.Workflows.View)
-          ? [{ label: t('workflow.sidebar.history'), icon: History, path: ROUTES.WORKFLOWS.INSTANCES }]
-          : []),
-        ...(activeModules.workflow && hasPermission(PERMISSIONS.Workflows.ManageDefinitions)
-          ? [{ label: t('workflow.sidebar.definitions'), icon: GitBranch, path: ROUTES.WORKFLOWS.DEFINITIONS }]
-          : []),
-      ],
-    },
-    // Communication module
-    {
-      id: 'communication',
-      label: t('nav.groups.communication'),
-      items: [
-        ...(activeModules.communication && hasPermission(PERMISSIONS.Communication.View) && user?.tenantId
-          ? [
-              { label: t('nav.channels'), icon: MessageSquare, path: ROUTES.COMMUNICATION.CHANNELS },
-              { label: t('nav.templates'), icon: FileText, path: ROUTES.COMMUNICATION.TEMPLATES },
-              { label: t('nav.triggerRules'), icon: Zap, path: ROUTES.COMMUNICATION.TRIGGER_RULES },
-              { label: t('nav.integrations'), icon: Link2, path: ROUTES.COMMUNICATION.INTEGRATIONS },
-            ]
-          : []),
-        ...(activeModules.communication && hasPermission(PERMISSIONS.Communication.ViewDeliveryLog) && user?.tenantId
-          ? [{ label: t('nav.deliveryLog'), icon: ScrollText, path: ROUTES.COMMUNICATION.DELIVERY_LOG }]
-          : []),
-      ],
-    },
-    // Products module
-    {
-      id: 'products',
-      label: t('nav.groups.products'),
-      items: [
-        ...(activeModules.products && hasPermission(PERMISSIONS.Products.View)
-          ? [{ label: t('nav.products', 'Products'), icon: Package, path: ROUTES.PRODUCTS.LIST }]
-          : []),
-      ],
-    },
-    // Billing module
-    {
-      id: 'billing',
-      label: t('nav.groups.billing'),
-      items: [
-        ...(activeModules.billing && hasPermission(PERMISSIONS.Billing.View) && user?.tenantId
-          ? [{ label: t('nav.billing'), icon: CreditCard, path: ROUTES.BILLING, end: true }]
-          : []),
-        ...(activeModules.billing && hasPermission(PERMISSIONS.Billing.ViewPlans)
-          ? [{ label: t('nav.billingPlans'), icon: ReceiptText, path: ROUTES.BILLING_PLANS }]
-          : []),
-        ...(activeModules.billing && hasPermission(PERMISSIONS.Billing.ManageTenantSubscriptions)
-          ? [{ label: t('nav.subscriptions'), icon: ListChecks, path: ROUTES.SUBSCRIPTIONS.LIST, end: true }]
-          : []),
-      ],
-    },
-    // Webhooks module (tenant-scoped only)
-    {
-      id: 'webhooks',
-      label: t('nav.groups.webhooks'),
-      items: [
-        ...(activeModules.webhooks && hasPermission(PERMISSIONS.Webhooks.View) && user?.tenantId && webhooksFlag.isEnabled
-          ? [{ label: t('nav.webhooks'), icon: Webhook, path: ROUTES.WEBHOOKS }]
-          : []),
-      ],
-    },
-    // Import / Export module
-    {
-      id: 'importExport',
-      label: t('nav.groups.importExport'),
-      items: [
-        ...(activeModules.importExport && ((hasPermission(PERMISSIONS.System.ExportData) && exportsFlag.isEnabled) || (hasPermission(PERMISSIONS.System.ImportData) && importsFlag.isEnabled))
-          ? [{ label: t('nav.importExport'), icon: ArrowLeftRight, path: ROUTES.IMPORT_EXPORT }]
-          : []),
-      ],
-    },
-    // People (core)
-    {
-      id: 'people',
-      label: t('nav.groups.people'),
-      items: [
-        ...(hasPermission(PERMISSIONS.Users.View)
-          ? [{ label: t('nav.users'), icon: Users, path: ROUTES.USERS.LIST }]
-          : []),
-        ...(hasPermission(PERMISSIONS.Roles.View)
-          ? [{ label: t('nav.roles'), icon: Shield, path: ROUTES.ROLES.LIST }]
-          : []),
-        ...(hasPermission(PERMISSIONS.Tenants.View)
-          ? [
-              user?.tenantId
-                ? { label: t('nav.organization'), icon: Building, path: ROUTES.ORGANIZATION }
-                : { label: t('nav.tenants'), icon: Building, path: ROUTES.TENANTS.LIST },
-            ]
-          : []),
-      ],
-    },
-    // Content (core)
-    {
-      id: 'content',
-      label: t('nav.groups.content'),
-      items: [
-        ...(hasPermission(PERMISSIONS.Files.View)
-          ? [{ label: t('nav.files'), icon: FolderOpen, path: ROUTES.FILES.LIST }]
-          : []),
-        ...(hasPermission(PERMISSIONS.System.ExportData)
-          ? [{ label: t('nav.reports'), icon: FileBarChart2, path: ROUTES.REPORTS.LIST }]
-          : []),
-      ],
-    },
-    // Platform (core)
-    {
-      id: 'platform',
-      label: t('nav.groups.platform'),
-      items: [
-        ...(hasPermission(PERMISSIONS.System.ViewAuditLogs)
-          ? [{ label: t('nav.auditLogs'), icon: ClipboardList, path: ROUTES.AUDIT_LOGS.LIST }]
-          : []),
-        ...(hasPermission(PERMISSIONS.ApiKeys.View)
-          ? [{ label: t('nav.apiKeys'), icon: KeyRound, path: ROUTES.API_KEYS.LIST }]
-          : []),
-        ...(hasPermission(PERMISSIONS.FeatureFlags.View)
-          ? [{ label: t('nav.featureFlags'), icon: ToggleRight, path: ROUTES.FEATURE_FLAGS.LIST }]
-          : []),
-        ...(activeModules.webhooks && hasPermission(PERMISSIONS.Webhooks.ViewPlatform)
-          ? [{ label: t('nav.webhooksAdmin'), icon: Webhook, path: ROUTES.WEBHOOKS_ADMIN.LIST, end: true }]
-          : []),
-        ...(hasPermission(PERMISSIONS.System.ManageSettings)
-          ? [{ label: t('nav.settings'), icon: Settings2, path: ROUTES.SETTINGS }]
-          : []),
-      ],
-    },
-  ];
-
-  // Drop empty groups so labels and dividers don't render for nothing.
-  const visibleGroups = groups.filter((g) => g.items.length > 0);
-
   return (
     <aside
       className={cn(
-        'fixed top-0 z-40 flex h-screen flex-col surface-glass transition-all duration-300',
-        'ltr:left-0 ltr:border-r rtl:right-0 rtl:border-l border-border/40',
-        isCollapsed ? 'w-16' : 'w-60'
+        'fixed top-0 z-40 flex h-screen flex-col surface-glass',
+        'motion-safe:transition-all motion-safe:duration-300',
+        'ltr:border-r rtl:border-l border-border/40',
+        'w-60',
+        isCollapsed && 'lg:w-16',
+        'lg:translate-x-0 ltr:left-0 rtl:right-0'
+        // Mobile drawer translate (`!sidebarOpen` → off-screen) is added in Task 4.
       )}
     >
       {/* Logo */}
       <div className={cn('flex h-14 items-center gap-2.5 px-5', isCollapsed && 'justify-center px-0')}>
         <button
+          type="button"
           onClick={isCollapsed ? toggleCollapse : undefined}
           className={cn('flex items-center gap-2.5 min-w-0', isCollapsed && 'cursor-pointer')}
         >
@@ -332,8 +367,9 @@ export function Sidebar() {
         </button>
         {!isCollapsed && (
           <button
+            type="button"
             onClick={toggleCollapse}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors duration-150 shrink-0 ltr:ml-auto rtl:mr-auto"
+            className="hidden lg:flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground motion-safe:transition-colors motion-safe:duration-150 shrink-0 ltr:ml-auto rtl:mr-auto"
           >
             <ChevronsLeft className="h-[18px] w-[18px] rtl:rotate-180" />
           </button>
@@ -342,12 +378,10 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 pt-2 pb-3">
-        {visibleGroups.map((group, groupIndex) => (
+        {groups.map((group, groupIndex) => (
           <div
             key={group.id}
-            className={cn(
-              groupIndex > 0 && !isCollapsed && 'mt-4 border-t border-border/40 pt-2'
-            )}
+            className={cn(groupIndex > 0 && !isCollapsed && 'mt-4 border-t border-border/40 pt-2')}
           >
             {!isCollapsed && group.label && (
               <div className="px-3 pb-1.5 pt-1 text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
@@ -362,7 +396,7 @@ export function Sidebar() {
                     end={item.end}
                     className={({ isActive }) =>
                       cn(
-                        'flex items-center gap-2.5 rounded-lg h-10 px-3 text-sm transition-all duration-150 cursor-pointer',
+                        'flex items-center gap-2.5 rounded-lg h-10 px-3 text-sm motion-safe:transition-all motion-safe:duration-150 cursor-pointer',
                         isCollapsed && 'justify-center px-0',
                         isActive ? 'state-active' : 'state-hover'
                       )
@@ -392,12 +426,13 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Collapsed: expand */}
+      {/* Collapsed: expand chevron (desktop only) */}
       {isCollapsed && (
-        <div className="p-2 border-t border-border">
+        <div className="hidden lg:block p-2 border-t border-border">
           <button
+            type="button"
             onClick={toggleCollapse}
-            className="flex w-full items-center justify-center rounded-lg h-9 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors duration-150 cursor-pointer"
+            className="flex w-full items-center justify-center rounded-lg h-9 text-muted-foreground hover:bg-secondary hover:text-foreground motion-safe:transition-colors motion-safe:duration-150 cursor-pointer"
           >
             <ChevronsRight className="h-4 w-4 rtl:rotate-180" />
           </button>
@@ -408,12 +443,14 @@ export function Sidebar() {
 }
 ```
 
-Notes:
-- The `end={item.end}` replacement removes the hand-rolled `item.path === ROUTES.DASHBOARD || item.path === ROUTES.BILLING || ...` switch from the old code. Items that need exact-match (Dashboard, Billing root, Subscriptions list, Webhooks Admin list) carry `end: true` in their definitions above.
-- The `pb-3` on `<nav>` prevents the last group's items from butting against the bottom edge.
-- `groupIndex > 0` guards the divider so the first **rendered** group (after empty-group filtering) never gets a top divider.
+Notes on the rewrite:
+- All translation lives in `useNavGroups`; Sidebar never calls `useTranslation` directly. Future a11y labels on the chevron buttons should be added through `useNavGroups`'s return shape (e.g., expose a `chrome: { collapseLabel, expandLabel }` field) rather than re-introducing translation in the render component.
+- The `end={item.end}` replacement removes the hand-rolled `item.path === ROUTES.DASHBOARD || ...` switch.
+- Both collapse-chevron buttons gain `hidden lg:flex` / `hidden lg:block` so the desktop-only collapse UX never appears in the mobile drawer.
+- All transitions become `motion-safe:` so users with `prefers-reduced-motion: reduce` get instant state changes — matches the conventions established by Phase 0 in `src/styles/index.css`.
+- The mobile drawer translate-off class is intentionally **deferred to Task 4** so this commit produces a working desktop sidebar without half-implemented mobile behavior.
 
-- [ ] **Step 2.2: Build + lint check**
+- [ ] **Step 2.3: Build + lint check**
 
 ```bash
 npm run build && npm run lint
@@ -421,27 +458,25 @@ npm run build && npm run lint
 
 Expected: build succeeds, lint reports no new errors.
 
-- [ ] **Step 2.3: Visual verification**
+- [ ] **Step 2.4: Visual verification**
 
-Sync the change into the test app (or restart it pointing at the source). Open `http://localhost:3100/dashboard` in Chrome with the test app running.
+Sync the change into the test app. Open `http://localhost:3100/dashboard` in Chrome.
 
 Expected:
 - All previous nav items still present.
 - Group eyebrow labels visible: "Workflow", "Communication", "Products", "Billing", "Webhooks", "Import / Export", "People", "Content", "Platform".
 - Top "Dashboard / Notifications" block has no label and no top divider.
 - Each subsequent labeled group has a 1 px tinted divider above its label.
-- Active link still highlights correctly (e.g., `/dashboard`).
+- Empty groups (e.g., as a tenant member without `Workflows.ManageDefinitions`, the Workflow group should still appear with two items; if all gates fail it disappears) hide the label and divider together.
+- Active link still highlights correctly (e.g., `/dashboard`, `/billing`).
 - Task Inbox badge still renders if pending tasks exist.
 
-If any group is empty for the test user, its label and divider should be absent.
-
-- [ ] **Step 2.4: Commit**
-
-From the repo root:
+- [ ] **Step 2.5: Commit**
 
 ```bash
-git add boilerplateFE/src/components/layout/MainLayout/Sidebar.tsx
-git commit -m "feat(fe/sidebar): typed groups + expanded-mode eyebrow labels & dividers"
+git add boilerplateFE/src/components/layout/MainLayout/useNavGroups.ts \
+        boilerplateFE/src/components/layout/MainLayout/Sidebar.tsx
+git commit -m "feat(fe/sidebar): typed groups via useNavGroups hook + eyebrow labels"
 ```
 
 ---
@@ -451,18 +486,16 @@ git commit -m "feat(fe/sidebar): typed groups + expanded-mode eyebrow labels & d
 **Why:** Spec §4.4. In `w-16` mode the eyebrow labels disappear, but a thin divider per group keeps the visual rhythm so the icon column doesn't feel like one undifferentiated stack.
 
 **Files:**
-- Modify: `src/components/layout/MainLayout/Sidebar.tsx` (the group wrapper `<div>` className)
+- Modify: `src/components/layout/MainLayout/Sidebar.tsx` (the group wrapper className only)
 
 - [ ] **Step 3.1: Update the group wrapper className**
 
-Find the group wrapper in `Sidebar.tsx` (added in Task 2):
+In `Sidebar.tsx`, find the group wrapper added in Task 2:
 
 ```tsx
 <div
   key={group.id}
-  className={cn(
-    groupIndex > 0 && !isCollapsed && 'mt-4 border-t border-border/40 pt-2'
-  )}
+  className={cn(groupIndex > 0 && !isCollapsed && 'mt-4 border-t border-border/40 pt-2')}
 >
 ```
 
@@ -481,7 +514,7 @@ Replace with:
 >
 ```
 
-The collapsed branch produces a thin horizontal rule with horizontal margin so it doesn't span edge-to-edge — same look as a divider in a dropdown menu. The label `<div>` and items already gate on `!isCollapsed`, so labels stay hidden in collapsed mode without changes.
+The collapsed branch produces a thin horizontal rule with horizontal margin so it doesn't span edge-to-edge — same visual language as a divider in a dropdown menu. The label `<div>` and items already gate on `!isCollapsed`, so labels stay hidden in collapsed mode without further changes.
 
 - [ ] **Step 3.2: Build check**
 
@@ -493,7 +526,7 @@ Expected: build succeeds.
 
 - [ ] **Step 3.3: Visual verification**
 
-Open `http://localhost:3100/dashboard`, click the collapse chevron at the top of the sidebar. Then expand again.
+Open `http://localhost:3100/dashboard`, click the collapse chevron at the top of the sidebar, then expand again.
 
 Expected (collapsed `w-16`):
 - Icon-only column.
@@ -514,12 +547,13 @@ git commit -m "feat(fe/sidebar): thin separators between groups in collapsed mod
 
 ## Task 4: Mobile drawer behavior (`<lg`)
 
-**Why:** Spec §4.5 and §7. On viewports `<lg` (< 1024 px) the desktop fixed sidebar is hostile — it overlaps the content. Convert to a slide-out drawer with backdrop, driven by the existing `useUIStore.sidebarOpen` state (currently unused).
+**Why:** Spec §4.5 and §7. On viewports `<lg` (< 1024 px) the desktop fixed sidebar is hostile — it overlaps the content. Convert to a slide-out drawer with backdrop, body scroll lock, route-change auto-close, Esc auto-close, and a Header trigger that swaps Menu ↔ X to mirror the drawer state.
 
 **Files:**
-- Modify: `src/stores/ui.store.ts` (default `sidebarOpen: false` instead of `true`)
-- Modify: `src/components/layout/MainLayout/Sidebar.tsx` (responsive classes + route-change auto-close)
-- Modify: `src/components/layout/MainLayout/MainLayout.tsx` (backdrop overlay + `<main>` padding swap)
+- Modify: `src/stores/ui.store.ts` (default `sidebarOpen: false`)
+- Modify: `src/components/layout/MainLayout/Sidebar.tsx` (drawer translate class + auto-close effects)
+- Modify: `src/components/layout/MainLayout/MainLayout.tsx` (backdrop overlay, body scroll lock, responsive `<main>` padding)
+- Modify: `src/components/layout/MainLayout/Header.tsx` (Menu ↔ X icon swap, accessible label)
 
 - [ ] **Step 4.1: Default `sidebarOpen` to `false`**
 
@@ -535,67 +569,66 @@ Change to:
 sidebarOpen: false,
 ```
 
-This is the initial mobile-drawer state — closed on first paint of any `<lg` viewport. On `lg+` viewports the responsive classes added in 4.2 ignore this state entirely.
+This is the initial mobile-drawer state — closed on first paint of any `<lg` viewport. On `lg+` viewports the responsive classes added in Step 4.2 ignore `sidebarOpen` entirely.
 
-- [ ] **Step 4.2: Make Sidebar responsive + auto-close on route change**
+- [ ] **Step 4.2: Add drawer translate + auto-close effects to Sidebar**
 
 In `src/components/layout/MainLayout/Sidebar.tsx`:
 
-1. Add `selectSidebarOpen` to the `useUIStore` import:
+1. Update the `react` and `react-router-dom` imports to add `useEffect` and `useLocation`:
 
-```ts
-import {
-  useUIStore,
-  useAuthStore,
-  selectSidebarCollapsed,
-  selectSidebarOpen,
-  selectUser,
-} from '@/stores';
-```
-
-2. Add `useLocation` to the `react-router-dom` import:
-
-```ts
+```tsx
+import { useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 ```
 
-3. Add `useEffect` to the React import (the file currently imports nothing from `react`; add a direct import):
+2. Update the `@/stores` import to add the open-state pieces:
 
-```ts
-import { useEffect } from 'react';
+```tsx
+import {
+  selectSidebarCollapsed,
+  selectSidebarOpen,
+  selectUser,
+  useAuthStore,
+  useUIStore,
+} from '@/stores';
 ```
 
-4. Inside the `Sidebar` component body, after the existing hooks, add:
+3. Inside the component body, after the existing hooks (`isCollapsed`, `toggleCollapse`, `user`, `groups`), add:
 
-```ts
-const isOpen = useUIStore(selectSidebarOpen);
+```tsx
+const sidebarOpen = useUIStore(selectSidebarOpen);
 const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
 const location = useLocation();
 
-// Auto-close mobile drawer on route change
+// Auto-close mobile drawer on route change. Harmless on desktop (`sidebarOpen`
+// has no UI effect at lg+).
 useEffect(() => {
   setSidebarOpen(false);
 }, [location.pathname, setSidebarOpen]);
 
-// Auto-close on Esc
+// Auto-close on Escape while the drawer is open.
 useEffect(() => {
-  if (!isOpen) return;
+  if (!sidebarOpen) return;
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Escape') setSidebarOpen(false);
   };
   document.addEventListener('keydown', onKeyDown);
   return () => document.removeEventListener('keydown', onKeyDown);
-}, [isOpen, setSidebarOpen]);
+}, [sidebarOpen, setSidebarOpen]);
 ```
 
-5. Update the `<aside>` className to swap fixed-positioning behavior at `<lg`. Find:
+4. Update the `<aside>` className to add the mobile-drawer translate. Find:
 
 ```tsx
 <aside
   className={cn(
-    'fixed top-0 z-40 flex h-screen flex-col surface-glass transition-all duration-300',
-    'ltr:left-0 ltr:border-r rtl:right-0 rtl:border-l border-border/40',
-    isCollapsed ? 'w-16' : 'w-60'
+    'fixed top-0 z-40 flex h-screen flex-col surface-glass',
+    'motion-safe:transition-all motion-safe:duration-300',
+    'ltr:border-r rtl:border-l border-border/40',
+    'w-60',
+    isCollapsed && 'lg:w-16',
+    'lg:translate-x-0 ltr:left-0 rtl:right-0'
   )}
 >
 ```
@@ -605,98 +638,61 @@ Replace with:
 ```tsx
 <aside
   className={cn(
-    'fixed top-0 z-40 flex h-screen flex-col surface-glass transition-all duration-300',
+    'fixed top-0 z-40 flex h-screen flex-col surface-glass',
+    'motion-safe:transition-all motion-safe:duration-300',
     'ltr:border-r rtl:border-l border-border/40',
-    // Width: drawer is always w-60 on <lg; on lg+ it follows the collapse state
     'w-60',
     isCollapsed && 'lg:w-16',
-    // Position: desktop sits at start edge; mobile slides in from start when open
     'lg:translate-x-0 ltr:left-0 rtl:right-0',
-    !isOpen && 'max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full'
+    !sidebarOpen && 'max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full'
   )}
 >
 ```
 
-Notes:
-- The `max-lg:` Tailwind 4 prefix targets `<lg` only.
-- On `lg+` the sidebar is always visible at its `w-16` / `w-60` width (controlled by `isCollapsed`).
-- On `<lg` the sidebar is always `w-60` and translates fully off-screen unless `isOpen` is `true`.
-- `transition-all duration-300` already covers the slide animation.
+Behavior summary:
+- `lg+`: `lg:translate-x-0` always wins; `sidebarOpen` is irrelevant.
+- `<lg`, `sidebarOpen=false`: `-translate-x-full` (or `+translate-x-full` in RTL) hides the drawer off-screen.
+- `<lg`, `sidebarOpen=true`: no translate override; drawer renders at `left-0` / `right-0` over the page.
 
-6. Hide the desktop-only collapse toggle at `<lg`. Find both `toggleCollapse` buttons (the small `ChevronsLeft` in the logo row and the bottom `ChevronsRight` in collapsed mode). Wrap each in a `<div className="hidden lg:flex">` or add `hidden lg:flex` to the button itself.
-
-The expand-chevron block at the bottom (collapsed mode):
-
-```tsx
-{isCollapsed && (
-  <div className="p-2 border-t border-border">
-```
-
-becomes:
-
-```tsx
-{isCollapsed && (
-  <div className="hidden lg:block p-2 border-t border-border">
-```
-
-The collapse-chevron in the header row:
-
-```tsx
-{!isCollapsed && (
-  <button
-    onClick={toggleCollapse}
-    className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors duration-150 shrink-0 ltr:ml-auto rtl:mr-auto"
-  >
-    <ChevronsLeft className="h-[18px] w-[18px] rtl:rotate-180" />
-  </button>
-)}
-```
-
-becomes:
-
-```tsx
-{!isCollapsed && (
-  <button
-    onClick={toggleCollapse}
-    className="hidden lg:flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors duration-150 shrink-0 ltr:ml-auto rtl:mr-auto"
-  >
-    <ChevronsLeft className="h-[18px] w-[18px] rtl:rotate-180" />
-  </button>
-)}
-```
-
-- [ ] **Step 4.3: Add backdrop overlay + responsive `<main>` padding in MainLayout**
+- [ ] **Step 4.3: Add backdrop, body scroll lock, and responsive `<main>` padding in MainLayout**
 
 In `src/components/layout/MainLayout/MainLayout.tsx`:
 
-1. Replace the existing imports block to include the open-state selector:
+Replace the file contents with:
 
 ```tsx
+import { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
-import { useUIStore, selectSidebarCollapsed, selectSidebarOpen } from '@/stores';
-import { cn } from '@/lib/utils';
-import { Sidebar } from './Sidebar';
-import { Header } from './Header';
-import { useOnboardingCheck } from '@/features/onboarding/hooks/useOnboardingCheck';
-import { OnboardingWizard } from '@/features/onboarding/components/OnboardingWizard';
+
 import { RouteErrorBoundary } from '@/components/common';
-```
+import { OnboardingWizard } from '@/features/onboarding/components/OnboardingWizard';
+import { useOnboardingCheck } from '@/features/onboarding/hooks/useOnboardingCheck';
+import { cn } from '@/lib/utils';
+import { selectSidebarCollapsed, selectSidebarOpen, useUIStore } from '@/stores';
 
-2. Replace the component body with:
+import { Header } from './Header';
+import { Sidebar } from './Sidebar';
 
-```tsx
 export function MainLayout() {
   const isCollapsed = useUIStore(selectSidebarCollapsed);
-  const isOpen = useUIStore(selectSidebarOpen);
+  const sidebarOpen = useUIStore(selectSidebarOpen);
   const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
   const { showOnboarding, completeOnboarding, remindLater } = useOnboardingCheck();
 
+  // Lock body scroll while the mobile drawer is open. The `lg:hidden` backdrop
+  // already gates the visual; this prevents the page behind from scrolling on touch.
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [sidebarOpen]);
+
   if (showOnboarding) {
     return (
-      <OnboardingWizard
-        onComplete={completeOnboarding}
-        onRemindLater={remindLater}
-      />
+      <OnboardingWizard onComplete={completeOnboarding} onRemindLater={remindLater} />
     );
   }
 
@@ -704,17 +700,18 @@ export function MainLayout() {
     <div className="aurora-canvas min-h-screen bg-background" data-page-style="dense">
       <Sidebar />
       <Header />
-      {/* Mobile drawer backdrop */}
-      {isOpen && (
-        <div
+      {/* Mobile drawer backdrop — only renders when open, only visible <lg */}
+      {sidebarOpen && (
+        <button
+          type="button"
+          aria-label="Close navigation"
           className="fixed inset-0 z-30 bg-background/60 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
-          aria-hidden
         />
       )}
       <main
         className={cn(
-          'pt-16 transition-all duration-300',
+          'pt-16 motion-safe:transition-all motion-safe:duration-300',
           // No left padding on <lg — sidebar is a drawer, not in flow
           'pl-0',
           isCollapsed ? 'lg:ltr:pl-16 lg:rtl:pr-16' : 'lg:ltr:pl-60 lg:rtl:pr-60'
@@ -732,11 +729,66 @@ export function MainLayout() {
 ```
 
 Notes:
-- `lg:hidden` on the backdrop ensures it never renders on desktop even if `isOpen` somehow stays `true`.
-- The `pl-0` default + `lg:ltr:pl-{16,60}` switches based on the desktop collapse state — on `<lg` content goes edge-to-edge while the drawer overlays it.
-- The Header already swaps its own `left` offset based on `sidebarCollapsed` for `lg+` and stays at `left-0` (with the mobile menu button visible at `<lg`) — no Header change needed.
+- The backdrop is a `<button>` (not a `<div>` with `onClick`) so keyboard users can dismiss it with Enter / Space, and screen readers announce it as "Close navigation". This is the lightweight a11y win without pulling Radix Dialog into a custom drawer.
+- `lg:hidden` on the backdrop guarantees it never renders on desktop even if `sidebarOpen` somehow becomes `true`.
+- The body scroll lock is gated on `sidebarOpen` only. On desktop the drawer is always visible at its w-16/w-60 width and the body never scrolls because of the drawer — no harm in locking briefly if a user rapidly toggles state across breakpoints.
+- The `motion-safe:` prefix matches the Sidebar's transitions for a unified feel.
 
-- [ ] **Step 4.4: Build + lint check**
+- [ ] **Step 4.4: Swap the Header trigger icon Menu ↔ X**
+
+In `src/components/layout/MainLayout/Header.tsx`:
+
+1. Update the lucide imports to include `X` and replace the static `Menu` reference:
+
+```tsx
+import { LogOut, User, Menu, X, ArrowLeft } from 'lucide-react';
+```
+
+2. Update the `@/stores` import to add `selectSidebarOpen`:
+
+```tsx
+import {
+  useAuthStore,
+  selectUser,
+  useUIStore,
+  selectSidebarCollapsed,
+  selectSidebarOpen,
+  selectBackNavigation,
+} from '@/stores';
+```
+
+3. Inside the component, add:
+
+```tsx
+const sidebarOpen = useUIStore(selectSidebarOpen);
+```
+
+4. Replace the Menu button:
+
+```tsx
+<Button variant="ghost" size="icon" onClick={toggleSidebar} className="lg:hidden">
+  <Menu className="h-5 w-5" />
+</Button>
+```
+
+with:
+
+```tsx
+<Button
+  variant="ghost"
+  size="icon"
+  onClick={toggleSidebar}
+  className="lg:hidden"
+  aria-label={sidebarOpen ? 'Close navigation' : 'Open navigation'}
+  aria-expanded={sidebarOpen}
+>
+  {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+</Button>
+```
+
+This unifies the trigger experience: same button position, content swaps to mirror state, and screen readers announce the live state via `aria-expanded`.
+
+- [ ] **Step 4.5: Build + lint check**
 
 ```bash
 npm run build && npm run lint
@@ -744,7 +796,7 @@ npm run build && npm run lint
 
 Expected: build succeeds, no new lint errors.
 
-- [ ] **Step 4.5: Visual verification — desktop**
+- [ ] **Step 4.6: Visual verification — desktop**
 
 At `lg+` viewport (≥ 1024 px), reload `http://localhost:3100/dashboard`.
 
@@ -752,68 +804,81 @@ Expected:
 - Sidebar visible at start edge, no regression.
 - Collapse / expand chevrons work.
 - Backdrop never appears.
+- Body scroll works normally.
+- Header's mobile menu button is hidden.
 
-- [ ] **Step 4.6: Visual verification — mobile**
+- [ ] **Step 4.7: Visual verification — mobile**
 
-Use Chrome DevTools' device toolbar (`Cmd+Shift+M`) and switch to a 768 px viewport (or any `<1024`).
+Open Chrome DevTools' device toolbar (`Cmd+Shift+M`) and switch to a 768 px viewport.
 
 Expected on first load:
 - Sidebar **off-screen** to the start side.
 - `<main>` content fills the full viewport width.
-- Header's `Menu` button is visible.
+- Header's icon-only Menu button is visible.
 
 Click the Menu button:
-- Sidebar slides in over the content (drawer pattern).
+- Button icon swaps Menu → X.
+- Sidebar slides in over the content.
 - Backdrop appears over the rest of the viewport.
+- Body scroll is locked (try scrolling — no movement).
 
 Click the backdrop:
-- Sidebar slides out, backdrop disappears.
+- Sidebar slides out.
+- Header button icon swaps X → Menu.
+- Body scroll resumes.
 
 Open the drawer again, click any nav link:
-- Drawer auto-closes after navigation; you land on the new page with the sidebar hidden.
+- Drawer auto-closes after navigation.
+- Lands on the new page with the sidebar hidden.
 
 Open the drawer again, press `Esc`:
 - Drawer closes.
 
-In RTL mode (switch language to Arabic via the LanguageSwitcher):
-- Sidebar slides in from the **end** (right) edge.
+Switch language to Arabic (LanguageSwitcher → AR):
+- Drawer slides in from the **end** (right) edge.
 - Backdrop / route-close behavior unchanged.
 
-- [ ] **Step 4.7: Commit**
+In `prefers-reduced-motion: reduce` (DevTools → Rendering → Emulate CSS media feature):
+- Open / close transitions are instant; no slide animation.
+- All other behavior identical.
+
+- [ ] **Step 4.8: Commit**
 
 ```bash
 git add boilerplateFE/src/stores/ui.store.ts \
         boilerplateFE/src/components/layout/MainLayout/Sidebar.tsx \
-        boilerplateFE/src/components/layout/MainLayout/MainLayout.tsx
-git commit -m "feat(fe/layout): mobile sidebar drawer with backdrop, route + Esc auto-close"
+        boilerplateFE/src/components/layout/MainLayout/MainLayout.tsx \
+        boilerplateFE/src/components/layout/MainLayout/Header.tsx
+git commit -m "feat(fe/layout): mobile sidebar drawer (backdrop, scroll-lock, Menu↔X swap)"
 ```
 
 ---
 
 ## Task 5: Code-review pass
 
-**Why:** Phase 0 cadence (per spec §9). Catch any regressions before stacking Plan B / C on top.
+**Why:** Phase 0 cadence (per spec §9). Catch regressions before stacking Plan B / C on top.
 
 - [ ] **Step 5.1: Dispatch code-reviewer subagent**
 
 Invoke the `superpowers:code-reviewer` subagent against the diff for this plan (Tasks 1-4). Brief:
 
-> Review the four commits on `fe/redesign-phase-1` since the spec commit (`6652ce91`):
-> - Sidebar grouped data shape + expanded-mode eyebrow labels & dividers
-> - Collapsed-mode separators
-> - Mobile drawer behavior (sidebarOpen state, backdrop, responsive classes, route + Esc auto-close)
+> Review all commits on `fe/redesign-phase-1` since the spec commit (`6652ce91`):
 > - i18n keys for `nav.groups.*`
+> - `useNavGroups` hook + Sidebar typed groups + expanded-mode eyebrow labels & dividers
+> - Collapsed-mode separators
+> - Mobile drawer (sidebarOpen state, backdrop, body scroll-lock, responsive translate, Header Menu↔X swap)
 >
 > Verify against `docs/superpowers/specs/2026-04-27-redesign-phase-1-design.md` §4.
 >
 > Specific things to check:
-> 1. No new `dark:` overrides for primary colors (Frontend Rules in CLAUDE.md).
-> 2. No hardcoded `primary-{shade}` classes — semantic tokens only.
-> 3. RTL works for the mobile drawer (translate direction flips).
-> 4. Empty-group hide logic works for a permission-restricted user (e.g., a tenant member with no admin permissions should see fewer groups).
-> 5. The `end` flag on individual nav items correctly replaces the prior hand-rolled exact-match switch.
-> 6. No regression to the desktop `lg+` layout — Sidebar / Header / Main padding still correct in both expanded and collapsed states.
-> 7. The Tailwind `max-lg:` arbitrary prefix is supported in this project's Tailwind 4 setup.
+> 1. No new `dark:` overrides for primary colors and no hardcoded `primary-{shade}` classes (CLAUDE.md Frontend Rules).
+> 2. RTL works for the mobile drawer — translate direction flips, backdrop click still closes.
+> 3. Empty-group hide logic — sign in as a tenant member with limited permissions and confirm groups with zero items hide their label and divider together.
+> 4. The `end` flag on individual nav items correctly replaces the prior hand-rolled exact-match switch (Dashboard, Billing root, Subscriptions list, Webhooks Admin list).
+> 5. No regression to the desktop `lg+` layout — Sidebar / Header / Main padding still correct in both expanded and collapsed states.
+> 6. Tailwind 4 `max-lg:` and `motion-safe:` variants are honored in the project's Tailwind config.
+> 7. Body scroll lock cleans up correctly on unmount and on `sidebarOpen → false` (no orphaned `overflow: hidden`).
+> 8. The Menu↔X swap keeps `aria-label` and `aria-expanded` in sync with state.
 
 Address any findings with follow-up commits before proceeding to Plan B.
 
@@ -821,22 +886,34 @@ Address any findings with follow-up commits before proceeding to Plan B.
 
 ## Self-Review
 
-Run through this checklist after writing all tasks:
-
 **Spec coverage (§4 of the design doc):**
-- §4.1 Group structure → Task 2 (entire `groups` array maps 1-to-1 with the spec table).
-- §4.2 Data shape → Task 2 (`SidebarNavItem` and `SidebarNavGroup` interfaces).
-- §4.3 Expanded visual treatment → Task 2 (eyebrow label classes, divider, item rows unchanged).
+- §4.1 Group structure → Task 2 (`useNavGroups` builds the same 9 groups + the unlabeled top block, in the same order, with the same per-item gates).
+- §4.2 Data shape → Task 2 (`SidebarNavItem`, `SidebarNavGroup` exported from `useNavGroups.ts`).
+- §4.3 Expanded visual treatment → Task 2 (eyebrow label classes, divider, item rows, `motion-safe:` transitions).
 - §4.4 Collapsed visual treatment → Task 3.
-- §4.5 Mobile drawer → Task 4.
+- §4.5 Mobile drawer → Task 4 (translate, backdrop, scroll-lock, route + Esc auto-close, Menu↔X icon).
 - §4.6 i18n keys → Task 1.
-- §4.7 Logo, collapse toggle, tenant logo logic — explicitly preserved in Task 2's full file rewrite.
+- §4.7 Logo, collapse toggle, tenant logo logic — explicitly preserved in Task 2's full rewrite.
 
-**Placeholder scan:** No `TBD` / `TODO` / "implement later" / "appropriate error handling" — every step has concrete code or commands.
+**Placeholder scan:** No `TBD` / `TODO` / "implement later" / vague error-handling references. Every step has concrete code or commands.
 
-**Type consistency:** `SidebarNavItem` / `SidebarNavGroup` / `groups` / `visibleGroups` consistent across Task 2, 3, 4.
+**Type consistency check:**
+- `SidebarNavItem` and `SidebarNavGroup` defined once in `useNavGroups.ts` and imported nowhere else (Sidebar uses them via the return type of `useNavGroups()`).
+- `sidebarOpen` / `setSidebarOpen` / `selectSidebarOpen` consistent across `ui.store.ts`, `Sidebar.tsx`, `MainLayout.tsx`, `Header.tsx`.
+- `isCollapsed` (local React var) maps to `selectSidebarCollapsed` consistently.
+- The `end?: boolean` flag matches the `NavLink`'s `end` prop type.
 
-**Verification model:** Each task has a build check, lint where applicable, visual check, and a single commit. The plan's verification adapts to a no-FE-test codebase — `npm run build` + visual + code-review subagent stand in for unit tests.
+**Variable / class unification:**
+- All transitions use `motion-safe:transition-* motion-safe:duration-*` (matches Phase 0 conventions in `src/styles/index.css`).
+- All `cn()` arrays group concerns: positioning → border → width → translate. No mixed concerns inside one ternary.
+- All buttons that mutate state include `type="button"` to prevent unintended form submissions inside ancestor forms.
+
+**End-user experience unification:**
+- Menu and X share the Header position and toggle behavior; `aria-label` and `aria-expanded` reflect state.
+- Drawer closes via three independent paths (backdrop, Esc, route change) — never a dead-end.
+- Body scroll locks while the drawer covers the page so the content behind doesn't shift under touch.
+- `prefers-reduced-motion` users skip every slide animation; state changes are instant.
+- RTL is handled via `ltr:` / `rtl:` Tailwind variants on every directional class — no manual flips needed.
 
 **Out of scope here (deferred to later plans):**
 - Header `⌘K` palette → Plan B
