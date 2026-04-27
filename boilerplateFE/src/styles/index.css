@@ -604,14 +604,16 @@ button { font-family: inherit; }
     }
   }
 
-  /* ── J4 motion: hero traces (glowing lines drawing themselves) ──
-   * Used by <HeroLinesBackground />. Each path has pathLength="100" so the
-   * normalized dasharray=100 / dashoffset cycle works regardless of actual length. */
-  .hero-trace {
-    stroke-dasharray: 100;
-    stroke-dashoffset: 100;
-    opacity: 0;
-    animation: hero-trace var(--ht-dur, 11s) ease-in-out infinite;
+  /* ── J4 motion: hero traces ──
+   * Used by <HeroLinesBackground />. A bright "pulse" segment continuously travels
+   * along each curved path while a low-opacity guide stays visible — so the
+   * network is always present at constant density, the motion just signals
+   * "alive" without bursts. Each path has pathLength="100" so the normalized
+   * dasharray works regardless of physical length. */
+  .hero-pulse {
+    stroke-dasharray: 10 90;
+    stroke-dashoffset: 0;
+    animation: hero-pulse-travel var(--ht-dur, 9s) linear infinite;
   }
   /* ── J4 motion: blueprint (architecture section) ── */
   .blueprint-line {
@@ -623,8 +625,8 @@ button { font-family: inherit; }
     animation: blueprint-node-pulse 4s ease-in-out infinite;
   }
   @media (prefers-reduced-motion: reduce) {
-    .hero-trace, .blueprint-line, .blueprint-node { animation: none; }
-    .hero-trace { stroke-dashoffset: 0; opacity: 0.4; }
+    .hero-pulse, .blueprint-line, .blueprint-node { animation: none; }
+    .hero-pulse { stroke-dasharray: none; }
     .blueprint-line { stroke-dashoffset: 0; }
   }
 
@@ -702,13 +704,9 @@ button { font-family: inherit; }
   50%, 100% { opacity: 0; }
 }
 
-@keyframes hero-trace {
-  0%   { stroke-dashoffset: 100; opacity: 0; }
-  8%   { opacity: 1; }
-  38%  { stroke-dashoffset: 0;   opacity: 1; }
-  68%  { stroke-dashoffset: 0;   opacity: 1; }
-  92%  { opacity: 0.6; }
-  100% { stroke-dashoffset: -100; opacity: 0; }
+@keyframes hero-pulse-travel {
+  0%   { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -100; }
 }
 
 @keyframes blueprint-node-pulse {

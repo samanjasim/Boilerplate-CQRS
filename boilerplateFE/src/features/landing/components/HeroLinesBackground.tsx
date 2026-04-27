@@ -1,18 +1,20 @@
 /**
- * Glowing-trace hero background.
+ * Hero background — flowing curved traces with a traveling glow pulse.
  *
- * Eight paths routed around the perimeter of a virtual 800×500 viewport,
- * deliberately avoiding the central reading area. Each path draws itself
- * (stroke-dashoffset 100→0), holds visible while glowing, then erases
- * (0→-100) and restarts. Paths are staggered so something is always
- * drawing, holding, or fading — never all in sync, never silent.
+ * Two layers per path:
+ *  1. A faint static "guide" at ~10% opacity, always visible, so the network
+ *     reads as a coherent constellation at constant density.
+ *  2. An animated "pulse" — a small bright segment that travels continuously
+ *     along the same path, glowing softly via an SVG filter. Each path has
+ *     pathLength="100" so the dasharray cycle is normalized.
  *
- * The whole `<g>` carries a multi-stop drop-shadow filter that produces a
- * soft inner highlight + wider outer halo. Stroke uses a copper→violet
- * gradient anchored to preset CSS vars so the active theme drives the look.
+ * Paths are Bezier curves (no sharp corners). Several intersect each other
+ * at peripheral points to feel like a connected system, not parallel cracks.
+ * The center reading area is masked out with a soft vignette so headline +
+ * dashboard preview always stay primary.
  *
- * Respects prefers-reduced-motion via `.hero-trace` rule in index.css
- * (renders all paths fully drawn and dimmed instead of cycling).
+ * Respects prefers-reduced-motion via `.hero-pulse` rule (renders pulses as
+ * full visible strokes with no animation).
  */
 export function HeroLinesBackground() {
   return (
@@ -26,35 +28,52 @@ export function HeroLinesBackground() {
         viewBox="0 0 800 500"
         preserveAspectRatio="xMidYMid slice"
         style={{
-          // Cut a soft hole through the center so the headline + dashboard preview always read
+          // Soft hole through the center so the reading area always breathes
           maskImage:
-            'radial-gradient(ellipse 56% 50% at 50% 50%, transparent 35%, black 78%)',
+            'radial-gradient(ellipse 50% 46% at 50% 52%, transparent 30%, black 80%)',
           WebkitMaskImage:
-            'radial-gradient(ellipse 56% 50% at 50% 50%, transparent 35%, black 78%)',
+            'radial-gradient(ellipse 50% 46% at 50% 52%, transparent 30%, black 80%)',
         }}
       >
         <defs>
+          {/* Stroke gradient — copper to violet, soft */}
           <linearGradient id="hero-trace-grad" x1="0" x2="1" y1="0" y2="1">
-            <stop offset="0%" stopColor="var(--color-primary-700)" />
+            <stop offset="0%"  stopColor="var(--color-primary-700)" />
             <stop offset="55%" stopColor="var(--color-primary)" />
             <stop offset="100%" stopColor="var(--color-violet-500)" />
           </linearGradient>
 
-          {/* Soft glow filter — combines a tight inner blur with a wider outer bloom */}
-          <filter id="hero-trace-glow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="2.4" result="blur1" />
-            <feGaussianBlur stdDeviation="6"   result="blur2" />
+          {/* Subtle glow — small inner highlight + gentle outer halo. Tuned softer
+              than the previous version to read as polished trace, not crack. */}
+          <filter id="hero-trace-glow" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="1.5" result="b1" />
+            <feGaussianBlur stdDeviation="4"   result="b2" />
             <feMerge>
-              <feMergeNode in="blur2" />
-              <feMergeNode in="blur1" />
+              <feMergeNode in="b2" />
+              <feMergeNode in="b1" />
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
         </defs>
 
+        {/* Static guides — always visible at low opacity */}
         <g
           stroke="url(#hero-trace-grad)"
-          strokeWidth="1.5"
+          strokeWidth="0.8"
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity="0.18"
+        >
+          {PATHS.map((p, i) => (
+            <path key={`g-${i}`} d={p.d} />
+          ))}
+        </g>
+
+        {/* Animated pulses — bright traveling segment along each path */}
+        <g
+          stroke="url(#hero-trace-grad)"
+          strokeWidth="1.2"
           fill="none"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -62,12 +81,12 @@ export function HeroLinesBackground() {
         >
           {PATHS.map((p, i) => (
             <path
-              key={i}
+              key={`p-${i}`}
               d={p.d}
               pathLength={100}
-              className="hero-trace"
+              className="hero-pulse"
               style={{
-                animationDelay: `${p.delay}s`,
+                animationDelay: `-${p.delay}s`,
                 ['--ht-dur' as string]: `${p.duration}s`,
               }}
             />
@@ -78,21 +97,24 @@ export function HeroLinesBackground() {
   );
 }
 
+/** Eight Bezier-curved paths routed around the periphery with deliberate
+ *  intersections at peripheral points. Durations and delays are spread so
+ *  pulses are always at different positions — never all bunched. */
 const PATHS: { d: string; delay: number; duration: number }[] = [
-  // Top backbone — long, slow
-  { d: 'M 60 50 L 740 50',                                delay: 0,    duration: 13 },
-  // Top-left L drop
-  { d: 'M 40 60 L 40 200 L 130 200',                      delay: 1.2,  duration: 9  },
-  // Top-right T-junction with branch
-  { d: 'M 760 70 L 760 160 L 660 160 L 660 240',          delay: 2.0,  duration: 12 },
-  // Middle-right diagonal connector
-  { d: 'M 760 280 L 740 360 L 760 440',                   delay: 3.4,  duration: 10 },
-  // Bottom backbone — slightly offset from top so they don't echo
-  { d: 'M 80 460 L 720 460',                              delay: 4.6,  duration: 14 },
-  // Bottom-left branch up
-  { d: 'M 280 460 L 280 380 L 360 380',                   delay: 5.8,  duration: 9  },
-  // Bottom-right L
-  { d: 'M 540 460 L 740 460 L 740 400',                   delay: 6.6,  duration: 10 },
-  // Left edge mid-vertical
-  { d: 'M 40 240 L 40 380 L 130 380',                     delay: 7.4,  duration: 11 },
+  // 1) Long top sweep — gentle dip then rise across the top
+  { d: 'M 20 80 Q 200 40 380 100 T 760 80',                                   delay: 0,    duration: 11 },
+  // 2) Diagonal flow upper-right → lower-left (crosses #1, #6 mid)
+  { d: 'M 760 60 Q 600 220 380 260 Q 200 300 40 420',                         delay: 1.4,  duration: 13 },
+  // 3) Long bottom sweep — mirrors #1, slightly different rhythm
+  { d: 'M 20 460 Q 220 400 400 440 Q 580 480 780 420',                        delay: 2.8,  duration: 12 },
+  // 4) Left ascender — meets #1 near top-left, #3 near bottom-left
+  { d: 'M 80 60 Q 40 200 60 360 Q 80 460 160 460',                            delay: 3.6,  duration: 9  },
+  // 5) Right ascender — meets #1 near top-right, #3 near bottom-right
+  { d: 'M 740 80 Q 760 240 740 380 Q 720 440 660 460',                        delay: 4.2,  duration: 9.5},
+  // 6) Cross-diagonal lower-left → upper-right (crosses #2)
+  { d: 'M 80 380 Q 280 320 460 320 Q 620 320 760 240',                        delay: 5.4,  duration: 10 },
+  // 7) Short interior arc top — accent
+  { d: 'M 240 60 Q 340 30 440 70',                                            delay: 6.6,  duration: 7  },
+  // 8) Short interior arc bottom — accent
+  { d: 'M 320 460 Q 460 430 580 470',                                         delay: 7.4,  duration: 7.5},
 ];
