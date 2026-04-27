@@ -36,7 +36,7 @@ export function MainLayout() {
   }
 
   return (
-    <div className="aurora-canvas min-h-screen bg-background" data-page-style="dense">
+    <div className="aurora-canvas min-h-screen bg-background overflow-x-clip" data-page-style="dense">
       <Sidebar />
       <Header />
       {/* Mobile drawer backdrop — only renders when open, only visible <lg */}
