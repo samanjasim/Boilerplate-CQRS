@@ -9,6 +9,7 @@ import {
   Webhook,
   type LucideIcon,
 } from 'lucide-react';
+import { useReveal } from './useReveal';
 
 type IconColor = 'copper' | 'emerald' | 'violet' | 'amber';
 
@@ -90,24 +91,28 @@ const FEATURES: Feature[] = [
 ];
 
 export function FeatureGrid() {
+  const head = useReveal<HTMLDivElement>();
+  const grid = useReveal<HTMLDivElement>();
   return (
     <section id="product" className="relative">
       <div className="mx-auto max-w-6xl px-7 py-20 lg:py-24">
-        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary mb-3">
-          What's already in
+        <div ref={head.ref} data-revealed={head.revealed} className="reveal-up">
+          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary mb-3">
+            What's already in
+          </div>
+          <h2 className="text-[34px] sm:text-[40px] font-light tracking-[-0.025em] leading-[1.12] mb-4 font-display max-w-[720px]">
+            Fifteen capabilities.
+            <br />
+            <em className="not-italic font-medium gradient-text">Eight you'd dread building from scratch.</em>
+          </h2>
+          <p className="text-[15px] leading-[1.6] max-w-[600px] mb-12 text-muted-foreground">
+            Real implementations of the boring-but-load-bearing pieces — JWT rotation, RBAC matrices,
+            transactional outbox, billing proration, audit diffs. The ones that take weeks to get right and
+            months to clean up.
+          </p>
         </div>
-        <h2 className="text-[34px] sm:text-[40px] font-light tracking-[-0.025em] leading-[1.12] mb-4 font-display max-w-[720px]">
-          Fifteen capabilities.
-          <br />
-          <em className="not-italic font-medium gradient-text">Eight you'd dread building from scratch.</em>
-        </h2>
-        <p className="text-[15px] leading-[1.6] max-w-[600px] mb-12 text-muted-foreground">
-          Real implementations of the boring-but-load-bearing pieces — JWT rotation, RBAC matrices,
-          transactional outbox, billing proration, audit diffs. The ones that take weeks to get right and
-          months to clean up.
-        </p>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div ref={grid.ref} data-revealed={grid.revealed} className="reveal-stagger grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map((f) => {
             const Icon = f.icon;
             return (

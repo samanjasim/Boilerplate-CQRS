@@ -1,10 +1,12 @@
 import { ArrowRight, Github, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { PulseGrid } from './PulseGrid';
 
 export function HeroSection() {
   return (
-    <section className="relative">
-      <div className="mx-auto max-w-6xl px-7 py-20 lg:py-28 grid lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] gap-12 items-center">
+    <section className="relative isolate">
+      <PulseGrid />
+      <div className="mx-auto max-w-6xl px-7 py-20 lg:py-28 grid lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] gap-12 items-center relative z-[1]">
         {/* Left: copy */}
         <div>
           <div className="animate-fade-up inline-flex items-center gap-2 px-3 py-1 rounded-full mb-7 text-[10px] font-bold uppercase tracking-[0.18em] bg-[color-mix(in_srgb,var(--color-accent-500)_8%,transparent)] text-[var(--color-accent-700)] dark:text-[var(--color-accent-300)] border border-[color-mix(in_srgb,var(--color-accent-500)_22%,transparent)]">

@@ -1,4 +1,5 @@
 import {
+  AiSection,
   ArchitectureSection,
   CodeSection,
   FeatureGrid,
@@ -16,6 +17,7 @@ export default function LandingPage() {
       <HeroSection />
       <TechStrip />
       <FeatureGrid />
+      <AiSection />
       <CodeSection />
       <ArchitectureSection />
       <StatsStrip />

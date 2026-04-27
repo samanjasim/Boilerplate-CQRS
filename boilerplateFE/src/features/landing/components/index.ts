@@ -2,6 +2,7 @@ export { LandingNav } from './LandingNav';
 export { HeroSection } from './HeroSection';
 export { TechStrip } from './TechStrip';
 export { FeatureGrid } from './FeatureGrid';
+export { AiSection } from './AiSection';
 export { CodeSection } from './CodeSection';
 export { ArchitectureSection } from './ArchitectureSection';
 export { StatsStrip } from './StatsStrip';
