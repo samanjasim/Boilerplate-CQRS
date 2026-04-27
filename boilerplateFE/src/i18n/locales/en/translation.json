@@ -146,7 +146,18 @@
     "deliveryLog": "Delivery Log",
     "collapse": "Collapse",
     "taskInbox": "Task Inbox",
-    "workflowDefinitions": "Definitions"
+    "workflowDefinitions": "Definitions",
+    "groups": {
+      "workflow": "Workflow",
+      "communication": "Communication",
+      "products": "Products",
+      "billing": "Billing",
+      "webhooks": "Webhooks",
+      "importExport": "Import / Export",
+      "people": "People",
+      "content": "Content",
+      "platform": "Platform"
+    }
   },
   "header": {
     "logout": "Logout",
