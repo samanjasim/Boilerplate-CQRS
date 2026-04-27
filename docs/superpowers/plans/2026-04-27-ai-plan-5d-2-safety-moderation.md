@@ -74,7 +74,7 @@ public const string AgentsViewApprovals = "Ai.Agents.ViewApprovals";
 public const string ModerationView = "Ai.Moderation.View";
 ```
 
-- [ ] **Step 2: Add `AgentRunStatus` values**
+- [ ] **Step 2: Add `AgentRunStatus` values + `ModerationEvents` collection on `AgentRunResult`**
 
 In `AgentRunResult.cs`, append to the `AgentRunStatus` enum (after `RateLimitExceeded`):
 
@@ -84,6 +84,21 @@ OutputBlocked = 8,
 AwaitingApproval = 9,
 ModerationProviderUnavailable = 10,
 ```
+
+Extend the `AgentRunResult` record with an optional collection of moderation events the decorator wants persisted by the caller (separation of concerns: the runtime decides verdicts; the chat layer persists in its own transaction so we don't accidentally flush the chat layer's pending entities mid-run):
+
+```csharp
+internal sealed record AgentRunResult(
+    AgentRunStatus Status,
+    string? FinalContent,
+    IReadOnlyList<AgentStepEvent> Steps,
+    long TotalInputTokens,
+    long TotalOutputTokens,
+    string? TerminationReason,
+    IReadOnlyList<Domain.Entities.AiModerationEvent>? ModerationEvents = null);
+```
+
+The default (`null`) is back-compat for callers and existing tests. Only the moderation decorator sets it.
 
 - [ ] **Step 3: Create the five new enums**
 
@@ -177,11 +192,40 @@ public static class PendingApprovalErrors
 }
 ```
 
-- [ ] **Step 6: Build and commit**
+- [ ] **Step 6: Add OTel meters for 5d-2** (folded in here so metrics are available from the start)
+
+Locate the existing `AiAgentMetrics` static class (`grep -rl "AiAgentMetrics" boilerplateBE/src/modules/Starter.Module.AI/`) and append:
+
+```csharp
+public static readonly Counter<long> ModerationOutcomes =
+    Meter.CreateCounter<long>("ai_moderation_outcomes_total",
+        description: "Count of moderation scan outcomes by stage / preset / outcome.");
+
+public static readonly Histogram<double> ModerationLatency =
+    Meter.CreateHistogram<double>("ai_moderation_latency_ms",
+        unit: "ms",
+        description: "Moderation scan latency by stage / provider.");
+
+public static readonly Counter<long> ModerationProviderUnavailable =
+    Meter.CreateCounter<long>("ai_moderation_provider_unavailable_total",
+        description: "Times the moderator returned Unavailable, by failure mode.");
+
+public static readonly Counter<long> PendingApprovals =
+    Meter.CreateCounter<long>("ai_pending_approvals_total",
+        description: "Approval lifecycle events: created/approved/denied/expired.");
+
+public static readonly Counter<long> DangerousActionBlocks =
+    Meter.CreateCounter<long>("ai_dangerous_action_blocks_total",
+        description: "Times AgentToolDispatcher created a pending approval row, by tool_name.");
+```
+
+(The existing class already imports `System.Diagnostics.Metrics`; add `using System.Collections.Generic;` if not present.)
+
+- [ ] **Step 7: Build and commit**
 
 ```bash
 dotnet build boilerplateBE/Starter.sln
-git add -p && git commit -m "feat(ai): 5d-2 — permissions, error codes, run statuses, moderation enums"
+git add -p && git commit -m "feat(ai): 5d-2 — permissions, error codes, run statuses, moderation enums + OTel metrics"
 ```
 
 ---
@@ -867,19 +911,21 @@ git add -p && git commit -m "feat(ai): 5d-2 — AiModerationEvent entity + confi
 
 **Files:**
 - Create: `boilerplateBE/src/modules/Starter.Module.AI/Domain/Entities/AiPendingApproval.cs`
-- Create: `boilerplateBE/src/modules/Starter.Module.AI/Domain/Events/AgentApprovalPendingEvent.cs`
-- Create: `boilerplateBE/src/modules/Starter.Module.AI/Domain/Events/AgentApprovalApprovedEvent.cs`
-- Create: `boilerplateBE/src/modules/Starter.Module.AI/Domain/Events/AgentApprovalDeniedEvent.cs`
-- Create: `boilerplateBE/src/modules/Starter.Module.AI/Domain/Events/AgentApprovalExpiredEvent.cs`
+- Create: `boilerplateBE/src/Starter.Abstractions/Ai/Events/AgentApprovalPendingEvent.cs`
+- Create: `boilerplateBE/src/Starter.Abstractions/Ai/Events/AgentApprovalApprovedEvent.cs`
+- Create: `boilerplateBE/src/Starter.Abstractions/Ai/Events/AgentApprovalDeniedEvent.cs`
+- Create: `boilerplateBE/src/Starter.Abstractions/Ai/Events/AgentApprovalExpiredEvent.cs`
 - Create: `boilerplateBE/src/modules/Starter.Module.AI/Infrastructure/Configurations/AiPendingApprovalConfiguration.cs`
 - Test: `boilerplateBE/tests/Starter.Api.Tests/Ai/Approvals/AiPendingApprovalTests.cs`
 
-- [ ] **Step 1: Create the four lifecycle events**
+> **Why `Starter.Abstractions.Ai.Events`:** these four events cross the AI ↔ Communication boundary (Communication's `CommunicationAiEventHandler` subscribes to them). Putting them in `Starter.Abstractions.Ai.Events` means **Communication does not take a project reference on `Starter.Module.AI`** — it already references `Starter.Abstractions` for `SafetyPreset`, `PersonaAudienceType`, etc. This preserves modularity (modules don't need to know about each other's internals; only shared abstractions). Persona/SafetyPresetProfile updated events stay in `Starter.Module.AI.Domain.Events` because they're consumed only inside the AI module.
+
+- [ ] **Step 1: Create the four lifecycle events** (in `Starter.Abstractions/Ai/Events/`)
 
 ```csharp
 // AgentApprovalPendingEvent.cs
 using MediatR;
-namespace Starter.Module.AI.Domain.Events;
+namespace Starter.Abstractions.Ai.Events;
 public sealed record AgentApprovalPendingEvent(
     Guid TenantId,
     Guid ApprovalId,
@@ -896,7 +942,7 @@ public sealed record AgentApprovalPendingEvent(
 ```csharp
 // AgentApprovalApprovedEvent.cs
 using MediatR;
-namespace Starter.Module.AI.Domain.Events;
+namespace Starter.Abstractions.Ai.Events;
 public sealed record AgentApprovalApprovedEvent(
     Guid TenantId,
     Guid ApprovalId,
@@ -912,7 +958,7 @@ public sealed record AgentApprovalApprovedEvent(
 ```csharp
 // AgentApprovalDeniedEvent.cs
 using MediatR;
-namespace Starter.Module.AI.Domain.Events;
+namespace Starter.Abstractions.Ai.Events;
 public sealed record AgentApprovalDeniedEvent(
     Guid TenantId,
     Guid ApprovalId,
@@ -928,7 +974,7 @@ public sealed record AgentApprovalDeniedEvent(
 ```csharp
 // AgentApprovalExpiredEvent.cs
 using MediatR;
-namespace Starter.Module.AI.Domain.Events;
+namespace Starter.Abstractions.Ai.Events;
 public sealed record AgentApprovalExpiredEvent(
     Guid TenantId,
     Guid ApprovalId,
@@ -939,12 +985,14 @@ public sealed record AgentApprovalExpiredEvent(
     DateTime ExpiredAt) : INotification;
 ```
 
+> **`Starter.Abstractions` MediatR reference:** verify the project already references `MediatR.Contracts` (or `MediatR`) — if not, add the package reference. The `INotification` type lives in `MediatR.Contracts`. Inspect `Starter.Abstractions.csproj` first.
+
 - [ ] **Step 2: Create the entity**
 
 ```csharp
+using Starter.Abstractions.Ai.Events;
 using Starter.Domain.Common;
 using Starter.Module.AI.Domain.Enums;
-using Starter.Module.AI.Domain.Events;
 
 namespace Starter.Module.AI.Domain.Entities;
 
@@ -1132,9 +1180,9 @@ internal sealed class AiPendingApprovalConfiguration : IEntityTypeConfiguration<
 
 ```csharp
 using FluentAssertions;
+using Starter.Abstractions.Ai.Events;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Module.AI.Domain.Enums;
-using Starter.Module.AI.Domain.Events;
 using Xunit;
 
 namespace Starter.Api.Tests.Ai.Approvals;
@@ -2905,7 +2953,7 @@ internal sealed class ContentModerationEnforcingAgentRuntime(
     ISafetyProfileResolver profileResolver,
     IModerationRefusalProvider refusals,
     AiDbContext db,
-    ICurrentUserService currentUser,
+    IWebhookPublisher webhooks,
     ILogger<ContentModerationEnforcingAgentRuntime> logger) : IAiAgentRuntime
 {
     public async Task<AgentRunResult> RunAsync(
@@ -2919,53 +2967,87 @@ internal sealed class ContentModerationEnforcingAgentRuntime(
             .AsNoTracking()
             .FirstOrDefaultAsync(a => a.Id == assistantId, ct);
         if (assistant is null)
+        {
+            logger.LogWarning(
+                "Assistant {AssistantId} not found in moderation decorator; bypassing moderation. " +
+                "This usually means a deleted/foreign assistant slipped through resource ACL — investigate.",
+                assistantId);
             return await inner.RunAsync(ctx, sink, ct);
+        }
 
         var profile = await profileResolver.ResolveAsync(
             tenantId, assistant, ctx.Persona?.Safety,
             ModerationProvider.OpenAi, ct);
+
+        // The decorator collects moderation events to be persisted by the chat layer in its
+        // own transaction. We do NOT call db.SaveChangesAsync here — the chat layer's
+        // FinalizeTurnAsync owns the unit of work. This keeps the user message + assistant
+        // message + moderation events + usage log in a single atomic write.
+        var moderationEvents = new List<AiModerationEvent>();
 
         // 1. Input scan (last user message)
         var inputText = ctx.Messages.LastOrDefault(m => m.Role == "user")?.Content ?? string.Empty;
         var inputVerdict = await moderator.ScanAsync(
             inputText, ModerationStage.Input, profile, ctx.Persona?.Slug, ct);
 
-        if (await HandleUnavailableAsync(inputVerdict, profile, ctx, assistant, ModerationStage.Input, ct) is { } unavailableResult)
-            return unavailableResult;
+        AiAgentMetrics.ModerationLatency.Record(inputVerdict.LatencyMs,
+            new KeyValuePair<string, object?>("ai.moderation.stage", "input"),
+            new KeyValuePair<string, object?>("ai.moderation.provider", profile.Provider.ToString()));
+
+        if (HandleUnavailable(inputVerdict, profile, ModerationStage.Input) is { } unavailableInput)
+            return unavailableInput;
 
         if (inputVerdict.Outcome == ModerationOutcome.Blocked)
-            return await BlockedResultAsync(ctx, assistant, profile, ModerationStage.Input,
-                inputVerdict, sink, ct);
+            return BuildBlockedResult(assistant, profile, ModerationStage.Input, inputVerdict, ctx, moderationEvents);
 
-        // 2. Choose sink wrapper based on preset
+        // 2. Choose sink wrapper based on preset (Standard streams live; safe presets buffer)
         var bufferingSink = profile.Preset == SafetyPreset.Standard
             ? null
             : new BufferingSink(sink);
         var wrappedSink = bufferingSink ?? (IAgentRunSink)new PassthroughSink(sink);
 
-        var inner_result = await inner.RunAsync(ctx, wrappedSink, ct);
-        if (inner_result.Status != AgentRunStatus.Completed)
-            return inner_result; // upstream errors / cap / awaiting bypass output scan
+        var innerResult = await inner.RunAsync(ctx, wrappedSink, ct);
+        if (innerResult.Status != AgentRunStatus.Completed)
+            return innerResult;
 
-        var outputText = bufferingSink?.BufferedContent ?? inner_result.FinalContent ?? string.Empty;
+        var outputText = bufferingSink?.BufferedContent ?? innerResult.FinalContent ?? string.Empty;
 
         // 3. Output scan
         var outputVerdict = await moderator.ScanAsync(
             outputText, ModerationStage.Output, profile, ctx.Persona?.Slug, ct);
 
-        if (await HandleUnavailableAsync(outputVerdict, profile, ctx, assistant, ModerationStage.Output, ct) is { } unavailableOut)
+        AiAgentMetrics.ModerationLatency.Record(outputVerdict.LatencyMs,
+            new KeyValuePair<string, object?>("ai.moderation.stage", "output"),
+            new KeyValuePair<string, object?>("ai.moderation.provider", profile.Provider.ToString()));
+
+        if (HandleUnavailable(outputVerdict, profile, ModerationStage.Output) is { } unavailableOut)
             return unavailableOut;
 
         if (outputVerdict.Outcome == ModerationOutcome.Blocked)
-            return await BlockedResultAsync(ctx, assistant, profile, ModerationStage.Output,
-                outputVerdict, sink, ct);
+            return BuildBlockedResult(assistant, profile, ModerationStage.Output, outputVerdict, ctx, moderationEvents);
 
         // 4. PII redaction (ProfessionalModerated)
         var redaction = await redactor.RedactAsync(outputText, profile, ct);
         if (redaction.Outcome == ModerationOutcome.Redacted)
-            await PersistModerationEventAsync(ctx, assistant, profile, ModerationStage.Output,
-                outputVerdict with { Outcome = ModerationOutcome.Redacted, Categories = redaction.Hits.ToDictionary(kv => kv.Key, kv => (double)kv.Value) },
-                ct);
+        {
+            moderationEvents.Add(AiModerationEvent.Create(
+                tenantId: assistant.TenantId,
+                assistantId: assistant.Id,
+                agentPrincipalId: null,
+                conversationId: null, // chat layer can backfill via the join key if it cares
+                agentTaskId: null,
+                messageId: null,
+                stage: ModerationStage.Output,
+                preset: profile.Preset,
+                outcome: ModerationOutcome.Redacted,
+                categoriesJson: JsonSerializer.Serialize(redaction.Hits.ToDictionary(kv => kv.Key, kv => (double)kv.Value)),
+                provider: profile.Provider,
+                latencyMs: outputVerdict.LatencyMs,
+                redactionFailed: redaction.Failed));
+            AiAgentMetrics.ModerationOutcomes.Add(1,
+                new KeyValuePair<string, object?>("ai.moderation.outcome", "redacted"),
+                new KeyValuePair<string, object?>("ai.moderation.preset", profile.Preset.ToString()));
+        }
 
         var finalText = redaction.Outcome == ModerationOutcome.Redacted ? redaction.Text : outputText;
 
@@ -2973,14 +3055,20 @@ internal sealed class ContentModerationEnforcingAgentRuntime(
         if (bufferingSink is not null)
             await bufferingSink.ReleaseAsync(finalText, ct);
 
-        return inner_result with { FinalContent = finalText };
+        return innerResult with
+        {
+            FinalContent = finalText,
+            ModerationEvents = moderationEvents.Count == 0 ? null : moderationEvents
+        };
     }
 
-    private async Task<AgentRunResult?> HandleUnavailableAsync(
-        ModerationVerdict verdict, ResolvedSafetyProfile profile, AgentRunContext ctx,
-        AiAssistant assistant, ModerationStage stage, CancellationToken ct)
+    private AgentRunResult? HandleUnavailable(
+        ModerationVerdict verdict, ResolvedSafetyProfile profile, ModerationStage stage)
     {
         if (!verdict.ProviderUnavailable) return null;
+        AiAgentMetrics.ModerationProviderUnavailable.Add(1,
+            new KeyValuePair<string, object?>("ai.moderation.failure_mode", profile.FailureMode.ToString()),
+            new KeyValuePair<string, object?>("ai.moderation.preset", profile.Preset.ToString()));
         if (profile.FailureMode == ModerationFailureMode.FailOpen)
         {
             logger.LogWarning("Moderation provider unavailable; FailOpen on preset {Preset} stage {Stage} — allowing.",
@@ -2997,48 +3085,70 @@ internal sealed class ContentModerationEnforcingAgentRuntime(
             TerminationReason: AiModerationErrors.ProviderUnavailable.Description);
     }
 
-    private async Task<AgentRunResult> BlockedResultAsync(
-        AgentRunContext ctx, AiAssistant assistant, ResolvedSafetyProfile profile,
-        ModerationStage stage, ModerationVerdict verdict, IAgentRunSink sink, CancellationToken ct)
+    private AgentRunResult BuildBlockedResult(
+        AiAssistant assistant, ResolvedSafetyProfile profile,
+        ModerationStage stage, ModerationVerdict verdict, AgentRunContext ctx,
+        List<AiModerationEvent> moderationEvents)
     {
-        await PersistModerationEventAsync(ctx, assistant, profile, stage, verdict, ct);
+        moderationEvents.Add(AiModerationEvent.Create(
+            tenantId: assistant.TenantId,
+            assistantId: assistant.Id,
+            agentPrincipalId: null,
+            conversationId: null,
+            agentTaskId: null,
+            messageId: null,
+            stage: stage,
+            preset: profile.Preset,
+            outcome: ModerationOutcome.Blocked,
+            categoriesJson: JsonSerializer.Serialize(verdict.Categories),
+            provider: profile.Provider,
+            latencyMs: verdict.LatencyMs,
+            blockedReason: verdict.BlockedReason));
+
+        AiAgentMetrics.ModerationOutcomes.Add(1,
+            new KeyValuePair<string, object?>("ai.moderation.outcome", "blocked"),
+            new KeyValuePair<string, object?>("ai.moderation.preset", profile.Preset.ToString()),
+            new KeyValuePair<string, object?>("ai.moderation.stage", stage.ToString()));
+
+        // Webhook fan-out (best-effort; failures are logged + swallowed inside SafePublish).
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await webhooks.PublishAsync("ai.moderation.blocked", assistant.TenantId, new
+                {
+                    assistant.TenantId,
+                    AssistantId = assistant.Id,
+                    Stage = stage,
+                    Preset = profile.Preset,
+                    Categories = verdict.Categories,
+                    Reason = verdict.BlockedReason
+                }, default);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "ai.moderation.blocked webhook publish failed.");
+            }
+        });
 
         var audience = ctx.Persona?.Audience ?? Starter.Abstractions.Ai.PersonaAudienceType.Internal;
         var refusal = refusals.GetRefusal(profile.Preset, audience, CultureInfo.CurrentUICulture);
         var status = stage == ModerationStage.Input ? AgentRunStatus.InputBlocked : AgentRunStatus.OutputBlocked;
 
+        // Output stage: tokens from inner runtime are real cost — preserve them so usage log records spend.
         return new AgentRunResult(
             Status: status,
             FinalContent: refusal,
             Steps: Array.Empty<AgentStepEvent>(),
-            TotalInputTokens: 0,
+            TotalInputTokens: 0, // chat layer reads this; output-blocked actuals are passed via inner result if non-zero
             TotalOutputTokens: 0,
-            TerminationReason: $"moderation: {verdict.BlockedReason ?? "blocked"}");
-    }
-
-    private async Task PersistModerationEventAsync(
-        AgentRunContext ctx, AiAssistant assistant, ResolvedSafetyProfile profile,
-        ModerationStage stage, ModerationVerdict verdict, CancellationToken ct)
-    {
-        var ev = AiModerationEvent.Create(
-            tenantId: assistant.TenantId,
-            assistantId: assistant.Id,
-            agentPrincipalId: ctx.AgentPrincipalId,
-            conversationId: stage == ModerationStage.Input ? null : (Guid?)null, // populated in ChatExecutionService for output
-            agentTaskId: null,
-            messageId: null,
-            stage: stage,
-            preset: profile.Preset,
-            outcome: verdict.Outcome,
-            categoriesJson: JsonSerializer.Serialize(verdict.Categories),
-            provider: profile.Provider,
-            latencyMs: verdict.LatencyMs,
-            blockedReason: verdict.BlockedReason);
-        db.AiModerationEvents.Add(ev);
-        await db.SaveChangesAsync(ct);
+            TerminationReason: $"moderation: {verdict.BlockedReason ?? "blocked"}",
+            ModerationEvents: moderationEvents);
     }
 }
 ```
+
+> **Note on output-blocked token counting:** the simple form above zeros tokens for the blocked result. For accurate cost accounting on output-blocked turns, threading the inner runtime's token totals through is required. Implement by passing `inner_result.TotalInputTokens / TotalOutputTokens` into `BuildBlockedResult` for the output stage. Refactor inline when implementing.
 
 > **`AgentPrincipalId` on `AgentRunContext`** isn't currently a field — extending the run context is out of scope. The decorator can resolve it via `db.AiAgentPrincipals.Where(p => p.AiAssistantId == assistant.Id)` if needed, or accept null on the moderation event row. v1 leaves it null on auto-persisted moderation events; the chat layer can backfill in `ChatExecutionService` when it has the data.
 
@@ -3144,7 +3254,7 @@ public sealed class ContentModerationEnforcingAgentRuntimeTests
                                (a.SafetyPresetOverride ?? p ?? SafetyPreset.Standard) == SafetyPreset.ProfessionalModerated));
         return new ContentModerationEnforcingAgentRuntime(
             inner, moderator, new FakeRedactor(), profileResolver.Object,
-            new FakeRefusals(), db, new Mock<ICurrentUserService>().Object,
+            new FakeRefusals(), db, Mock.Of<Starter.Abstractions.Capabilities.IWebhookPublisher>(),
             NullLogger<ContentModerationEnforcingAgentRuntime>.Instance);
     }
 
@@ -3184,9 +3294,10 @@ public sealed class ContentModerationEnforcingAgentRuntimeTests
         result.FinalContent.Should().Contain("refused");
         inner.Called.Should().BeFalse();
 
-        var ev = await db.AiModerationEvents.FirstAsync();
-        ev.Stage.Should().Be(ModerationStage.Input);
-        ev.Outcome.Should().Be(ModerationOutcome.Blocked);
+        // Moderation events are returned via the result for the chat layer to persist.
+        result.ModerationEvents.Should().NotBeNull().And.HaveCount(1);
+        result.ModerationEvents![0].Stage.Should().Be(ModerationStage.Input);
+        result.ModerationEvents[0].Outcome.Should().Be(ModerationOutcome.Blocked);
     }
 
     [Fact]
@@ -3210,8 +3321,8 @@ public sealed class ContentModerationEnforcingAgentRuntimeTests
 
         result.Status.Should().Be(AgentRunStatus.OutputBlocked);
         result.FinalContent.Should().Contain("refused");
-        var ev = await db.AiModerationEvents.FirstAsync();
-        ev.Stage.Should().Be(ModerationStage.Output);
+        result.ModerationEvents.Should().NotBeNull().And.HaveCount(1);
+        result.ModerationEvents![0].Stage.Should().Be(ModerationStage.Output);
     }
 
     [Fact]
@@ -3261,7 +3372,10 @@ git add -p && git commit -m "feat(ai): 5d-2 — ContentModerationEnforcingAgentR
 **Files:**
 - Modify: `boilerplateBE/src/modules/Starter.Module.AI/Infrastructure/Runtime/AgentToolDispatcher.cs`
 - Modify: `boilerplateBE/src/modules/Starter.Module.AI/Application/Services/Runtime/AgentToolDispatcher.cs` (interface signature if needed)
+- Modify: `boilerplateBE/tests/Starter.Api.Tests/Ai/Runtime/AgentToolDispatcherTests.cs` (existing 5d-1 test — update constructor calls to pass new dependencies as Mock-backed args)
 - Test: `boilerplateBE/tests/Starter.Api.Tests/Ai/Approvals/AgentToolDispatcherDangerousActionTests.cs`
+
+> **Existing test breakage:** the 5d-1 `AgentToolDispatcherTests.cs` constructs `new AgentToolDispatcher(...)` directly. Adding `ICurrentAgentRunContextAccessor`, `IPendingApprovalService`, and `IConfiguration` parameters breaks that compilation. Update it to pass `Mock.Of<ICurrentAgentRunContextAccessor>()`, `Mock.Of<IPendingApprovalService>()`, and `new ConfigurationBuilder().Build()` for tests that don't exercise the dangerous-action path.
 
 The dispatcher needs to read the assistant's `Id` (for the pending-approval row), the agent principal's `Id`, conversation/task linkage, and the requesting user. The cleanest approach: pass an `IPendingApprovalContext` provider that exposes the *current* run's assistant + principal + conversation IDs (set by the runtime when it starts the run). For 5d-2, we read from `IExecutionContext` (TenantId, AgentPrincipalId, UserId) and require the runtime factory to wire a small "pending-approval context accessor" before each run.
 
@@ -3357,6 +3471,9 @@ if (attr is not null && !execution.DangerousActionApprovalGrant)
         reasonHint: attr.Reason,
         expiresIn: TimeSpan.FromHours(approvalExpirationHours),
         ct: ct);
+
+    AiAgentMetrics.DangerousActionBlocks.Add(1,
+        new KeyValuePair<string, object?>("ai.tool_name", call.Name));
 
     return new AgentToolDispatchResult(
         JsonSerializer.Serialize(new
@@ -3542,7 +3659,7 @@ public IAiAgentRuntime Create(AiProviderType providerType)
         services.GetRequiredService<ISafetyProfileResolver>(),
         services.GetRequiredService<IModerationRefusalProvider>(),
         services.GetRequiredService<AiDbContext>(),
-        services.GetRequiredService<ICurrentUserService>(),
+        services.GetRequiredService<IWebhookPublisher>(),
         services.GetRequiredService<ILogger<ContentModerationEnforcingAgentRuntime>>());
 }
 ```
@@ -3618,39 +3735,84 @@ public string? ToolName { get; init; }
 public string? ApprovalReason { get; init; }
 ```
 
-- [ ] **Step 2: Handle the two new run statuses in `ExecuteAsync`**
+- [ ] **Step 2: Handle the four new run statuses in `ExecuteAsync`**
 
-After the existing `runResult.Status == AgentRunStatus.RateLimitExceeded` branch:
+The four new branches must go *before* the existing `runResult.Status == AgentRunStatus.Completed` happy path but *after* the existing CostCap/RateLimit branches. Each has a distinct persistence shape — read the comments carefully.
 
 ```csharp
-if (runResult.Status == AgentRunStatus.InputBlocked || runResult.Status == AgentRunStatus.OutputBlocked)
+// InputBlocked: agent never reached the LLM. NO usage log row, NO cost claim, but DO persist
+// the user message + a refusal as the assistant message (so chat history is honest).
+// M2 acid test asserts no AiUsageLog row exists after this path.
+if (runResult.Status == AgentRunStatus.InputBlocked)
 {
-    // Refusal text already in runResult.FinalContent. Persist as the assistant message.
     var refusalContent = runResult.FinalContent ?? "Request blocked by content moderation.";
-    var citations = Array.Empty<AiMessageCitation>();
-    var finalMessage = await FinalizeTurnAsync(state, refusalContent,
-        (int)runResult.TotalInputTokens, (int)runResult.TotalOutputTokens,
-        sink.NextOrder, citations, ct);
+    var assistantMsg = AiMessage.CreateAssistantMessage(
+        state.Conversation.Id, refusalContent, sink.NextOrder, 0, 0);
+    context.AiMessages.Add(assistantMsg);
+    state.Conversation.AddMessageStats(0, 0);
+    PersistModerationEvents(runResult.ModerationEvents);
+    await context.SaveChangesAsync(ct);
+
     return Result.Success(new AiChatReplyDto(
-        state.Conversation.Id,
-        state.UserMessage.ToDto(),
-        finalMessage.ToDto(),
+        state.Conversation.Id, state.UserMessage.ToDto(), assistantMsg.ToDto(),
         PersonaSlug: state.Persona?.Slug)
     {
-        Status = "blocked",
+        Status = "blocked"
     });
 }
 
+// OutputBlocked: tokens WERE consumed (LLM ran). Full FinalizeTurnAsync to persist usage log
+// + chat continuity. Moderation events get persisted via PersistModerationEvents on the
+// shared tracker BEFORE FinalizeTurnAsync's SaveChanges.
+if (runResult.Status == AgentRunStatus.OutputBlocked)
+{
+    var refusalContent = runResult.FinalContent ?? "Response blocked by content moderation.";
+    PersistModerationEvents(runResult.ModerationEvents);
+    var finalMessage = await FinalizeTurnAsync(state, refusalContent,
+        (int)runResult.TotalInputTokens, (int)runResult.TotalOutputTokens,
+        sink.NextOrder, Array.Empty<AiMessageCitation>(), ct);
+    return Result.Success(new AiChatReplyDto(
+        state.Conversation.Id, state.UserMessage.ToDto(), finalMessage.ToDto(),
+        PersonaSlug: state.Persona?.Slug)
+    {
+        Status = "blocked"
+    });
+}
+
+// AwaitingApproval: agent partial run; persist user msg + a placeholder "awaiting approval"
+// assistant message so chat history shows the pause point. Conversation stays Active (NOT Failed).
+// Usage log records the tokens that WERE consumed during the partial run (cost is real).
 if (runResult.Status == AgentRunStatus.AwaitingApproval)
 {
-    await FailTurnAsync(state); // user message stays orphaned-as-detached for chat continuity
-    // The pending approval row was written by AgentToolDispatcher. Surface its details:
-    var approvalId = ExtractApprovalId(runResult); // helper that pulls from runResult.TerminationReason or the last step's tool result
-    var approval = await context.AiPendingApprovals.FirstOrDefaultAsync(p => p.Id == approvalId, ct);
+    var approvalId = ExtractApprovalId(runResult);
+    var approval = approvalId is { } id
+        ? await context.AiPendingApprovals.FirstOrDefaultAsync(p => p.Id == id, ct)
+        : null;
+
+    var pauseMsgContent = $"Awaiting approval for action: {approval?.ToolName ?? "unknown"}";
+    var pauseMsg = AiMessage.CreateAssistantMessage(
+        state.Conversation.Id, pauseMsgContent, sink.NextOrder,
+        (int)runResult.TotalInputTokens, (int)runResult.TotalOutputTokens);
+    context.AiMessages.Add(pauseMsg);
+    state.Conversation.AddMessageStats((int)runResult.TotalInputTokens, (int)runResult.TotalOutputTokens);
+
+    if (runResult.TotalInputTokens > 0 || runResult.TotalOutputTokens > 0)
+    {
+        // Reuse the cost-estimation + usage-log creation block from FinalizeTurnAsync.
+        // Extract the AiUsageLog.Create lines from FinalizeTurnAsync into a helper
+        // (CreateUsageLogAsync) that is called from both places to avoid duplication.
+        var usage = await CreateUsageLogAsync(state,
+            (int)runResult.TotalInputTokens, (int)runResult.TotalOutputTokens, ct);
+        context.AiUsageLogs.Add(usage);
+    }
+
+    AiAgentMetrics.PendingApprovals.Add(1,
+        new KeyValuePair<string, object?>("ai.approval.outcome", "created"));
+
+    await context.SaveChangesAsync(ct);
+
     return Result.Success(new AiChatReplyDto(
-        state.Conversation.Id,
-        state.UserMessage.ToDto(),
-        AssistantMessage: null,
+        state.Conversation.Id, state.UserMessage.ToDto(), pauseMsg.ToDto(),
         PersonaSlug: state.Persona?.Slug)
     {
         Status = "awaiting_approval",
@@ -3661,6 +3823,9 @@ if (runResult.Status == AgentRunStatus.AwaitingApproval)
     });
 }
 
+// ModerationProviderUnavailable: real service-availability failure (key missing or
+// moderator threw and FailClosed). Detach pending entities and surface 5xx-class error
+// so the client retries. Conversation history is NOT polluted with a "service down" message.
 if (runResult.Status == AgentRunStatus.ModerationProviderUnavailable)
 {
     await FailTurnAsync(state);
@@ -3668,18 +3833,39 @@ if (runResult.Status == AgentRunStatus.ModerationProviderUnavailable)
 }
 ```
 
-`ExtractApprovalId` helper — read from the last step event's tool-result JSON:
+Two helper methods to add to `ChatExecutionService`:
 
 ```csharp
+/// <summary>
+/// Adds moderation events from the runtime decorator to the shared tracker.
+/// They flush in the next SaveChangesAsync alongside user/assistant messages and usage log.
+/// </summary>
+private void PersistModerationEvents(IReadOnlyList<AiModerationEvent>? events)
+{
+    if (events is null || events.Count == 0) return;
+    context.AiModerationEvents.AddRange(events);
+}
+
+/// <summary>
+/// Pulls the approval ID from the synthetic tool-result JSON written by AgentToolDispatcher
+/// (Plan 5d-2 Task D3). The JSON shape is {"ok":false,"error":{"code":"AiAgent.AwaitingApproval","approvalId":"..."}}.
+/// </summary>
 private static Guid? ExtractApprovalId(AgentRunResult result)
 {
-    // Steps[^1].ToolResults[^1].ResultJson contains {"ok":false,"error":{"approvalId":"..."}}
     var lastStep = result.Steps.LastOrDefault();
-    var lastResult = lastStep?.ToolResults?.LastOrDefault();
-    if (lastResult is null) return null;
+    if (lastStep is null) return null;
+    // The exact property exposing tool-result JSON lives on AgentStepEvent. Inspect the
+    // existing record (search "record AgentStepEvent" in the codebase) for the property
+    // name — likely ToolResults or Results — and read the last entry's ResultJson.
+    var resultsProperty = lastStep.GetType().GetProperty("ToolResults")
+        ?? lastStep.GetType().GetProperty("Results");
+    var results = resultsProperty?.GetValue(lastStep) as System.Collections.IEnumerable;
+    var lastJson = results?.Cast<object>().LastOrDefault()
+        ?.GetType().GetProperty("ResultJson")?.GetValue(results.Cast<object>().Last()) as string;
+    if (lastJson is null) return null;
     try
     {
-        using var doc = System.Text.Json.JsonDocument.Parse(lastResult.ResultJson);
+        using var doc = System.Text.Json.JsonDocument.Parse(lastJson);
         if (doc.RootElement.TryGetProperty("error", out var err) &&
             err.TryGetProperty("approvalId", out var idEl) &&
             Guid.TryParse(idEl.GetString(), out var id))
@@ -3688,9 +3874,49 @@ private static Guid? ExtractApprovalId(AgentRunResult result)
     catch { /* best-effort */ }
     return null;
 }
+
+/// <summary>
+/// Extracts the AiUsageLog.Create call from the existing FinalizeTurnAsync into a shared
+/// helper so AwaitingApproval can also write a usage log without duplicating the
+/// model+cost resolution logic.
+/// </summary>
+private async Task<AiUsageLog> CreateUsageLogAsync(
+    ChatTurnState state, int inputTokens, int outputTokens, CancellationToken ct)
+{
+    var resolvedProvider = ResolveProvider(state.Assistant);
+    var model = state.Assistant.Model ?? providerFactory.GetDefaultProviderType().ToString();
+    var estimatedCost = EstimateCost(resolvedProvider, inputTokens, outputTokens);
+
+    Guid? agentPrincipalId = null;
+    if (state.Assistant.Id != Guid.Empty)
+    {
+        agentPrincipalId = await context.AiAgentPrincipals
+            .Where(p => p.AiAssistantId == state.Assistant.Id)
+            .Select(p => (Guid?)p.Id)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    return AiUsageLog.Create(
+        tenantId: currentUser.TenantId,
+        userId: currentUser.UserId!.Value,
+        provider: resolvedProvider,
+        model: model,
+        inputTokens: inputTokens,
+        outputTokens: outputTokens,
+        estimatedCost: estimatedCost,
+        requestType: AiRequestType.Chat,
+        conversationId: state.Conversation.Id,
+        aiAssistantId: state.Assistant.Id,
+        agentPrincipalId: agentPrincipalId);
+}
 ```
 
-> If `AgentStepEvent.ToolResults` doesn't exist on the existing record, inspect the file and adjust to the correct property name. The intent is: `runResult.Steps` last entry → its tool-result JSON → `error.approvalId`.
+Then refactor the existing `FinalizeTurnAsync` body to call `CreateUsageLogAsync` instead of inlining the AiUsageLog.Create block. The old code is around line 587 of the existing `ChatExecutionService.cs` — replace it with:
+
+```csharp
+var usageLog = await CreateUsageLogAsync(state, inputTokens, outputTokens, ct);
+context.AiUsageLogs.Add(usageLog);
+```
 
 - [ ] **Step 3: Same handling in `ExecuteStreamAsync`**
 
@@ -4567,7 +4793,7 @@ The handler implements all four `INotificationHandler<T>` interfaces for the `Ag
 using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Starter.Module.AI.Domain.Events;
+using Starter.Abstractions.Ai.Events;
 using Starter.Module.Communication.Infrastructure.Services;
 
 namespace Starter.Module.Communication.Application.EventHandlers;
@@ -4647,9 +4873,7 @@ internal sealed class CommunicationAiEventHandler(
 }
 ```
 
-> **Cross-module project reference:** `Starter.Module.Communication` must reference `Starter.Module.AI` to see the `AgentApproval*Event` types. Inspect `Starter.Module.Communication.csproj` — if no reference exists, add `<ProjectReference Include="..\Starter.Module.AI\Starter.Module.AI.csproj" />`. This is acceptable per CLAUDE.md's "Core vs Module vs Shared" rule (modules may depend on each other; only core must not depend on modules).
->
-> **If a reference is undesirable** (Communication subscribing to AI events creates a one-directional Communication → AI dependency), an alternative is to define a generic `IModuleEvent` contract in `Starter.Abstractions` that the AI events implement, and have Communication subscribe to that. For 5d-2 we accept the direct reference for simplicity; revisit if more such cross-module subscriptions accumulate.
+> **No cross-module project reference needed.** The four event records live in `Starter.Abstractions.Ai.Events` (B3). Both modules already reference `Starter.Abstractions` for `SafetyPreset` etc., so the contract is shared without coupling Communication to the AI module's internals.
 
 - [ ] **Step 2: Verify MediatR auto-registration picks up the new handler**
 
@@ -4730,8 +4954,8 @@ The four approval lifecycle events fan out through a single `INotificationHandle
 ```csharp
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Starter.Abstractions.Ai.Events;
 using Starter.Abstractions.Capabilities;
-using Starter.Module.AI.Domain.Events;
 
 namespace Starter.Module.AI.Application.EventHandlers;
 
@@ -4750,23 +4974,35 @@ internal sealed class PublishWebhookOnAgentApproval(
             ev.RequestingUserId, ev.ExpiresAt
         }, ct);
 
-    public Task Handle(AgentApprovalApprovedEvent ev, CancellationToken ct) =>
-        SafePublish("ai.agent.approval.approved", ev.TenantId, new
+    public Task Handle(AgentApprovalApprovedEvent ev, CancellationToken ct)
+    {
+        AiAgentMetrics.PendingApprovals.Add(1,
+            new KeyValuePair<string, object?>("ai.approval.outcome", "approved"));
+        return SafePublish("ai.agent.approval.approved", ev.TenantId, new
         {
             ev.TenantId, ev.ApprovalId, ev.DecisionUserId
         }, ct);
+    }
 
-    public Task Handle(AgentApprovalDeniedEvent ev, CancellationToken ct) =>
-        SafePublish("ai.agent.approval.denied", ev.TenantId, new
+    public Task Handle(AgentApprovalDeniedEvent ev, CancellationToken ct)
+    {
+        AiAgentMetrics.PendingApprovals.Add(1,
+            new KeyValuePair<string, object?>("ai.approval.outcome", "denied"));
+        return SafePublish("ai.agent.approval.denied", ev.TenantId, new
         {
             ev.TenantId, ev.ApprovalId, ev.DecisionUserId, ev.DecisionReason
         }, ct);
+    }
 
-    public Task Handle(AgentApprovalExpiredEvent ev, CancellationToken ct) =>
-        SafePublish("ai.agent.approval.expired", ev.TenantId, new
+    public Task Handle(AgentApprovalExpiredEvent ev, CancellationToken ct)
+    {
+        AiAgentMetrics.PendingApprovals.Add(1,
+            new KeyValuePair<string, object?>("ai.approval.outcome", "expired"));
+        return SafePublish("ai.agent.approval.expired", ev.TenantId, new
         {
             ev.TenantId, ev.ApprovalId, ev.ExpiredAt
         }, ct);
+    }
 
     private async Task SafePublish(string eventType, Guid tenantId, object payload, CancellationToken ct)
     {
@@ -4782,34 +5018,9 @@ internal sealed class PublishWebhookOnAgentApproval(
 }
 ```
 
-- [ ] **Step 2: Publish `ai.moderation.blocked` from the decorator**
+- [ ] **Step 2: `ai.moderation.blocked` webhook is already published inline by the decorator (Task D2).**
 
-Inside `ContentModerationEnforcingAgentRuntime.PersistModerationEventAsync`, after `await db.SaveChangesAsync(ct);` and only when `verdict.Outcome == ModerationOutcome.Blocked`:
-
-```csharp
-if (verdict.Outcome == ModerationOutcome.Blocked)
-{
-    try
-    {
-        await webhookPublisher.PublishAsync("ai.moderation.blocked", assistant.TenantId, new
-        {
-            assistant.TenantId,
-            AssistantId = assistant.Id,
-            ConversationId = (Guid?)null, // set by chat layer in a future enhancement
-            Stage = stage,
-            Preset = profile.Preset,
-            Categories = verdict.Categories,
-            Reason = verdict.BlockedReason
-        }, ct);
-    }
-    catch (Exception ex)
-    {
-        logger.LogWarning(ex, "Failed to publish ai.moderation.blocked webhook for tenant {TenantId}", assistant.TenantId);
-    }
-}
-```
-
-Inject `IWebhookPublisher webhookPublisher` into the decorator's primary constructor + DI registration.
+Skip this step — `ContentModerationEnforcingAgentRuntime.BuildBlockedResult` already fires `ai.moderation.blocked` via `IWebhookPublisher` (it was injected in D2). No change needed here.
 
 - [ ] **Step 3: Build + commit**
 
@@ -5071,10 +5282,13 @@ public sealed class Plan5d2ChildSafeOutputBlockedAcidTests
         var sink = new RecordingSink();
         var result = await rt.RunAsync(TestRuntimeBuilder.Ctx(assistant, SafetyPreset.ChildSafe), sink, default);
 
-        // Assert
+        // Assert: decorator returns events on the result; chat layer would persist them
+        // via PersistModerationEvents. M1 exercises the decorator-only path so we check
+        // result.ModerationEvents directly.
         result.Status.Should().Be(AgentRunStatus.OutputBlocked);
         result.FinalContent.Should().NotContain("innocuous-text");
-        var ev = await db.AiModerationEvents.FirstAsync();
+        result.ModerationEvents.Should().NotBeNull().And.HaveCount(1);
+        var ev = result.ModerationEvents![0];
         ev.Stage.Should().Be(ModerationStage.Output);
         ev.Outcome.Should().Be(ModerationOutcome.Blocked);
         ev.Preset.Should().Be(SafetyPreset.ChildSafe);
@@ -5148,7 +5362,10 @@ public async Task Input_Blocked_Skips_Inner_Runtime_No_Cost_Claim_No_Usage_Log()
     result.Status.Should().Be(AgentRunStatus.InputBlocked);
     inner.WasCalled.Should().BeFalse();
     (await db.AiUsageLogs.CountAsync()).Should().Be(0);
-    (await db.AiModerationEvents.FirstAsync()).Stage.Should().Be(ModerationStage.Input);
+    // Decorator returns events on the result; chat layer would persist them. The
+    // M2 acid test asserts the decorator's behaviour (no LLM call, no usage log).
+    result.ModerationEvents.Should().NotBeNull().And.HaveCount(1);
+    result.ModerationEvents![0].Stage.Should().Be(ModerationStage.Input);
 }
 
 private sealed class RecordingRuntime : IAiAgentRuntime
@@ -5202,7 +5419,8 @@ public async Task ProfessionalModerated_Redacts_PII_In_Output()
     result.FinalContent.Should().NotContain("john@example.com");
     result.FinalContent.Should().NotContain("+14155552671");
     result.FinalContent.Should().Contain("[REDACTED]");
-    (await db.AiModerationEvents.FirstAsync()).Outcome.Should().Be(ModerationOutcome.Redacted);
+    result.ModerationEvents.Should().NotBeNull().And.HaveCount(1);
+    result.ModerationEvents![0].Outcome.Should().Be(ModerationOutcome.Redacted);
 }
 ```
 
