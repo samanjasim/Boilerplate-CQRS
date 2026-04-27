@@ -1,13 +1,16 @@
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Starter.Abstractions.Capabilities;
 using Starter.Api.Tests.Ai.Fakes;
+using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Services;
 using Starter.Module.AI.Application.Services.Runtime;
 using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
+using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Runtime;
 using Xunit;
@@ -16,6 +19,14 @@ namespace Starter.Api.Tests.Ai.Runtime;
 
 public sealed class OllamaAgentRuntimeTests
 {
+    private static AiDbContext NewAiDb()
+    {
+        var cu = new Mock<ICurrentUserService>();
+        var opts = new DbContextOptionsBuilder<AiDbContext>()
+            .UseInMemoryDatabase($"ollama-{Guid.NewGuid()}").Options;
+        return new AiDbContext(opts, cu.Object);
+    }
+
     private static AgentRunContext BuildCtx(ToolResolutionResult tools)
     {
         return new AgentRunContext(
@@ -51,6 +62,8 @@ public sealed class OllamaAgentRuntimeTests
         var runtime = new OllamaAgentRuntime(
             new FakeAiProviderFactory(provider),
             Mock.Of<IAgentToolDispatcher>(),
+            NewAiDb(),
+            Mock.Of<IAgentPermissionResolver>(),
             NullLogger<AgentRuntimeBase>.Instance);
 
         var sink = new RecordingSink();
@@ -73,6 +86,8 @@ public sealed class OllamaAgentRuntimeTests
         var runtime = new OllamaAgentRuntime(
             new FakeAiProviderFactory(provider),
             Mock.Of<IAgentToolDispatcher>(),
+            NewAiDb(),
+            Mock.Of<IAgentPermissionResolver>(),
             NullLogger<AgentRuntimeBase>.Instance);
 
         var ctx = BuildCtx(ToolsWithOne());
@@ -104,6 +119,8 @@ public sealed class OllamaAgentRuntimeTests
         var runtime = new OllamaAgentRuntime(
             new FakeAiProviderFactory(provider),
             Mock.Of<IAgentToolDispatcher>(),
+            NewAiDb(),
+            Mock.Of<IAgentPermissionResolver>(),
             NullLogger<AgentRuntimeBase>.Instance);
 
         var result = await runtime.RunAsync(BuildCtx(emptyTools), new RecordingSink(), CancellationToken.None);

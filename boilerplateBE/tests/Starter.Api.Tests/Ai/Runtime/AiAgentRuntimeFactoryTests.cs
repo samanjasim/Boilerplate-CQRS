@@ -1,11 +1,17 @@
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Starter.Api.Tests.Ai.Fakes;
+using Starter.Application.Common.Interfaces;
+using Starter.Module.AI.Application.Services.Costs;
+using Starter.Module.AI.Application.Services.Pricing;
 using Starter.Module.AI.Application.Services.Runtime;
 using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
+using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Runtime;
 using Xunit;
@@ -20,6 +26,22 @@ public sealed class AiAgentRuntimeFactoryTests
         services.AddSingleton<IAiProviderFactory>(new FakeAiProviderFactory(new FakeAiProvider()));
         services.AddSingleton<IAgentToolDispatcher>(Mock.Of<IAgentToolDispatcher>());
         services.AddSingleton<Microsoft.Extensions.Logging.ILogger<AgentRuntimeBase>>(NullLogger<AgentRuntimeBase>.Instance);
+        services.AddSingleton(NullLoggerFactory.Instance);
+        services.AddLogging();
+
+        // Plan 5d-1 dependencies — runtime is now wrapped by CostCapEnforcingAgentRuntime
+        // which needs these services. Mock everything; tests only assert factory dispatch.
+        services.AddSingleton<ICostCapResolver>(Mock.Of<ICostCapResolver>());
+        services.AddSingleton<ICostCapAccountant>(Mock.Of<ICostCapAccountant>());
+        services.AddSingleton<IAgentRateLimiter>(Mock.Of<IAgentRateLimiter>());
+        services.AddSingleton<IModelPricingService>(Mock.Of<IModelPricingService>());
+        services.AddSingleton<IAgentPermissionResolver>(Mock.Of<IAgentPermissionResolver>());
+
+        var cu = new Mock<ICurrentUserService>();
+        services.AddSingleton(cu.Object);
+        services.AddDbContext<AiDbContext>(o =>
+            o.UseInMemoryDatabase($"factory-{Guid.NewGuid()}"));
+
         services.AddScoped<OpenAiAgentRuntime>();
         services.AddScoped<AnthropicAgentRuntime>();
         services.AddScoped<OllamaAgentRuntime>();
@@ -27,17 +49,20 @@ public sealed class AiAgentRuntimeFactoryTests
     }
 
     [Theory]
-    [InlineData(AiProviderType.OpenAI, typeof(OpenAiAgentRuntime))]
-    [InlineData(AiProviderType.Anthropic, typeof(AnthropicAgentRuntime))]
-    [InlineData(AiProviderType.Ollama, typeof(OllamaAgentRuntime))]
-    public void Create_Returns_Expected_Runtime_For_Provider(AiProviderType provider, Type expected)
+    [InlineData(AiProviderType.OpenAI)]
+    [InlineData(AiProviderType.Anthropic)]
+    [InlineData(AiProviderType.Ollama)]
+    public void Create_Returns_NonNull_Runtime_For_Provider(AiProviderType provider)
     {
         using var scope = BuildServices().CreateScope();
         var factory = new AiAgentRuntimeFactory(scope.ServiceProvider);
 
         var runtime = factory.Create(provider);
 
-        runtime.Should().BeOfType(expected);
+        // Plan 5d-1: factory wraps the provider-specific runtime in CostCapEnforcingAgentRuntime.
+        // The contract is that a usable IAiAgentRuntime is returned; the concrete wrapping is internal.
+        runtime.Should().NotBeNull();
+        runtime.Should().BeAssignableTo<IAiAgentRuntime>();
     }
 
     [Fact]

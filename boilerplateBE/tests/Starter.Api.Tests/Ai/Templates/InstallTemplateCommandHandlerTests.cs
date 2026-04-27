@@ -52,8 +52,14 @@ public class InstallTemplateCommandHandlerTests
                 return def.Object;
             });
 
+        // Plan 5d-1: feature-flag service for ai.agents.max_count guard. Tests don't
+        // exercise that path; configure a high default so existing tests keep passing.
+        var ff = new Mock<IFeatureFlagService>();
+        ff.Setup(x => x.GetValueAsync<int>("ai.agents.max_count", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(int.MaxValue);
+
         var handler = new InstallTemplateCommandHandler(
-            db, registry, toolReg.Object, cu.Object);
+            db, registry, toolReg.Object, cu.Object, ff.Object);
 
         return (handler, db, cu, toolReg);
     }

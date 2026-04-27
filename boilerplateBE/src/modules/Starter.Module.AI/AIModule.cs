@@ -11,6 +11,8 @@ using Starter.Domain.Common.Access.Enums;
 using Starter.Module.AI.Application.Commands.InstallTemplate;
 using Starter.Module.AI.Application.Services;
 using Starter.Module.AI.Application.Services.Ingestion;
+using Starter.Module.AI.Application.Services.Costs;
+using Starter.Module.AI.Application.Services.Pricing;
 using Starter.Module.AI.Application.Services.Retrieval;
 using Starter.Module.AI.Constants;
 using Starter.Module.AI.Domain.Entities;
@@ -18,7 +20,10 @@ using Starter.Abstractions.Ai;
 using Starter.Module.AI.Infrastructure.Access;
 using Starter.Module.AI.Infrastructure.Ingestion;
 using Starter.Module.AI.Infrastructure.Persistence;
+using Starter.Module.AI.Infrastructure.Identity;
 using Starter.Module.AI.Infrastructure.Providers;
+using Starter.Module.AI.Infrastructure.Services.Costs;
+using Starter.Module.AI.Infrastructure.Services.Pricing;
 using Starter.Module.AI.Infrastructure.Services;
 using Starter.Module.AI.Application.Eval;
 using Starter.Module.AI.Application.Eval.Faithfulness;
@@ -33,6 +38,7 @@ using Starter.Module.AI.Application.Services.Runtime;
 using Starter.Module.AI.Infrastructure.Runtime;
 using Starter.Module.AI.Infrastructure.Services.Personas;
 using Starter.Module.AI.Infrastructure.Settings;
+using Starter.Module.AI.Infrastructure.Persistence.Seed;
 
 namespace Starter.Module.AI;
 
@@ -56,8 +62,14 @@ public sealed class AIModule : IModule
         services.Configure<AiRagEvalSettings>(
             configuration.GetSection(AiRagEvalSettings.SectionName));
 
-        services.AddDbContext<AiDbContext>(options =>
+        services.AddDbContext<AiDbContext>((sp, options) =>
         {
+            // Subscribe to all registered ISaveChangesInterceptors (DomainEventDispatcher,
+            // IntegrationEventOutbox, AuditLogAgentAttribution, ...). Without this the AI
+            // module's own AssistantUpdatedEvent never publishes and downstream cache
+            // invalidation handlers never fire. Matches every other module's registration.
+            options.AddInterceptors(sp.GetServices<Microsoft.EntityFrameworkCore.Diagnostics.ISaveChangesInterceptor>());
+
             options.UseNpgsql(
                 configuration.GetConnectionString("DefaultConnection"),
                 npgsqlOptions =>
@@ -92,6 +104,14 @@ public sealed class AIModule : IModule
         services.AddScoped<IPersonaResolver, PersonaResolver>();
         services.AddScoped<ISafetyPresetClauseProvider, ResxSafetyPresetClauseProvider>();
         services.AddScoped<IPersonaContextAccessor, PersonaContextAccessor>();
+
+        // Pricing + cost enforcement (Plan 5d-1)
+        services.AddScoped<IModelPricingService, ModelPricingService>();
+        services.AddScoped<ICostCapResolver, CostCapResolver>();
+        services.AddSingleton<ICostCapAccountant, RedisCostCapAccountant>();
+        services.AddSingleton<IAgentRateLimiter, RedisAgentRateLimiter>();
+        services.AddScoped<IAgentPermissionResolver, AgentPermissionResolver>();
+        services.AddHostedService<Infrastructure.Background.AiCostReconciliationJob>();
 
         services.AddSingleton<TokenCounter>();
 
@@ -170,6 +190,9 @@ public sealed class AIModule : IModule
         yield return (AiPermissions.ViewPersonas, "View AI personas", "AI");
         yield return (AiPermissions.ManagePersonas, "Create and manage AI personas", "AI");
         yield return (AiPermissions.AssignPersona, "Assign AI personas to users", "AI");
+        yield return (AiPermissions.AssignAgentRole, "Assign roles to AI agent principals", "AI");
+        yield return (AiPermissions.ManageAgentBudget, "Set per-agent cost caps and rate limits", "AI");
+        yield return (AiPermissions.ManagePricing, "Manage AI model pricing (superadmin)", "AI");
     }
 
     public IEnumerable<(string Role, string[] Permissions)> GetDefaultRolePermissions()
@@ -189,7 +212,10 @@ public sealed class AIModule : IModule
             AiPermissions.RunEval,
             AiPermissions.ViewPersonas,
             AiPermissions.ManagePersonas,
-            AiPermissions.AssignPersona
+            AiPermissions.AssignPersona,
+            AiPermissions.AssignAgentRole,
+            AiPermissions.ManageAgentBudget,
+            AiPermissions.ManagePricing
         ]);
 
         yield return ("Admin", [
@@ -205,7 +231,9 @@ public sealed class AIModule : IModule
             AiPermissions.SearchKnowledgeBase,
             AiPermissions.ViewPersonas,
             AiPermissions.ManagePersonas,
-            AiPermissions.AssignPersona
+            AiPermissions.AssignPersona,
+            AiPermissions.AssignAgentRole,
+            AiPermissions.ManageAgentBudget
         ]);
 
         yield return ("User", [
@@ -226,6 +254,19 @@ public sealed class AIModule : IModule
     public async Task SeedDataAsync(IServiceProvider services, CancellationToken cancellationToken = default)
     {
         using var scope = services.CreateScope();
+
+        // Always seed role metadata (idempotent — locks SuperAdmin/TenantAdmin from agent assignment)
+        var aiDb = scope.ServiceProvider.GetRequiredService<AiDbContext>();
+        var appDb = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
+        await AiRoleMetadataSeed.SeedAsync(aiDb, appDb, cancellationToken);
+
+        // Always seed model pricing (idempotent — skips if any rows already exist)
+        await ModelPricingSeed.SeedAsync(aiDb, cancellationToken);
+
+        // Plan 5d-1 backfill: pair any pre-existing assistant with an AiAgentPrincipal
+        // (idempotent — only inserts for assistants without a paired principal).
+        await AgentPrincipalBackfill.RunAsync(aiDb, cancellationToken);
+
         var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
         if (!configuration.GetValue<bool>("AI:InstallDemoTemplatesOnStartup"))
             return;
@@ -235,7 +276,6 @@ public sealed class AIModule : IModule
         if (demoSlugs.Count == 0)
             return;
 
-        var appDb = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
         var tenantIds = await appDb.Tenants
             .IgnoreQueryFilters()
             .Select(t => t.Id)

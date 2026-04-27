@@ -59,6 +59,10 @@ public sealed class AiAssistant : AggregateRoot, ITenantEntity, IShareable
     public string? TemplateSourceSlug { get; private set; }
     public string? TemplateSourceVersion { get; private set; }
 
+    public decimal? MonthlyCostCapUsd { get; private set; }
+    public decimal? DailyCostCapUsd { get; private set; }
+    public int? RequestsPerMinute { get; private set; }
+
     private AiAssistant() { }
 
     private AiAssistant(
@@ -231,6 +235,19 @@ public sealed class AiAssistant : AggregateRoot, ITenantEntity, IShareable
             throw new ArgumentException("Template slug must be non-empty.", nameof(templateSlug));
         TemplateSourceSlug = templateSlug;
         TemplateSourceVersion = version;
+    }
+
+    public void SetBudget(decimal? monthlyUsd, decimal? dailyUsd, int? requestsPerMinute)
+    {
+        if (monthlyUsd is < 0) throw new ArgumentOutOfRangeException(nameof(monthlyUsd));
+        if (dailyUsd is < 0) throw new ArgumentOutOfRangeException(nameof(dailyUsd));
+        if (requestsPerMinute is < 0) throw new ArgumentOutOfRangeException(nameof(requestsPerMinute));
+        MonthlyCostCapUsd = monthlyUsd;
+        DailyCostCapUsd = dailyUsd;
+        RequestsPerMinute = requestsPerMinute;
+        ModifiedAt = DateTime.UtcNow;
+        if (TenantId is { } tenantId)
+            RaiseDomainEvent(new Domain.Events.AssistantUpdatedEvent(tenantId, Id));
     }
 
     public bool IsVisibleToPersona(string personaSlug, IReadOnlyList<string> personaPermittedAgentSlugs)

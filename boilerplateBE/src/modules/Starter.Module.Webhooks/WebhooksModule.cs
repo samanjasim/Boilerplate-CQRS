@@ -19,8 +19,9 @@ public sealed class WebhooksModule : IModule
     public IServiceCollection ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
         // Module-owned DbContext with isolated migration history table
-        services.AddDbContext<WebhooksDbContext>(options =>
+        services.AddDbContext<WebhooksDbContext>((sp, options) =>
         {
+            options.AddInterceptors(sp.GetServices<Microsoft.EntityFrameworkCore.Diagnostics.ISaveChangesInterceptor>());
             options.UseNpgsql(
                 configuration.GetConnectionString("DefaultConnection"),
                 npgsqlOptions =>

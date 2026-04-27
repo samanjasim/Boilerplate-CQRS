@@ -23,5 +23,8 @@ public sealed record Error(string Code, string Description, ErrorType Type)
     public static Error Failure(string code, string description) =>
         new(code, description, ErrorType.Failure);
 
+    public static Error TooManyRequests(string code, string description) =>
+        new(code, description, ErrorType.TooManyRequests);
+
     public override string ToString() => $"{Code}: {Description}";
 }

@@ -72,6 +72,17 @@ internal sealed class UpdateAssistantCommandHandler(AiDbContext context)
         if (request.PersonaTargetSlugs is not null)
             assistant.SetPersonaTargets(request.PersonaTargetSlugs);
 
+        // Plan 5d-1: keep paired AiAgentPrincipal in lockstep with assistant.IsActive so
+        // the principal cannot transact when the assistant is suspended. EF tracks the
+        // principal already via AiAgentPrincipalId FK; locate by AiAssistantId and toggle.
+        var principal = await context.AiAgentPrincipals
+            .FirstOrDefaultAsync(p => p.AiAssistantId == assistant.Id, cancellationToken);
+        if (principal is not null)
+        {
+            if (assistant.IsActive) principal.Activate();
+            else principal.Deactivate();
+        }
+
         await context.SaveChangesAsync(cancellationToken);
         return Result.Success(assistant.ToDto());
     }

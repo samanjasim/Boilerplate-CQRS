@@ -24,5 +24,13 @@ public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
         builder.HasIndex(a => new { a.EntityType, a.EntityId });
         builder.HasIndex(a => a.PerformedBy);
         builder.HasIndex(a => a.TenantId);
+
+        builder.Property(a => a.OnBehalfOfUserId);
+        builder.Property(a => a.AgentPrincipalId);
+        builder.Property(a => a.AgentRunId);
+
+        builder.HasIndex(a => a.OnBehalfOfUserId);
+        builder.HasIndex(a => a.AgentPrincipalId);
+        builder.HasIndex(a => a.AgentRunId);
     }
 }

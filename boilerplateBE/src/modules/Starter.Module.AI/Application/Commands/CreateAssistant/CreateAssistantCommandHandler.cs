@@ -13,7 +13,8 @@ namespace Starter.Module.AI.Application.Commands.CreateAssistant;
 internal sealed class CreateAssistantCommandHandler(
     AiDbContext context,
     ICurrentUserService currentUser,
-    ISlugGenerator slugGenerator)
+    ISlugGenerator slugGenerator,
+    IFeatureFlagService featureFlags)
     : IRequestHandler<CreateAssistantCommand, Result<AiAssistantDto>>
 {
     public async Task<Result<AiAssistantDto>> Handle(
@@ -22,6 +23,14 @@ internal sealed class CreateAssistantCommandHandler(
     {
         var tenantId = currentUser.TenantId;
         var normalized = request.Name.Trim();
+
+        // Plan 5d-1: enforce ai.agents.max_count plan limit before creation.
+        var maxAgents = await featureFlags.GetValueAsync<int>("ai.agents.max_count", cancellationToken);
+        var currentAgents = await context.AiAssistants
+            .IgnoreQueryFilters()
+            .CountAsync(a => a.TenantId == tenantId, cancellationToken);
+        if (currentAgents >= maxAgents)
+            return Result.Failure<AiAssistantDto>(AiAgentErrors.AgentMaxCountExceeded(maxAgents, currentAgents));
 
         var nameTaken = await context.AiAssistants
             .IgnoreQueryFilters()
@@ -76,6 +85,15 @@ internal sealed class CreateAssistantCommandHandler(
             assistant.SetPersonaTargets(request.PersonaTargetSlugs);
 
         context.AiAssistants.Add(assistant);
+
+        // Plan 5d-1: pair with an AiAgentPrincipal so the agent can act as a security
+        // subject (hybrid intersection in dispatcher). Same EF transaction.
+        if (assistant.TenantId is { } principalTenantId)
+        {
+            var principal = AiAgentPrincipal.Create(assistant.Id, principalTenantId, assistant.IsActive);
+            context.AiAgentPrincipals.Add(principal);
+        }
+
         await context.SaveChangesAsync(cancellationToken);
 
         return Result.Success(assistant.ToDto());

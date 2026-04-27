@@ -14,5 +14,7 @@ internal enum AgentRunStatus
     MaxStepsExceeded,
     LoopBreak,
     ProviderError,
-    Cancelled
+    Cancelled,
+    CostCapExceeded,
+    RateLimitExceeded,
 }

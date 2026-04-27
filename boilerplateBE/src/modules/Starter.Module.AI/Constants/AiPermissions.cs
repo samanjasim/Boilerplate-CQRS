@@ -17,4 +17,7 @@ public static class AiPermissions
     public const string ViewPersonas = "Ai.ViewPersonas";
     public const string ManagePersonas = "Ai.ManagePersonas";
     public const string AssignPersona = "Ai.AssignPersona";
+    public const string AssignAgentRole = "Ai.AssignAgentRole";
+    public const string ManageAgentBudget = "Ai.ManageAgentBudget";
+    public const string ManagePricing = "Ai.ManagePricing";
 }

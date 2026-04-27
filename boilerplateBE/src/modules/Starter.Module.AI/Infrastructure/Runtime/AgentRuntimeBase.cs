@@ -1,8 +1,11 @@
 using System.Text;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Services;
 using Starter.Module.AI.Application.Services.Runtime;
 using Starter.Module.AI.Infrastructure.Observability;
+using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Providers;
 
 namespace Starter.Module.AI.Infrastructure.Runtime;
@@ -15,6 +18,8 @@ namespace Starter.Module.AI.Infrastructure.Runtime;
 internal abstract class AgentRuntimeBase(
     IAiProviderFactory providerFactory,
     IAgentToolDispatcher toolDispatcher,
+    AiDbContext aiDb,
+    IAgentPermissionResolver agentPermissions,
     ILogger<AgentRuntimeBase> logger) : IAiAgentRuntime
 {
     protected ILogger<AgentRuntimeBase> Logger { get; } = logger;
@@ -30,9 +35,52 @@ internal abstract class AgentRuntimeBase(
         activity?.SetTag("ai.max_steps", ctx.MaxSteps);
         activity?.SetTag("ai.streaming", ctx.Streaming);
 
-        var result = ctx.Streaming
-            ? await RunStreamingAsync(ctx, sink, ct)
-            : await RunNonStreamingAsync(ctx, sink, ct);
+        // Plan 5d-1: install AgentExecutionScope so AgentToolDispatcher (and any audit
+        // writes inside the run) sees hybrid-intersection permissions. When AssistantId is
+        // null (legacy/test callers without a paired principal), skip the scope and fall
+        // back to the default IExecutionContext behaviour.
+        AgentExecutionScope? scope = null;
+        if (ctx.AssistantId is { } assistantId)
+        {
+            var principal = await aiDb.AiAgentPrincipals
+                .AsNoTracking()
+                .Where(p => p.AiAssistantId == assistantId && p.IsActive)
+                .Select(p => p.Id)
+                .FirstOrDefaultAsync(ct);
+
+            if (principal != Guid.Empty)
+            {
+                var agentPerms = await agentPermissions.GetPermissionsAsync(principal, ct);
+                scope = AgentExecutionScope.Begin(
+                    userId: ctx.CallerUserId,
+                    agentPrincipalId: principal,
+                    tenantId: ctx.TenantId,
+                    callerHasPermission: ctx.CallerHasPermission,
+                    agentHasPermission: agentPerms.Contains);
+                scope.AttachRunId(activity?.Id is { } id && Guid.TryParse(id, out var runId)
+                    ? runId
+                    : Guid.NewGuid());
+            }
+        }
+
+        try
+        {
+            var result = ctx.Streaming
+                ? await RunStreamingAsync(ctx, sink, ct)
+                : await RunNonStreamingAsync(ctx, sink, ct);
+            return PostProcess(ctx, activity, result);
+        }
+        finally
+        {
+            scope?.Dispose();
+        }
+    }
+
+    private static AgentRunResult PostProcess(
+        AgentRunContext ctx,
+        System.Diagnostics.Activity? activity,
+        AgentRunResult result)
+    {
 
         activity?.SetTag("ai.run_status", result.Status.ToString());
         activity?.SetTag("ai.step_count", result.Steps.Count);

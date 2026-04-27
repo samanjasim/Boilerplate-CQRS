@@ -24,8 +24,14 @@ public sealed class BillingModule : IModule
         // Removing the Billing module also removes this context registration,
         // and the __EFMigrationsHistory_Billing table can be dropped without
         // touching core or other modules.
-        services.AddDbContext<BillingDbContext>(options =>
+        services.AddDbContext<BillingDbContext>((sp, options) =>
         {
+            // Subscribe to registered ISaveChangesInterceptors so domain events raised by
+            // BillingDbContext entities (e.g. TenantSubscription's SubscriptionChangedEvent)
+            // flow through DomainEventDispatcherInterceptor and reach SyncPlanFeaturesHandler.
+            // Without this, plan changes silently fail to propagate to TenantFeatureFlag overrides.
+            options.AddInterceptors(sp.GetServices<Microsoft.EntityFrameworkCore.Diagnostics.ISaveChangesInterceptor>());
+
             options.UseNpgsql(
                 configuration.GetConnectionString("DefaultConnection"),
                 npgsqlOptions =>
@@ -92,6 +98,11 @@ public sealed class BillingModule : IModule
             new { key = "imports.max_rows", value = "0", translations = new { en = new { label = "No imports" }, ar = new { label = "لا استيراد" } } },
             new { key = "exports.enabled", value = "false", translations = new { en = new { label = "Exports disabled" }, ar = new { label = "التصدير معطل" } } },
             new { key = "comments.activity_enabled", value = "false", translations = new { en = new { label = "Comments & activity disabled" }, ar = new { label = "التعليقات والنشاط معطل" } } },
+            new { key = "ai.cost.tenant_monthly_usd", value = "0", translations = new { en = new { label = "AI agents disabled" }, ar = new { label = "وكلاء الذكاء الاصطناعي معطلون" } } },
+            new { key = "ai.cost.tenant_daily_usd", value = "0", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.agents.max_count", value = "0", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.agents.operational_enabled", value = "false", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.agents.requests_per_minute_default", value = "0", translations = new { en = new { label = "" }, ar = new { label = "" } } },
         });
 
         var starterFeatures = JsonSerializer.Serialize(new[]
@@ -112,6 +123,11 @@ public sealed class BillingModule : IModule
             new { key = "imports.max_rows", value = "500", translations = new { en = new { label = "Up to 500 rows per import" }, ar = new { label = "حتى 500 صف لكل استيراد" } } },
             new { key = "exports.enabled", value = "true", translations = new { en = new { label = "Data exports" }, ar = new { label = "تصدير البيانات" } } },
             new { key = "comments.activity_enabled", value = "false", translations = new { en = new { label = "Comments & activity disabled" }, ar = new { label = "التعليقات والنشاط معطل" } } },
+            new { key = "ai.cost.tenant_monthly_usd", value = "20", translations = new { en = new { label = "$20/mo AI budget" }, ar = new { label = "ميزانية ذكاء اصطناعي 20$ شهريًا" } } },
+            new { key = "ai.cost.tenant_daily_usd", value = "2", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.agents.max_count", value = "3", translations = new { en = new { label = "Up to 3 AI agents" }, ar = new { label = "حتى 3 وكلاء ذكاء اصطناعي" } } },
+            new { key = "ai.agents.operational_enabled", value = "false", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.agents.requests_per_minute_default", value = "10", translations = new { en = new { label = "" }, ar = new { label = "" } } },
         });
 
         var proFeatures = JsonSerializer.Serialize(new[]
@@ -132,6 +148,11 @@ public sealed class BillingModule : IModule
             new { key = "imports.max_rows", value = "5000", translations = new { en = new { label = "Up to 5,000 rows per import" }, ar = new { label = "حتى 5,000 صف لكل استيراد" } } },
             new { key = "exports.enabled", value = "true", translations = new { en = new { label = "Data exports" }, ar = new { label = "تصدير البيانات" } } },
             new { key = "comments.activity_enabled", value = "true", translations = new { en = new { label = "Comments & activity enabled" }, ar = new { label = "التعليقات والنشاط مفعلة" } } },
+            new { key = "ai.cost.tenant_monthly_usd", value = "200", translations = new { en = new { label = "$200/mo AI budget" }, ar = new { label = "ميزانية ذكاء اصطناعي 200$ شهريًا" } } },
+            new { key = "ai.cost.tenant_daily_usd", value = "20", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.agents.max_count", value = "20", translations = new { en = new { label = "Up to 20 AI agents" }, ar = new { label = "حتى 20 وكيل ذكاء اصطناعي" } } },
+            new { key = "ai.agents.operational_enabled", value = "true", translations = new { en = new { label = "Operational AI agents" }, ar = new { label = "وكلاء الذكاء الاصطناعي التشغيليون" } } },
+            new { key = "ai.agents.requests_per_minute_default", value = "60", translations = new { en = new { label = "" }, ar = new { label = "" } } },
         });
 
         var enterpriseFeatures = JsonSerializer.Serialize(new[]
@@ -152,6 +173,11 @@ public sealed class BillingModule : IModule
             new { key = "imports.max_rows", value = "50000", translations = new { en = new { label = "Up to 50,000 rows per import" }, ar = new { label = "حتى 50,000 صف لكل استيراد" } } },
             new { key = "exports.enabled", value = "true", translations = new { en = new { label = "Data exports" }, ar = new { label = "تصدير البيانات" } } },
             new { key = "comments.activity_enabled", value = "true", translations = new { en = new { label = "Comments & activity enabled" }, ar = new { label = "التعليقات والنشاط مفعلة" } } },
+            new { key = "ai.cost.tenant_monthly_usd", value = "2000", translations = new { en = new { label = "$2,000/mo AI budget" }, ar = new { label = "ميزانية ذكاء اصطناعي 2,000$ شهريًا" } } },
+            new { key = "ai.cost.tenant_daily_usd", value = "200", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.agents.max_count", value = "200", translations = new { en = new { label = "Up to 200 AI agents" }, ar = new { label = "حتى 200 وكيل ذكاء اصطناعي" } } },
+            new { key = "ai.agents.operational_enabled", value = "true", translations = new { en = new { label = "Operational AI agents" }, ar = new { label = "وكلاء الذكاء الاصطناعي التشغيليون" } } },
+            new { key = "ai.agents.requests_per_minute_default", value = "300", translations = new { en = new { label = "" }, ar = new { label = "" } } },
         });
 
         var plans = new[]

@@ -20,8 +20,9 @@ public sealed class CommunicationModule : IModule
 
     public IServiceCollection ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
-        services.AddDbContext<CommunicationDbContext>(options =>
+        services.AddDbContext<CommunicationDbContext>((sp, options) =>
         {
+            options.AddInterceptors(sp.GetServices<Microsoft.EntityFrameworkCore.Diagnostics.ISaveChangesInterceptor>());
             options.UseNpgsql(
                 configuration.GetConnectionString("DefaultConnection"),
                 npgsqlOptions =>

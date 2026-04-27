@@ -20,7 +20,7 @@ namespace Starter.Module.AI.Infrastructure.Runtime;
 /// </summary>
 internal sealed class AgentToolDispatcher(
     ISender sender,
-    ICurrentUserService currentUser,
+    IExecutionContext execution,
     ILogger<AgentToolDispatcher> logger) : IAgentToolDispatcher
 {
     public async Task<AgentToolDispatchResult> DispatchAsync(
@@ -31,7 +31,11 @@ internal sealed class AgentToolDispatcher(
         if (!tools.DefinitionsByName.TryGetValue(call.Name, out var def))
             return Failure(AiErrors.ToolNotFound);
 
-        if (!currentUser.HasPermission(def.RequiredPermission))
+        // Plan 5d-1: when called from inside an agent run, IExecutionContext resolves to
+        // AgentExecutionScope which applies hybrid-intersection (caller ∩ agent). Outside
+        // an agent run (HTTP path), it resolves to HttpExecutionContext which delegates
+        // to ICurrentUserService unchanged.
+        if (!execution.HasPermission(def.RequiredPermission))
             return Failure(AiErrors.ToolPermissionDenied(call.Name));
 
         object? command;
