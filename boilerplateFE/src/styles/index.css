@@ -166,6 +166,35 @@
   --transition-fast: 150ms;
   --transition-normal: 200ms;
   --transition-slow: 300ms;
+
+  /* ── J4 Companion accent scales — violet (info / spectrum cool axis) ── */
+  --color-violet-50: #eef2ff;
+  --color-violet-100: #e0e7ff;
+  --color-violet-200: #c7d2fe;
+  --color-violet-300: #a5b4fc;
+  --color-violet-400: #818cf8;
+  --color-violet-500: #6366f1;
+  --color-violet-600: #4f46e5;
+  --color-violet-700: #4338ca;
+  --color-violet-800: #3730a3;
+  --color-violet-900: #312e81;
+  --color-violet-950: #1e1b4b;
+
+  /* ── J4 Companion accent scales — amber (warning / feature-icon rotation) ── */
+  --color-amber-50: #fffbeb;
+  --color-amber-100: #fef3c7;
+  --color-amber-200: #fde68a;
+  --color-amber-300: #fcd34d;
+  --color-amber-400: #fbbf24;
+  --color-amber-500: #f59e0b;
+  --color-amber-600: #d97706;
+  --color-amber-700: #b45309;
+  --color-amber-800: #92400e;
+  --color-amber-900: #78350f;
+  --color-amber-950: #451a03;
+
+  /* ── J4 Display font — used for hero metric and section titles only ── */
+  --font-display: 'Inter', 'IBM Plex Sans', system-ui, sans-serif;
 }
 
 /* ── Base Styles ── */
