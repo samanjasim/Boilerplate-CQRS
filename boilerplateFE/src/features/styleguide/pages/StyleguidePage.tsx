@@ -5,6 +5,7 @@ import { ButtonsSection } from '../components/sections/ButtonsSection';
 import { FormsSection } from '../components/sections/FormsSection';
 import { CardsSection } from '../components/sections/CardsSection';
 import { BadgesSection } from '../components/sections/BadgesSection';
+import { TablesSection } from '../components/sections/TablesSection';
 
 const SECTIONS: { id: string; label: string }[] = [
   { id: 'tokens', label: 'Tokens' },
@@ -61,6 +62,7 @@ export default function StyleguidePage() {
             <FormsSection />
             <CardsSection />
             <BadgesSection />
+            <TablesSection />
           </div>
         </main>
       </div>
