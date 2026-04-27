@@ -25,12 +25,14 @@ This spec adds **group-level overflow handling**: when not all groups fit, the l
 
 1. New `useNavOverflow` hook — wraps `useNavGroups()` and partitions groups into `visibleGroups` / `overflowGroups` based on measured space.
 2. New `MorePanel` component — secondary floating-glass panel that renders the overflow groups.
-3. New `MoreButton` component (or inline JSX in Sidebar) — pinned at the bottom of the main sidebar, opens the panel; renders an active state when the current page is in overflow.
+3. New `MoreButton` component (or inline JSX in Sidebar) — pinned at the bottom of the main sidebar, opens the panel; renders an active state when the current page is in overflow. Cross-fades between default and active captions.
 4. `useUIStore` additions — `morePanelOpen: boolean` + `setMorePanelOpen`.
 5. Sidebar render changes — render visible groups, then the More button (only when there's overflow), then the existing collapse-chevron block.
 6. Auto-open behavior on first mount when active is in overflow.
 7. Auto-close behavior on Esc, click-outside, route change *into* a visible group's item (not when navigating *between* overflow items — the panel stays open in that case).
 8. Body scroll lock and backdrop **only on mobile drawer** (existing behavior). The desktop secondary panel does NOT lock body scroll — it sits beside the main sidebar without a backdrop.
+9. **AR + KU translations** of the new `nav.more.*` keys — included in this spec, not deferred.
+10. **Scroll-to-top on navigation** — small `<ScrollToTop />` route-tree component fixing the existing bug where scrolling down a long page and clicking a NavLink keeps the next page scrolled. See §13.
 
 **Out of scope (deferred or skipped):**
 
@@ -38,8 +40,6 @@ This spec adds **group-level overflow handling**: when not all groups fit, the l
 - User-pinnable groups (drag to pin, persist).
 - Per-group enable/disable toggles.
 - Mobile drawer overflow handling (drawer keeps scrolling).
-- AR / KU translations of new strings — English ships; i18next falls back.
-- Animation polish beyond the existing `motion-safe:transition-all` baseline.
 
 ## 4. UX behavior in detail
 
@@ -282,42 +282,76 @@ Cleaner — single place to manage close-on-nav.
 
 ## 6. Styling specifics
 
-The "More" button at expanded width:
+The "More" button uses a two-layer caption that cross-fades on state change. Both the default caption (`···  More  [N]`) and the active caption (`[icon]  Channels / IN MORE · COMM`) render simultaneously, stacked absolutely; only one is `opacity-100` at a time. The count badge belongs to the default layer only — when the button enters active state, the badge fades out with the default caption (per Open Question §11.1, resolved: drop the badge when active).
+
+Both layers use `motion-safe:transition-opacity motion-safe:duration-200` so the swap is smooth (and instant when `prefers-reduced-motion: reduce`).
 
 ```tsx
 <button
   type="button"
-  data-active={isActiveOverflowed}
   onClick={toggleMorePanel}
+  aria-pressed={morePanelOpen}
+  aria-label={isActiveOverflowed && activeItem ? t('nav.more.inMore', { group: activeGroup.label }) : t('nav.more.label')}
   className={cn(
-    'flex items-center gap-2.5 rounded-[10px] h-10 px-3 text-sm motion-safe:transition-all motion-safe:duration-150',
+    'relative flex items-center rounded-[10px] h-10 px-3 text-sm overflow-hidden',
+    'motion-safe:transition-all motion-safe:duration-150',
     'border border-foreground/10 bg-foreground/5 hover:bg-foreground/10',
     isActiveOverflowed && 'pill-active border-transparent'
   )}
 >
-  {isActiveOverflowed && activeItem ? (
-    <>
+  {/* Default caption layer — visible when NOT active-overflowed */}
+  <span
+    aria-hidden={isActiveOverflowed}
+    className={cn(
+      'absolute inset-0 flex items-center gap-2.5 px-3',
+      'motion-safe:transition-opacity motion-safe:duration-200',
+      isActiveOverflowed ? 'opacity-0 pointer-events-none' : 'opacity-100'
+    )}
+  >
+    <MoreHorizontal className="h-[18px] w-[18px] shrink-0 opacity-70" />
+    <span className="flex-1 text-start">{t('nav.more.label')}</span>
+    <span className="rounded-full bg-primary/20 px-1.5 py-0.5 text-[10px] font-mono font-bold text-primary">
+      {overflowGroups.length}
+    </span>
+  </span>
+
+  {/* Active caption layer — visible when current page is in overflow */}
+  {isActiveOverflowed && activeItem && activeGroup && (
+    <span
+      className={cn(
+        'absolute inset-0 flex items-center gap-2.5 px-3',
+        'motion-safe:transition-opacity motion-safe:duration-200',
+        'opacity-100'
+      )}
+    >
       <activeItem.icon className="h-[18px] w-[18px] shrink-0" />
-      <div className="flex flex-col gap-0 leading-tight text-start">
-        <span className="text-[12px] font-medium">{activeItem.label}</span>
-        <span className="text-[8px] uppercase tracking-[0.12em] opacity-70">
+      <div className="flex flex-col gap-0 leading-tight text-start min-w-0">
+        <span className="text-[12px] font-medium truncate">{activeItem.label}</span>
+        <span className="text-[8px] uppercase tracking-[0.12em] opacity-70 truncate">
           {t('nav.more.inMore', { group: activeGroup.label })}
         </span>
       </div>
-    </>
-  ) : (
-    <>
-      <MoreHorizontal className="h-[18px] w-[18px] shrink-0 opacity-70" />
-      <span className="flex-1 text-start">{t('nav.more.label')}</span>
-    </>
+    </span>
   )}
-  <span className="ms-auto rounded-full bg-primary/20 px-1.5 py-0.5 text-[10px] font-mono font-bold text-primary">
-    {overflowGroups.length}
+
+  {/* Invisible spacer — keeps the button's intrinsic height stable across both layers */}
+  <span aria-hidden className="invisible flex items-center gap-2.5">
+    <span className="h-[18px] w-[18px]" />
+    <span className="text-sm">_</span>
   </span>
 </button>
 ```
 
-(Plus a separate render path for `isCollapsed` — icon-only + tooltip.)
+Notes:
+- Both caption layers are `position: absolute` over a transparent button surface. The button's height is held by an invisible spacer at the end so the row stays exactly `h-10` regardless of which caption is rendering.
+- `aria-pressed` reflects the panel's open state (matches `<button>` semantics for toggle buttons).
+- `aria-label` reflects the *current* meaning of the button — when active-overflowed, the label is the contextual one ("In More · Communication"); otherwise the default ("More").
+- The active-state count badge is intentionally absent (per resolution of Open Question §11.1).
+
+Collapsed mode (`lg:w-16`) gets a separate render path inside the same component:
+- Default: `MoreHorizontal` icon centered, with a small copper dot pulse if `overflowGroups.length > 0` AND `!isActiveOverflowed`.
+- Active: the active item's icon centered with `pill-active` styling.
+- Both wrapped in a Radix Tooltip displaying `t('nav.more.label')` (default) or the active two-line label (active), to compensate for hidden text.
 
 The panel:
 
@@ -387,7 +421,9 @@ The panel's `overflow-y-auto` on `<nav>` is a fallback — if even the overflow 
 
 ## 7. i18n keys to add
 
-Under `nav.more` namespace in `en/translation.json`:
+Add the same `nav.more.*` block to all three locale files. AR + KU translations are included — not deferred.
+
+**`en/translation.json`:**
 
 ```json
 "nav": {
@@ -401,7 +437,35 @@ Under `nav.more` namespace in `en/translation.json`:
 }
 ```
 
-(AR / KU fall back to EN per project convention.)
+**`ar/translation.json`:**
+
+```json
+"nav": {
+  ...existing keys unchanged...
+  "more": {
+    "label": "المزيد",
+    "inMore": "في المزيد · {{group}}",
+    "panelTitle": "مجموعات إضافية",
+    "close": "إغلاق المجموعات الإضافية"
+  }
+}
+```
+
+**`ku/translation.json`:** (Sorani Kurdish)
+
+```json
+"nav": {
+  ...existing keys unchanged...
+  "more": {
+    "label": "زیاتر",
+    "inMore": "لە زیاتر · {{group}}",
+    "panelTitle": "گرووپە زیادەکان",
+    "close": "داخستنی گرووپە زیادەکان"
+  }
+}
+```
+
+These are the implementer's starting translations. A native localizer can refine them later, but they're complete enough to ship — much better than an English fall-through that breaks the RTL flow with Latin characters mid-sentence.
 
 ## 8. Light + dark coverage
 
@@ -413,12 +477,13 @@ The active state uses `pill-active` — already preset-aware via `color-mix(in s
 
 ## 9. Implementation order
 
-The work is small enough for a single 4-task plan on `fe/redesign-phase-1`:
+The work fits one 5-task plan on `fe/redesign-phase-1`:
 
-1. **Plan C-v2 — `useNavOverflow` hook** (no UI; just the hook + its measurement logic, with a tiny demo consumer in the styleguide page if present).
-2. **Plan C-v2 — Store + `MoreButton` in main sidebar** (reads overflow, renders the button at the bottom of `Sidebar.tsx`, two render variants).
-3. **Plan C-v2 — `MorePanel` component + `MainLayout` mount** (renders the secondary panel when open, click-outside / Esc / nav-close logic).
-4. **Plan C-v2 — Code-review pass.**
+0. **`ScrollToTopOnNavigate` component** — small self-contained route-tree fix (see §13). Ships first because it's independent and instantly improves UX.
+1. **`useNavOverflow` hook** (no UI; just the hook + its measurement logic, with a tiny demo consumer in the styleguide page if present).
+2. **Store + `MoreButton` in main sidebar** (reads overflow, renders the button at the bottom of `Sidebar.tsx`, default + active-overflow + collapsed render variants with cross-fade).
+3. **`MorePanel` component + `MainLayout` mount** (renders the secondary panel when open, click-outside / Esc / nav-close logic) + AR/KU translations of the new `nav.more.*` keys.
+4. **Code-review pass.**
 
 (No StatCard / identity polish / palette content work — those remain deferred.)
 
@@ -441,21 +506,71 @@ Same harness as prior plans. Visual targets:
 - **Mobile drawer (`<lg`):** unchanged — still scrolls, no "More" button, no panel.
 - **Collapsed sidebar (`lg:w-16`):** "More" button collapses to icon-only; panel still works when opened.
 
-## 11. Open questions
+## 11. Resolved decisions (was: open questions)
 
-These don't block the spec; resolve before Task 3 if needed:
-
-- **Should the active-overflow-leaf-icon in the "More" button drop the count badge?** Currently spec says both are shown; might feel busy. If it does, hide the count badge when in active state (the active state already implies "you have stuff in More").
-- **Animate the "More" button caption swap?** Currently no — instant swap. A 150 ms cross-fade is possible but adds JS; not strictly needed.
-- **What if the user has no permissions for any overflowed group?** Then `overflowGroups.length === 0` and no "More" button renders. Already handled by the `hasOverflow` flag.
-- **Tooltip on collapsed-sidebar "More" icon?** Yes — Radix Tooltip with `t('nav.more.label')` or the active-state caption. Add in Task 2.
+1. **Drop the count badge when "More" is in active-overflow state** — yes. Active state already implies "you have stuff in More"; the badge becomes noise. Spec §6 reflects this — only the default caption layer carries the badge.
+2. **Animate the caption swap** — yes, via a stacked-layer cross-fade (`motion-safe:transition-opacity motion-safe:duration-200`). No animation library, no JS — pure CSS. See §6.
+3. **No-permission edge case** — `overflowGroups.length === 0` → no "More" button rendered. Handled by the `hasOverflow` flag inside `useNavOverflow`.
+4. **Collapsed-sidebar tooltip** — Radix Tooltip on the icon-only "More" button shows the contextual label (default or active two-line). Spec §6 (collapsed mode notes).
 
 ## 12. Out of scope (deferred — restate)
 
 - ⌘K palette content (next plan).
 - StatCard extraction (deferred to identity cluster plan).
 - Identity cluster page polish.
-- AR / KU translation of the new `nav.more.*` keys.
 - User-pinnable groups, drag-to-reorder, persisted overflow preferences.
 - Mobile drawer overflow behavior — drawer keeps scrolling.
 - AI module UI / mobile (Flutter) port — later phases.
+
+## 13. Scroll-to-top on navigation (bundled small fix)
+
+### Bug
+
+When the user scrolls down a long list page (e.g., audit logs at row 200) and then clicks any nav item — sidebar, breadcrumb, or in-page link — the next page renders at the previous scroll position. React Router preserves the scroll because `<main>` doesn't reset the window scroll. This is a real defect, not a feature.
+
+### Behavior to ship
+
+On every route change (`location.pathname` change), reset `window.scrollTo({ top: 0, left: 0, behavior: 'instant' })`. `'instant'` is a `ScrollBehavior` value that skips animation regardless of `scroll-behavior: smooth` CSS — instant feels right for nav (animated scroll-to-top on nav can feel laggy on fast clicks).
+
+Exceptions:
+- **Hash links** (`/page#section`) — leave scroll alone; the browser handles hash anchors.
+- **Replace navigation that only changes search params** — leave scroll alone (e.g., paginating within a list with `?page=2` shouldn't dump the user back to the top mid-table). React Router's `location.search` change does NOT trigger the scroll-reset; only `location.pathname` change does.
+
+### Implementation
+
+A new component `boilerplateFE/src/components/common/ScrollToTopOnNavigate.tsx`:
+
+```tsx
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+
+export function ScrollToTopOnNavigate() {
+  const { pathname, hash } = useLocation();
+
+  useEffect(() => {
+    // Hash anchors handle their own scrolling
+    if (hash) return;
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+  }, [pathname, hash]);
+
+  return null;
+}
+```
+
+Mount inside the router tree, once. Locate the existing `<RouterProvider>` / `<Routes>` setup (in `src/routes/routes.tsx` or `src/app/providers/index.tsx`) and add `<ScrollToTopOnNavigate />` as a sibling that renders inside the Router context.
+
+Concretely: this component MUST render inside a Router context to use `useLocation`. Mount it as a child of whatever `<BrowserRouter>` / `<RouterProvider>` wrapper exists, before the route tree.
+
+### Why this lives in this spec
+
+Spec scope is "fix the navigation chrome / experience" — sidebar overflow + scroll-to-top are two parts of "make navigating between pages feel right". Ships in the same plan; one extra task.
+
+### Tasks
+
+The plan grows by one task — call it task 0 since it's the smallest and unblocks nothing else. Order:
+
+0. **`ScrollToTopOnNavigate`** — single small component + 1 import in router file. Self-contained, no dependencies on other tasks.
+1. `useNavOverflow` hook.
+2. Store + `MoreButton` in main sidebar.
+3. `MorePanel` + `MainLayout` mount.
+4. Code-review pass.
