@@ -15,7 +15,8 @@ internal sealed class InstallTemplateCommandHandler(
     AiDbContext db,
     IAiAgentTemplateRegistry templates,
     IAiToolRegistry tools,
-    ICurrentUserService currentUser) : IRequestHandler<InstallTemplateCommand, Result<Guid>>
+    ICurrentUserService currentUser,
+    IFeatureFlagService featureFlags) : IRequestHandler<InstallTemplateCommand, Result<Guid>>
 {
     private static readonly HashSet<string> SystemReservedPersonas =
         new(new[] { AiPersona.AnonymousSlug, AiPersona.DefaultSlug }, StringComparer.Ordinal);
@@ -46,6 +47,19 @@ internal sealed class InstallTemplateCommandHandler(
         var template = templates.Find(request.TemplateSlug);
         if (template is null)
             return Result<Guid>.Failure(TemplateErrors.NotFound(request.TemplateSlug));
+
+        // Plan 5d-1: enforce ai.agents.max_count on the target tenant. Skip the limit for
+        // the system seed actor (CreatedByUserIdOverride set), since seeds run before any
+        // tenant-scoped feature flags resolve correctly and may legitimately install templates.
+        if (!isSystemSeedActor)
+        {
+            var maxAgents = await featureFlags.GetValueAsync<int>("ai.agents.max_count", ct);
+            var currentAgents = await db.AiAssistants
+                .IgnoreQueryFilters()
+                .CountAsync(a => a.TenantId == targetTenantId.Value, ct);
+            if (currentAgents >= maxAgents)
+                return Result<Guid>.Failure(AiAgentErrors.AgentMaxCountExceeded(maxAgents, currentAgents));
+        }
 
         // 3. Duplicate-install guard (slug-collision in target tenant)
         var collision = await db.AiAssistants

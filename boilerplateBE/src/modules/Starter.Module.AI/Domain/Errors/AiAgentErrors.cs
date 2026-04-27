@@ -24,4 +24,14 @@ public static class AiAgentErrors
         new("AiAgent.AgentRoleAssignmentNotPermitted",
             $"Role '{roleId}' cannot be assigned to agent principals.",
             ErrorType.Forbidden);
+
+    public static Error AgentMaxCountExceeded(int max, int current) =>
+        new("AiAgent.MaxCountExceeded",
+            $"Plan permits at most {max} AI agents (currently {current}). Upgrade your plan to add more.",
+            ErrorType.Validation);
+
+    public static Error OperationalAgentsNotEnabled() =>
+        new("AiAgent.OperationalNotEnabled",
+            "Operational AI agents (event/cron-triggered) are not enabled on the current plan.",
+            ErrorType.Validation);
 }
