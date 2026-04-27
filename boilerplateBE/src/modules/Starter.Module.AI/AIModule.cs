@@ -183,6 +183,9 @@ public sealed class AIModule : IModule
         yield return (AiPermissions.ViewPersonas, "View AI personas", "AI");
         yield return (AiPermissions.ManagePersonas, "Create and manage AI personas", "AI");
         yield return (AiPermissions.AssignPersona, "Assign AI personas to users", "AI");
+        yield return (AiPermissions.AssignAgentRole, "Assign roles to AI agent principals", "AI");
+        yield return (AiPermissions.ManageAgentBudget, "Set per-agent cost caps and rate limits", "AI");
+        yield return (AiPermissions.ManagePricing, "Manage AI model pricing (superadmin)", "AI");
     }
 
     public IEnumerable<(string Role, string[] Permissions)> GetDefaultRolePermissions()
@@ -202,7 +205,10 @@ public sealed class AIModule : IModule
             AiPermissions.RunEval,
             AiPermissions.ViewPersonas,
             AiPermissions.ManagePersonas,
-            AiPermissions.AssignPersona
+            AiPermissions.AssignPersona,
+            AiPermissions.AssignAgentRole,
+            AiPermissions.ManageAgentBudget,
+            AiPermissions.ManagePricing
         ]);
 
         yield return ("Admin", [
@@ -218,7 +224,9 @@ public sealed class AIModule : IModule
             AiPermissions.SearchKnowledgeBase,
             AiPermissions.ViewPersonas,
             AiPermissions.ManagePersonas,
-            AiPermissions.AssignPersona
+            AiPermissions.AssignPersona,
+            AiPermissions.AssignAgentRole,
+            AiPermissions.ManageAgentBudget
         ]);
 
         yield return ("User", [
