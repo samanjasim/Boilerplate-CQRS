@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { TokensSection } from '../components/sections/TokensSection';
+import { TypographySection } from '../components/sections/TypographySection';
 
 const SECTIONS: { id: string; label: string }[] = [
   { id: 'tokens', label: 'Tokens' },
@@ -51,6 +52,7 @@ export default function StyleguidePage() {
 
           <div className="space-y-0">
             <TokensSection />
+            <TypographySection />
           </div>
         </main>
       </div>
