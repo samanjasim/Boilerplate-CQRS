@@ -86,9 +86,9 @@
                        0 6px 16px color-mix(in srgb, var(--color-primary) 28%, transparent);
     --glow-emerald-sm: 0 0 0 3px color-mix(in srgb, var(--color-accent-500) 18%, transparent);
 
-    --surface-glass: rgba(255,255,255,0.70);
-    --surface-glass-strong: rgba(255,255,255,0.85);
-    --border-strong: color-mix(in srgb, var(--color-primary-900) 12%, transparent);
+    --surface-glass: rgba(255,255,255,0.92);
+    --surface-glass-strong: rgba(255,255,255,0.96);
+    --border-strong: color-mix(in srgb, var(--color-primary-900) 18%, transparent);
   }
 
   .dark {
@@ -160,9 +160,9 @@
     --glow-emerald-sm: 0 0 8px var(--color-accent-300),
                        0 0 0 3px color-mix(in srgb, var(--color-accent-300) 18%, transparent);
 
-    --surface-glass: rgba(255,255,255,0.04);
-    --surface-glass-strong: rgba(255,255,255,0.06);
-    --border-strong: rgba(255,255,255,0.10);
+    --surface-glass: rgba(28,24,21,0.88);
+    --surface-glass-strong: rgba(28,24,21,0.94);
+    --border-strong: rgba(255,255,255,0.14);
   }
 }
 
