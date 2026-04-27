@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { TokensSection } from '../components/sections/TokensSection';
 
 const SECTIONS: { id: string; label: string }[] = [
   { id: 'tokens', label: 'Tokens' },
@@ -49,7 +50,7 @@ export default function StyleguidePage() {
           </header>
 
           <div className="space-y-0">
-            {/* Sections will be slotted in by later tasks */}
+            <TokensSection />
           </div>
         </main>
       </div>
