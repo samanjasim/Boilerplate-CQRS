@@ -1,6 +1,7 @@
 export const ROUTES = {
   // Public
   LANDING: '/',
+  STYLEGUIDE: '/styleguide',
   REGISTER_TENANT: '/register-tenant',
 
   // Auth
