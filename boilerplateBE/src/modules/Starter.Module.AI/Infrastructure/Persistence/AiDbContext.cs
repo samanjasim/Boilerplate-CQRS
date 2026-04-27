@@ -36,6 +36,7 @@ public sealed class AiDbContext : DbContext, IModuleDbContext
     public DbSet<AiModelPricing> AiModelPricings => Set<AiModelPricing>();
     public DbSet<AiSafetyPresetProfile> AiSafetyPresetProfiles => Set<AiSafetyPresetProfile>();
     public DbSet<AiModerationEvent> AiModerationEvents => Set<AiModerationEvent>();
+    public DbSet<AiPendingApproval> AiPendingApprovals => Set<AiPendingApproval>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -62,6 +63,8 @@ public sealed class AiDbContext : DbContext, IModuleDbContext
         modelBuilder.Entity<AiAgentPrincipal>().HasQueryFilter(e =>
             CurrentTenantId == null || e.TenantId == CurrentTenantId);
         modelBuilder.Entity<AiModerationEvent>().HasQueryFilter(e =>
+            CurrentTenantId == null || e.TenantId == CurrentTenantId);
+        modelBuilder.Entity<AiPendingApproval>().HasQueryFilter(e =>
             CurrentTenantId == null || e.TenantId == CurrentTenantId);
     }
 }
