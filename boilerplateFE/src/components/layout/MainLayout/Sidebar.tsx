@@ -61,7 +61,13 @@ export function Sidebar() {
         {groups.map((group, groupIndex) => (
           <div
             key={group.id}
-            className={cn(groupIndex > 0 && !isCollapsed && 'mt-4 border-t border-border/40 pt-2')}
+            className={cn(
+              groupIndex > 0 && (
+                isCollapsed
+                  ? 'mx-3 my-2 border-t border-border/40'
+                  : 'mt-4 border-t border-border/40 pt-2'
+              )
+            )}
           >
             {!isCollapsed && group.label && (
               <div className="px-3 pb-1.5 pt-1 text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
