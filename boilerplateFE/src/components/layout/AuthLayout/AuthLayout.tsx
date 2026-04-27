@@ -7,7 +7,7 @@ export function AuthLayout() {
   const { t } = useTranslation();
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="aurora-canvas flex h-screen bg-background">
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center gradient-hero p-12 relative overflow-hidden">
         <div className="max-w-md text-center relative z-10">
@@ -39,7 +39,7 @@ export function AuthLayout() {
         {/* Scrollable form area */}
         <div className="flex-1 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center px-8 pb-8">
-            <div className="w-full max-w-sm">
+            <div className="surface-glass-strong w-full max-w-sm rounded-2xl p-8 shadow-float">
               <Outlet />
             </div>
           </div>
