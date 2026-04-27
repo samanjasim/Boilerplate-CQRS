@@ -15,6 +15,10 @@ using Starter.Application.Common.Interfaces;
 using Starter.Domain.Common.Access.Enums;
 using Starter.Module.AI.Application.DTOs;
 using Starter.Module.AI.Application.Services;
+using Moq;
+using Starter.Infrastructure.Identity.Services;
+using Starter.Module.AI.Application.Services.Costs;
+using Starter.Module.AI.Application.Services.Pricing;
 using Starter.Module.AI.Application.Services.Retrieval;
 using Starter.Module.AI.Application.Services.Runtime;
 using Starter.Module.AI.Domain.Entities;
@@ -235,6 +239,18 @@ internal sealed class ChatExecutionTestFixture
         services.AddScoped<OpenAiAgentRuntime>();
         services.AddScoped<OllamaAgentRuntime>();
         services.AddScoped<IAiAgentRuntimeFactory, AiAgentRuntimeFactory>();
+        services.AddScoped<IExecutionContext>(sp => new HttpExecutionContext(sp.GetRequiredService<ICurrentUserService>()));
+
+        // Plan 5d-1 cost-enforcement decorator dependencies — stubs since these tests
+        // don't seed pricing/caps. Decorator's missing-pricing fallback skips enforcement.
+        services.AddSingleton<ICostCapResolver>(Mock.Of<ICostCapResolver>());
+        services.AddSingleton<ICostCapAccountant>(Mock.Of<ICostCapAccountant>());
+        services.AddSingleton<IAgentRateLimiter>(Mock.Of<IAgentRateLimiter>());
+        services.AddSingleton<IModelPricingService>(Mock.Of<IModelPricingService>(p =>
+            p.EstimateCostAsync(It.IsAny<AiProviderType>(), It.IsAny<string>(),
+                It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>())
+                == Task.FromException<decimal>(new InvalidOperationException("no pricing"))));
+        services.AddSingleton<IAgentPermissionResolver>(Mock.Of<IAgentPermissionResolver>());
 
         // Persona services (Plan 5b) — feature flag disabled above, so resolver is never called.
         services.AddScoped<Starter.Module.AI.Application.Services.Personas.IPersonaResolver,
