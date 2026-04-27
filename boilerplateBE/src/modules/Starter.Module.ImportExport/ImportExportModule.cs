@@ -20,8 +20,9 @@ public sealed class ImportExportModule : IModule
     public IServiceCollection ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
         // Module-owned DbContext with isolated migration history table
-        services.AddDbContext<ImportExportDbContext>(options =>
+        services.AddDbContext<ImportExportDbContext>((sp, options) =>
         {
+            options.AddInterceptors(sp.GetServices<Microsoft.EntityFrameworkCore.Diagnostics.ISaveChangesInterceptor>());
             options.UseNpgsql(
                 configuration.GetConnectionString("DefaultConnection"),
                 npgsqlOptions =>

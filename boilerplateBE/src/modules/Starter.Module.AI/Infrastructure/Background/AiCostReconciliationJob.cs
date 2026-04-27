@@ -65,8 +65,9 @@ internal sealed class AiCostReconciliationJob(
         var db = scope.ServiceProvider.GetRequiredService<AiDbContext>();
         var redis = multiplexer.GetDatabase();
 
-        var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
-        var dayStart = DateTime.UtcNow.Date;
+        var nowUtc = DateTime.UtcNow;
+        var monthStart = new DateTime(nowUtc.Year, nowUtc.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var dayStart = DateTime.SpecifyKind(nowUtc.Date, DateTimeKind.Utc);
 
         // Monthly truth per (TenantId, AssistantId)
         var monthlyTotals = await db.AiUsageLogs

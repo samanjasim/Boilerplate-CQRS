@@ -18,8 +18,11 @@ internal sealed class GetTenantUsageQueryHandler(
         if (tenantId is null)
             return Result.Failure<TenantUsageDto>(Error.Unauthorized());
 
-        var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
-        var dayStart = DateTime.UtcNow.Date;
+        // Postgres `timestamp with time zone` rejects DateTime with Kind=Unspecified.
+        // Build window boundaries explicitly as UTC.
+        var nowUtc = DateTime.UtcNow;
+        var monthStart = new DateTime(nowUtc.Year, nowUtc.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var dayStart = DateTime.SpecifyKind(nowUtc.Date, DateTimeKind.Utc);
 
         var monthly = await db.AiUsageLogs
             .AsNoTracking()

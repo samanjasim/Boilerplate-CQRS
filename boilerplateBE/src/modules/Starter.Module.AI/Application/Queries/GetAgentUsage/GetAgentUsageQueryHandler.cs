@@ -13,10 +13,12 @@ internal sealed class GetAgentUsageQueryHandler(
     public async Task<Result<AgentUsageDto>> Handle(GetAgentUsageQuery request, CancellationToken ct)
     {
         var window = (request.Window ?? "monthly").ToLowerInvariant();
+        // Postgres `timestamp with time zone` rejects Kind=Unspecified — build UTC explicitly.
+        var nowUtc = DateTime.UtcNow;
         var since = window switch
         {
-            "daily" => DateTime.UtcNow.Date,
-            _ => new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1)
+            "daily" => DateTime.SpecifyKind(nowUtc.Date, DateTimeKind.Utc),
+            _ => new DateTime(nowUtc.Year, nowUtc.Month, 1, 0, 0, 0, DateTimeKind.Utc)
         };
 
         var tenantId = currentUser.TenantId;

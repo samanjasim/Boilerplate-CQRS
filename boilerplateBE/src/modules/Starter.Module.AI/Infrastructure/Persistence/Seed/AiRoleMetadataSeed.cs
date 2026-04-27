@@ -6,8 +6,14 @@ namespace Starter.Module.AI.Infrastructure.Persistence.Seed;
 
 public static class AiRoleMetadataSeed
 {
+    // Roles seeded with IsAgentAssignable=false. "Admin" is included because in this
+    // boilerplate's seed it IS the tenant admin role (broad tenant-scoped powers). Letting
+    // an agent assume Admin would be a privilege-escalation surface for the same reason as
+    // SuperAdmin. "TenantAdmin" is kept for forward-compatibility with installations that
+    // adopt that naming. Confirmed via 2026-04-27 manual test that Admin was previously
+    // assignable to agents.
     private static readonly HashSet<string> LockedRoleNames =
-        new(new[] { "SuperAdmin", "TenantAdmin" }, StringComparer.OrdinalIgnoreCase);
+        new(new[] { "SuperAdmin", "TenantAdmin", "Admin" }, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Seeds an `AiRoleMetadata` row for every core role so the assignment validator

@@ -24,8 +24,14 @@ public sealed class BillingModule : IModule
         // Removing the Billing module also removes this context registration,
         // and the __EFMigrationsHistory_Billing table can be dropped without
         // touching core or other modules.
-        services.AddDbContext<BillingDbContext>(options =>
+        services.AddDbContext<BillingDbContext>((sp, options) =>
         {
+            // Subscribe to registered ISaveChangesInterceptors so domain events raised by
+            // BillingDbContext entities (e.g. TenantSubscription's SubscriptionChangedEvent)
+            // flow through DomainEventDispatcherInterceptor and reach SyncPlanFeaturesHandler.
+            // Without this, plan changes silently fail to propagate to TenantFeatureFlag overrides.
+            options.AddInterceptors(sp.GetServices<Microsoft.EntityFrameworkCore.Diagnostics.ISaveChangesInterceptor>());
+
             options.UseNpgsql(
                 configuration.GetConnectionString("DefaultConnection"),
                 npgsqlOptions =>

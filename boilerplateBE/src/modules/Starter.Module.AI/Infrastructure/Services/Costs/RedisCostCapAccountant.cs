@@ -3,6 +3,8 @@ using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 using Starter.Module.AI.Application.Services.Costs;
 
+using NS = System.Globalization.NumberStyles;
+
 namespace Starter.Module.AI.Infrastructure.Services.Costs;
 
 /// <summary>
@@ -58,8 +60,8 @@ internal sealed class RedisCostCapAccountant(
                 throw new InvalidOperationException("Unexpected Redis Lua response shape.");
 
             var granted = ((int)raw[0]) == 1;
-            var current = decimal.Parse((string)raw[1]!, CultureInfo.InvariantCulture);
-            var cap = decimal.Parse((string)raw[2]!, CultureInfo.InvariantCulture);
+            var current = ParseDecimal((string)raw[1]!, CultureInfo.InvariantCulture);
+            var cap = ParseDecimal((string)raw[2]!, CultureInfo.InvariantCulture);
             return new ClaimResult(granted, current, cap);
         }
         catch (RedisException ex)
@@ -120,7 +122,7 @@ internal sealed class RedisCostCapAccountant(
             var value = await db.StringGetAsync(key);
             return value.IsNullOrEmpty
                 ? 0m
-                : decimal.Parse((string)value!, CultureInfo.InvariantCulture);
+                : ParseDecimal((string)value!, CultureInfo.InvariantCulture);
         }
         catch (RedisException ex)
         {
@@ -130,6 +132,14 @@ internal sealed class RedisCostCapAccountant(
             return 0m;
         }
     }
+
+    /// <summary>
+    /// Lua's `tostring()` formats very small decimals in scientific notation (e.g. `6.96e-05`).
+    /// Default `decimal.Parse` only accepts that with `NumberStyles.Float`. We accept any
+    /// numeric format coming back from Redis; precision loss is bounded by Lua's double.
+    /// </summary>
+    private static decimal ParseDecimal(string value, CultureInfo culture) =>
+        decimal.Parse(value, NS.Float | NS.AllowThousands, culture);
 
     private static string WindowKey(Guid tenantId, Guid assistantId, CapWindow window)
     {
