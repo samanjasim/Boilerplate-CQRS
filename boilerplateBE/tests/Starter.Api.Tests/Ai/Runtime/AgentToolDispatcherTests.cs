@@ -1,11 +1,13 @@
 using System.Text.Json;
 using FluentAssertions;
 using MediatR;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Starter.Abstractions.Capabilities;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Services;
+using Starter.Module.AI.Application.Services.Approvals;
 using Starter.Module.AI.Application.Services.Runtime;
 using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Runtime;
@@ -29,6 +31,9 @@ public sealed class AgentToolDispatcherTests
         return new AgentToolDispatcher(
             sender.Object,
             execution.Object,
+            Mock.Of<ICurrentAgentRunContextAccessor>(),
+            Mock.Of<IPendingApprovalService>(),
+            new ConfigurationBuilder().Build(),
             NullLogger<AgentToolDispatcher>.Instance);
     }
 

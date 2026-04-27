@@ -33,6 +33,7 @@ using Starter.Module.AI.Infrastructure.Eval.Fixtures;
 using Starter.Module.AI.Infrastructure.Retrieval;
 using Starter.Module.AI.Infrastructure.Retrieval.Classification;
 using Starter.Module.AI.Infrastructure.Retrieval.Resilience;
+using Starter.Module.AI.Application.Services.Approvals;
 using Starter.Module.AI.Application.Services.Moderation;
 using Starter.Module.AI.Application.Services.Personas;
 using Starter.Module.AI.Application.Services.Runtime;
@@ -117,6 +118,10 @@ public sealed class AIModule : IModule
 
         // Moderation + safety profile resolution (Plan 5d-2)
         services.AddScoped<ISafetyProfileResolver, SafetyProfileResolver>();
+        services.AddScoped<IPendingApprovalService, PendingApprovalService>();
+        services.AddScoped<CurrentAgentRunContextAccessor>();
+        services.AddScoped<ICurrentAgentRunContextAccessor>(sp =>
+            sp.GetRequiredService<CurrentAgentRunContextAccessor>());
 
         services.AddSingleton<TokenCounter>();
 

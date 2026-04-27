@@ -11,4 +11,8 @@ internal interface IAgentToolDispatcher
         CancellationToken ct);
 }
 
-internal sealed record AgentToolDispatchResult(string Json, bool IsError);
+internal sealed record AgentToolDispatchResult(
+    string Json,
+    bool IsError,
+    bool AwaitingApproval = false,
+    Guid? ApprovalId = null);

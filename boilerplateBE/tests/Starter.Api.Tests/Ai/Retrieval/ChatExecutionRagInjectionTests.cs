@@ -252,6 +252,12 @@ internal sealed class ChatExecutionTestFixture
                 == Task.FromException<decimal>(new InvalidOperationException("no pricing"))));
         services.AddSingleton<IAgentPermissionResolver>(Mock.Of<IAgentPermissionResolver>());
 
+        // Plan 5d-2 dispatcher dependencies — stubs since [DangerousAction] tools aren't exercised.
+        services.AddSingleton<Starter.Module.AI.Application.Services.Runtime.ICurrentAgentRunContextAccessor>(
+            Mock.Of<Starter.Module.AI.Application.Services.Runtime.ICurrentAgentRunContextAccessor>());
+        services.AddSingleton<Starter.Module.AI.Application.Services.Approvals.IPendingApprovalService>(
+            Mock.Of<Starter.Module.AI.Application.Services.Approvals.IPendingApprovalService>());
+
         // Persona services (Plan 5b) — feature flag disabled above, so resolver is never called.
         services.AddScoped<Starter.Module.AI.Application.Services.Personas.IPersonaResolver,
             Starter.Module.AI.Infrastructure.Services.Personas.PersonaResolver>();
