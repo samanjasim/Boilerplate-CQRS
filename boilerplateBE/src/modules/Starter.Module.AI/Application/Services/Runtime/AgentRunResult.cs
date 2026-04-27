@@ -6,7 +6,10 @@ internal sealed record AgentRunResult(
     IReadOnlyList<AgentStepEvent> Steps,
     long TotalInputTokens,
     long TotalOutputTokens,
-    string? TerminationReason);
+    string? TerminationReason,
+    // Placeholder until Task B2 introduces Domain.Entities.AiModerationEvent.
+    // Tightened to IReadOnlyList<Domain.Entities.AiModerationEvent>? once the entity lands.
+    IReadOnlyList<object>? ModerationEvents = null);
 
 internal enum AgentRunStatus
 {
@@ -17,4 +20,8 @@ internal enum AgentRunStatus
     Cancelled,
     CostCapExceeded,
     RateLimitExceeded,
+    InputBlocked = 7,
+    OutputBlocked = 8,
+    AwaitingApproval = 9,
+    ModerationProviderUnavailable = 10,
 }
