@@ -101,6 +101,8 @@ public sealed class AIModule : IModule
         // Pricing + cost enforcement (Plan 5d-1)
         services.AddScoped<IModelPricingService, ModelPricingService>();
         services.AddScoped<ICostCapResolver, CostCapResolver>();
+        services.AddSingleton<ICostCapAccountant, RedisCostCapAccountant>();
+        services.AddSingleton<IAgentRateLimiter, RedisAgentRateLimiter>();
 
         services.AddSingleton<TokenCounter>();
 
