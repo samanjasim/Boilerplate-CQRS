@@ -76,8 +76,17 @@ export function TechStrip() {
             return (
               <div key={p.label} className="surface-glass hover-lift-card rounded-2xl p-5 border border-border/40">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white ${TONE_BG[p.tone]}`}>
+                  <div className={`relative w-10 h-10 rounded-xl flex items-center justify-center text-white ${TONE_BG[p.tone]}`}>
                     <Icon className="h-5 w-5" strokeWidth={2} />
+                    {/* Tiny live indicator on the icon's top-right corner */}
+                    <span
+                      aria-hidden
+                      className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-[var(--color-accent-400)]"
+                      style={{
+                        boxShadow: '0 0 4px var(--color-accent-400)',
+                        animation: `subtle-pulse 2.6s ease-in-out infinite`,
+                      }}
+                    />
                   </div>
                   <div>
                     <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-primary">{p.label}</div>

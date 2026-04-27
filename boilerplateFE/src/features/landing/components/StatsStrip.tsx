@@ -93,14 +93,26 @@ function StatItem({ stat }: { stat: Stat }) {
               <stop offset="100%" stopColor="var(--color-violet-500)" />
             </linearGradient>
           </defs>
+          {/* Static guide */}
           <path
             d={stat.spark}
             fill="none"
             stroke={`url(#spark-${stat.label})`}
-            strokeWidth="1.6"
+            strokeWidth="1.4"
             strokeLinecap="round"
             strokeLinejoin="round"
-            opacity="0.85"
+            opacity="0.45"
+          />
+          {/* Animated shimmer — bright pulse traveling along the same path */}
+          <path
+            d={stat.spark}
+            pathLength={100}
+            fill="none"
+            stroke={`url(#spark-${stat.label})`}
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="spark-shimmer"
           />
         </svg>
       </div>
@@ -116,8 +128,9 @@ export function StatsStrip() {
   return (
     <section className="relative">
       <div className="mx-auto max-w-6xl px-7 py-20 lg:py-24 border-y border-border/30">
-        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary mb-3">
-          Numbers that matter
+        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary mb-3 inline-flex items-center gap-2">
+          <span className="pulse-dot" />
+          Numbers that matter · live from the repo
         </div>
         <h2 className="text-[28px] sm:text-[34px] font-light tracking-[-0.025em] leading-[1.15] mb-3 font-display max-w-[720px]">
           Real surface area.

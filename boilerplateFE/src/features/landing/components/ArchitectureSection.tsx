@@ -106,19 +106,31 @@ function EventFlowDiagram() {
             </g>
           ))}
 
-          {/* Animated pulse (traveling dot) */}
-          <circle r="5" fill="var(--color-primary)" filter="drop-shadow(0 0 6px color-mix(in srgb, var(--color-primary) 60%, transparent))">
-            <animate
-              attributeName="cx"
-              from="40"
-              to="760"
-              dur="3.6s"
-              repeatCount="indefinite"
-              calcMode="spline"
-              keySplines="0.4 0 0.2 1"
-            />
-            <animate attributeName="cy" values="30;30" dur="3.6s" repeatCount="indefinite" />
-          </circle>
+          {/* Three traveling pulses staggered so traffic feels constant */}
+          {[
+            { dur: '3.6s', begin: '0s',    color: 'var(--color-primary)',   r: 5 },
+            { dur: '5.2s', begin: '-1.4s', color: 'var(--color-violet-500)', r: 4 },
+            { dur: '4.4s', begin: '-2.8s', color: 'var(--color-accent-500)', r: 4.5 },
+          ].map((p, i) => (
+            <circle
+              key={i}
+              r={p.r}
+              fill={p.color}
+              filter={`drop-shadow(0 0 6px color-mix(in srgb, ${p.color} 60%, transparent))`}
+            >
+              <animate
+                attributeName="cx"
+                from="40"
+                to="760"
+                dur={p.dur}
+                begin={p.begin}
+                repeatCount="indefinite"
+                calcMode="spline"
+                keySplines="0.4 0 0.2 1"
+              />
+              <animate attributeName="cy" values="30;30" dur={p.dur} repeatCount="indefinite" />
+            </circle>
+          ))}
         </svg>
 
         {/* Station labels under the SVG, aligned approximately */}

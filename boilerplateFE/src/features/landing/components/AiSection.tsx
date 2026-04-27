@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Bot, Globe, Sparkles, Wrench } from 'lucide-react';
 import { useReveal } from './useReveal';
 
@@ -58,8 +59,21 @@ export function AiSection() {
 }
 
 function ChatPreview() {
+  const { ref, revealed } = useReveal<HTMLDivElement>(0.35);
+  const [phase, setPhase] = useState<'typing' | 'response'>('typing');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      setPhase('response');
+      return;
+    }
+    if (!revealed) return;
+    const t = setTimeout(() => setPhase('response'), 1400);
+    return () => clearTimeout(t);
+  }, [revealed]);
+
   return (
-    <div className="surface-glass-strong rounded-2xl shadow-float overflow-hidden border border-border/50 hover-lift-card">
+    <div ref={ref} className="surface-glass-strong rounded-2xl shadow-float overflow-hidden border border-border/50 hover-lift-card">
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/30 bg-[color-mix(in_srgb,var(--color-primary)_4%,transparent)]">
         <span className="flex gap-1.5">
           <span className="h-2.5 w-2.5 rounded-full bg-destructive/60" />
@@ -89,17 +103,28 @@ function ChatPreview() {
             <Bot className="h-3.5 w-3.5 text-primary-foreground" />
           </div>
           <div className="flex-1 max-w-[88%] rounded-2xl rounded-bl-sm px-3.5 py-2.5 bg-card/60 border border-border/40 text-foreground leading-[1.55]">
-            Plants use sunlight as fuel. Their leaves grab carbon dioxide from the air and water from
-            the soil, then sunlight powers a tiny chemical kitchen inside the leaf that turns those
-            ingredients into sugar (food) and oxygen<span className="caret-blink text-primary" />
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono bg-[color-mix(in_srgb,var(--color-violet-500)_8%,transparent)] text-[var(--color-violet-700)] dark:text-[var(--color-violet-300)] border border-[color-mix(in_srgb,var(--color-violet-500)_18%,transparent)]">
-                <span className="opacity-60">📖</span> Biology · Ch.4
-              </span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono bg-[color-mix(in_srgb,var(--color-violet-500)_8%,transparent)] text-[var(--color-violet-700)] dark:text-[var(--color-violet-300)] border border-[color-mix(in_srgb,var(--color-violet-500)_18%,transparent)]">
-                <span className="opacity-60">📖</span> Lab notes
-              </span>
-            </div>
+            {phase === 'typing' ? (
+              <div className="flex items-center gap-1.5 py-0.5" aria-label="Tutor is typing">
+                <span className="text-[11px] text-muted-foreground mr-1">Tutor is thinking</span>
+                <span className="typing-dot" style={{ animationDelay: '0ms' }} />
+                <span className="typing-dot" style={{ animationDelay: '180ms' }} />
+                <span className="typing-dot" style={{ animationDelay: '360ms' }} />
+              </div>
+            ) : (
+              <>
+                Plants use sunlight as fuel. Their leaves grab carbon dioxide from the air and water from
+                the soil, then sunlight powers a tiny chemical kitchen inside the leaf that turns those
+                ingredients into sugar (food) and oxygen<span className="caret-blink text-primary" />
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono bg-[color-mix(in_srgb,var(--color-violet-500)_8%,transparent)] text-[var(--color-violet-700)] dark:text-[var(--color-violet-300)] border border-[color-mix(in_srgb,var(--color-violet-500)_18%,transparent)]">
+                    <span className="opacity-60">📖</span> Biology · Ch.4
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono bg-[color-mix(in_srgb,var(--color-violet-500)_8%,transparent)] text-[var(--color-violet-700)] dark:text-[var(--color-violet-300)] border border-[color-mix(in_srgb,var(--color-violet-500)_18%,transparent)]">
+                    <span className="opacity-60">📖</span> Lab notes
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

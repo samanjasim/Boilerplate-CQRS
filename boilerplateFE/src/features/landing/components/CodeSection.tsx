@@ -58,6 +58,18 @@ export function CodeSection() {
               <div>  {'}'}</div>
               <div>{'}'}</div>
             </div>
+            {/* Terminal-style status footer — appears once typing finishes */}
+            <div className="terminal-status px-4 py-2 border-t border-white/[0.06] bg-white/[0.02] flex items-center gap-3 font-mono text-[10px] text-[#9b8978]">
+              <span className="inline-flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#6ee7b7] shadow-[0_0_6px_#6ee7b7]" />
+                <span className="text-[#6ee7b7]">Build succeeded</span>
+              </span>
+              <span className="opacity-50">·</span>
+              <span>0 errors · 1 warning</span>
+              <span className="opacity-50">·</span>
+              <span>12ms</span>
+              <span className="ml-auto opacity-60">▸ tests · 142 passing</span>
+            </div>
           </div>
 
           <div className="flex flex-col gap-5 lg:pt-3">

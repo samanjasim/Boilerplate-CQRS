@@ -1,5 +1,6 @@
 import {
   Activity,
+  Check,
   CreditCard,
   Flag,
   KeyRound,
@@ -118,12 +119,18 @@ export function FeatureGrid() {
             return (
               <div
                 key={f.title}
-                className="surface-glass hover-lift-card rounded-2xl p-5 group"
+                className="surface-glass hover-lift-card rounded-2xl p-5 group relative"
               >
                 <div
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 text-white ${ICON_BG[f.color]} transition-transform duration-200 group-hover:scale-110`}
+                  className={`relative w-10 h-10 rounded-xl flex items-center justify-center mb-4 text-white ${ICON_BG[f.color]} transition-transform duration-200 group-hover:scale-110`}
                 >
                   <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
+                  {/* Verified flash — appears once on reveal */}
+                  {grid.revealed && (
+                    <span className="feature-check absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[var(--color-accent-500)] flex items-center justify-center shadow-[0_0_8px_color-mix(in_srgb,var(--color-accent-500)_60%,transparent)]">
+                      <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />
+                    </span>
+                  )}
                 </div>
                 <h3 className="text-[14px] font-semibold mb-1.5 text-foreground tracking-tight">
                   {f.title}

@@ -626,6 +626,45 @@ button { font-family: inherit; }
     animation: hero-hub-pulse 5.5s ease-in-out infinite;
     transform-origin: center;
   }
+
+  /* ── J4 motion: typing dots (AI chat preview "thinking" state) ── */
+  .typing-dot {
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 9999px;
+    background: var(--color-primary);
+    opacity: 0.4;
+    animation: typing-dot-bob 1s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .typing-dot { animation: none; opacity: 0.7; }
+  }
+
+  /* ── J4 motion: terminal status (CodeSection footer) ── */
+  .terminal-status {
+    animation: terminal-status-fade 0.4s ease-out 2.6s both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .terminal-status { animation: none; opacity: 1; }
+  }
+
+  /* ── J4 motion: sparkline shimmer (StatsStrip) ── */
+  .spark-shimmer {
+    stroke-dasharray: 30 70;
+    animation: spark-shimmer-travel 6s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .spark-shimmer { animation: none; stroke-dasharray: none; }
+  }
+
+  /* ── J4 motion: feature card check (verified flash) ── */
+  .feature-check {
+    animation: feature-check-flash 1.2s ease-out 0.6s both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .feature-check { animation: none; opacity: 1; }
+  }
   /* ── J4 motion: blueprint (architecture section) ── */
   .blueprint-line {
     stroke-dasharray: var(--bp-len, 240);
@@ -730,6 +769,27 @@ button { font-family: inherit; }
 @keyframes hero-hub-pulse {
   0%, 100% { opacity: 0.35; r: 2.4; }
   50%      { opacity: 0.85; r: 3.4; }
+}
+
+@keyframes typing-dot-bob {
+  0%, 60%, 100% { transform: translateY(0);   opacity: 0.4; }
+  30%           { transform: translateY(-3px); opacity: 1; }
+}
+
+@keyframes terminal-status-fade {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spark-shimmer-travel {
+  from { stroke-dashoffset: 0; }
+  to   { stroke-dashoffset: -100; }
+}
+
+@keyframes feature-check-flash {
+  0%   { opacity: 0; transform: scale(0.6) rotate(-20deg); }
+  60%  { opacity: 1; transform: scale(1.15) rotate(0deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
 }
 
 @keyframes blueprint-node-pulse {
