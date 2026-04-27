@@ -609,11 +609,22 @@ button { font-family: inherit; }
    * along each curved path while a low-opacity guide stays visible — so the
    * network is always present at constant density, the motion just signals
    * "alive" without bursts. Each path has pathLength="100" so the normalized
-   * dasharray works regardless of physical length. */
+   * dasharray works regardless of physical length. Pulse length varies per
+   * path via --ht-len (set inline). */
   .hero-pulse {
-    stroke-dasharray: 10 90;
+    stroke-dasharray: var(--ht-len, 8) calc(100 - var(--ht-len, 8));
     stroke-dashoffset: 0;
     animation: hero-pulse-travel var(--ht-dur, 9s) linear infinite;
+  }
+  /* Whole network slowly breathes — gentle scale + translate over 40s */
+  .hero-network-breathe {
+    animation: hero-network-breathe 42s ease-in-out infinite alternate;
+    transform-origin: 50% 50%;
+  }
+  /* Hub markers — soft glowing nodes at intersections, slow opacity wave */
+  .hero-hub {
+    animation: hero-hub-pulse 5.5s ease-in-out infinite;
+    transform-origin: center;
   }
   /* ── J4 motion: blueprint (architecture section) ── */
   .blueprint-line {
@@ -625,7 +636,8 @@ button { font-family: inherit; }
     animation: blueprint-node-pulse 4s ease-in-out infinite;
   }
   @media (prefers-reduced-motion: reduce) {
-    .hero-pulse, .blueprint-line, .blueprint-node { animation: none; }
+    .hero-pulse, .blueprint-line, .blueprint-node,
+    .hero-network-breathe, .hero-hub { animation: none; }
     .hero-pulse { stroke-dasharray: none; }
     .blueprint-line { stroke-dashoffset: 0; }
   }
@@ -707,6 +719,17 @@ button { font-family: inherit; }
 @keyframes hero-pulse-travel {
   0%   { stroke-dashoffset: 0; }
   100% { stroke-dashoffset: -100; }
+}
+
+@keyframes hero-network-breathe {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(-0.6%, 0.4%) scale(1.012); }
+  100% { transform: translate(0.5%, -0.3%) scale(1.005); }
+}
+
+@keyframes hero-hub-pulse {
+  0%, 100% { opacity: 0.35; r: 2.4; }
+  50%      { opacity: 0.85; r: 3.4; }
 }
 
 @keyframes blueprint-node-pulse {
