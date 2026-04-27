@@ -430,12 +430,18 @@ cp_fe src/styles/index.css
 
 - [ ] **Step 4: Verify in browser**
 
+> ⚠ **Tailwind 4 tree-shake gotcha:** the `@theme` block emits CSS custom properties **only for tokens whose utilities are actually used in source files**. After this task, `--color-amber-*` will appear in the served CSS (existing components use `bg-amber-*`/`text-amber-*`), but `--color-violet-*` and `--font-display` **will not** appear until Plan 2 introduces a consumer (e.g. an info pill using `bg-violet-100`, or a hero title using `font-display`). This is correct — the tokens are *registered*; Tailwind ships them on demand.
+>
+> For the J4 utilities in Tasks 4-6 that reference `var(--color-violet-300)`, **Task 7 (`useThemePreset` runtime writes)** is the safety net: it sets every shade of violet/amber on `:root` directly, bypassing the tree-shaker. So J4 utility classes work whether or not Tailwind has emitted the `@theme` shade.
+
 Refresh `http://localhost:<FE>`. In DevTools console:
 ```js
+getComputedStyle(document.documentElement).getPropertyValue('--color-amber-500')
+// expected: " #f59e0b" (utility-referenced, ships unconditionally)
 getComputedStyle(document.documentElement).getPropertyValue('--color-violet-500')
-// expected: " #6366f1"
+// expected: empty string until Task 7 runs OR Plan 2 adds a violet utility
 getComputedStyle(document.documentElement).getPropertyValue('--font-display')
-// expected: " 'Inter', 'IBM Plex Sans', system-ui, sans-serif"
+// expected: empty string until something uses font-display utility
 ```
 
 - [ ] **Step 5: Commit**
