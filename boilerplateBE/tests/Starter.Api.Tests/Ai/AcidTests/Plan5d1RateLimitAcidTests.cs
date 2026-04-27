@@ -2,35 +2,36 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using StackExchange.Redis;
 using Starter.Module.AI.Infrastructure.Services.Costs;
+using Testcontainers.Redis;
 using Xunit;
 
 namespace Starter.Api.Tests.Ai.AcidTests;
 
 /// <summary>
-/// Plan 5d-1 acid test M3: per-agent sliding-window rate limiter. Verifies that:
-/// - Up to `rpm` requests within 60 s are admitted; the next is refused.
-/// - After the window slides past, capacity is restored.
-///
-/// Requires the docker-compose `starter-redis` instance on localhost:6379. The fixture
-/// fails hard if Redis is unreachable — silent skip would hide a critical rate-limit
-/// regression. Run `docker compose up -d redis` from boilerplateBE/ before these tests.
+/// Plan 5d-1 acid test M3: per-agent sliding-window rate limiter against a real Redis.
+/// Uses a Testcontainers-managed Redis per fixture so the test is self-contained
+/// (no docker-compose required, runs in CI).
 /// </summary>
 public sealed class Plan5d1RateLimitAcidTests : IAsyncLifetime
 {
-    private const string RedisConn = "localhost:6379,abortConnect=false";
+    private readonly RedisContainer _container = new RedisBuilder()
+        .WithImage("redis:7-alpine")
+        .Build();
+
     private IConnectionMultiplexer? _multiplexer;
     private RedisAgentRateLimiter? _sut;
 
     public async Task InitializeAsync()
     {
-        _multiplexer = await ConnectionMultiplexer.ConnectAsync(RedisConn);
+        await _container.StartAsync();
+        _multiplexer = await ConnectionMultiplexer.ConnectAsync(_container.GetConnectionString());
         _sut = new RedisAgentRateLimiter(_multiplexer, NullLogger<RedisAgentRateLimiter>.Instance);
     }
 
-    public Task DisposeAsync()
+    public async Task DisposeAsync()
     {
         _multiplexer?.Dispose();
-        return Task.CompletedTask;
+        await _container.DisposeAsync();
     }
 
     [Fact]

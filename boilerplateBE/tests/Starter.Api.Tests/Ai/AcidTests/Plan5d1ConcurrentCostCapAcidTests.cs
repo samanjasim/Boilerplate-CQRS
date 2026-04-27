@@ -3,37 +3,37 @@ using Microsoft.Extensions.Logging.Abstractions;
 using StackExchange.Redis;
 using Starter.Module.AI.Application.Services.Costs;
 using Starter.Module.AI.Infrastructure.Services.Costs;
+using Testcontainers.Redis;
 using Xunit;
 
 namespace Starter.Api.Tests.Ai.AcidTests;
 
 /// <summary>
-/// Plan 5d-1 acid test M2: atomic cost-cap claims. Verifies the Redis Lua script
-/// holds under concurrent load — N parallel claims against a cap of K never exceed K.
-///
-/// Connects to the docker-compose redis on localhost:6379 (`starter-redis`). Skipped
-/// when redis is unreachable (CI without docker).
+/// Plan 5d-1 acid test M2: atomic cost-cap claims against a real Redis instance.
+/// Spins up a Testcontainers-managed Redis per fixture so the tests are self-contained
+/// (no docker-compose required, runs in CI). Each [Fact] gets isolated keys via
+/// fresh Guids so concurrent xUnit execution is safe.
 /// </summary>
 public sealed class Plan5d1ConcurrentCostCapAcidTests : IAsyncLifetime
 {
-    private const string RedisConn = "localhost:6379,abortConnect=false";
+    private readonly RedisContainer _container = new RedisBuilder()
+        .WithImage("redis:7-alpine")
+        .Build();
+
     private IConnectionMultiplexer? _multiplexer;
     private RedisCostCapAccountant? _sut;
 
     public async Task InitializeAsync()
     {
-        // Plan 5d-1 acid tests require the docker-compose `starter-redis` instance on
-        // localhost:6379. We fail hard if Redis is unreachable rather than silently skip:
-        // a missing instance means cap enforcement is untested and CI MUST surface that.
-        // Run `docker compose up -d redis` from boilerplateBE/ before these tests.
-        _multiplexer = await ConnectionMultiplexer.ConnectAsync(RedisConn);
+        await _container.StartAsync();
+        _multiplexer = await ConnectionMultiplexer.ConnectAsync(_container.GetConnectionString());
         _sut = new RedisCostCapAccountant(_multiplexer, NullLogger<RedisCostCapAccountant>.Instance);
     }
 
-    public Task DisposeAsync()
+    public async Task DisposeAsync()
     {
         _multiplexer?.Dispose();
-        return Task.CompletedTask;
+        await _container.DisposeAsync();
     }
 
     [Fact]
