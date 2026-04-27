@@ -47,8 +47,11 @@ export function Sidebar() {
     }
   }, [isActiveOverflowed, setMorePanelOpen]);
 
-  // Auto-close MorePanel when the user navigates to a page that's NOT in overflow.
+  // Auto-close MorePanel when the user navigates away from an overflowed page.
+  const lastPathRef = useRef(location.pathname);
   useEffect(() => {
+    if (location.pathname === lastPathRef.current) return;
+    lastPathRef.current = location.pathname;
     if (morePanelOpen && !isActiveOverflowed) {
       setMorePanelOpen(false);
     }

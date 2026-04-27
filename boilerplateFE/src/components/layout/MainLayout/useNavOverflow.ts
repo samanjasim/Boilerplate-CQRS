@@ -41,6 +41,29 @@ export function useNavOverflow(): NavOverflow {
   const moreButtonRef = useRef<HTMLElement>(null);
   const [visibleCount, setVisibleCount] = useState<number>(groups.length);
 
+  // Extracted so both the layout-effect and ResizeObserver paths stay in sync.
+  const measureVisibleCount = (nav: HTMLElement): number => {
+    const moreButtonHeight = moreButtonRef.current?.offsetHeight ?? 0;
+    const available = nav.clientHeight - moreButtonHeight;
+    // Each direct child of <nav> is a group wrapper (`<div data-group-id="...">`).
+    const groupEls = Array.from(nav.querySelectorAll<HTMLElement>('[data-group-id]'));
+    let accumulated = 0;
+    let visible = 0;
+    for (const el of groupEls) {
+      const style = getComputedStyle(el);
+      const marginTop = parseFloat(style.marginTop) || 0;
+      const marginBottom = parseFloat(style.marginBottom) || 0;
+      const totalHeight = el.offsetHeight + marginTop + marginBottom;
+      if (accumulated + totalHeight <= available) {
+        accumulated += totalHeight;
+        visible += 1;
+      } else {
+        break;
+      }
+    }
+    return visible;
+  };
+
   // Compute which groups fit. Reads element heights synchronously (useLayoutEffect)
   // so the next paint reflects the partition without a flash.
   useLayoutEffect(() => {
@@ -51,28 +74,7 @@ export function useNavOverflow(): NavOverflow {
     const nav = navRef.current;
     if (!nav) return;
 
-    const moreButtonHeight = moreButtonRef.current?.offsetHeight ?? 0;
-    const available = nav.clientHeight - moreButtonHeight;
-
-    // Each direct child of <nav> is a group wrapper (`<div data-group-id="...">`).
-    const groupEls = Array.from(nav.querySelectorAll<HTMLElement>('[data-group-id]'));
-
-    let accumulated = 0;
-    let visible = 0;
-    for (const el of groupEls) {
-      const style = getComputedStyle(el);
-      const marginTop = parseFloat(style.marginTop) || 0;
-      const marginBottom = parseFloat(style.marginBottom) || 0;
-      const totalHeight = el.offsetHeight + marginTop + marginBottom;
-
-      if (accumulated + totalHeight <= available) {
-        accumulated += totalHeight;
-        visible += 1;
-      } else {
-        break;
-      }
-    }
-
+    const visible = measureVisibleCount(nav);
     if (visible !== visibleCount) setVisibleCount(visible);
     // Intentionally NOT including visibleCount in deps — that would loop. We only
     // re-run when the inputs that affect layout change.
@@ -85,28 +87,7 @@ export function useNavOverflow(): NavOverflow {
     if (!nav || isCollapsed) return;
 
     const observer = new ResizeObserver(() => {
-      // Trigger the layout effect by bumping a ref-only counter via setState.
-      // We re-measure inline rather than calling the layout effect to keep
-      // dependency lists tight.
-      const moreButtonHeight = moreButtonRef.current?.offsetHeight ?? 0;
-      const available = nav.clientHeight - moreButtonHeight;
-      const groupEls = Array.from(nav.querySelectorAll<HTMLElement>('[data-group-id]'));
-
-      let accumulated = 0;
-      let visible = 0;
-      for (const el of groupEls) {
-        const style = getComputedStyle(el);
-        const marginTop = parseFloat(style.marginTop) || 0;
-        const marginBottom = parseFloat(style.marginBottom) || 0;
-        const totalHeight = el.offsetHeight + marginTop + marginBottom;
-
-        if (accumulated + totalHeight <= available) {
-          accumulated += totalHeight;
-          visible += 1;
-        } else {
-          break;
-        }
-      }
+      const visible = measureVisibleCount(nav);
       setVisibleCount((current) => (current === visible ? current : visible));
     });
 
