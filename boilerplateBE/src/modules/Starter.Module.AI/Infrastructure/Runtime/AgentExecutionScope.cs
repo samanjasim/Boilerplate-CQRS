@@ -23,6 +23,7 @@ public sealed class AgentExecutionScope : IExecutionContext, IDisposable
     public Guid? AgentPrincipalId { get; }
     public Guid? TenantId { get; }
     public Guid? AgentRunId { get; private set; }
+    public bool DangerousActionApprovalGrant => false;
 
     private AgentExecutionScope(
         Guid? userId,

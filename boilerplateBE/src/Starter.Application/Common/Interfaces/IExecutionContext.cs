@@ -20,5 +20,11 @@ public interface IExecutionContext
     /// </summary>
     Guid? AgentRunId { get; }
 
+    /// <summary>
+    /// True for the duration of an approved-action re-dispatch (one-shot). AgentToolDispatcher
+    /// skips the [DangerousAction] check when this returns true. Default impls return false.
+    /// </summary>
+    bool DangerousActionApprovalGrant { get; }
+
     bool HasPermission(string permission);
 }
