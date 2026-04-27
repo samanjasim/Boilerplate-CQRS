@@ -52,6 +52,43 @@
     --hover-bg: hsl(var(--secondary));
     --gradient-from: var(--color-primary-700);
     --gradient-to: var(--color-primary-500);
+
+    /* ── J4 Spectrum tokens (light) ──
+     * All colors derived from preset scales via color-mix() — no hardcoded RGBA.
+     * Switching activePreset cascades through aurora, spectrum text, glow, and gradient buttons.
+     * Reference: docs/superpowers/specs/2026-04-26-phase-0-visual-foundation-design.md §3
+     */
+    --aurora-1: radial-gradient(ellipse 700px 300px at 30% 0%,
+      color-mix(in srgb, var(--color-accent-400) 30%, transparent),
+      transparent 60%);
+    --aurora-2: radial-gradient(ellipse 600px 400px at 80% 30%,
+      color-mix(in srgb, var(--color-primary) 25%, transparent),
+      transparent 55%);
+    --aurora-3: radial-gradient(ellipse 550px 500px at 50% 100%,
+      color-mix(in srgb, var(--color-violet-300) 35%, transparent),
+      transparent 60%);
+    --aurora-corner: radial-gradient(circle at 100% 0%,
+      color-mix(in srgb, var(--color-primary) 20%, transparent) 0%,
+      transparent 50%);
+
+    --spectrum-text: linear-gradient(135deg,
+      var(--color-primary-800) 0%,
+      var(--color-primary) 50%,
+      var(--color-violet-700) 100%);
+
+    --btn-primary-gradient: linear-gradient(135deg,
+      var(--color-primary-400),
+      var(--color-primary));
+
+    --glow-primary-sm: 0 0 12px color-mix(in srgb, var(--color-primary) 40%, transparent);
+    --glow-primary-md: 0 4px 16px color-mix(in srgb, var(--color-primary) 30%, transparent);
+    --glow-primary-lg: 0 1px 0 rgba(255,255,255,0.30) inset,
+                       0 6px 16px color-mix(in srgb, var(--color-primary) 28%, transparent);
+    --glow-emerald-sm: 0 0 0 3px color-mix(in srgb, var(--color-accent-500) 18%, transparent);
+
+    --surface-glass: rgba(255,255,255,0.70);
+    --surface-glass-strong: rgba(255,255,255,0.85);
+    --border-strong: color-mix(in srgb, var(--color-primary-900) 12%, transparent);
   }
 
   .dark {
