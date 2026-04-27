@@ -81,7 +81,11 @@ internal sealed class ChatExecutionService(
             MaxSteps: stepBudget,
             LoopBreak: LoopBreakPolicy.Default,
             Streaming: false,
-            Persona: state.Persona);
+            Persona: state.Persona,
+            AssistantId: state.Assistant.Id,
+            TenantId: state.Assistant.TenantId,
+            CallerUserId: currentUser.UserId,
+            CallerHasPermission: currentUser.HasPermission);
 
         var sink = new ChatAgentRunSink(context, state.Conversation.Id, state.NextOrder, streamWriter: null);
 
@@ -183,6 +187,10 @@ internal sealed class ChatExecutionService(
             MaxSteps: stepBudget,
             LoopBreak: LoopBreakPolicy.Default,
             Streaming: true,
+            AssistantId: state.Assistant.Id,
+            TenantId: state.Assistant.TenantId,
+            CallerUserId: currentUser.UserId,
+            CallerHasPermission: currentUser.HasPermission,
             Persona: state.Persona);
 
         var channel = Channel.CreateUnbounded<ChatStreamEvent>(new UnboundedChannelOptions

@@ -20,15 +20,15 @@ public sealed class AgentToolDispatcherTests
 
     private static AgentToolDispatcher Build(
         Mock<ISender>? sender = null,
-        Mock<ICurrentUserService>? user = null,
+        Mock<IExecutionContext>? execution = null,
         bool hasPermission = true)
     {
         sender ??= new Mock<ISender>();
-        user ??= new Mock<ICurrentUserService>();
-        user.Setup(u => u.HasPermission(It.IsAny<string>())).Returns(hasPermission);
+        execution ??= new Mock<IExecutionContext>();
+        execution.Setup(e => e.HasPermission(It.IsAny<string>())).Returns(hasPermission);
         return new AgentToolDispatcher(
             sender.Object,
-            user.Object,
+            execution.Object,
             NullLogger<AgentToolDispatcher>.Instance);
     }
 

@@ -13,7 +13,14 @@ internal sealed record AgentRunContext(
     int MaxSteps,
     LoopBreakPolicy LoopBreak,
     bool Streaming = false,
-    PersonaContext? Persona = null);
+    PersonaContext? Persona = null,
+    // Plan 5d-1: identifies which assistant + tenant this run belongs to, plus the human
+    // chat caller for hybrid-intersection security. AssistantId may be null in tests or
+    // legacy callers; CallerUserId is null for operational (event/cron) agent runs.
+    Guid? AssistantId = null,
+    Guid? TenantId = null,
+    Guid? CallerUserId = null,
+    Func<string, bool>? CallerHasPermission = null);
 
 internal sealed record AgentModelConfig(
     AiProviderType Provider,

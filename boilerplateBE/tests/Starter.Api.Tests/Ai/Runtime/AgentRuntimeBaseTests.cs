@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Starter.Abstractions.Capabilities;
@@ -37,7 +38,12 @@ public sealed class AgentRuntimeBaseTests
     {
         dispatcher ??= Mock.Of<IAgentToolDispatcher>();
         var factory = new FakeAiProviderFactory(provider);
-        return new TestAgentRuntime(factory, dispatcher, NullLogger<AgentRuntimeBase>.Instance);
+        var cu = new Mock<Starter.Application.Common.Interfaces.ICurrentUserService>();
+        var aiDbOpts = new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<Starter.Module.AI.Infrastructure.Persistence.AiDbContext>()
+            .UseInMemoryDatabase($"runtime-{Guid.NewGuid()}").Options;
+        var aiDb = new Starter.Module.AI.Infrastructure.Persistence.AiDbContext(aiDbOpts, cu.Object);
+        var agentPerms = Mock.Of<Starter.Application.Common.Interfaces.IAgentPermissionResolver>();
+        return new TestAgentRuntime(factory, dispatcher, aiDb, agentPerms, NullLogger<AgentRuntimeBase>.Instance);
     }
 
     [Fact]
@@ -267,8 +273,10 @@ internal sealed class TestAgentRuntime : AgentRuntimeBase
     public TestAgentRuntime(
         IAiProviderFactory factory,
         IAgentToolDispatcher dispatcher,
+        Starter.Module.AI.Infrastructure.Persistence.AiDbContext aiDb,
+        Starter.Application.Common.Interfaces.IAgentPermissionResolver agentPermissions,
         Microsoft.Extensions.Logging.ILogger<AgentRuntimeBase> logger)
-        : base(factory, dispatcher, logger) { }
+        : base(factory, dispatcher, aiDb, agentPermissions, logger) { }
 }
 
 internal sealed class RecordingSink : IAgentRunSink
