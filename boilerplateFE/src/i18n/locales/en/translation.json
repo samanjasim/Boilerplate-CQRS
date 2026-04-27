@@ -166,7 +166,8 @@
   "header": {
     "logout": "Logout",
     "theme": "Theme",
-    "language": "Language"
+    "language": "Language",
+    "searchPlaceholder": "Search anything…"
   },
   "dashboard": {
     "welcomeBack": "Welcome back, {{name}}!",

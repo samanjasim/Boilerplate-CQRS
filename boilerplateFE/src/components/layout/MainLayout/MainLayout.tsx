@@ -18,8 +18,7 @@ export function MainLayout() {
   const { showOnboarding, completeOnboarding, remindLater } = useOnboardingCheck();
   const { t } = useTranslation();
 
-  // Lock body scroll while the mobile drawer is open. The `lg:hidden` backdrop
-  // already gates the visual; this prevents the page behind from scrolling on touch.
+  // Lock body scroll while the mobile drawer is open.
   useEffect(() => {
     if (!sidebarOpen) return;
     const previous = document.body.style.overflow;
@@ -36,10 +35,13 @@ export function MainLayout() {
   }
 
   return (
-    <div className="aurora-canvas min-h-screen bg-background overflow-x-clip" data-page-style="dense">
+    <div
+      className="aurora-canvas min-h-screen bg-background overflow-x-clip"
+      data-page-style="dense"
+    >
       <Sidebar />
       <Header />
-      {/* Mobile drawer backdrop — only renders when open, only visible <lg */}
+      {/* Mobile drawer backdrop */}
       {sidebarOpen && (
         <button
           type="button"
@@ -50,13 +52,17 @@ export function MainLayout() {
       )}
       <main
         className={cn(
-          'pt-16 motion-safe:transition-all motion-safe:duration-300',
-          // No left padding on <lg — sidebar is a drawer, not in flow
-          'pl-0',
-          isCollapsed ? 'lg:ltr:pl-16 lg:rtl:pr-16' : 'lg:ltr:pl-60 lg:rtl:pr-60'
+          // pt = header top (14) + header height (48) + gap (8) = 70
+          'pt-[70px] motion-safe:transition-all motion-safe:duration-300',
+          // edge padding swaps with sidebar margin on lg+; flush on <lg
+          'max-lg:px-3.5',
+          isCollapsed
+            ? 'lg:ltr:pl-[calc(4rem+1.75rem)] lg:rtl:pr-[calc(4rem+1.75rem)]'
+            : 'lg:ltr:pl-[calc(15rem+1.75rem)] lg:rtl:pr-[calc(15rem+1.75rem)]',
+          'lg:ltr:pr-3.5 lg:rtl:pl-3.5'
         )}
       >
-        <div className="p-8">
+        <div className="px-2 pb-6 pt-2">
           <RouteErrorBoundary>
             <Outlet />
           </RouteErrorBoundary>
