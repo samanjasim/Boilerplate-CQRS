@@ -10,6 +10,7 @@ import { DialogsSection } from '../components/sections/DialogsSection';
 import { DropdownsSection } from '../components/sections/DropdownsSection';
 import { AvatarsSection } from '../components/sections/AvatarsSection';
 import { CommonSection } from '../components/sections/CommonSection';
+import { FunctionalSection } from '../components/sections/FunctionalSection';
 
 const SECTIONS: { id: string; label: string }[] = [
   { id: 'tokens', label: 'Tokens' },
@@ -23,6 +24,7 @@ const SECTIONS: { id: string; label: string }[] = [
   { id: 'dropdowns', label: 'Dropdowns' },
   { id: 'avatars', label: 'Avatars + small' },
   { id: 'common', label: 'Common' },
+  { id: 'functional', label: 'Functional UI' },
 ];
 
 export default function StyleguidePage() {
@@ -75,6 +77,7 @@ export default function StyleguidePage() {
             <DropdownsSection />
             <AvatarsSection />
             <CommonSection />
+            <FunctionalSection />
           </div>
         </main>
       </div>
