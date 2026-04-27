@@ -1,25 +1,58 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { ChevronsLeft, ChevronsRight, MoreHorizontal } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { cn } from '@/lib/utils';
 import {
+  selectMorePanelOpen,
   selectSidebarCollapsed,
   selectSidebarOpen,
   selectUser,
   useAuthStore,
   useUIStore,
 } from '@/stores';
-import { useNavGroups } from './useNavGroups';
+import { useNavOverflow } from './useNavOverflow';
 
 export function Sidebar() {
+  const { t } = useTranslation();
   const isCollapsed = useUIStore(selectSidebarCollapsed);
   const toggleCollapse = useUIStore((state) => state.toggleSidebarCollapse);
   const user = useAuthStore(selectUser);
-  const groups = useNavGroups();
   const sidebarOpen = useUIStore(selectSidebarOpen);
   const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
+  const morePanelOpen = useUIStore(selectMorePanelOpen);
+  const setMorePanelOpen = useUIStore((state) => state.setMorePanelOpen);
+  const toggleMorePanel = useUIStore((state) => state.toggleMorePanel);
   const location = useLocation();
+
+  const {
+    visibleGroups,
+    overflowGroups,
+    activeGroup,
+    activeItem,
+    isActiveOverflowed,
+    hasOverflow,
+    navRef,
+    moreButtonRef,
+  } = useNavOverflow();
+
+  // Auto-open MorePanel once on first mount if the active route is overflowed
+  // (deep-link / page refresh into an overflowed page).
+  const autoOpenedRef = useRef(false);
+  useEffect(() => {
+    if (!autoOpenedRef.current && isActiveOverflowed) {
+      setMorePanelOpen(true);
+      autoOpenedRef.current = true;
+    }
+  }, [isActiveOverflowed, setMorePanelOpen]);
+
+  // Auto-close MorePanel when the user navigates to a page that's NOT in overflow.
+  useEffect(() => {
+    if (morePanelOpen && !isActiveOverflowed) {
+      setMorePanelOpen(false);
+    }
+  }, [location.pathname, isActiveOverflowed, morePanelOpen, setMorePanelOpen]);
 
   // Auto-close mobile drawer on route change. Harmless on desktop (`sidebarOpen`
   // has no UI effect at lg+).
@@ -86,60 +119,151 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 pt-2 pb-3">
-        {groups.map((group, groupIndex) => (
-          <div
-            key={group.id}
+      <nav
+        ref={navRef}
+        className="flex-1 overflow-hidden px-3 pt-2 pb-3 flex flex-col"
+      >
+        <div className="flex-1">
+          {visibleGroups.map((group, groupIndex) => (
+            <div
+              key={group.id}
+              data-group-id={group.id}
+              className={cn(
+                groupIndex > 0 && (
+                  isCollapsed
+                    ? 'mx-3 my-2 border-t border-border/40'
+                    : 'mt-4'
+                )
+              )}
+            >
+              {!isCollapsed && group.label && (
+                <div className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  <span className="inline-block w-1 h-1 rounded-full bg-primary/70 me-1.5 align-middle -translate-y-px" />
+                  {group.label}
+                </div>
+              )}
+              <ul className="space-y-1">
+                {group.items.map((item) => (
+                  <li key={item.path}>
+                    <NavLink
+                      to={item.path}
+                      end={item.end}
+                      className={({ isActive }) =>
+                        cn(
+                          'flex items-center gap-2.5 rounded-[10px] h-10 px-3 text-sm motion-safe:transition-all motion-safe:duration-150 cursor-pointer',
+                          isCollapsed && 'justify-center px-0',
+                          isActive ? 'pill-active' : 'state-hover'
+                        )
+                      }
+                    >
+                      {({ isActive }) => (
+                        <>
+                          <item.icon
+                            className={cn(
+                              'h-[18px] w-[18px] shrink-0',
+                              isActive && 'drop-shadow-[0_0_6px_color-mix(in_srgb,var(--color-primary)_45%,transparent)]'
+                            )}
+                          />
+                          {!isCollapsed && <span className="flex-1">{item.label}</span>}
+                          {!isCollapsed && item.badge != null && (
+                            <span className="flex h-5 min-w-5 items-center justify-center rounded-full btn-primary-gradient glow-primary-sm px-1.5 text-[10px] font-bold text-primary-foreground font-mono">
+                              {item.badge > 99 ? '99+' : item.badge}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        {hasOverflow && (
+          <button
+            ref={moreButtonRef as React.RefObject<HTMLButtonElement>}
+            type="button"
+            onClick={toggleMorePanel}
+            aria-pressed={morePanelOpen}
+            aria-label={
+              isActiveOverflowed && activeItem && activeGroup
+                ? t('nav.more.inMore', { group: activeGroup.label ?? '' })
+                : t('nav.more.label')
+            }
+            title={
+              isCollapsed
+                ? isActiveOverflowed && activeItem && activeGroup
+                  ? `${activeItem.label} · ${t('nav.more.inMore', { group: activeGroup.label ?? '' })}`
+                  : t('nav.more.label')
+                : undefined
+            }
             className={cn(
-              groupIndex > 0 && (
-                isCollapsed
-                  ? 'mx-3 my-2 border-t border-border/40'
-                  : 'mt-4'
-              )
+              'relative mt-2 flex items-center rounded-[10px] h-10 overflow-hidden',
+              'motion-safe:transition-all motion-safe:duration-150',
+              isCollapsed ? 'justify-center px-0 w-full' : 'px-3',
+              isActiveOverflowed
+                ? 'pill-active border border-transparent'
+                : 'border border-foreground/10 bg-foreground/5 hover:bg-foreground/10'
             )}
           >
-            {!isCollapsed && group.label && (
-              <div className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                <span className="inline-block w-1 h-1 rounded-full bg-primary/70 me-1.5 align-middle -translate-y-px" />
-                {group.label}
-              </div>
+            {/* Default caption layer — visible when NOT active-overflowed */}
+            <span
+              aria-hidden={isActiveOverflowed}
+              className={cn(
+                'absolute inset-0 flex items-center',
+                isCollapsed ? 'justify-center' : 'gap-2.5 px-3',
+                'motion-safe:transition-opacity motion-safe:duration-200',
+                isActiveOverflowed ? 'opacity-0 pointer-events-none' : 'opacity-100'
+              )}
+            >
+              <MoreHorizontal className="h-[18px] w-[18px] shrink-0 opacity-70" />
+              {!isCollapsed && (
+                <>
+                  <span className="flex-1 text-start text-sm">{t('nav.more.label')}</span>
+                  <span className="rounded-full bg-primary/20 px-1.5 py-0.5 text-[10px] font-mono font-bold text-primary">
+                    {overflowGroups.length}
+                  </span>
+                </>
+              )}
+            </span>
+
+            {/* Active caption layer — visible when current page is in overflow */}
+            {isActiveOverflowed && activeItem && activeGroup && (
+              <span
+                className={cn(
+                  'absolute inset-0 flex items-center',
+                  isCollapsed ? 'justify-center' : 'gap-2.5 px-3',
+                  'motion-safe:transition-opacity motion-safe:duration-200',
+                  'opacity-100'
+                )}
+              >
+                <activeItem.icon
+                  className={cn(
+                    'h-[18px] w-[18px] shrink-0',
+                    'drop-shadow-[0_0_6px_color-mix(in_srgb,var(--color-primary)_45%,transparent)]'
+                  )}
+                />
+                {!isCollapsed && (
+                  <div className="flex flex-col gap-0 leading-tight text-start min-w-0">
+                    <span className="text-[12px] font-medium truncate">{activeItem.label}</span>
+                    <span className="text-[8px] uppercase tracking-[0.12em] opacity-70 truncate">
+                      {t('nav.more.inMore', { group: activeGroup.label ?? '' })}
+                    </span>
+                  </div>
+                )}
+              </span>
             )}
-            <ul className="space-y-1">
-              {group.items.map((item) => (
-                <li key={item.path}>
-                  <NavLink
-                    to={item.path}
-                    end={item.end}
-                    className={({ isActive }) =>
-                      cn(
-                        'flex items-center gap-2.5 rounded-[10px] h-10 px-3 text-sm motion-safe:transition-all motion-safe:duration-150 cursor-pointer',
-                        isCollapsed && 'justify-center px-0',
-                        isActive ? 'pill-active' : 'state-hover'
-                      )
-                    }
-                  >
-                    {({ isActive }) => (
-                      <>
-                        <item.icon
-                          className={cn(
-                            'h-[18px] w-[18px] shrink-0',
-                            isActive && 'drop-shadow-[0_0_6px_color-mix(in_srgb,var(--color-primary)_45%,transparent)]'
-                          )}
-                        />
-                        {!isCollapsed && <span className="flex-1">{item.label}</span>}
-                        {!isCollapsed && item.badge != null && (
-                          <span className="flex h-5 min-w-5 items-center justify-center rounded-full btn-primary-gradient glow-primary-sm px-1.5 text-[10px] font-bold text-primary-foreground font-mono">
-                            {item.badge > 99 ? '99+' : item.badge}
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+
+            {/* Invisible spacer — keeps button's intrinsic width stable when expanded */}
+            {!isCollapsed && (
+              <span aria-hidden className="invisible flex items-center gap-2.5">
+                <span className="h-[18px] w-[18px]" />
+                <span className="text-sm">_</span>
+              </span>
+            )}
+          </button>
+        )}
       </nav>
 
       {/* Collapsed: expand chevron (desktop only) */}

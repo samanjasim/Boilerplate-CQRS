@@ -14,6 +14,7 @@ interface UIState {
   language: Language;
   sidebarOpen: boolean;
   sidebarCollapsed: boolean;
+  morePanelOpen: boolean;
   activeModal: string | null;
   modalData: unknown;
   activeTenantId: string | null;
@@ -27,6 +28,8 @@ interface UIActions {
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
   toggleSidebarCollapse: () => void;
+  setMorePanelOpen: (open: boolean) => void;
+  toggleMorePanel: () => void;
   openModal: (modalId: string, data?: unknown) => void;
   closeModal: () => void;
   setActiveTenantId: (tenantId: string | null) => void;
@@ -61,6 +64,7 @@ export const useUIStore = create<UIStore>()(
       language: 'en',
       sidebarOpen: false,
       sidebarCollapsed: false,
+      morePanelOpen: false,
       activeModal: null,
       modalData: null,
       activeTenantId: null,
@@ -83,6 +87,9 @@ export const useUIStore = create<UIStore>()(
 
       toggleSidebarCollapse: () =>
         set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+
+      setMorePanelOpen: (morePanelOpen) => set({ morePanelOpen }),
+      toggleMorePanel: () => set((state) => ({ morePanelOpen: !state.morePanelOpen })),
 
       openModal: (activeModal, modalData = null) => set({ activeModal, modalData }),
 
@@ -118,6 +125,7 @@ export const selectTheme = (state: UIStore) => state.theme;
 export const selectLanguage = (state: UIStore) => state.language;
 export const selectSidebarOpen = (state: UIStore) => state.sidebarOpen;
 export const selectSidebarCollapsed = (state: UIStore) => state.sidebarCollapsed;
+export const selectMorePanelOpen = (state: UIStore) => state.morePanelOpen;
 export const selectActiveModal = (state: UIStore) => state.activeModal;
 export const selectModalData = (state: UIStore) => state.modalData;
 export const selectActiveTenantId = (state: UIStore) => state.activeTenantId;
