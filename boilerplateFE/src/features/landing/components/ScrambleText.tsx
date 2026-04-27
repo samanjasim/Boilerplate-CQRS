@@ -33,20 +33,19 @@ export function ScrambleText({
   className,
   as = 'span',
 }: ScrambleTextProps) {
-  const [output, setOutput] = useState(() =>
-    typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-      ? text
-      : text.replace(/[^\s]/g, () => (chars[Math.floor(Math.random() * chars.length)] ?? '*')),
+  const [reducedMotion] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
   );
+  const [output, setOutput] = useState(() => {
+    if (reducedMotion || typeof window === 'undefined') return text;
+    return text.replace(/[^\s]/g, () => (chars[Math.floor(Math.random() * chars.length)] ?? '*'));
+  });
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startRef = useRef<number>(0);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-      setOutput(text);
-      return;
-    }
+    if (reducedMotion) return; // render returns `text` directly when reduced
 
     const totalChars = text.length;
 
@@ -83,8 +82,8 @@ export function ScrambleText({
       clearTimeout(t);
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [text, step, duration, chars, delay]);
+  }, [text, step, duration, chars, delay, reducedMotion]);
 
   const Tag = as as 'span' | 'div';
-  return <Tag className={className}>{output}</Tag>;
+  return <Tag className={className}>{reducedMotion ? text : output}</Tag>;
 }

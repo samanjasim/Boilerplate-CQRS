@@ -41,21 +41,17 @@ const STATS: Stat[] = [
 ];
 
 function useCountUp(target: number, duration = 1400) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [value, setValue] = useState(0);
+  const elementRef = useRef<HTMLDivElement | null>(null);
+  const [reducedMotion] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+  );
+  const [animated, setAnimated] = useState(0);
   const started = useRef(false);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-      setValue(target);
-      started.current = true;
-      return;
-    }
-    if (target === 0) {
-      setValue(0);
-      return;
-    }
-    const node = ref.current;
+    if (reducedMotion) return; // render derives from target directly
+    if (target === 0) return;
+    const node = elementRef.current;
     if (!node) return;
     const obs = new IntersectionObserver(
       (entries) => {
@@ -66,7 +62,7 @@ function useCountUp(target: number, duration = 1400) {
             const tick = (now: number) => {
               const t = Math.min(1, (now - start) / duration);
               const eased = 1 - Math.pow(1 - t, 3);
-              setValue(Math.round(target * eased));
+              setAnimated(Math.round(target * eased));
               if (t < 1) requestAnimationFrame(tick);
             };
             requestAnimationFrame(tick);
@@ -77,9 +73,9 @@ function useCountUp(target: number, duration = 1400) {
     );
     obs.observe(node);
     return () => obs.disconnect();
-  }, [target, duration]);
+  }, [target, duration, reducedMotion]);
 
-  return { value, ref };
+  return { value: reducedMotion ? target : animated, ref: elementRef };
 }
 
 function StatItem({ stat }: { stat: Stat }) {

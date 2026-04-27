@@ -11,13 +11,13 @@ const CELLS: { label: string; name: string; meta: string; icon: LucideIcon; acce
 ];
 
 export function ArchitectureSection() {
-  const head = useReveal<HTMLDivElement>();
-  const cards = useReveal<HTMLDivElement>();
+  const [headRef, headRevealed] = useReveal<HTMLDivElement>();
+  const [cardsRef, cardsRevealed] = useReveal<HTMLDivElement>();
   return (
     <section id="architecture" className="relative isolate">
       <BlueprintBackground />
       <div className="mx-auto max-w-6xl px-7 py-20 lg:py-24 relative z-[1]">
-        <div ref={head.ref} data-revealed={head.revealed} className="reveal-up">
+        <div ref={headRef} data-revealed={headRevealed} className="reveal-up">
           <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary mb-3">
             Architecture at a glance
           </div>
@@ -34,7 +34,7 @@ export function ArchitectureSection() {
         </div>
 
         <div className="surface-glass rounded-2xl p-6 lg:p-8 shadow-card">
-          <div ref={cards.ref} data-revealed={cards.revealed} className="reveal-snap grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+          <div ref={cardsRef} data-revealed={cardsRevealed} className="reveal-snap grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
             {CELLS.map((c) => {
               const Icon = c.icon;
               return (

@@ -10,13 +10,13 @@ const CAPABILITIES: { label: string; icon: typeof Bot }[] = [
 ];
 
 export function AiSection() {
-  const head = useReveal<HTMLDivElement>();
-  const grid = useReveal<HTMLDivElement>();
-  const pills = useReveal<HTMLDivElement>();
+  const [headRef, headRevealed] = useReveal<HTMLDivElement>();
+  const [gridRef, gridRevealed] = useReveal<HTMLDivElement>();
+  const [pillsRef, pillsRevealed] = useReveal<HTMLDivElement>();
   return (
     <section id="ai" className="relative">
       <div className="mx-auto max-w-6xl px-7 py-20 lg:py-28">
-        <div ref={head.ref} data-revealed={head.revealed} className="reveal-up">
+        <div ref={headRef} data-revealed={headRevealed} className="reveal-up">
           <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary mb-3 inline-flex items-center gap-2">
             <span className="pulse-dot" />
             AI · embedded · tenant-authored
@@ -33,13 +33,13 @@ export function AiSection() {
           </p>
         </div>
 
-        <div ref={grid.ref} data-revealed={grid.revealed} className="reveal-stagger grid gap-5 lg:grid-cols-[1.15fr_1fr_1fr]">
+        <div ref={gridRef} data-revealed={gridRevealed} className="reveal-stagger grid gap-5 lg:grid-cols-[1.15fr_1fr_1fr]">
           <ChatPreview />
           <ToolsPreview />
           <PersonasPreview />
         </div>
 
-        <div ref={pills.ref} data-revealed={pills.revealed} className="reveal-stagger mt-10 flex flex-wrap gap-2.5">
+        <div ref={pillsRef} data-revealed={pillsRevealed} className="reveal-stagger mt-10 flex flex-wrap gap-2.5">
           {CAPABILITIES.map((c) => {
             const Icon = c.icon;
             return (
@@ -59,21 +59,23 @@ export function AiSection() {
 }
 
 function ChatPreview() {
-  const { ref, revealed } = useReveal<HTMLDivElement>(0.35);
-  const [phase, setPhase] = useState<'typing' | 'response'>('typing');
+  const [chatRef, chatRevealed] = useReveal<HTMLDivElement>(0.35);
+  const [reducedMotion] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+  );
+  const [phase, setPhase] = useState<'typing' | 'response'>(() =>
+    reducedMotion ? 'response' : 'typing',
+  );
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-      setPhase('response');
-      return;
-    }
-    if (!revealed) return;
+    if (reducedMotion) return; // already at 'response' from initializer
+    if (!chatRevealed) return;
     const t = setTimeout(() => setPhase('response'), 1400);
     return () => clearTimeout(t);
-  }, [revealed]);
+  }, [chatRevealed, reducedMotion]);
 
   return (
-    <div ref={ref} className="surface-glass-strong rounded-2xl shadow-float overflow-hidden border border-border/50 hover-lift-card">
+    <div ref={chatRef} className="surface-glass-strong rounded-2xl shadow-float overflow-hidden border border-border/50 hover-lift-card">
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/30 bg-[color-mix(in_srgb,var(--color-primary)_4%,transparent)]">
         <span className="flex gap-1.5">
           <span className="h-2.5 w-2.5 rounded-full bg-destructive/60" />

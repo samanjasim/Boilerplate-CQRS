@@ -92,12 +92,12 @@ const FEATURES: Feature[] = [
 ];
 
 export function FeatureGrid() {
-  const head = useReveal<HTMLDivElement>();
-  const grid = useReveal<HTMLDivElement>();
+  const [headRef, headRevealed] = useReveal<HTMLDivElement>();
+  const [gridRef, gridRevealed] = useReveal<HTMLDivElement>();
   return (
     <section id="product" className="relative">
       <div className="mx-auto max-w-6xl px-7 py-20 lg:py-24">
-        <div ref={head.ref} data-revealed={head.revealed} className="reveal-up">
+        <div ref={headRef} data-revealed={headRevealed} className="reveal-up">
           <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary mb-3">
             What's already in
           </div>
@@ -113,7 +113,7 @@ export function FeatureGrid() {
           </p>
         </div>
 
-        <div ref={grid.ref} data-revealed={grid.revealed} className="reveal-snap grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div ref={gridRef} data-revealed={gridRevealed} className="reveal-snap grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map((f) => {
             const Icon = f.icon;
             return (
@@ -126,7 +126,7 @@ export function FeatureGrid() {
                 >
                   <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
                   {/* Verified flash — appears once on reveal */}
-                  {grid.revealed && (
+                  {gridRevealed && (
                     <span className="feature-check absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[var(--color-accent-500)] flex items-center justify-center shadow-[0_0_8px_color-mix(in_srgb,var(--color-accent-500)_60%,transparent)]">
                       <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />
                     </span>

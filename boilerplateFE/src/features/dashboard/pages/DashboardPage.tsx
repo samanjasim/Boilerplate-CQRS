@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Activity,
   ArrowRight,
@@ -46,30 +46,27 @@ const TONE_BG: Record<StatTone, string> = {
 };
 
 function useCountUp(target: number, duration = 1000) {
-  const [value, setValue] = useState(0);
-  const reduced = useRef(false);
+  const [reducedMotion] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+  );
+  const [animated, setAnimated] = useState(0);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-      reduced.current = true;
-      setValue(target);
-      return;
-    }
-    if (target === 0) {
-      setValue(0);
-      return;
-    }
+    if (reducedMotion) return; // render derives value from target directly
+    if (target === 0) return;
     const start = performance.now();
+    let frameId: number;
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / duration);
       const eased = 1 - Math.pow(1 - t, 3);
-      setValue(Math.round(target * eased));
-      if (t < 1) requestAnimationFrame(tick);
+      setAnimated(Math.round(target * eased));
+      if (t < 1) frameId = requestAnimationFrame(tick);
     };
-    requestAnimationFrame(tick);
-  }, [target, duration]);
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+  }, [target, duration, reducedMotion]);
 
-  return value;
+  return reducedMotion ? target : animated;
 }
 
 const ACTION_ICONS: Record<string, LucideIcon> = {

@@ -71,14 +71,14 @@ function HeroCopy() {
  *  outline frame draws via SVG stroke animation, then internal elements
  *  fade in in sequence (title bar → eyebrow → metric → sparkline → list rows). */
 function DashboardPreviewCard() {
+  const [reducedMotion] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+  );
   // Track time since mount so we can stagger the contents after the outline draws
-  const [phase, setPhase] = useState(0);
+  const [phase, setPhase] = useState(() => (reducedMotion ? 99 : 0));
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-      setPhase(99);
-      return;
-    }
+    if (reducedMotion) return;
     const timers: ReturnType<typeof setTimeout>[] = [];
     timers.push(setTimeout(() => setPhase(1), 400));   // title bar
     timers.push(setTimeout(() => setPhase(2), 750));   // eyebrow + metric label
@@ -87,7 +87,7 @@ function DashboardPreviewCard() {
     timers.push(setTimeout(() => setPhase(5), 1850));  // list rows fade in
     timers.push(setTimeout(() => setPhase(99), 2400)); // settle: ambient motion only
     return () => timers.forEach((t) => clearTimeout(t));
-  }, []);
+  }, [reducedMotion]);
 
   return (
     <div className="relative">
@@ -174,26 +174,28 @@ function DashboardPreviewCard() {
 }
 
 function CountUpDisplay({ target, active }: { target: number; active: boolean }) {
+  const [reducedMotion] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+  );
   const [v, setV] = useState(0);
   useEffect(() => {
     if (!active) return;
-    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-      setV(target);
-      return;
-    }
+    if (reducedMotion) return;
     const start = performance.now();
     const duration = 900;
+    let frameId: number;
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / duration);
       const eased = 1 - Math.pow(1 - t, 3);
       setV(Math.round(target * eased));
-      if (t < 1) requestAnimationFrame(tick);
+      if (t < 1) frameId = requestAnimationFrame(tick);
     };
-    requestAnimationFrame(tick);
-  }, [target, active]);
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+  }, [target, active, reducedMotion]);
   return (
     <div className="font-display text-5xl font-extralight tracking-[-0.04em] leading-none text-foreground font-feature-settings">
-      {v}
+      {active && reducedMotion ? target : v}
     </div>
   );
 }

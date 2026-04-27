@@ -8,12 +8,12 @@ const POINTS: { num: string; title: string; body: string }[] = [
 ];
 
 export function CodeSection() {
-  const head = useReveal<HTMLDivElement>();
-  const body = useReveal<HTMLDivElement>();
+  const [headRef, headRevealed] = useReveal<HTMLDivElement>();
+  const [bodyRef, bodyRevealed] = useReveal<HTMLDivElement>();
   return (
     <section className="relative">
       <div className="mx-auto max-w-6xl px-7 py-20 lg:py-24">
-        <div ref={head.ref} data-revealed={head.revealed} className="reveal-up">
+        <div ref={headRef} data-revealed={headRevealed} className="reveal-up">
           <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary mb-3">
             Show, don't tell
           </div>
@@ -28,7 +28,7 @@ export function CodeSection() {
           </p>
         </div>
 
-        <div ref={body.ref} data-revealed={body.revealed} className="reveal-stagger grid gap-8 lg:grid-cols-[1.15fr_1fr] items-start">
+        <div ref={bodyRef} data-revealed={bodyRevealed} className="reveal-stagger grid gap-8 lg:grid-cols-[1.15fr_1fr] items-start">
           <div className="rounded-2xl overflow-hidden bg-[#1c1815] text-[#d4cfc3] border border-border/40 shadow-float">
             <div className="px-4 py-2.5 text-[10px] flex gap-2 items-center bg-white/[0.04] border-b border-white/[0.06] text-[#9b8978]">
               <span className="flex gap-1.5">

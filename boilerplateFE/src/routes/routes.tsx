@@ -29,7 +29,6 @@ const TenantDetailPage = lazy(() => import('@/features/tenants/pages/TenantDetai
 const ProfilePage = lazy(() => import('@/features/profile/pages/ProfilePage'));
 const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage'));
 const NotFoundPage = lazy(() => import('@/routes/NotFoundPage'));
-// eslint-disable-next-line react-refresh/only-export-components
 const StyleguidePage = import.meta.env.DEV
   ? lazy(() => import('@/features/styleguide/pages/StyleguidePage'))
   : (() => null);
