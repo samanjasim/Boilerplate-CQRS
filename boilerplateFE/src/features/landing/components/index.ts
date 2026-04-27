@@ -1,5 +1,6 @@
 export { LandingNav } from './LandingNav';
 export { HeroSection } from './HeroSection';
+export { ScrambleText } from './ScrambleText';
 export { TechStrip } from './TechStrip';
 export { FeatureGrid } from './FeatureGrid';
 export { AiSection } from './AiSection';

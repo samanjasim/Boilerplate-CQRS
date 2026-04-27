@@ -459,13 +459,31 @@ button { font-family: inherit; }
   }
 
   /* ── J4 motion: aurora drifts slowly to feel alive ──
-   * Applied automatically to .aurora-canvas::before. Disabled via prefers-reduced-motion. */
+   * Two layers (::before primary, ::after counter-drift) for visible mesh motion.
+   * Disabled via prefers-reduced-motion. */
   .aurora-canvas::before {
-    animation: aurora-drift 28s ease-in-out infinite alternate;
-    transform-origin: 50% 50%;
+    animation: aurora-drift 22s ease-in-out infinite alternate;
+    transform-origin: 30% 30%;
+  }
+  .aurora-canvas {
+    /* Counter-rotating second aurora layer for richer mesh motion */
+    position: relative;
+  }
+  .aurora-canvas > .aurora-layer-2 {
+    content: '';
+    position: absolute;
+    inset: -120px;
+    background: var(--aurora-2), var(--aurora-3);
+    filter: blur(40px);
+    pointer-events: none;
+    z-index: -1;
+    opacity: 0.6;
+    animation: aurora-drift-counter 32s ease-in-out infinite alternate;
+    transform-origin: 70% 70%;
   }
   @media (prefers-reduced-motion: reduce) {
-    .aurora-canvas::before { animation: none; }
+    .aurora-canvas::before,
+    .aurora-canvas > .aurora-layer-2 { animation: none; }
   }
 
   /* ── J4 motion: fade-up on mount for hero blocks ── */
@@ -587,15 +605,56 @@ button { font-family: inherit; }
   }
 
   /* ── J4 motion: ambient pulse grid ──
-   * Subtle "data network breathing" — small dots light up at staggered intervals
-   * across an SVG-based grid. CSS-only via per-cell animation-delay.
-   * Apply via the <PulseGrid /> React component (sets the inline staggered styles). */
-  .pulse-grid-dot {
+   * Squares light up across an SVG grid at staggered intervals; a periodic
+   * "scan wave" sweeps left-to-right adding rhythmic motion. CSS-only. */
+  .pulse-grid-cell {
     transform-origin: center;
-    animation: pulse-grid-fade 5.5s ease-in-out infinite;
+    animation: pulse-grid-fade 4.2s ease-in-out infinite;
+  }
+  .pulse-grid-scan {
+    animation: pulse-grid-scan 8s linear infinite;
+    transform-origin: 0 50%;
   }
   @media (prefers-reduced-motion: reduce) {
-    .pulse-grid-dot { animation: none; opacity: 0.18; }
+    .pulse-grid-cell { animation: none; opacity: 0.18; }
+    .pulse-grid-scan { animation: none; opacity: 0; }
+  }
+
+  /* ── J4 motion: snap-in (overshoot scale on scroll-reveal) ── */
+  .reveal-snap > * {
+    opacity: 0;
+    transform: translateY(24px) scale(0.94);
+    transition: opacity 0.6s cubic-bezier(0.34, 1.56, 0.64, 1),
+                transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  [data-revealed="true"].reveal-snap > * { opacity: 1; transform: none; }
+  [data-revealed="true"].reveal-snap > *:nth-child(1) { transition-delay: 0.0s; }
+  [data-revealed="true"].reveal-snap > *:nth-child(2) { transition-delay: 0.07s; }
+  [data-revealed="true"].reveal-snap > *:nth-child(3) { transition-delay: 0.14s; }
+  [data-revealed="true"].reveal-snap > *:nth-child(4) { transition-delay: 0.21s; }
+  [data-revealed="true"].reveal-snap > *:nth-child(5) { transition-delay: 0.28s; }
+  [data-revealed="true"].reveal-snap > *:nth-child(6) { transition-delay: 0.35s; }
+  [data-revealed="true"].reveal-snap > *:nth-child(7) { transition-delay: 0.42s; }
+  [data-revealed="true"].reveal-snap > *:nth-child(8) { transition-delay: 0.49s; }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal-snap > * { opacity: 1; transform: none; transition: none; }
+  }
+
+  /* ── J4 motion: SVG outline draw (used for hero card frame) ── */
+  .draw-outline {
+    stroke-dasharray: 2000;
+    stroke-dashoffset: 2000;
+    animation: draw-outline 1.6s cubic-bezier(0.4, 0, 0.2, 1) 0.4s forwards;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .draw-outline { animation: none; stroke-dashoffset: 0; }
+  }
+
+  /* ── J4 motion: scramble-text caret ── */
+  .scramble-cursor {
+    color: var(--color-primary);
+    opacity: 0.8;
+    margin-left: 1px;
   }
 }
 
@@ -636,6 +695,24 @@ button { font-family: inherit; }
 }
 
 @keyframes pulse-grid-fade {
-  0%, 92%, 100% { opacity: 0.08; }
-  46%           { opacity: 0.55; }
+  0%, 88%, 100% { opacity: 0.10; }
+  44%           { opacity: 0.85; }
+}
+
+@keyframes pulse-grid-scan {
+  0%   { transform: translateX(-30%); opacity: 0; }
+  10%  { opacity: 0.7; }
+  60%  { opacity: 0.7; }
+  90%  { opacity: 0; }
+  100% { transform: translateX(130%); opacity: 0; }
+}
+
+@keyframes aurora-drift-counter {
+  0%   { transform: translate(0, 0) rotate(0deg) scale(1.1); }
+  50%  { transform: translate(-3%, 3%) rotate(-1.5deg) scale(1.16); }
+  100% { transform: translate(2%, -2%) rotate(1deg) scale(1.1); }
+}
+
+@keyframes draw-outline {
+  to { stroke-dashoffset: 0; }
 }

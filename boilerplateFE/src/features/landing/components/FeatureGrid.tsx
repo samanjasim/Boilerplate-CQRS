@@ -112,7 +112,7 @@ export function FeatureGrid() {
           </p>
         </div>
 
-        <div ref={grid.ref} data-revealed={grid.revealed} className="reveal-stagger grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div ref={grid.ref} data-revealed={grid.revealed} className="reveal-snap grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map((f) => {
             const Icon = f.icon;
             return (

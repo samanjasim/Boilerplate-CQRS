@@ -32,7 +32,7 @@ export function ArchitectureSection() {
         </div>
 
         <div className="surface-glass rounded-2xl p-6 lg:p-8 shadow-card">
-          <div ref={cards.ref} data-revealed={cards.revealed} className="reveal-stagger grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+          <div ref={cards.ref} data-revealed={cards.revealed} className="reveal-snap grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
             {CELLS.map((c) => {
               const Icon = c.icon;
               return (
