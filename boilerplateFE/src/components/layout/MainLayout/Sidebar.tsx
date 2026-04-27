@@ -100,10 +100,7 @@ export function Sidebar() {
           >
             {!isCollapsed && group.label && (
               <div className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                <span
-                  className="inline-block w-1 h-1 rounded-full bg-primary/70 me-1.5 align-middle"
-                  style={{ transform: 'translateY(-1px)' }}
-                />
+                <span className="inline-block w-1 h-1 rounded-full bg-primary/70 me-1.5 align-middle -translate-y-px" />
                 {group.label}
               </div>
             )}

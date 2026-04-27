@@ -35,7 +35,6 @@ const COMPOSITE_TOKENS: { name: string; cssVar: string; render: 'gradient' | 'sh
   { name: 'aurora-1', cssVar: '--aurora-1', render: 'gradient' },
   { name: 'aurora-2', cssVar: '--aurora-2', render: 'gradient' },
   { name: 'aurora-3', cssVar: '--aurora-3', render: 'gradient' },
-  { name: 'aurora-corner', cssVar: '--aurora-corner', render: 'gradient' },
   { name: 'spectrum-text', cssVar: '--spectrum-text', render: 'gradient' },
   { name: 'btn-primary-gradient', cssVar: '--btn-primary-gradient', render: 'gradient' },
   { name: 'glow-primary-sm', cssVar: '--glow-primary-sm', render: 'shadow' },

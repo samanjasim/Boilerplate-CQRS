@@ -67,9 +67,6 @@
     --aurora-3: radial-gradient(ellipse 550px 500px at 50% 100%,
       color-mix(in srgb, var(--color-violet-300) 35%, transparent),
       transparent 60%);
-    --aurora-corner: radial-gradient(circle at 100% 0%,
-      color-mix(in srgb, var(--color-primary) 20%, transparent) 0%,
-      transparent 50%);
 
     --spectrum-text: linear-gradient(135deg,
       var(--color-primary-800) 0%,
@@ -146,10 +143,6 @@
       transparent 55%);
     --aurora-3: radial-gradient(ellipse 600px 600px at 50% 100%,
       color-mix(in srgb, var(--color-violet-400) 22%, transparent),
-      transparent 60%);
-    --aurora-corner: radial-gradient(circle at 100% 0%,
-      color-mix(in srgb, var(--color-primary) 45%, transparent) 0%,
-      color-mix(in srgb, var(--color-primary) 18%, transparent) 30%,
       transparent 60%);
 
     --spectrum-text: linear-gradient(135deg,

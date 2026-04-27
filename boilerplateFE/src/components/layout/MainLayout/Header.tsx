@@ -36,12 +36,6 @@ export function Header() {
   const navigate = useNavigate();
   const handleLogout = useLogout();
 
-  // Search-bar trigger doubles as the mobile drawer trigger.
-  // On lg+ this is a placeholder for the command palette (future plan).
-  // For now the click handler still calls toggleSidebar — harmless on lg+
-  // (sidebarOpen has no UI effect there) and opens the drawer on <lg.
-  const onSearchClick = () => toggleSidebar();
-
   return (
     <header
       className={cn(
@@ -56,27 +50,37 @@ export function Header() {
         'ltr:right-3.5 rtl:left-3.5'
       )}
     >
-      {/* Search-bar trigger / mobile drawer trigger */}
+      {/* Mobile drawer trigger — <lg only */}
       <button
         type="button"
-        onClick={onSearchClick}
+        onClick={toggleSidebar}
         aria-label={sidebarOpen ? t('nav.toggle.close') : t('nav.toggle.open')}
         aria-expanded={sidebarOpen}
         className={cn(
-          'flex h-8 items-center gap-2 rounded-[9px] border border-white/10 bg-white/5 px-3',
+          'lg:hidden flex h-8 items-center gap-2 rounded-[9px] border border-foreground/10 bg-foreground/5 px-3',
           'text-sm text-muted-foreground',
           'motion-safe:transition-colors motion-safe:duration-150',
-          'hover:bg-white/8 hover:text-foreground',
+          'hover:bg-foreground/10 hover:text-foreground'
+        )}
+      >
+        {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+      </button>
+
+      {/* Search palette trigger — lg+ only. Click currently no-op; palette content ships in next plan. */}
+      <button
+        type="button"
+        aria-label={t('header.searchPlaceholder')}
+        className={cn(
+          'hidden lg:flex h-8 items-center gap-2 rounded-[9px] border border-foreground/10 bg-foreground/5 px-3',
+          'text-sm text-muted-foreground',
+          'motion-safe:transition-colors motion-safe:duration-150',
+          'hover:bg-foreground/10 hover:text-foreground',
           'flex-1 max-w-[320px]'
         )}
       >
-        {/* Mobile shows menu/X icon; desktop shows search icon */}
-        <span className="lg:hidden">
-          {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-        </span>
-        <Search className="hidden lg:block h-4 w-4 opacity-60" />
-        <span className="hidden lg:inline flex-1 text-start">{t('header.searchPlaceholder')}</span>
-        <span className="hidden lg:inline ms-auto rounded-md border border-white/15 bg-white/8 px-1.5 py-0.5 font-mono text-[10px] tracking-[0.05em] text-muted-foreground">
+        <Search className="h-4 w-4 opacity-60" />
+        <span className="flex-1 text-start">{t('header.searchPlaceholder')}</span>
+        <span className="ms-auto rounded-md border border-foreground/15 bg-foreground/8 px-1.5 py-0.5 font-mono text-[10px] tracking-[0.05em] text-muted-foreground">
           ⌘K
         </span>
       </button>
@@ -95,9 +99,9 @@ export function Header() {
             <button
               type="button"
               className={cn(
-                'ms-1 flex items-center gap-2 rounded-full border border-white/8 bg-white/5 ps-1 pe-3 py-1',
+                'ms-1 flex items-center gap-2 rounded-full border border-foreground/8 bg-foreground/5 ps-1 pe-3 py-1',
                 'motion-safe:transition-colors motion-safe:duration-150',
-                'hover:bg-white/8'
+                'hover:bg-foreground/10'
               )}
             >
               <UserAvatar firstName={user?.firstName} lastName={user?.lastName} size="sm" />
