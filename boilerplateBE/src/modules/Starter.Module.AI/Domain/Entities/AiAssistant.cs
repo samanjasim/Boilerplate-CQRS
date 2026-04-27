@@ -246,6 +246,8 @@ public sealed class AiAssistant : AggregateRoot, ITenantEntity, IShareable
         DailyCostCapUsd = dailyUsd;
         RequestsPerMinute = requestsPerMinute;
         ModifiedAt = DateTime.UtcNow;
+        if (TenantId is { } tenantId)
+            RaiseDomainEvent(new Domain.Events.AssistantUpdatedEvent(tenantId, Id));
     }
 
     public bool IsVisibleToPersona(string personaSlug, IReadOnlyList<string> personaPermittedAgentSlugs)
