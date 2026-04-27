@@ -4,7 +4,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Mail, Lock, Eye, EyeOff, KeyRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -56,19 +55,19 @@ export default function ForgotPasswordPage() {
 
   return (
     <div>
-      <div className="mb-8 text-center lg:text-start">
-        <h2 className="text-2xl font-bold text-foreground">
+      <div className="mb-7">
+        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary mb-2">
+          {step === 1 ? 'Recovery' : 'Reset'}
+        </div>
+        <h2 className="text-[26px] font-light tracking-[-0.025em] leading-[1.12] font-display text-foreground">
           {step === 1 ? t('auth.forgotPassword') : t('auth.resetPassword')}
         </h2>
-        <p className="mt-2 text-muted-foreground">
-          {step === 1
-            ? t('auth.forgotPasswordDesc')
-            : t('auth.enterResetCode')}
+        <p className="mt-2 text-sm text-muted-foreground leading-[1.55]">
+          {step === 1 ? t('auth.forgotPasswordDesc') : t('auth.enterResetCode')}
         </p>
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
+      <div>
           {step === 1 ? (
             <form onSubmit={emailForm.handleSubmit(onEmailSubmit)} className="space-y-4">
               <div className="space-y-2">
@@ -182,13 +181,12 @@ export default function ForgotPasswordPage() {
             </form>
           )}
 
-          <div className="mt-6 text-center text-sm text-muted-foreground">
+          <div className="mt-6 pt-4 border-t border-border/30 text-center text-sm text-muted-foreground">
             <Link to={ROUTES.LOGIN} className="font-medium text-primary hover:underline">
               {t('auth.backToLogin')}
             </Link>
           </div>
-        </CardContent>
-      </Card>
+      </div>
     </div>
   );
 }

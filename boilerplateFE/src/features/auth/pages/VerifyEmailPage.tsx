@@ -4,7 +4,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { KeyRound, Mail } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -67,14 +66,17 @@ export default function VerifyEmailPage() {
   if (!email) {
     return (
       <div>
-        <div className="mb-8 text-center lg:text-start">
-          <h2 className="text-2xl font-bold text-foreground">{t('auth.verifyEmail')}</h2>
-          <p className="mt-2 text-muted-foreground">{t('auth.verifyEmailDesc')}</p>
+        <div className="mb-7">
+          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary mb-2">
+            Verify
+          </div>
+          <h2 className="text-[26px] font-light tracking-[-0.025em] leading-[1.12] font-display text-foreground">
+            {t('auth.verifyEmail')}
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground leading-[1.55]">{t('auth.verifyEmailDesc')}</p>
         </div>
 
-        <Card>
-          <CardContent className="pt-6">
-            <form onSubmit={handleEmailSubmit} className="space-y-4">
+        <form onSubmit={handleEmailSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">{t('auth.email')}</Label>
                 <div className="relative">
@@ -91,32 +93,33 @@ export default function VerifyEmailPage() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full">
-                {t('common.next')}
-              </Button>
-            </form>
+          <Button type="submit" className="w-full">
+            {t('common.next')}
+          </Button>
+        </form>
 
-            <div className="mt-6 text-center text-sm text-muted-foreground">
-              <Link to={ROUTES.LOGIN} className="font-medium text-primary hover:underline">
-                {t('auth.backToLogin')}
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="mt-6 pt-4 border-t border-border/30 text-center text-sm text-muted-foreground">
+          <Link to={ROUTES.LOGIN} className="font-medium text-primary hover:underline">
+            {t('auth.backToLogin')}
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
     <div>
-      <div className="mb-8 text-center lg:text-start">
-        <h2 className="text-2xl font-bold text-foreground">{t('auth.verifyEmail')}</h2>
-        <p className="mt-2 text-muted-foreground">{t('auth.verifyEmailDesc')}</p>
+      <div className="mb-7">
+        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary mb-2">
+          Verify
+        </div>
+        <h2 className="text-[26px] font-light tracking-[-0.025em] leading-[1.12] font-display text-foreground">
+          {t('auth.verifyEmail')}
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground leading-[1.55]">{t('auth.verifyEmailDesc')}</p>
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="code">{t('auth.verificationCode')}</Label>
               <div className="relative">
@@ -135,31 +138,29 @@ export default function VerifyEmailPage() {
               )}
             </div>
 
-            <Button type="submit" className="w-full" disabled={isVerifying}>
-              {isVerifying ? t('common.loading') : t('auth.verifyEmail')}
-            </Button>
-          </form>
+        <Button type="submit" className="w-full" disabled={isVerifying}>
+          {isVerifying ? t('common.loading') : t('auth.verifyEmail')}
+        </Button>
+      </form>
 
-          <div className="mt-4 text-center">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleResend}
-              disabled={cooldown > 0 || isSending}
-            >
-              {cooldown > 0
-                ? t('auth.resendIn', { seconds: cooldown })
-                : t('auth.resendCode')}
-            </Button>
-          </div>
+      <div className="mt-4 text-center">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleResend}
+          disabled={cooldown > 0 || isSending}
+        >
+          {cooldown > 0
+            ? t('auth.resendIn', { seconds: cooldown })
+            : t('auth.resendCode')}
+        </Button>
+      </div>
 
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            <Link to={ROUTES.LOGIN} className="font-medium text-primary hover:underline">
-              {t('auth.backToLogin')}
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="mt-6 pt-4 border-t border-border/30 text-center text-sm text-muted-foreground">
+        <Link to={ROUTES.LOGIN} className="font-medium text-primary hover:underline">
+          {t('auth.backToLogin')}
+        </Link>
+      </div>
     </div>
   );
 }
