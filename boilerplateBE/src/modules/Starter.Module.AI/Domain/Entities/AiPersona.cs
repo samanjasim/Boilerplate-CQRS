@@ -120,6 +120,7 @@ public sealed class AiPersona : AggregateRoot, ITenantEntity
         _permittedAgentSlugs = Normalize(permittedAgentSlugs);
         IsActive = isActive;
         ModifiedAt = DateTime.UtcNow;
+        RaiseDomainEvent(new Domain.Events.PersonaUpdatedEvent(TenantId, Id, Slug, safetyPreset));
     }
 
     public void SetActive(bool isActive)
