@@ -303,10 +303,11 @@ Usernames are the email local-part (e.g. `acme.admin`). Admin users have the `Ad
 
 ### Theme System
 
-- **Never hardcode primary color shades** (`primary-600`, `primary-50`, etc.) in components. Use `bg-primary`, `text-primary`, or semantic tokens (`var(--active-bg)`, `var(--active-text)`, `state-active`, `state-hover`).
-- **Never add `dark:` overrides for primary colors.** The theme preset system handles dark mode automatically via `useThemePreset`.
-- **Active preset lives in** `src/config/theme.config.ts` → `activePreset`. Changing it rebrands the entire app.
-- **Semantic tokens in CSS** (`--active-bg`, `--active-text`, `--active-border`, `--hover-bg`, `--gradient-from/to`) auto-derive from `--primary` using `color-mix()`. Components reference these, not raw shades.
+- **Never hardcode primary color shades** (`primary-600`, `primary-50`, etc.) in components. Use `bg-primary`, `text-primary`, or semantic tokens (`var(--active-bg)`, `var(--active-text)`, `var(--tinted-fg)`, `state-active`, `state-hover`).
+- **Never add `dark:` overrides for primary colors.** The theme preset system handles dark mode automatically via `useThemePreset`. For text on faintly-tinted backgrounds (mono tags, code chips), use `text-[var(--tinted-fg)]` — the semantic token swaps light↔dark automatically.
+- **Active preset lives in** `src/config/theme.config.ts` → `activePreset`. Changing it rebrands the entire app — including the J4 aurora, gradient buttons, and glow halos (all preset-aware via `color-mix()` + CSS vars).
+- **Semantic tokens in CSS** (`--active-bg`, `--active-text`, `--active-border`, `--hover-bg`, `--gradient-from/to`, `--tinted-fg`, `--surface-glass`, `--border-strong`, `--aurora-1/2/3`, `--spectrum-text`, `--btn-primary-gradient`, `--glow-primary-{sm,md,lg}`) auto-derive from `--primary` using `color-mix()`. Components reference these, not raw shades.
+- **J4 Spectrum companion scales** — `--color-violet-{50..950}` and `--color-amber-{50..950}` are registered in `@theme` and runtime-written by `useThemePreset` (with global fallbacks). Used for the spectrum gradient + status pills.
 - All Tailwind semantic colors (`bg-card`, `bg-popover`, `bg-background`, `text-foreground`, etc.) are registered in the `@theme` block of `index.css` AND set at runtime by `useThemePreset.ts`. Both must stay in sync.
 
 ### Components & Patterns
@@ -318,9 +319,11 @@ Usernames are the email local-part (e.g. `acme.admin`). Admin users have the `Ad
 - **Entity Display Names** — Never show raw GUIDs to users. All entities in lists/cards must show human-readable names. Pass `entityDisplayName` when creating records that will be displayed.
 - **Back navigation** — use `useBackNavigation(path, label)` hook in detail/edit pages. It renders in the header bar automatically and clears on unmount.
 - **Page size persistence** — use `getPersistedPageSize()` from `@/components/common/Pagination` as the initial state for paginated lists. The `Pagination` component persists changes to localStorage.
-- **Status badges** — use `STATUS_BADGE_VARIANT` from `@/constants/status` for mapping entity status to badge variants. Do NOT define local status-to-variant mappings in page components.
-- **Tables** — the `Table` component includes its own `rounded-2xl bg-card shadow-card` container. Do NOT wrap it in an extra `<Card>`.
-- **Empty states** — always use `<EmptyState>` component with an icon, title, and optional description/action.
+- **Status badges** — use `STATUS_BADGE_VARIANT` from `@/constants/status` for mapping entity status to badge variants. Do NOT define local status-to-variant mappings in page components. The `Badge` component now also exposes J4 status variants (`healthy`, `pending`, `failed`, `info`) directly — use those for new statuses.
+- **Tables** — the `Table` component includes its own `surface-glass` container with copper-tinted header + eyebrow column labels. Do NOT wrap it in an extra `<Card>`.
+- **Cards** — `Card` accepts a `variant` prop: `solid` (default, backwards-compatible), `glass` (translucent over aurora), `elevated` (lift on hover). Reach for `glass` on landing/marketing surfaces and `elevated` for clickable list cards.
+- **Empty states** — always use `<EmptyState>` component with an icon, title, and optional description/action. The icon now renders in a copper-tinted glass tile with a subtle glow.
+- **J4 utilities** — `.aurora-canvas`, `.gradient-text`, `.surface-glass`, `.surface-glass-strong`, `.glow-primary-{sm,md,lg}`, `.btn-primary-gradient`, `.pulse-dot`, `.hero-pulse`, `.blueprint-line`, `.reveal-up`, `.reveal-stagger`, `.reveal-snap`, `.code-typing`, `.caret-blink`, `.feature-check`, `.brand-halo`, `.spark-shimmer`. Defined in `src/styles/index.css`. Live reference at `/styleguide` (dev-only).
 
 ### Styling Rules
 

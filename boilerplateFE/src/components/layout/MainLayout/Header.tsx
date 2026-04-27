@@ -29,6 +29,7 @@ export function Header() {
     <header
       className={cn(
         'fixed top-0 z-30 flex h-14 items-center justify-between px-6 transition-all duration-300',
+        'surface-glass border-b border-border/40',
         isCollapsed
           ? 'ltr:left-16 rtl:right-16 ltr:right-0 rtl:left-0'
           : 'ltr:left-60 rtl:right-60 ltr:right-0 rtl:left-0'

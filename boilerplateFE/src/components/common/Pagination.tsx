@@ -89,9 +89,9 @@ export function Pagination({
               key={page}
               onClick={() => onPageChange(page)}
               className={cn(
-                'flex h-8 w-8 items-center justify-center rounded-lg text-sm font-medium transition-colors',
+                'flex h-8 w-8 items-center justify-center rounded-lg text-sm font-medium transition-all',
                 page === pageNumber
-                  ? 'bg-primary text-primary-foreground'
+                  ? 'btn-primary-gradient glow-primary-sm text-primary-foreground'
                   : 'text-muted-foreground hover:bg-secondary'
               )}
             >

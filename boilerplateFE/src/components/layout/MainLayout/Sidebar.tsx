@@ -133,8 +133,8 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        'fixed top-0 z-40 flex h-screen flex-col bg-card transition-all duration-300',
-        'ltr:left-0 ltr:border-r rtl:right-0 rtl:border-l border-border',
+        'fixed top-0 z-40 flex h-screen flex-col surface-glass transition-all duration-300',
+        'ltr:left-0 ltr:border-r rtl:right-0 rtl:border-l border-border/40',
         isCollapsed ? 'w-16' : 'w-60'
       )}
     >
@@ -144,7 +144,7 @@ export function Sidebar() {
           onClick={isCollapsed ? toggleCollapse : undefined}
           className={cn('flex items-center gap-2.5 min-w-0', isCollapsed && 'cursor-pointer')}
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shrink-0">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg btn-primary-gradient glow-primary-sm shrink-0">
             {tenantLogoUrl ? (
               <img src={tenantLogoUrl} alt={appName} className="h-7 w-7 rounded object-cover" />
             ) : (
@@ -175,7 +175,7 @@ export function Sidebar() {
                 end={item.path === ROUTES.DASHBOARD || item.path === ROUTES.BILLING || item.path === ROUTES.SUBSCRIPTIONS?.LIST || item.path === ROUTES.WEBHOOKS_ADMIN?.LIST}
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-2.5 rounded-lg h-10 px-3 text-sm transition-colors duration-150 cursor-pointer',
+                    'flex items-center gap-2.5 rounded-lg h-10 px-3 text-sm transition-all duration-150 cursor-pointer',
                     isCollapsed && 'justify-center px-0',
                     isActive
                       ? 'state-active'
@@ -183,12 +183,16 @@ export function Sidebar() {
                   )
                 }
               >
-                <item.icon className="h-[18px] w-[18px] shrink-0" />
-                {!isCollapsed && <span className="flex-1">{item.label}</span>}
-                {!isCollapsed && 'badge' in item && item.badge != null && (
-                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
-                    {(item.badge as number) > 99 ? '99+' : item.badge}
-                  </span>
+                {({ isActive }) => (
+                  <>
+                    <item.icon className={cn('h-[18px] w-[18px] shrink-0', isActive && 'drop-shadow-[0_0_6px_color-mix(in_srgb,var(--color-primary)_45%,transparent)]')} />
+                    {!isCollapsed && <span className="flex-1">{item.label}</span>}
+                    {!isCollapsed && 'badge' in item && item.badge != null && (
+                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full btn-primary-gradient glow-primary-sm px-1.5 text-[10px] font-bold text-primary-foreground font-mono">
+                        {(item.badge as number) > 99 ? '99+' : item.badge}
+                      </span>
+                    )}
+                  </>
                 )}
               </NavLink>
             </li>

@@ -4,7 +4,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { UserPlus, Lock, User, Eye, EyeOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -48,32 +47,38 @@ export default function AcceptInvitePage() {
   if (!token) {
     return (
       <div>
-        <div className="mb-8 text-center lg:text-start">
-          <h2 className="text-2xl font-bold text-foreground">{t('invitations.acceptInvite')}</h2>
-          <p className="mt-2 text-muted-foreground">{t('invitations.invalidToken')}</p>
+        <div className="mb-7">
+          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary mb-2">
+            Invitation
+          </div>
+          <h2 className="text-[26px] font-light tracking-[-0.025em] leading-[1.12] font-display text-foreground">
+            {t('invitations.acceptInvite')}
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground leading-[1.55]">{t('invitations.invalidToken')}</p>
         </div>
-        <Card>
-          <CardContent className="pt-6 text-center">
-            <p className="mb-4 text-muted-foreground">{t('invitations.invalidTokenDesc')}</p>
-            <Link to={ROUTES.LOGIN} className="font-medium text-primary hover:underline">
-              {t('auth.backToLogin')}
-            </Link>
-          </CardContent>
-        </Card>
+        <div className="text-center">
+          <p className="mb-4 text-sm text-muted-foreground">{t('invitations.invalidTokenDesc')}</p>
+          <Link to={ROUTES.LOGIN} className="font-medium text-primary hover:underline text-sm">
+            {t('auth.backToLogin')}
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
     <div>
-      <div className="mb-8 text-center lg:text-start">
-        <h2 className="text-2xl font-bold text-foreground">{t('invitations.acceptInvite')}</h2>
-        <p className="mt-2 text-muted-foreground">{t('invitations.acceptInviteDesc')}</p>
+      <div className="mb-7">
+        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary mb-2">
+          Invitation
+        </div>
+        <h2 className="text-[26px] font-light tracking-[-0.025em] leading-[1.12] font-display text-foreground">
+          {t('invitations.acceptInvite')}
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground leading-[1.55]">{t('invitations.acceptInviteDesc')}</p>
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">{t('auth.firstName')}</Label>
@@ -160,19 +165,17 @@ export default function AcceptInvitePage() {
               )}
             </div>
 
-            <Button type="submit" className="w-full" disabled={isPending}>
-              <UserPlus className="me-2 h-4 w-4" />
-              {isPending ? t('common.loading') : t('invitations.acceptInvite')}
-            </Button>
-          </form>
+        <Button type="submit" className="w-full" disabled={isPending}>
+          <UserPlus className="me-2 h-4 w-4" />
+          {isPending ? t('common.loading') : t('invitations.acceptInvite')}
+        </Button>
+      </form>
 
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            <Link to={ROUTES.LOGIN} className="font-medium text-primary hover:underline">
-              {t('auth.backToLogin')}
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="mt-6 pt-4 border-t border-border/30 text-center text-sm text-muted-foreground">
+        <Link to={ROUTES.LOGIN} className="font-medium text-primary hover:underline">
+          {t('auth.backToLogin')}
+        </Link>
+      </div>
     </div>
   );
 }

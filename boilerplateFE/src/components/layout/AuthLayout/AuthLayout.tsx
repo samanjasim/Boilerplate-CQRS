@@ -1,50 +1,86 @@
 import { Outlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Blocks } from 'lucide-react';
 import { LanguageSwitcher, ThemeToggle } from '@/components/common';
+import { HeroLinesBackground } from '@/components/common/backgrounds';
+
+const APP_NAME = import.meta.env.VITE_APP_NAME || 'Starter';
 
 export function AuthLayout() {
   const { t } = useTranslation();
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* Left side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center gradient-hero p-12 relative overflow-hidden">
-        <div className="max-w-md text-center relative z-10">
-          <div className="mb-8 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-sm">
-            <Blocks className="h-8 w-8 text-white" />
-          </div>
-          <h1 className="mb-3 text-3xl font-bold text-white tracking-tight">
-            {t('auth.brandTitle')}
-          </h1>
-          <p className="text-base text-white/70">
-            {t('auth.brandSubtitle')}
-          </p>
+    <div className="aurora-canvas relative min-h-screen bg-background overflow-hidden">
+      <div aria-hidden className="aurora-layer-2" />
+      <HeroLinesBackground />
+
+      {/* Top meta — live indicator (left), language + theme (right) */}
+      <header className="relative z-20 flex items-center justify-between px-5 sm:px-7 py-4">
+        <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.22em] text-muted-foreground">
+          <span className="pulse-dot" />
+          <span className="hidden sm:inline">{t('auth_chrome.version')}</span>
+          <span className="sm:hidden">{t('auth_chrome.live')}</span>
         </div>
-
-        {/* Decorative elements */}
-        <div className="absolute -right-32 -top-32 h-96 w-96 rounded-full bg-white/[0.04] blur-3xl" />
-        <div className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-white/[0.03] blur-3xl" />
-        <div className="absolute inset-0 opacity-[0.04] bg-[radial-gradient(circle,_rgba(255,255,255,0.8)_1px,_transparent_1px)] bg-[length:32px_32px]" />
-      </div>
-
-      {/* Right side - Auth form */}
-      <div className="relative flex w-full flex-col lg:w-1/2">
-        {/* Top bar with language + theme toggles */}
-        <div className="flex items-center justify-end gap-1 px-6 py-4">
+        <div className="flex items-center gap-1">
           <LanguageSwitcher variant="text" />
           <ThemeToggle variant="text" />
         </div>
+      </header>
 
-        {/* Scrollable form area */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center px-8 pb-8">
-            <div className="w-full max-w-sm">
-              <Outlet />
+      {/* Centered content */}
+      <main className="relative z-[5] flex items-center justify-center px-5 sm:px-6 pb-12 pt-2 sm:pt-6 min-h-[calc(100vh-72px)]">
+        <div className="w-full max-w-md">
+          {/* Brand block — animated logo + name */}
+          <div className="text-center mb-7 animate-fade-up">
+            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary mb-5">
+              {t('auth_chrome.openSource')}
+            </div>
+            <div className="relative mb-5 mx-auto inline-flex">
+              {/* Outer pulsing halo ring */}
+              <span
+                aria-hidden
+                className="absolute inset-0 rounded-2xl animate-brand-halo"
+                style={{
+                  background:
+                    'radial-gradient(circle, color-mix(in srgb, var(--color-primary) 40%, transparent) 0%, transparent 70%)',
+                  filter: 'blur(8px)',
+                }}
+              />
+              <div className="relative h-14 w-14 flex items-center justify-center rounded-2xl btn-primary-gradient glow-primary-lg">
+                <span className="font-display text-[22px] font-bold text-primary-foreground">
+                  {APP_NAME.charAt(0)}
+                </span>
+              </div>
+            </div>
+            <div className="font-display text-[20px] font-medium text-foreground tracking-[-0.01em]">
+              {APP_NAME}
+            </div>
+            <div className="text-[11px] text-muted-foreground mt-1 font-mono">
+              {t('auth.brandSubtitle')}
             </div>
           </div>
+
+          {/* Glass card with form */}
+          <div className="surface-glass-strong rounded-2xl p-7 sm:p-8 shadow-float border border-border/40 animate-fade-up-delay-1 relative">
+            {/* Top accent — subtle gradient hairline at the card top */}
+            <div
+              aria-hidden
+              className="absolute top-0 inset-x-8 h-px"
+              style={{
+                background:
+                  'linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--color-primary) 40%, transparent) 50%, transparent 100%)',
+              }}
+            />
+            <Outlet />
+          </div>
+
+          {/* Bottom meta */}
+          <div className="mt-6 flex items-center justify-center gap-2 text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground/70 animate-fade-up-delay-2">
+            <span>{t('auth_chrome.stack')}</span>
+            <span className="opacity-50">·</span>
+            <span>{t('auth_chrome.license')}</span>
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

@@ -21,7 +21,7 @@ export function MainLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="aurora-canvas min-h-screen bg-background" data-page-style="dense">
       <Sidebar />
       <Header />
       <main

@@ -26,7 +26,7 @@ export function UserAvatar({ firstName, lastName, size = 'sm', className }: User
   return (
     <div
       className={cn(
-        'flex items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground shrink-0',
+        'flex items-center justify-center rounded-lg btn-primary-gradient font-semibold text-primary-foreground shrink-0',
         sizes[size],
         className
       )}

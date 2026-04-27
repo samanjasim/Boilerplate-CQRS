@@ -29,6 +29,9 @@ const TenantDetailPage = lazy(() => import('@/features/tenants/pages/TenantDetai
 const ProfilePage = lazy(() => import('@/features/profile/pages/ProfilePage'));
 const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage'));
 const NotFoundPage = lazy(() => import('@/routes/NotFoundPage'));
+const StyleguidePage = import.meta.env.DEV
+  ? lazy(() => import('@/features/styleguide/pages/StyleguidePage'))
+  : (() => null);
 
 // Core feature pages (always loaded — these features ship with every build)
 const AuditLogsPage = lazy(() => import('@/features/audit-logs/pages/AuditLogsPage'));
@@ -72,6 +75,7 @@ export const routes: RouteObject[] = [
     children: [
       { path: ROUTES.LANDING, element: <LandingPage /> },
       ...(activeModules.billing ? [{ path: ROUTES.PRICING, element: <PricingPage /> }] : []),
+      ...(import.meta.env.DEV ? [{ path: ROUTES.STYLEGUIDE, element: <StyleguidePage /> }] : []),
     ],
   },
 
