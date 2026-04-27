@@ -145,6 +145,10 @@ public static class DependencyInjection
             sp.GetRequiredService<IntegrationEventCollector>());
         services.AddScoped<ISaveChangesInterceptor, IntegrationEventOutboxInterceptor>();
 
+        // Plan 5d-1: enrich AuditLog rows with agent dual-attribution from
+        // AmbientExecutionContext when an agent run is in flight.
+        services.AddScoped<ISaveChangesInterceptor, Persistence.Interceptors.AuditLogAgentAttributionInterceptor>();
+
         services.AddDbContext<ApplicationDbContext>((sp, options) =>
         {
             options.AddInterceptors(sp.GetServices<ISaveChangesInterceptor>());

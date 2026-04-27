@@ -13,5 +13,12 @@ public interface IExecutionContext
     Guid? UserId { get; }
     Guid? AgentPrincipalId { get; }
     Guid? TenantId { get; }
+
+    /// <summary>
+    /// The current agent run identifier when this execution context represents an
+    /// in-flight agent run. Null for HTTP / non-agent contexts.
+    /// </summary>
+    Guid? AgentRunId { get; }
+
     bool HasPermission(string permission);
 }
