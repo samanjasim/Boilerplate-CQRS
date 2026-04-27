@@ -1,8 +1,13 @@
-import { LogOut, User, Menu, ArrowLeft } from 'lucide-react';
+import { LogOut, Menu, Search, User, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, Link } from 'react-router-dom';
-import { useAuthStore, selectUser, useUIStore, selectSidebarCollapsed, selectBackNavigation } from '@/stores';
-import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
+
+import {
+  LanguageSwitcher,
+  NotificationBell,
+  ThemeToggle,
+  UserAvatar,
+} from '@/components/common';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,47 +16,80 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
-import { useLogout } from '@/features/auth/api';
-import { LanguageSwitcher, ThemeToggle, NotificationBell, UserAvatar } from '@/components/common';
 import { ROUTES } from '@/config';
+import { useLogout } from '@/features/auth/api';
+import { cn } from '@/lib/utils';
+import {
+  selectSidebarCollapsed,
+  selectSidebarOpen,
+  selectUser,
+  useAuthStore,
+  useUIStore,
+} from '@/stores';
 
 export function Header() {
   const { t } = useTranslation();
   const user = useAuthStore(selectUser);
   const isCollapsed = useUIStore(selectSidebarCollapsed);
-  const backNavigation = useUIStore(selectBackNavigation);
+  const sidebarOpen = useUIStore(selectSidebarOpen);
   const toggleSidebar = useUIStore((state) => state.toggleSidebar);
   const navigate = useNavigate();
   const handleLogout = useLogout();
 
   return (
     <header
+      data-shell="header"
       className={cn(
-        'fixed top-0 z-30 flex h-14 items-center justify-between px-6 transition-all duration-300',
-        'surface-glass border-b border-border/40',
+        'fixed top-3.5 z-30 h-12 flex items-center gap-2 rounded-2xl px-3',
+        'surface-floating',
+        'motion-safe:transition-all motion-safe:duration-300',
+        // start edge follows sidebar width + 14px gap on lg+; flush on <lg
+        'max-lg:ltr:left-3.5 max-lg:rtl:right-3.5',
         isCollapsed
-          ? 'ltr:left-16 rtl:right-16 ltr:right-0 rtl:left-0'
-          : 'ltr:left-60 rtl:right-60 ltr:right-0 rtl:left-0'
+          ? 'lg:ltr:left-[calc(4rem+1.75rem)] lg:rtl:right-[calc(4rem+1.75rem)]'
+          : 'lg:ltr:left-[calc(15rem+1.75rem)] lg:rtl:right-[calc(15rem+1.75rem)]',
+        'ltr:right-3.5 rtl:left-3.5'
       )}
     >
-      {/* Left side: back button or mobile menu toggle */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={toggleSidebar} className="lg:hidden">
-          <Menu className="h-5 w-5" />
-        </Button>
-        {backNavigation && (
-          <Link
-            to={backNavigation.to}
-            className="hidden lg:flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4 rtl:rotate-180" />
-            <span>{backNavigation.label}</span>
-          </Link>
+      {/* Mobile drawer trigger — <lg only */}
+      <button
+        type="button"
+        onClick={toggleSidebar}
+        aria-label={sidebarOpen ? t('nav.toggle.close') : t('nav.toggle.open')}
+        aria-expanded={sidebarOpen}
+        className={cn(
+          'lg:hidden flex h-8 items-center gap-2 rounded-[9px] border border-foreground/10 bg-foreground/5 px-3',
+          'text-sm text-muted-foreground',
+          'motion-safe:transition-colors motion-safe:duration-150',
+          'hover:bg-foreground/10 hover:text-foreground'
         )}
-      </div>
+      >
+        {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+      </button>
 
-      {/* Right side: controls */}
+      {/* Search palette trigger — lg+ only. Click currently no-op; palette content ships in next plan. */}
+      <button
+        type="button"
+        aria-label={t('header.searchPlaceholder')}
+        className={cn(
+          'hidden lg:flex h-8 items-center gap-2 rounded-[9px] border border-foreground/10 bg-foreground/5 px-3',
+          'text-sm text-muted-foreground',
+          'motion-safe:transition-colors motion-safe:duration-150',
+          'hover:bg-foreground/10 hover:text-foreground',
+          'flex-1 max-w-[320px]'
+        )}
+      >
+        <Search className="h-4 w-4 opacity-60" />
+        <span className="flex-1 text-start">{t('header.searchPlaceholder')}</span>
+        <span className="ms-auto rounded-md border border-foreground/15 bg-foreground/8 px-1.5 py-0.5 font-mono text-[10px] tracking-[0.05em] text-muted-foreground">
+          ⌘K
+        </span>
+      </button>
+
+      {/* Spacer pushes right cluster to the end */}
+      <div className="flex-1 max-lg:hidden" />
+
+      {/* Right cluster — language, theme, notifications, avatar */}
       <div className="flex items-center gap-1">
         <LanguageSwitcher />
         <ThemeToggle />
@@ -59,7 +97,14 @@ export function Header() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2.5 ltr:ml-2 rtl:mr-2 rounded-xl px-2 py-1.5 transition-colors duration-150 hover:bg-secondary/80">
+            <button
+              type="button"
+              className={cn(
+                'ms-1 flex items-center gap-2 rounded-full border border-foreground/8 bg-foreground/5 ps-1 pe-3 py-1',
+                'motion-safe:transition-colors motion-safe:duration-150',
+                'hover:bg-foreground/10'
+              )}
+            >
               <UserAvatar firstName={user?.firstName} lastName={user?.lastName} size="sm" />
               <span className="hidden sm:inline text-sm font-medium text-foreground">
                 {user?.firstName} {user?.lastName}
@@ -69,16 +114,24 @@ export function Header() {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium">{user?.firstName} {user?.lastName}</p>
+                <p className="text-sm font-medium">
+                  {user?.firstName} {user?.lastName}
+                </p>
                 <p className="text-xs text-muted-foreground">{user?.email}</p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate(ROUTES.PROFILE)} className="cursor-pointer">
+            <DropdownMenuItem
+              onClick={() => navigate(ROUTES.PROFILE)}
+              className="cursor-pointer"
+            >
               <User className="h-4 w-4" />
               {t('profile.title')}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive focus:text-destructive">
+            <DropdownMenuItem
+              onClick={handleLogout}
+              className="cursor-pointer text-destructive focus:text-destructive"
+            >
               <LogOut className="h-4 w-4" />
               {t('header.logout')}
             </DropdownMenuItem>

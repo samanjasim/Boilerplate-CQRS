@@ -36,7 +36,6 @@ import {
   useSetTenantDefaultRole,
 } from '../api';
 import { useAssignableRoles } from '@/features/roles/api';
-import { useBackNavigation } from '@/hooks';
 import { ROUTES } from '@/config';
 import { formatDate } from '@/utils/format';
 import { toast } from 'sonner';
@@ -85,11 +84,6 @@ export default function TenantDetailPage() {
   const shouldRedirect = selfService && !tenantId;
 
   const { data: tenant, isLoading } = useTenant(tenantId ?? '');
-
-  useBackNavigation(
-    selfService ? ROUTES.DASHBOARD : ROUTES.TENANTS.LIST,
-    selfService ? t('nav.dashboard') : t('tenants.backToTenants')
-  );
 
   const isPlatformAdmin = !user?.tenantId;
 
@@ -258,6 +252,17 @@ export default function TenantDetailPage() {
     <div className="space-y-6">
       <PageHeader
         title={tenant.name}
+        breadcrumbs={
+          selfService
+            ? [
+                { to: ROUTES.DASHBOARD, label: t('nav.dashboard') },
+                { label: tenant?.name ?? t('common.loading') },
+              ]
+            : [
+                { to: ROUTES.TENANTS.LIST, label: t('tenants.title') },
+                { label: tenant?.name ?? t('common.loading') },
+              ]
+        }
       />
 
       {/* Mobile: horizontal scrollable pills */}

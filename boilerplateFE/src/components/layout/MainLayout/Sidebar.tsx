@@ -1,154 +1,110 @@
-import { NavLink } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { ChevronsLeft, ChevronsRight, MoreHorizontal } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import {
-  LayoutDashboard,
-  Users,
-  Shield,
-  ChevronsLeft,
-  ChevronsRight,
-  ClipboardList,
-  Building,
-  FolderOpen,
-  Settings2,
-  KeyRound,
-  ToggleRight,
-  CreditCard,
-  ReceiptText,
-  ListChecks,
-  Webhook,
-  ArrowLeftRight,
-  Package,
-  MessageSquare,
-  FileText,
-  Zap,
-  Link2,
-  ScrollText,
-  ClipboardCheck,
-  History,
-  GitBranch,
-  FileBarChart2,
-  Bell,
-} from 'lucide-react';
+
 import { cn } from '@/lib/utils';
-import { useUIStore, useAuthStore, selectSidebarCollapsed, selectUser } from '@/stores';
-import { ROUTES } from '@/config';
-import { activeModules, isModuleActive } from '@/config/modules.config';
-import { usePermissions, useFeatureFlag } from '@/hooks';
-import { PERMISSIONS } from '@/constants';
-import { usePendingTaskCount } from '@/features/workflow/api';
+import {
+  selectMorePanelOpen,
+  selectSidebarCollapsed,
+  selectSidebarOpen,
+  selectUser,
+  useAuthStore,
+  useUIStore,
+} from '@/stores';
+import { useNavOverflow } from './useNavOverflow';
 
 export function Sidebar() {
   const { t } = useTranslation();
   const isCollapsed = useUIStore(selectSidebarCollapsed);
   const toggleCollapse = useUIStore((state) => state.toggleSidebarCollapse);
-  const { hasPermission } = usePermissions();
   const user = useAuthStore(selectUser);
+  const sidebarOpen = useUIStore(selectSidebarOpen);
+  const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
+  const morePanelOpen = useUIStore(selectMorePanelOpen);
+  const setMorePanelOpen = useUIStore((state) => state.setMorePanelOpen);
+  const toggleMorePanel = useUIStore((state) => state.toggleMorePanel);
+  const location = useLocation();
 
-  const webhooksFlag = useFeatureFlag('webhooks.enabled');
-  const importsFlag = useFeatureFlag('imports.enabled');
-  const exportsFlag = useFeatureFlag('exports.enabled');
+  const {
+    visibleGroups,
+    overflowGroups,
+    activeGroup,
+    activeItem,
+    isActiveOverflowed,
+    hasOverflow,
+    navRef,
+    moreButtonRef,
+  } = useNavOverflow();
 
-  const { data: pendingTaskCount = 0 } = usePendingTaskCount(isModuleActive('workflow'));
+  // Auto-open MorePanel once on first mount if the active route is overflowed
+  // (deep-link / page refresh into an overflowed page).
+  const autoOpenedRef = useRef(false);
+  useEffect(() => {
+    if (!autoOpenedRef.current && isActiveOverflowed) {
+      setMorePanelOpen(true);
+      autoOpenedRef.current = true;
+    }
+  }, [isActiveOverflowed, setMorePanelOpen]);
+
+  // Auto-close MorePanel when the user navigates away from an overflowed page.
+  const lastPathRef = useRef(location.pathname);
+  useEffect(() => {
+    if (location.pathname === lastPathRef.current) return;
+    lastPathRef.current = location.pathname;
+    if (morePanelOpen && !isActiveOverflowed) {
+      setMorePanelOpen(false);
+    }
+  }, [location.pathname, isActiveOverflowed, morePanelOpen, setMorePanelOpen]);
+
+  // Auto-close mobile drawer on route change. Harmless on desktop (`sidebarOpen`
+  // has no UI effect at lg+).
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname, setSidebarOpen]);
+
+  // Auto-close on Escape while the drawer is open.
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSidebarOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [sidebarOpen, setSidebarOpen]);
 
   const tenantLogoUrl = user?.tenantLogoUrl;
   const tenantName = user?.tenantName;
   const appName = tenantName ?? import.meta.env.VITE_APP_NAME ?? 'Starter';
 
-  const navItems = [
-    { label: t('nav.dashboard'), icon: LayoutDashboard, path: ROUTES.DASHBOARD },
-    ...(hasPermission(PERMISSIONS.Users.View)
-      ? [{ label: t('nav.users'), icon: Users, path: ROUTES.USERS.LIST }]
-      : []),
-    ...(hasPermission(PERMISSIONS.Roles.View)
-      ? [{ label: t('nav.roles'), icon: Shield, path: ROUTES.ROLES.LIST }]
-      : []),
-    ...(hasPermission(PERMISSIONS.Tenants.View)
-      ? [user?.tenantId
-        ? { label: t('nav.organization'), icon: Building, path: ROUTES.ORGANIZATION }
-        : { label: t('nav.tenants'), icon: Building, path: ROUTES.TENANTS.LIST }
-      ]
-      : []),
-    ...(hasPermission(PERMISSIONS.Files.View)
-      ? [{ label: t('nav.files'), icon: FolderOpen, path: ROUTES.FILES.LIST }]
-      : []),
-    ...(hasPermission(PERMISSIONS.System.ExportData)
-      ? [{ label: t('nav.reports'), icon: FileBarChart2, path: ROUTES.REPORTS.LIST }]
-      : []),
-    { label: t('nav.notifications'), icon: Bell, path: ROUTES.NOTIFICATIONS },
-    ...(activeModules.importExport && ((hasPermission(PERMISSIONS.System.ExportData) && exportsFlag.isEnabled) || (hasPermission(PERMISSIONS.System.ImportData) && importsFlag.isEnabled))
-      ? [{ label: t('nav.importExport'), icon: ArrowLeftRight, path: ROUTES.IMPORT_EXPORT }]
-      : []),
-    ...(hasPermission(PERMISSIONS.System.ViewAuditLogs)
-      ? [{ label: t('nav.auditLogs'), icon: ClipboardList, path: ROUTES.AUDIT_LOGS.LIST }]
-      : []),
-    ...(hasPermission(PERMISSIONS.ApiKeys.View)
-      ? [{ label: t('nav.apiKeys'), icon: KeyRound, path: ROUTES.API_KEYS.LIST }]
-      : []),
-    ...(activeModules.workflow && hasPermission(PERMISSIONS.Workflows.View)
-      ? [{ label: t('workflow.sidebar.taskInbox'), icon: ClipboardCheck, path: ROUTES.WORKFLOWS.INBOX, badge: pendingTaskCount > 0 ? pendingTaskCount : undefined }]
-      : []),
-    ...(activeModules.workflow && hasPermission(PERMISSIONS.Workflows.View)
-      ? [{ label: t('workflow.sidebar.history'), icon: History, path: ROUTES.WORKFLOWS.INSTANCES }]
-      : []),
-    ...(activeModules.workflow && hasPermission(PERMISSIONS.Workflows.ManageDefinitions)
-      ? [{ label: t('workflow.sidebar.definitions'), icon: GitBranch, path: ROUTES.WORKFLOWS.DEFINITIONS }]
-      : []),
-    ...(activeModules.products && hasPermission(PERMISSIONS.Products.View)
-      ? [{ label: t('nav.products', 'Products'), icon: Package, path: ROUTES.PRODUCTS.LIST }]
-      : []),
-    ...(activeModules.communication && hasPermission(PERMISSIONS.Communication.View) && user?.tenantId
-      ? [
-          { label: t('nav.channels'), icon: MessageSquare, path: ROUTES.COMMUNICATION.CHANNELS },
-          { label: t('nav.templates'), icon: FileText, path: ROUTES.COMMUNICATION.TEMPLATES },
-          { label: t('nav.triggerRules'), icon: Zap, path: ROUTES.COMMUNICATION.TRIGGER_RULES },
-          { label: t('nav.integrations'), icon: Link2, path: ROUTES.COMMUNICATION.INTEGRATIONS },
-        ]
-      : []),
-    ...(activeModules.communication && hasPermission(PERMISSIONS.Communication.ViewDeliveryLog) && user?.tenantId
-      ? [{ label: t('nav.deliveryLog'), icon: ScrollText, path: ROUTES.COMMUNICATION.DELIVERY_LOG }]
-      : []),
-    ...(activeModules.webhooks && hasPermission(PERMISSIONS.Webhooks.View) && user?.tenantId && webhooksFlag.isEnabled
-      ? [{ label: t('nav.webhooks'), icon: Webhook, path: ROUTES.WEBHOOKS }]
-      : []),
-    ...(activeModules.billing && hasPermission(PERMISSIONS.Billing.View) && user?.tenantId
-      ? [{ label: t('nav.billing'), icon: CreditCard, path: ROUTES.BILLING }]
-      : []),
-    ...(activeModules.billing && hasPermission(PERMISSIONS.Billing.ViewPlans)
-      ? [{ label: t('nav.billingPlans'), icon: ReceiptText, path: ROUTES.BILLING_PLANS }]
-      : []),
-    ...(activeModules.billing && hasPermission(PERMISSIONS.Billing.ManageTenantSubscriptions)
-      ? [{ label: t('nav.subscriptions'), icon: ListChecks, path: ROUTES.SUBSCRIPTIONS.LIST }]
-      : []),
-    ...(activeModules.webhooks && hasPermission(PERMISSIONS.Webhooks.ViewPlatform)
-      ? [{ label: t('nav.webhooksAdmin'), icon: Webhook, path: ROUTES.WEBHOOKS_ADMIN.LIST }]
-      : []),
-    ...(hasPermission(PERMISSIONS.FeatureFlags.View)
-      ? [{ label: t('nav.featureFlags'), icon: ToggleRight, path: ROUTES.FEATURE_FLAGS.LIST }]
-      : []),
-    ...(hasPermission(PERMISSIONS.System.ManageSettings)
-      ? [{ label: t('nav.settings'), icon: Settings2, path: ROUTES.SETTINGS }]
-      : []),
-  ];
-
   return (
     <aside
+      data-shell="sidebar"
       className={cn(
-        'fixed top-0 z-40 flex h-screen flex-col surface-glass transition-all duration-300',
-        'ltr:left-0 ltr:border-r rtl:right-0 rtl:border-l border-border/40',
-        isCollapsed ? 'w-16' : 'w-60'
+        // floating geometry — 14px margin, no longer edge-to-edge
+        'fixed top-3.5 bottom-3.5 z-40 flex flex-col rounded-[18px]',
+        'surface-floating',
+        'motion-safe:transition-all motion-safe:duration-300',
+        // width: drawer always w-60 on <lg; lg+ follows collapse state
+        'w-60',
+        isCollapsed && 'lg:w-16',
+        // position: 14px from start edge in both ltr / rtl
+        'ltr:left-3.5 rtl:right-3.5 lg:translate-x-0',
+        !sidebarOpen && 'max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full'
       )}
     >
       {/* Logo */}
       <div className={cn('flex h-14 items-center gap-2.5 px-5', isCollapsed && 'justify-center px-0')}>
         <button
+          type="button"
           onClick={isCollapsed ? toggleCollapse : undefined}
           className={cn('flex items-center gap-2.5 min-w-0', isCollapsed && 'cursor-pointer')}
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg btn-primary-gradient glow-primary-sm shrink-0">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg btn-primary-gradient glow-primary-md shrink-0">
             {tenantLogoUrl ? (
-              <img src={tenantLogoUrl} alt={appName} className="h-7 w-7 rounded object-cover" />
+              <img src={tenantLogoUrl} alt={appName} className="h-8 w-8 rounded object-cover" />
             ) : (
-              <span className="text-sm font-bold text-white">{appName.charAt(0)}</span>
+              <span className="text-[15px] font-bold text-white">{appName.charAt(0)}</span>
             )}
           </div>
           {!isCollapsed && (
@@ -157,8 +113,9 @@ export function Sidebar() {
         </button>
         {!isCollapsed && (
           <button
+            type="button"
             onClick={toggleCollapse}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors duration-150 shrink-0 ltr:ml-auto rtl:mr-auto"
+            className="hidden lg:flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground motion-safe:transition-colors motion-safe:duration-150 shrink-0 ltr:ml-auto rtl:mr-auto"
           >
             <ChevronsLeft className="h-[18px] w-[18px] rtl:rotate-180" />
           </button>
@@ -166,46 +123,160 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 pt-2">
-        <ul className="space-y-1">
-          {navItems.map((item) => (
-            <li key={item.path}>
-              <NavLink
-                to={item.path}
-                end={item.path === ROUTES.DASHBOARD || item.path === ROUTES.BILLING || item.path === ROUTES.SUBSCRIPTIONS?.LIST || item.path === ROUTES.WEBHOOKS_ADMIN?.LIST}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-2.5 rounded-lg h-10 px-3 text-sm transition-all duration-150 cursor-pointer',
-                    isCollapsed && 'justify-center px-0',
-                    isActive
-                      ? 'state-active'
-                      : 'state-hover'
-                  )
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    <item.icon className={cn('h-[18px] w-[18px] shrink-0', isActive && 'drop-shadow-[0_0_6px_color-mix(in_srgb,var(--color-primary)_45%,transparent)]')} />
-                    {!isCollapsed && <span className="flex-1">{item.label}</span>}
-                    {!isCollapsed && 'badge' in item && item.badge != null && (
-                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full btn-primary-gradient glow-primary-sm px-1.5 text-[10px] font-bold text-primary-foreground font-mono">
-                        {(item.badge as number) > 99 ? '99+' : item.badge}
-                      </span>
-                    )}
-                  </>
-                )}
-              </NavLink>
-            </li>
+      <nav
+        ref={navRef}
+        className="flex-1 overflow-hidden px-3 pt-2 pb-3 flex flex-col"
+      >
+        <div className="flex-1">
+          {visibleGroups.map((group, groupIndex) => (
+            <div
+              key={group.id}
+              data-group-id={group.id}
+              className={cn(
+                groupIndex > 0 && (
+                  isCollapsed
+                    ? 'mx-3 my-2 border-t border-border/40'
+                    : 'mt-4'
+                )
+              )}
+            >
+              {!isCollapsed && group.label && (
+                <div className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  <span className="inline-block w-1 h-1 rounded-full bg-primary/70 me-1.5 align-middle -translate-y-px" />
+                  {group.label}
+                </div>
+              )}
+              <ul className="space-y-1">
+                {group.items.map((item) => (
+                  <li key={item.path}>
+                    <NavLink
+                      to={item.path}
+                      end={item.end}
+                      className={({ isActive }) =>
+                        cn(
+                          'flex items-center gap-2.5 rounded-[10px] h-10 px-3 text-sm motion-safe:transition-all motion-safe:duration-150 cursor-pointer',
+                          isCollapsed && 'justify-center px-0',
+                          isActive ? 'pill-active' : 'state-hover'
+                        )
+                      }
+                    >
+                      {({ isActive }) => (
+                        <>
+                          <item.icon
+                            className={cn(
+                              'h-[18px] w-[18px] shrink-0',
+                              isActive && 'drop-shadow-[0_0_6px_color-mix(in_srgb,var(--color-primary)_45%,transparent)]'
+                            )}
+                          />
+                          {!isCollapsed && <span className="flex-1">{item.label}</span>}
+                          {!isCollapsed && item.badge != null && (
+                            <span className="flex h-5 min-w-5 items-center justify-center rounded-full btn-primary-gradient glow-primary-sm px-1.5 text-[10px] font-bold text-primary-foreground font-mono">
+                              {item.badge > 99 ? '99+' : item.badge}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
           ))}
-        </ul>
+        </div>
+
+        {hasOverflow && (
+          <button
+            ref={moreButtonRef as React.RefObject<HTMLButtonElement>}
+            type="button"
+            onClick={toggleMorePanel}
+            aria-pressed={morePanelOpen}
+            aria-label={
+              isActiveOverflowed && activeItem && activeGroup
+                ? t('nav.more.inMore', { group: activeGroup.label ?? '' })
+                : t('nav.more.label')
+            }
+            title={
+              isCollapsed
+                ? isActiveOverflowed && activeItem && activeGroup
+                  ? `${activeItem.label} · ${t('nav.more.inMore', { group: activeGroup.label ?? '' })}`
+                  : t('nav.more.label')
+                : undefined
+            }
+            className={cn(
+              'relative mt-2 flex items-center rounded-[10px] h-10 overflow-hidden',
+              'motion-safe:transition-all motion-safe:duration-150',
+              isCollapsed ? 'justify-center px-0 w-full' : 'px-3',
+              isActiveOverflowed
+                ? 'pill-active border border-transparent'
+                : 'border border-foreground/10 bg-foreground/5 hover:bg-foreground/10'
+            )}
+          >
+            {/* Default caption layer — visible when NOT active-overflowed */}
+            <span
+              aria-hidden={isActiveOverflowed}
+              className={cn(
+                'absolute inset-0 flex items-center',
+                isCollapsed ? 'justify-center' : 'gap-2.5 px-3',
+                'motion-safe:transition-opacity motion-safe:duration-200',
+                isActiveOverflowed ? 'opacity-0 pointer-events-none' : 'opacity-100'
+              )}
+            >
+              <MoreHorizontal className="h-[18px] w-[18px] shrink-0 opacity-70" />
+              {!isCollapsed && (
+                <>
+                  <span className="flex-1 text-start text-sm">{t('nav.more.label')}</span>
+                  <span className="rounded-full bg-primary/20 px-1.5 py-0.5 text-[10px] font-mono font-bold text-primary">
+                    {overflowGroups.length}
+                  </span>
+                </>
+              )}
+            </span>
+
+            {/* Active caption layer — visible when current page is in overflow */}
+            {isActiveOverflowed && activeItem && activeGroup && (
+              <span
+                className={cn(
+                  'absolute inset-0 flex items-center',
+                  isCollapsed ? 'justify-center' : 'gap-2.5 px-3',
+                  'motion-safe:transition-opacity motion-safe:duration-200',
+                  'opacity-100'
+                )}
+              >
+                <activeItem.icon
+                  className={cn(
+                    'h-[18px] w-[18px] shrink-0',
+                    'drop-shadow-[0_0_6px_color-mix(in_srgb,var(--color-primary)_45%,transparent)]'
+                  )}
+                />
+                {!isCollapsed && (
+                  <div className="flex flex-col gap-0 leading-tight text-start min-w-0">
+                    <span className="text-[12px] font-medium truncate">{activeItem.label}</span>
+                    <span className="text-[8px] uppercase tracking-[0.12em] opacity-70 truncate">
+                      {t('nav.more.inMore', { group: activeGroup.label ?? '' })}
+                    </span>
+                  </div>
+                )}
+              </span>
+            )}
+
+            {/* Invisible spacer — keeps button's intrinsic width stable when expanded */}
+            {!isCollapsed && (
+              <span aria-hidden className="invisible flex items-center gap-2.5">
+                <span className="h-[18px] w-[18px]" />
+                <span className="text-sm">_</span>
+              </span>
+            )}
+          </button>
+        )}
       </nav>
 
-      {/* Collapsed: expand */}
+      {/* Collapsed: expand chevron (desktop only) */}
       {isCollapsed && (
-        <div className="p-2 border-t border-border">
+        <div className="hidden lg:block p-2 border-t border-border">
           <button
+            type="button"
             onClick={toggleCollapse}
-            className="flex w-full items-center justify-center rounded-lg h-9 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors duration-150 cursor-pointer"
+            className="flex w-full items-center justify-center rounded-lg h-9 text-muted-foreground hover:bg-secondary hover:text-foreground motion-safe:transition-colors motion-safe:duration-150 cursor-pointer"
           >
             <ChevronsRight className="h-4 w-4 rtl:rotate-180" />
           </button>

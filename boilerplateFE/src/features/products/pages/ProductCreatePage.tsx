@@ -12,7 +12,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ROUTES } from '@/config';
-import { useBackNavigation } from '@/hooks';
 import { useAuthStore, selectUser } from '@/stores';
 import { useTenants } from '@/features/tenants/api';
 import { useCreateProduct } from '../api';
@@ -36,7 +35,6 @@ type FormValues = z.infer<typeof schema>;
 export default function ProductCreatePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  useBackNavigation(ROUTES.PRODUCTS.LIST, t('products.title', 'Products'));
   const user = useAuthStore(selectUser);
   const isPlatformAdmin = !user?.tenantId;
 
@@ -85,6 +83,10 @@ export default function ProductCreatePage() {
       <PageHeader
         title={t('products.createTitle', 'Create Product')}
         subtitle={t('products.createSubtitle', 'Add a new product to your catalog')}
+        breadcrumbs={[
+          { to: ROUTES.PRODUCTS.LIST, label: t('products.title', 'Products') },
+          { label: t('products.create.title', 'Create') },
+        ]}
       />
 
       <form onSubmit={handleSubmit(onSubmit)} className="max-w-2xl space-y-6">

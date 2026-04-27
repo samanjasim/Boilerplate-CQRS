@@ -146,12 +146,34 @@
     "deliveryLog": "Delivery Log",
     "collapse": "Collapse",
     "taskInbox": "Task Inbox",
-    "workflowDefinitions": "Definitions"
+    "workflowDefinitions": "Definitions",
+    "groups": {
+      "workflow": "Workflow",
+      "communication": "Communication",
+      "products": "Products",
+      "billing": "Billing",
+      "webhooks": "Webhooks",
+      "importExport": "Import / Export",
+      "people": "People",
+      "content": "Content",
+      "platform": "Platform"
+    },
+    "toggle": {
+      "open": "Open navigation",
+      "close": "Close navigation"
+    },
+    "more": {
+      "label": "More",
+      "inMore": "In More · {{group}}",
+      "panelTitle": "More groups",
+      "close": "Close more groups"
+    }
   },
   "header": {
     "logout": "Logout",
     "theme": "Theme",
-    "language": "Language"
+    "language": "Language",
+    "searchPlaceholder": "Search anything…"
   },
   "dashboard": {
     "welcomeBack": "Welcome back, {{name}}!",

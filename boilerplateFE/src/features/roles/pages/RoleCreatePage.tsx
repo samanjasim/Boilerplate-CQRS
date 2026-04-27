@@ -14,13 +14,11 @@ import { PageHeader } from '@/components/common';
 import { createRoleSchema, type CreateRoleFormData } from '@/lib/validation';
 import { useCreateRole, useAllPermissions, useUpdateRolePermissions } from '../api';
 import { PermissionMatrix } from '../components';
-import { useBackNavigation } from '@/hooks';
 import { ROUTES } from '@/config';
 
 export default function RoleCreatePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  useBackNavigation(ROUTES.ROLES.LIST, t('roles.backToRoles'));
   const { mutateAsync: createRole, isPending: isCreating } = useCreateRole();
   const { mutate: updatePermissions, isPending: isAssigning } = useUpdateRolePermissions();
   const { data: allPermissions, isLoading: isLoadingPerms } = useAllPermissions();
@@ -59,6 +57,10 @@ export default function RoleCreatePage() {
     <div className="space-y-6">
       <PageHeader
         title={t('roles.newRole')}
+        breadcrumbs={[
+          { to: ROUTES.ROLES.LIST, label: t('roles.title') },
+          { label: t('roles.create.title', 'Create role') },
+        ]}
       />
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">

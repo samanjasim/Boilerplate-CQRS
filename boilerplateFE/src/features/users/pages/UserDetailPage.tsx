@@ -10,7 +10,7 @@ import { PageHeader, InfoField, ConfirmDialog } from '@/components/common';
 import { useUser, useActivateUser, useSuspendUser, useDeactivateUser, useUnlockUser } from '../api';
 import { useRoles, useRemoveUserRole } from '@/features/roles/api';
 import { RoleAssignModal, EditUserModal } from '../components';
-import { usePermissions, useBackNavigation } from '@/hooks';
+import { usePermissions } from '@/hooks';
 import { PERMISSIONS, STATUS_BADGE_VARIANT } from '@/constants';
 import { ROUTES } from '@/config';
 import { formatDate, formatDateTime } from '@/utils/format';
@@ -38,7 +38,6 @@ export default function UserDetailPage() {
 
   const canManageRoles = hasPermission(PERMISSIONS.Users.ManageRoles);
   const canUpdate = hasPermission(PERMISSIONS.Users.Update);
-  useBackNavigation(ROUTES.USERS.LIST, t('users.backToUsers'));
 
   const allRoles = useMemo(() => rolesData?.data ?? [], [rolesData?.data]);
 
@@ -81,6 +80,10 @@ export default function UserDetailPage() {
       <PageHeader
         title={`${user.firstName} ${user.lastName}`}
         subtitle={`@${user.username}`}
+        breadcrumbs={[
+          { to: ROUTES.USERS.LIST, label: t('users.title') },
+          { label: user ? `${user.firstName} ${user.lastName}` : t('common.loading') },
+        ]}
       />
 
       {/* User Info */}
