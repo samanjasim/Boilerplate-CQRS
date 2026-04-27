@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select';
 import { PageHeader, EmptyState, Pagination, getPersistedPageSize } from '@/components/common';
 import { useWebhookAdminEndpoints, useWebhookAdminDeliveries } from '../api';
-import { useBackNavigation, useTimeAgo } from '@/hooks';
+import { useTimeAgo } from '@/hooks';
 import { ROUTES } from '@/config';
 import { statusBadge } from '../utils/badges';
 import { tryPrettyJson } from '../utils/format';
@@ -103,7 +103,6 @@ function DeliveryRow({ delivery }: { delivery: WebhookDelivery }) {
 export default function WebhookAdminDetailPage() {
   const { t } = useTranslation();
   const { endpointId } = useParams<{ endpointId: string }>();
-  useBackNavigation(ROUTES.WEBHOOKS_ADMIN.LIST, t('webhooks.adminTitle'));
 
   const [statusFilter, setStatusFilter] = useState<DeliveryStatus>('All');
   const [pageNumber, setPageNumber] = useState(1);
@@ -132,7 +131,13 @@ export default function WebhookAdminDetailPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={headerTitle} />
+      <PageHeader
+        title={headerTitle}
+        breadcrumbs={[
+          { to: ROUTES.WEBHOOKS_ADMIN.LIST, label: t('webhooks.adminTitle') },
+          { label: endpoint?.tenantName ?? t('common.loading') },
+        ]}
+      />
 
       {/* Endpoint Info Card */}
       {endpoint && (

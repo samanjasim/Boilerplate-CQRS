@@ -12,7 +12,6 @@ import {
 import { PageHeader, EmptyState } from '@/components/common';
 import { useTenantSubscription, useTenantUsage, useTenantPayments, useChangeTenantPlan, usePlans } from '../api';
 import { UsageBar } from '../components/UsageBar';
-import { useBackNavigation } from '@/hooks';
 import { ROUTES } from '@/config';
 import { STATUS_BADGE_VARIANT } from '@/constants';
 import { formatDate, formatFileSize } from '@/utils/format';
@@ -28,7 +27,6 @@ import {
 export default function SubscriptionDetailPage() {
   const { t } = useTranslation();
   const { tenantId } = useParams<{ tenantId: string }>();
-  useBackNavigation(ROUTES.SUBSCRIPTIONS.LIST, t('billing.subscriptions'));
 
   const [planModalOpen, setPlanModalOpen] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
@@ -67,7 +65,13 @@ export default function SubscriptionDetailPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={headerTitle} />
+      <PageHeader
+        title={headerTitle}
+        breadcrumbs={[
+          { to: ROUTES.SUBSCRIPTIONS.LIST, label: t('billing.subscriptions') },
+          { label: subscription?.planName ?? t('common.loading') },
+        ]}
+      />
 
       {/* Current Plan */}
       <section className="space-y-3">

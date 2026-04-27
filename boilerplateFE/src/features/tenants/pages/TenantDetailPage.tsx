@@ -252,10 +252,17 @@ export default function TenantDetailPage() {
     <div className="space-y-6">
       <PageHeader
         title={tenant.name}
-        breadcrumbs={[
-          { to: ROUTES.TENANTS.LIST, label: t('tenants.title') },
-          { label: tenant?.name ?? t('common.loading') },
-        ]}
+        breadcrumbs={
+          selfService
+            ? [
+                { to: ROUTES.DASHBOARD, label: t('nav.dashboard') },
+                { label: tenant?.name ?? t('common.loading') },
+              ]
+            : [
+                { to: ROUTES.TENANTS.LIST, label: t('tenants.title') },
+                { label: tenant?.name ?? t('common.loading') },
+              ]
+        }
       />
 
       {/* Mobile: horizontal scrollable pills */}
