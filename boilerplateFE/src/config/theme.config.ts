@@ -7,7 +7,7 @@ interface ThemeMode {
 }
 
 type ColorScaleShade = '50' | '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900' | '950';
-type ColorScale = Record<ColorScaleShade, string>;
+export type ColorScale = Record<ColorScaleShade, string>;
 
 interface ThemePreset {
   name: ThemePresetName;
