@@ -43,7 +43,8 @@ public sealed class AgentRuntimeBaseTests
             .UseInMemoryDatabase($"runtime-{Guid.NewGuid()}").Options;
         var aiDb = new Starter.Module.AI.Infrastructure.Persistence.AiDbContext(aiDbOpts, cu.Object);
         var agentPerms = Mock.Of<Starter.Application.Common.Interfaces.IAgentPermissionResolver>();
-        return new TestAgentRuntime(factory, dispatcher, aiDb, agentPerms, NullLogger<AgentRuntimeBase>.Instance);
+        var runCtxAccessor = new Starter.Module.AI.Infrastructure.Runtime.CurrentAgentRunContextAccessor();
+        return new TestAgentRuntime(factory, dispatcher, aiDb, agentPerms, runCtxAccessor, NullLogger<AgentRuntimeBase>.Instance);
     }
 
     [Fact]
@@ -275,8 +276,9 @@ internal sealed class TestAgentRuntime : AgentRuntimeBase
         IAgentToolDispatcher dispatcher,
         Starter.Module.AI.Infrastructure.Persistence.AiDbContext aiDb,
         Starter.Application.Common.Interfaces.IAgentPermissionResolver agentPermissions,
+        Starter.Module.AI.Infrastructure.Runtime.CurrentAgentRunContextAccessor runCtxAccessor,
         Microsoft.Extensions.Logging.ILogger<AgentRuntimeBase> logger)
-        : base(factory, dispatcher, aiDb, agentPermissions, logger) { }
+        : base(factory, dispatcher, aiDb, agentPermissions, runCtxAccessor, logger) { }
 }
 
 internal sealed class RecordingSink : IAgentRunSink

@@ -85,7 +85,11 @@ internal sealed class ChatExecutionService(
             AssistantId: state.Assistant.Id,
             TenantId: state.Assistant.TenantId,
             CallerUserId: currentUser.UserId,
-            CallerHasPermission: currentUser.HasPermission);
+            CallerHasPermission: currentUser.HasPermission,
+            // Plan 5d-2: thread display name + conversation id so the runtime can install
+            // ICurrentAgentRunContextAccessor for the agent dispatcher (pending approvals).
+            AssistantName: state.Assistant.Name,
+            ConversationId: state.Conversation.Id);
 
         var sink = new ChatAgentRunSink(context, state.Conversation.Id, state.NextOrder, streamWriter: null);
 
@@ -210,7 +214,11 @@ internal sealed class ChatExecutionService(
             TenantId: state.Assistant.TenantId,
             CallerUserId: currentUser.UserId,
             CallerHasPermission: currentUser.HasPermission,
-            Persona: state.Persona);
+            Persona: state.Persona,
+            // Plan 5d-2: thread display name + conversation id so the runtime can install
+            // ICurrentAgentRunContextAccessor for the agent dispatcher (pending approvals).
+            AssistantName: state.Assistant.Name,
+            ConversationId: state.Conversation.Id);
 
         var channel = Channel.CreateUnbounded<ChatStreamEvent>(new UnboundedChannelOptions
         {
