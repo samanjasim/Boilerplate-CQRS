@@ -67,9 +67,14 @@ internal sealed class OpenAiContentModerator(
         ResolvedSafetyProfile profile,
         int latencyMs)
     {
+        // Always-block categories use a fixed threshold of 0.5 (OpenAI's own flagging
+        // convention). The OpenAI Moderation API never returns an exact 0 score —
+        // every category gets a small non-zero probability — so `s > 0.0` would block
+        // every message regardless of content. 0.5 matches OpenAI's `category.Flagged`
+        // boolean threshold and aligns "always-block" with "OpenAI deemed it flagged."
         foreach (var blocked in profile.BlockedCategories)
-            if (scores.TryGetValue(blocked, out var s) && s > 0.0)
-                return ModerationVerdict.Blocked(scores, $"category:{blocked} (always-block)", latencyMs);
+            if (scores.TryGetValue(blocked, out var s) && s >= 0.5)
+                return ModerationVerdict.Blocked(scores, $"category:{blocked} score:{s:F3}>=0.5 (always-block)", latencyMs);
 
         foreach (var (category, threshold) in profile.CategoryThresholds)
             if (scores.TryGetValue(category, out var s) && s >= threshold)
