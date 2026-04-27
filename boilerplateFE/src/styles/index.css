@@ -364,6 +364,99 @@ button { font-family: inherit; }
     background-color: hsl(var(--card) / 0.85);
     @apply backdrop-blur-xl;
   }
+
+  /* ── J4 Spectrum utilities ──
+   * Apply via className. Recipes use the J4 tokens defined in :root and .dark above,
+   * so they automatically follow the active preset and theme mode.
+   */
+
+  /* Full aurora canvas — for landing/marketing/hero surfaces.
+   * Generates three radial blooms from a positioned ::before. The rule sets
+   * isolation:isolate so the negative-z pseudo-element stacks safely. */
+  .aurora-canvas {
+    position: relative;
+    isolation: isolate;
+  }
+  .aurora-canvas::before {
+    content: '';
+    position: absolute;
+    inset: -100px;
+    background: var(--aurora-1), var(--aurora-2), var(--aurora-3);
+    filter: blur(20px);
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  /* Single corner bloom — for dense list pages where full aurora would compete with data.
+   * Activate by adding data-page-style="dense" on the canvas container. */
+  [data-page-style="dense"].aurora-canvas::before {
+    background: var(--aurora-corner);
+    filter: none;
+  }
+
+  /* 40px grid texture — adds structure on top of aurora.
+   * Masked into a center vignette so it never reaches the data. */
+  .aurora-grid::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(currentColor 1px, transparent 1px),
+      linear-gradient(90deg, currentColor 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.025;
+    mask-image: radial-gradient(ellipse 1200px 600px at center top, black 30%, transparent 80%);
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  /* Spectrum text gradient — one moment of accent text per viewport. */
+  .gradient-text {
+    background: var(--spectrum-text);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Glass surfaces — translucent + backdrop-blur. */
+  .surface-glass {
+    background-color: var(--surface-glass);
+    border: 1px solid var(--border-strong);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  .surface-glass-strong {
+    background-color: var(--surface-glass-strong);
+    border: 1px solid var(--border-strong);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+
+  /* Primary-colored glow halos — for the primary CTA and brand mark. */
+  .glow-primary-sm { box-shadow: var(--glow-primary-sm); }
+  .glow-primary-md { box-shadow: var(--glow-primary-md); }
+  .glow-primary-lg { box-shadow: var(--glow-primary-lg); }
+
+  /* Pulse dot — the live/healthy/online signal.
+   * Uses the existing subtle-pulse keyframe at the bottom of this file. */
+  .pulse-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background: var(--color-accent-500);
+    box-shadow: var(--glow-emerald-sm);
+    animation: subtle-pulse 2.4s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pulse-dot { animation: none; }
+  }
+
+  /* Primary gradient button background — pair with .glow-primary-md (light) or .glow-primary-lg (dark). */
+  .btn-primary-gradient {
+    background: var(--btn-primary-gradient);
+    color: hsl(var(--primary-foreground));
+  }
 }
 
 @keyframes gradient-shift {
