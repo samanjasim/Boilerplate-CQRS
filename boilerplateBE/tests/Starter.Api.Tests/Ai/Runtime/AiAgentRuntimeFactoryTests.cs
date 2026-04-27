@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -45,6 +46,7 @@ public sealed class AiAgentRuntimeFactoryTests
         services.AddSingleton<ISafetyProfileResolver>(Mock.Of<ISafetyProfileResolver>());
         services.AddSingleton<IModerationRefusalProvider>(Mock.Of<IModerationRefusalProvider>());
         services.AddSingleton<IWebhookPublisher>(Mock.Of<IWebhookPublisher>());
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
         services.AddSingleton<CurrentAgentRunContextAccessor>();
 
         var cu = new Mock<ICurrentUserService>();

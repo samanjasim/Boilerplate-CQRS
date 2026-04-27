@@ -126,9 +126,22 @@ public sealed class AIModule : IModule
         services.AddScoped<IContentModerator>(sp =>
         {
             var resolver = sp.GetRequiredService<IModerationKeyResolver>();
-            return string.IsNullOrWhiteSpace(resolver.Resolve())
-                ? new NoOpContentModerator()
-                : ActivatorUtilities.CreateInstance<OpenAiContentModerator>(sp);
+            var keyAvailable = !string.IsNullOrWhiteSpace(resolver.Resolve());
+            if (keyAvailable)
+                return ActivatorUtilities.CreateInstance<OpenAiContentModerator>(sp);
+
+            // Spec §5.1 — without an explicit opt-in, refuse to silently register
+            // NoOpContentModerator. The factory only fires lazily on first resolution
+            // (i.e., on the first chat invocation in a missing-key tenant), so this is
+            // a per-tenant lazy-fail, not a startup-fail. For 5d-2 simplicity that is
+            // acceptable — admins see the failure on first chat rather than at boot.
+            var allowFallback = configuration.GetValue<bool>("Ai:Moderation:AllowUnmoderatedFallback");
+            if (allowFallback)
+                return new NoOpContentModerator();
+
+            throw new InvalidOperationException(
+                "No OpenAI moderation key configured (AI:Moderation:OpenAi:ApiKey or AI:Providers:OpenAI:ApiKey). " +
+                "Set the key, or set Ai:Moderation:AllowUnmoderatedFallback=true to permit unmoderated runs (Standard preset only).");
         });
         services.AddScoped<CurrentAgentRunContextAccessor>();
         services.AddScoped<ICurrentAgentRunContextAccessor>(sp =>

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Starter.Module.AI.Domain.Entities;
+using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Domain.Errors;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Shared.Results;
@@ -17,6 +18,31 @@ internal sealed class PendingApprovalService(
         string toolName, string commandTypeName, string argumentsJson,
         string? reasonHint, TimeSpan expiresIn, CancellationToken ct)
     {
+        // Spec §4.1 — dedup live Pending rows for the same logical request. If an agent
+        // retries (e.g., user re-runs chat after [DangerousAction] but before approval),
+        // we reuse the existing Pending row instead of creating a duplicate. The DB-level
+        // partial unique index is the hard rail; this query is the friendly path. Note
+        // that we deliberately use IgnoreQueryFilters here — the dispatcher passes a
+        // tenantId that already constrains the result, and we want this to work even
+        // when called from background contexts that don't have a tenant ambient.
+        var normalizedArgs = string.IsNullOrWhiteSpace(argumentsJson) ? "{}" : argumentsJson;
+        var existing = await db.AiPendingApprovals
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(p =>
+                p.Status == PendingApprovalStatus.Pending &&
+                p.AssistantId == assistantId &&
+                p.ConversationId == conversationId &&
+                p.AgentTaskId == agentTaskId &&
+                p.ToolName == toolName.Trim() &&
+                p.ArgumentsJson == normalizedArgs, ct);
+        if (existing is not null)
+        {
+            logger.LogInformation(
+                "Reusing existing Pending approval {ApprovalId} for assistant {AssistantId} tool {Tool} (dedup).",
+                existing.Id, assistantId, toolName);
+            return existing;
+        }
+
         var entity = AiPendingApproval.Create(
             tenantId: tenantId,
             assistantId: assistantId,

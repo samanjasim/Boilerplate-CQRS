@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Starter.Abstractions.Ai;
 using Starter.Abstractions.Capabilities;
@@ -32,11 +33,16 @@ internal sealed class ContentModerationEnforcingAgentRuntime(
     IModerationRefusalProvider refusals,
     AiDbContext db,
     IWebhookPublisher webhooks,
+    IConfiguration configuration,
     ILogger<ContentModerationEnforcingAgentRuntime> logger) : IAiAgentRuntime
 {
     public async Task<AgentRunResult> RunAsync(
         AgentRunContext ctx, IAgentRunSink sink, CancellationToken ct = default)
     {
+        // Spec §5.1 — when set, write Allowed events too (regulated-industry full-audit
+        // tenants). Outcome metrics fire regardless; only DB row creation is gated.
+        var logAllOutcomes = configuration.GetValue<bool>("Ai:Moderation:LogAllOutcomes");
+
         if (ctx.AssistantId is not { } assistantId || ctx.TenantId is not { } tenantId)
             return await inner.RunAsync(ctx, sink, ct);
 
@@ -80,6 +86,9 @@ internal sealed class ContentModerationEnforcingAgentRuntime(
                 assistant, profile, ModerationStage.Input, inputVerdict, ctx,
                 moderationEvents, innerInputTokens: 0, innerOutputTokens: 0);
 
+        if (logAllOutcomes && inputVerdict.Outcome == ModerationOutcome.Allowed)
+            moderationEvents.Add(BuildAllowedEvent(assistant, profile, ModerationStage.Input, inputVerdict));
+
         // 2. Choose sink wrapper based on preset (Standard streams live; safe presets buffer)
         var bufferingSink = profile.Preset == SafetyPreset.Standard
             ? null
@@ -109,6 +118,9 @@ internal sealed class ContentModerationEnforcingAgentRuntime(
                 moderationEvents,
                 innerInputTokens: innerResult.TotalInputTokens,
                 innerOutputTokens: innerResult.TotalOutputTokens);
+
+        if (logAllOutcomes && outputVerdict.Outcome == ModerationOutcome.Allowed)
+            moderationEvents.Add(BuildAllowedEvent(assistant, profile, ModerationStage.Output, outputVerdict));
 
         // 4. PII redaction (ProfessionalModerated). The redactor is a no-op when
         // profile.RedactPii is false, so this is safe to call on every preset.
@@ -238,4 +250,21 @@ internal sealed class ContentModerationEnforcingAgentRuntime(
             TerminationReason: $"moderation: {verdict.BlockedReason ?? "blocked"}",
             ModerationEvents: moderationEvents);
     }
+
+    private static AiModerationEvent BuildAllowedEvent(
+        AiAssistant assistant, ResolvedSafetyProfile profile,
+        ModerationStage stage, ModerationVerdict verdict) =>
+        AiModerationEvent.Create(
+            tenantId: assistant.TenantId,
+            assistantId: assistant.Id,
+            agentPrincipalId: null,
+            conversationId: null,
+            agentTaskId: null,
+            messageId: null,
+            stage: stage,
+            preset: profile.Preset,
+            outcome: ModerationOutcome.Allowed,
+            categoriesJson: JsonSerializer.Serialize(verdict.Categories),
+            provider: profile.Provider,
+            latencyMs: verdict.LatencyMs);
 }

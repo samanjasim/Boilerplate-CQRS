@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Starter.Abstractions.Ai;
@@ -94,7 +95,17 @@ public sealed class ContentModerationEnforcingAgentRuntimeTests
             TenantId: a.TenantId);
     }
 
-    private static ContentModerationEnforcingAgentRuntime Wire(AiDbContext db, IAiAgentRuntime inner, IContentModerator moderator)
+    private static IConfiguration BuildConfig(bool logAllOutcomes = false) =>
+        new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Ai:Moderation:LogAllOutcomes"] = logAllOutcomes ? "true" : "false"
+            })
+            .Build();
+
+    private static ContentModerationEnforcingAgentRuntime Wire(
+        AiDbContext db, IAiAgentRuntime inner, IContentModerator moderator,
+        IConfiguration? configuration = null)
     {
         var profileResolver = new Mock<ISafetyProfileResolver>();
         profileResolver.Setup(r => r.ResolveAsync(It.IsAny<Guid?>(), It.IsAny<AiAssistant>(), It.IsAny<SafetyPreset?>(),
@@ -113,6 +124,7 @@ public sealed class ContentModerationEnforcingAgentRuntimeTests
         return new ContentModerationEnforcingAgentRuntime(
             inner, moderator, new FakeRedactor(), profileResolver.Object,
             new FakeRefusals(), db, Mock.Of<IWebhookPublisher>(),
+            configuration ?? BuildConfig(),
             NullLogger<ContentModerationEnforcingAgentRuntime>.Instance);
     }
 
@@ -211,5 +223,43 @@ public sealed class ContentModerationEnforcingAgentRuntimeTests
 
         result.Status.Should().Be(AgentRunStatus.Completed);
         inner.Called.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task LogAllOutcomes_True_Emits_Allowed_Events_For_Both_Stages()
+    {
+        // Spec §5.1 — when Ai:Moderation:LogAllOutcomes=true, full-audit tenants get
+        // an AiModerationEvent row for Allowed outcomes too (not just Blocked/Redacted).
+        var (db, a) = Seed();
+        var inner = new FakeRuntime();
+        var moderator = new FakeModerator(); // Allowed by default
+        var rt = Wire(db, inner, moderator, BuildConfig(logAllOutcomes: true));
+
+        var sink = new Mock<IAgentRunSink>();
+        var result = await rt.RunAsync(Ctx(a, SafetyPreset.Standard), sink.Object, default);
+
+        result.Status.Should().Be(AgentRunStatus.Completed);
+        result.ModerationEvents.Should().NotBeNull();
+        result.ModerationEvents!.Should().HaveCount(2);
+        result.ModerationEvents.Should().Contain(e =>
+            e.Stage == ModerationStage.Input && e.Outcome == ModerationOutcome.Allowed);
+        result.ModerationEvents.Should().Contain(e =>
+            e.Stage == ModerationStage.Output && e.Outcome == ModerationOutcome.Allowed);
+    }
+
+    [Fact]
+    public async Task LogAllOutcomes_False_Default_Does_Not_Emit_Allowed_Events()
+    {
+        var (db, a) = Seed();
+        var inner = new FakeRuntime();
+        var moderator = new FakeModerator(); // Allowed by default
+        var rt = Wire(db, inner, moderator); // default config: LogAllOutcomes=false
+
+        var sink = new Mock<IAgentRunSink>();
+        var result = await rt.RunAsync(Ctx(a, SafetyPreset.Standard), sink.Object, default);
+
+        result.Status.Should().Be(AgentRunStatus.Completed);
+        // No moderation events because both scans returned Allowed and the flag is off.
+        result.ModerationEvents.Should().BeNull();
     }
 }

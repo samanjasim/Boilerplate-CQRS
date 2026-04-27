@@ -75,4 +75,78 @@ public sealed class PendingApprovalServiceTests
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("PendingApproval.DenyReasonRequired");
     }
+
+    [Fact]
+    public async Task CreateAsync_Returns_Existing_Pending_Row_For_Same_Tool_Args()
+    {
+        // Spec §4.1 — a retry of the same agent+tool+args while a Pending row already
+        // exists must reuse the row, not create a duplicate. Otherwise the approver
+        // inbox bloats and approving one row leaves siblings dangling.
+        var (db, svc) = Make();
+        var a = MakeAssistant();
+        var assistantId = a.Id;
+        var conversationId = Guid.NewGuid();
+        var principalId = Guid.NewGuid();
+
+        var first = await svc.CreateAsync(
+            a.TenantId, assistantId, a.Name, principalId,
+            conversationId: conversationId, agentTaskId: null, requestingUserId: Guid.NewGuid(),
+            toolName: "DeleteAllUsers",
+            commandTypeName: "X.Y, X",
+            argumentsJson: "{\"scope\":\"all\"}",
+            reasonHint: null,
+            expiresIn: TimeSpan.FromHours(24),
+            ct: default);
+
+        // Same assistant + conv + tool + args — should dedup to the existing row.
+        var second = await svc.CreateAsync(
+            a.TenantId, assistantId, a.Name, principalId,
+            conversationId: conversationId, agentTaskId: null, requestingUserId: Guid.NewGuid(),
+            toolName: "DeleteAllUsers",
+            commandTypeName: "X.Y, X",
+            argumentsJson: "{\"scope\":\"all\"}",
+            reasonHint: "retry",
+            expiresIn: TimeSpan.FromHours(24),
+            ct: default);
+
+        second.Id.Should().Be(first.Id);
+        var rows = await db.AiPendingApprovals.CountAsync();
+        rows.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task CreateAsync_Different_Args_Creates_New_Row()
+    {
+        // Sanity: the dedup is keyed on (assistant, conv, task, tool, args). Different
+        // args ⇒ different request ⇒ new row.
+        var (db, svc) = Make();
+        var a = MakeAssistant();
+        var assistantId = a.Id;
+        var conversationId = Guid.NewGuid();
+        var principalId = Guid.NewGuid();
+
+        var first = await svc.CreateAsync(
+            a.TenantId, assistantId, a.Name, principalId,
+            conversationId: conversationId, agentTaskId: null, requestingUserId: Guid.NewGuid(),
+            toolName: "DeleteUser",
+            commandTypeName: "X.Y, X",
+            argumentsJson: "{\"id\":\"alice\"}",
+            reasonHint: null,
+            expiresIn: TimeSpan.FromHours(24),
+            ct: default);
+
+        var second = await svc.CreateAsync(
+            a.TenantId, assistantId, a.Name, principalId,
+            conversationId: conversationId, agentTaskId: null, requestingUserId: Guid.NewGuid(),
+            toolName: "DeleteUser",
+            commandTypeName: "X.Y, X",
+            argumentsJson: "{\"id\":\"bob\"}",
+            reasonHint: null,
+            expiresIn: TimeSpan.FromHours(24),
+            ct: default);
+
+        second.Id.Should().NotBe(first.Id);
+        var rows = await db.AiPendingApprovals.CountAsync();
+        rows.Should().Be(2);
+    }
 }

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Starter.Abstractions.Capabilities;
@@ -44,6 +45,7 @@ internal sealed class AiAgentRuntimeFactory(IServiceProvider services) : IAiAgen
             services.GetRequiredService<IModerationRefusalProvider>(),
             services.GetRequiredService<AiDbContext>(),
             services.GetRequiredService<IWebhookPublisher>(),
+            services.GetRequiredService<IConfiguration>(),
             services.GetRequiredService<ILogger<ContentModerationEnforcingAgentRuntime>>());
     }
 }

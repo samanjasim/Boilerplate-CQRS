@@ -38,5 +38,18 @@ internal sealed class AiPendingApprovalConfiguration : IEntityTypeConfiguration<
         b.HasIndex(x => new { x.RequestingUserId, x.Status })
             .HasDatabaseName("ix_ai_pending_approvals_requesting_user_status")
             .HasFilter("requesting_user_id IS NOT NULL");
+
+        // Spec §4.1 — partial unique index preventing duplicate Pending rows for the
+        // same logical request. PostgreSQL treats NULLs as distinct, so two rows with
+        // matching (assistant, NULL conv, NULL task, tool, args) would not collide on
+        // the index alone. The dedup is therefore enforced both here (as a hard rail
+        // for the (conv non-null) and (task non-null) paths) AND in
+        // PendingApprovalService.CreateAsync via an explicit pre-query lookup. This
+        // belt-and-suspenders protects against the agent retry loop creating duplicate
+        // Pending rows for the same tool + args while a human is still deciding.
+        b.HasIndex(x => new { x.AssistantId, x.ConversationId, x.AgentTaskId, x.ToolName, x.ArgumentsJson })
+            .HasDatabaseName("ux_ai_pending_approvals_active_request")
+            .HasFilter("status = 0")
+            .IsUnique();
     }
 }

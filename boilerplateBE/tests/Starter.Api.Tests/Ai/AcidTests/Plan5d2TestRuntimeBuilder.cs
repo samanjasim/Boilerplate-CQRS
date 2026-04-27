@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Starter.Abstractions.Ai;
@@ -69,6 +70,7 @@ internal static class Plan5d2TestRuntimeBuilder
             refusals: new StubRefusals(),
             db: db,
             webhooks: Mock.Of<IWebhookPublisher>(),
+            configuration: new ConfigurationBuilder().Build(),
             logger: NullLogger<ContentModerationEnforcingAgentRuntime>.Instance);
     }
 
