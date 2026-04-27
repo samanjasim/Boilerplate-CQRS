@@ -4,6 +4,7 @@ import { TypographySection } from '../components/sections/TypographySection';
 import { ButtonsSection } from '../components/sections/ButtonsSection';
 import { FormsSection } from '../components/sections/FormsSection';
 import { CardsSection } from '../components/sections/CardsSection';
+import { BadgesSection } from '../components/sections/BadgesSection';
 
 const SECTIONS: { id: string; label: string }[] = [
   { id: 'tokens', label: 'Tokens' },
@@ -59,6 +60,7 @@ export default function StyleguidePage() {
             <ButtonsSection />
             <FormsSection />
             <CardsSection />
+            <BadgesSection />
           </div>
         </main>
       </div>
