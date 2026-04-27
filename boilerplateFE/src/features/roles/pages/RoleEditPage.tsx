@@ -13,7 +13,7 @@ import { PageHeader } from '@/components/common';
 import { updateRoleSchema, type UpdateRoleFormData } from '@/lib/validation';
 import { useRole, useUpdateRole, useAllPermissions, useUpdateRolePermissions } from '../api';
 import { PermissionMatrix } from '../components';
-import { usePermissions, useBackNavigation } from '@/hooks';
+import { usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
 import { ROUTES } from '@/config';
 import { toast } from 'sonner';
@@ -31,7 +31,6 @@ export default function RoleEditPage() {
 
   const canUpdate = hasPermission(PERMISSIONS.Roles.Update);
   const canManagePermissions = hasPermission(PERMISSIONS.Roles.ManagePermissions);
-  useBackNavigation(role ? ROUTES.ROLES.getDetail(role.id) : ROUTES.ROLES.LIST, t('roles.backToRoles'));
 
   const [selectedPermissionIds, setSelectedPermissionIds] = useState<Set<string>>(new Set());
 
@@ -119,6 +118,13 @@ export default function RoleEditPage() {
     <div className="space-y-6">
       <PageHeader
         title={`Edit: ${role.name}`}
+        breadcrumbs={[
+          { to: ROUTES.ROLES.LIST, label: t('roles.title') },
+          role
+            ? { to: ROUTES.ROLES.getDetail(role.id), label: role.name }
+            : { label: t('common.loading') },
+          { label: t('roles.edit.title', 'Edit') },
+        ]}
       />
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">

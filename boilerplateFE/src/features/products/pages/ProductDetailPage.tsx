@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Spinner } from '@/components/ui/spinner';
 import { ROUTES } from '@/config';
 import { Slot } from '@/lib/extensions';
-import { useBackNavigation, usePermissions } from '@/hooks';
+import { usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
 import { useAuthStore, selectUser } from '@/stores';
 import { useTenants } from '@/features/tenants/api';
@@ -38,9 +38,6 @@ type FormValues = z.infer<typeof schema>;
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { t } = useTranslation();
-  useBackNavigation(ROUTES.PRODUCTS.LIST, t('products.title', 'Products'));
-
   const { data: product, isLoading } = useProduct(id!);
 
   if (isLoading || !product) {
@@ -122,6 +119,10 @@ function ProductDetailForm({ product }: { product: Product }) {
       <PageHeader
         title={product.name}
         subtitle={product.slug}
+        breadcrumbs={[
+          { to: ROUTES.PRODUCTS.LIST, label: t('products.title', 'Products') },
+          { label: product?.name ?? t('common.loading') },
+        ]}
         actions={
           <div className="flex items-center gap-2">
             <Badge

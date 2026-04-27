@@ -10,7 +10,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Workflow as WorkflowIcon } from 'lucide-react';
 import { PageHeader } from '@/components/common';
-import { useBackNavigation, usePermissions } from '@/hooks';
+import { usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
 import { ROUTES } from '@/config';
 import { useWorkflowDefinition, useCloneDefinition, useUpdateDefinition } from '../api';
@@ -19,7 +19,6 @@ import { WorkflowAnalyticsTab } from '../components/analytics/WorkflowAnalyticsT
 export default function WorkflowDefinitionDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
-  useBackNavigation('/workflows/definitions', t('workflow.definitions.title'));
 
   const { data: def, isLoading } = useWorkflowDefinition(id!);
   const { mutate: cloneDefinition, isPending: cloning } = useCloneDefinition();
@@ -166,6 +165,10 @@ export default function WorkflowDefinitionDetailPage() {
     <div className="space-y-6">
       <PageHeader
         title={def.name}
+        breadcrumbs={[
+          { to: '/workflows/definitions', label: t('workflow.definitions.title') },
+          { label: def?.name ?? t('common.loading') },
+        ]}
         actions={
           <div className="flex items-center gap-2">
             {def.isTemplate ? (

@@ -5,7 +5,6 @@ import { Spinner } from '@/components/ui/spinner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PageHeader, ConfirmDialog } from '@/components/common';
-import { useBackNavigation } from '@/hooks';
 import { ROUTES } from '@/config';
 import { useWorkflowDefinition, useUpdateDefinition, useCloneDefinition } from '../api';
 import { DesignerCanvas } from '../components/designer/DesignerCanvas';
@@ -18,8 +17,6 @@ export default function WorkflowDefinitionDesignerPage() {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-
-  useBackNavigation(ROUTES.WORKFLOWS.getDefinitionDetail(id!), t('workflow.definitions.title'));
 
   const { data: def, isLoading } = useWorkflowDefinition(id!);
   const { mutate: updateDefinition, isPending: saving } = useUpdateDefinition();
@@ -116,6 +113,11 @@ export default function WorkflowDefinitionDesignerPage() {
     <div className="flex flex-col h-[calc(100vh-5rem)]">
       <PageHeader
         title={`${def.name} — ${t('workflow.designer.title')}`}
+        breadcrumbs={[
+          { to: '/workflows/definitions', label: t('workflow.definitions.title') },
+          { to: ROUTES.WORKFLOWS.getDefinitionDetail(id!), label: def?.name ?? t('common.loading') },
+          { label: t('workflow.definitions.designer.title', 'Designer') },
+        ]}
       />
       {readOnly && (
         <Card className="m-4">

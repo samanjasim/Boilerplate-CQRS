@@ -8,7 +8,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { PageHeader, InfoField, ConfirmDialog } from '@/components/common';
 import { useRole, useDeleteRole } from '../api';
-import { usePermissions, useBackNavigation } from '@/hooks';
+import { usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
 import { ROUTES } from '@/config';
 import { formatDate } from '@/utils/format';
@@ -20,7 +20,6 @@ export default function RoleDetailPage() {
   const { data: role, isLoading } = useRole(id!);
   const { mutate: deleteRole, isPending: isDeleting } = useDeleteRole();
   const { hasPermission } = usePermissions();
-  useBackNavigation(ROUTES.ROLES.LIST, t('roles.backToRoles'));
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const canUpdate = hasPermission(PERMISSIONS.Roles.Update);
@@ -62,6 +61,10 @@ export default function RoleDetailPage() {
     <div className="space-y-6">
       <PageHeader
         title={role.name}
+        breadcrumbs={[
+          { to: ROUTES.ROLES.LIST, label: t('roles.title') },
+          { label: role?.name ?? t('common.loading') },
+        ]}
         actions={
           !role.isSystemRole ? (
             <div className="flex items-center gap-2">

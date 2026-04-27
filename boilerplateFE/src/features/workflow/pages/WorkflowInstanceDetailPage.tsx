@@ -9,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import { PageHeader, ConfirmDialog, EmptyState } from '@/components/common';
 import { Slot } from '@/lib/extensions';
-import { useBackNavigation, usePermissions } from '@/hooks';
+import { usePermissions } from '@/hooks';
 import { useAuthStore, selectUser } from '@/stores';
 import { PERMISSIONS } from '@/constants';
 import { STATUS_BADGE_VARIANT } from '@/constants/status';
@@ -33,8 +33,6 @@ export default function WorkflowInstanceDetailPage() {
   const location = useLocation();
   const { hasPermission } = usePermissions();
   const user = useAuthStore(selectUser);
-
-  useBackNavigation(ROUTES.WORKFLOWS.INSTANCES, t('workflow.instances.title'));
 
   const stateInstance = (location.state as { instance?: WorkflowInstanceSummary })?.instance;
   const { data: fetchedInstance } = useWorkflowInstanceById(stateInstance ? undefined : instanceId);
@@ -75,7 +73,13 @@ export default function WorkflowInstanceDetailPage() {
     const isAccessDenied = historyStatusCode === 403;
     return (
       <div className="space-y-6">
-        <PageHeader title={t('workflow.detail.title')} />
+        <PageHeader
+          title={t('workflow.detail.title')}
+          breadcrumbs={[
+            { to: ROUTES.WORKFLOWS.INSTANCES, label: t('workflow.instances.title') },
+            { label: t('workflow.detail.title') },
+          ]}
+        />
         <Card>
           <CardContent className="py-6">
             <EmptyState
@@ -92,7 +96,13 @@ export default function WorkflowInstanceDetailPage() {
   if (!instance) {
     return (
       <div className="space-y-6">
-        <PageHeader title={t('workflow.detail.title')} />
+        <PageHeader
+          title={t('workflow.detail.title')}
+          breadcrumbs={[
+            { to: ROUTES.WORKFLOWS.INSTANCES, label: t('workflow.instances.title') },
+            { label: t('common.loading') },
+          ]}
+        />
 
         {historyLoading ? (
           <div className="flex justify-center py-12">
@@ -134,6 +144,10 @@ export default function WorkflowInstanceDetailPage() {
     <div className="space-y-6">
       <PageHeader
         title={instance.definitionName}
+        breadcrumbs={[
+          { to: ROUTES.WORKFLOWS.INSTANCES, label: t('workflow.instances.title') },
+          { label: instance?.definitionName ?? t('common.loading') },
+        ]}
         actions={
           <div className="flex items-center gap-2">
             {canResubmit && (
