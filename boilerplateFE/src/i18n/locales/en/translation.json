@@ -161,6 +161,12 @@
     "toggle": {
       "open": "Open navigation",
       "close": "Close navigation"
+    },
+    "more": {
+      "label": "More",
+      "inMore": "In More · {{group}}",
+      "panelTitle": "More groups",
+      "close": "Close more groups"
     }
   },
   "header": {

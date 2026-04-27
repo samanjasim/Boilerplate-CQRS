@@ -76,6 +76,7 @@ export function Sidebar() {
 
   return (
     <aside
+      data-shell="sidebar"
       className={cn(
         // floating geometry — 14px margin, no longer edge-to-edge
         'fixed top-3.5 bottom-3.5 z-40 flex flex-col rounded-[18px]',

@@ -146,7 +146,13 @@
     "deliveryLog": "Delivery Log",
     "collapse": "کچکردن",
     "taskInbox": "سندووقی ئەرکەکان",
-    "workflowDefinitions": "پێناسەکان"
+    "workflowDefinitions": "پێناسەکان",
+    "more": {
+      "label": "زیاتر",
+      "inMore": "لە زیاتر · {{group}}",
+      "panelTitle": "گرووپە زیادەکان",
+      "close": "داخستنی گرووپە زیادەکان"
+    }
   },
   "header": {
     "logout": "دەرچوون",

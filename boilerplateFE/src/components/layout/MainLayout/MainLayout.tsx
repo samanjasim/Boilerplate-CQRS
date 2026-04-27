@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { selectSidebarCollapsed, selectSidebarOpen, useUIStore } from '@/stores';
 
 import { Header } from './Header';
+import { MorePanel } from './MorePanel';
 import { Sidebar } from './Sidebar';
 
 export function MainLayout() {
@@ -41,6 +42,7 @@ export function MainLayout() {
     >
       <ScrollToTopOnNavigate />
       <Sidebar />
+      <MorePanel />
       <Header />
       {/* Mobile drawer backdrop */}
       {sidebarOpen && (

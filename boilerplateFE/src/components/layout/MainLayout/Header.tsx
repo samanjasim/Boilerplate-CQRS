@@ -38,6 +38,7 @@ export function Header() {
 
   return (
     <header
+      data-shell="header"
       className={cn(
         'fixed top-3.5 z-30 h-12 flex items-center gap-2 rounded-2xl px-3',
         'surface-floating',

@@ -146,7 +146,13 @@
     "deliveryLog": "سجل التسليم",
     "collapse": "طي",
     "taskInbox": "صندوق المهام",
-    "workflowDefinitions": "التعريفات"
+    "workflowDefinitions": "التعريفات",
+    "more": {
+      "label": "المزيد",
+      "inMore": "في المزيد · {{group}}",
+      "panelTitle": "مجموعات إضافية",
+      "close": "إغلاق المجموعات الإضافية"
+    }
   },
   "header": {
     "logout": "تسجيل الخروج",
