@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight, Github, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { HeroLinesBackground } from './HeroLinesBackground';
+import { HeroLinesBackground } from '@/components/common/backgrounds';
 import { ScrambleText } from './ScrambleText';
 
 export function HeroSection() {

@@ -1,6 +1,6 @@
 import { Server, Smartphone, Monitor, Layers } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { BlueprintBackground } from './BlueprintBackground';
+import { BlueprintBackground } from '@/components/common/backgrounds';
 import { useReveal } from './useReveal';
 
 const CELLS: { label: string; name: string; meta: string; icon: LucideIcon; accent: string }[] = [

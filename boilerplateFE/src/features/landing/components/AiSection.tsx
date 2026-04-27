@@ -28,7 +28,7 @@ export function AiSection() {
           </h2>
           <p className="text-[15px] leading-[1.6] max-w-[640px] mb-12 text-muted-foreground">
             Multi-tenant agents, a production RAG pipeline with offline eval, automatic tool discovery
-            via <code className="font-mono text-[13px] px-1 py-0.5 rounded bg-[color-mix(in_srgb,var(--color-primary)_8%,transparent)] text-[var(--color-primary-700)] dark:text-[var(--color-primary-300)]">[AiTool]</code>,
+            via <code className="font-mono text-[13px] px-1 py-0.5 rounded bg-[color-mix(in_srgb,var(--color-primary)_8%,transparent)] text-[var(--tinted-fg)]">[AiTool]</code>,
             and persona-aware safety. Ship a Tutor agent, a Brand Content agent, or your own day one.
           </p>
         </div>
@@ -145,7 +145,7 @@ function ToolsPreview() {
       <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-primary mb-1">Auto-discovered</div>
       <h3 className="text-[15px] font-semibold text-foreground mb-1 font-display tracking-tight">Tools</h3>
       <p className="text-[11px] text-muted-foreground leading-[1.5] mb-4">
-        Drop a class with <code className="font-mono text-[10px] px-1 rounded bg-[color-mix(in_srgb,var(--color-primary)_8%,transparent)] text-[var(--color-primary-700)] dark:text-[var(--color-primary-300)]">[AiTool]</code> and it's available to every agent.
+        Drop a class with <code className="font-mono text-[10px] px-1 rounded bg-[color-mix(in_srgb,var(--color-primary)_8%,transparent)] text-[var(--tinted-fg)]">[AiTool]</code> and it's available to every agent.
       </p>
       <div className="space-y-1.5">
         {tools.map((t) => (
@@ -185,7 +185,7 @@ function PersonasPreview() {
 
   const TONE: Record<'copper' | 'emerald' | 'violet', string> = {
     copper:
-      'bg-[color-mix(in_srgb,var(--color-primary)_8%,transparent)] text-[var(--color-primary-700)] dark:text-[var(--color-primary-300)] border-[color-mix(in_srgb,var(--color-primary)_22%,transparent)]',
+      'bg-[color-mix(in_srgb,var(--color-primary)_8%,transparent)] text-[var(--tinted-fg)] border-[color-mix(in_srgb,var(--color-primary)_22%,transparent)]',
     emerald:
       'bg-[color-mix(in_srgb,var(--color-accent-500)_8%,transparent)] text-[var(--color-accent-700)] dark:text-[var(--color-accent-300)] border-[color-mix(in_srgb,var(--color-accent-500)_22%,transparent)]',
     violet:

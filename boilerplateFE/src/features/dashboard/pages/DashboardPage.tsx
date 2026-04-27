@@ -214,7 +214,7 @@ export default function DashboardPage() {
           <div>
             <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary mb-2 inline-flex items-center gap-2">
               <span className="pulse-dot" />
-              Live · {isTenantUser ? user?.tenantName ?? 'Workspace' : 'Platform'}
+              {t('dashboard.live')} · {isTenantUser ? user?.tenantName ?? t('dashboard.workspace') : t('dashboard.platform')}
             </div>
             <h1 className="text-[32px] sm:text-[40px] font-extralight tracking-[-0.03em] leading-[1.1] font-display text-foreground">
               {t('dashboard.welcomeBack', { name: user?.firstName })}
@@ -244,7 +244,7 @@ export default function DashboardPage() {
             icon={Users}
             label={isTenantUser ? t('dashboard.myUsers') : t('dashboard.totalUsers')}
             value={users.length}
-            delta="+8 (30d)"
+            delta={t('dashboard.delta30d')}
             tone="copper"
             spark="M0,28 L15,24 L30,20 L45,22 L60,16 L75,12 L90,10 L100,4"
           />
@@ -254,7 +254,7 @@ export default function DashboardPage() {
             icon={Shield}
             label={t('dashboard.activeRoles')}
             value={activeRoles.length}
-            delta={`${activeRoles.length} of ${roles.length} enabled`}
+            delta={t('dashboard.rolesEnabled', { active: activeRoles.length, total: roles.length })}
             tone="emerald"
             spark="M0,26 L15,22 L30,24 L45,18 L60,14 L75,16 L90,8 L100,6"
           />
@@ -264,7 +264,7 @@ export default function DashboardPage() {
             icon={TrendingUp}
             label={t('dashboard.totalRoles')}
             value={roles.length}
-            delta="0 added (7d)"
+            delta={t('dashboard.delta7d')}
             tone="violet"
             spark="M0,28 L20,28 L40,18 L60,18 L80,8 L100,8"
           />
@@ -273,7 +273,7 @@ export default function DashboardPage() {
           icon={Blocks}
           label={isTenantUser ? t('dashboard.myOrganization') : t('dashboard.platformStatus')}
           value={t('common.active')}
-          delta="all systems"
+          delta={t('dashboard.allSystems')}
           tone="amber"
         />
         <Slot id="dashboard-cards" props={{}} />
@@ -327,7 +327,7 @@ export default function DashboardPage() {
                       <div className="flex items-center gap-2 shrink-0">
                         {i === 0 && (
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-[0.1em] bg-[color-mix(in_srgb,var(--color-accent-500)_10%,transparent)] text-[var(--color-accent-700)] dark:text-[var(--color-accent-300)] border border-[color-mix(in_srgb,var(--color-accent-500)_22%,transparent)]">
-                            <span className="h-1 w-1 rounded-full bg-[var(--color-accent-500)]" /> live
+                            <span className="h-1 w-1 rounded-full bg-[var(--color-accent-500)]" /> {t('dashboard.liveBadge')}
                           </span>
                         )}
                         <span className="text-[11px] text-muted-foreground whitespace-nowrap font-mono">
@@ -411,7 +411,7 @@ export default function DashboardPage() {
             title={t('dashboard.usersManagement')}
             description={t('dashboard.usersManagementDesc')}
             count={users.length}
-            countLabel="users"
+            countLabel={t('dashboard.usersLabel')}
             href={ROUTES.USERS.LIST}
           />
           <ActionCard
@@ -421,7 +421,7 @@ export default function DashboardPage() {
             title={t('dashboard.rolesPermissions')}
             description={t('dashboard.rolesPermissionsDesc')}
             count={roles.length}
-            countLabel="roles"
+            countLabel={t('dashboard.rolesLabel')}
             href={ROUTES.ROLES.LIST}
           />
           <ActionCard
@@ -430,8 +430,8 @@ export default function DashboardPage() {
             disabled={!canViewAuditLogs}
             title={t('dashboard.systemSettings')}
             description={t('dashboard.systemSettingsDesc')}
-            count={auditLogs.length > 0 ? '∞' : 0}
-            countLabel="events"
+            count={auditLogs.length > 0 ? t('dashboard.infiniteEvents') : 0}
+            countLabel={t('dashboard.eventsLabel')}
             href={ROUTES.AUDIT_LOGS.LIST}
           />
         </div>

@@ -66,11 +66,11 @@ export function FooterCta() {
           </h3>
           <p className="text-[15px] mb-8 text-muted-foreground max-w-[520px] mx-auto leading-[1.65]">
             Clone, run{' '}
-            <code className="font-mono text-[13px] px-1.5 py-0.5 rounded bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)] text-[var(--color-primary-700)] dark:text-[var(--color-primary-300)]">
+            <code className="font-mono text-[13px] px-1.5 py-0.5 rounded bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)] text-[var(--tinted-fg)]">
               docker compose up
             </code>
             , log in as{' '}
-            <code className="font-mono text-[13px] px-1.5 py-0.5 rounded bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)] text-[var(--color-primary-700)] dark:text-[var(--color-primary-300)]">
+            <code className="font-mono text-[13px] px-1.5 py-0.5 rounded bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)] text-[var(--tinted-fg)]">
               superadmin@starter.com
             </code>{' '}
             in 60 seconds.

@@ -140,7 +140,7 @@ export function FeatureGrid() {
                   {f.tags.map((t) => (
                     <span
                       key={t}
-                      className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-[color-mix(in_srgb,var(--color-primary)_8%,transparent)] text-[var(--color-primary-700)] dark:text-[var(--color-primary-300)]"
+                      className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-[color-mix(in_srgb,var(--color-primary)_8%,transparent)] text-[var(--tinted-fg)]"
                     >
                       {t}
                     </span>

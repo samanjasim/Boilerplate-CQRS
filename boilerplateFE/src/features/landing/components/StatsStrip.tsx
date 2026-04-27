@@ -46,6 +46,11 @@ function useCountUp(target: number, duration = 1400) {
   const started = useRef(false);
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      setValue(target);
+      started.current = true;
+      return;
+    }
     if (target === 0) {
       setValue(0);
       return;

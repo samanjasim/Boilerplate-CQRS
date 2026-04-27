@@ -173,7 +173,26 @@
     "recentUsers": "Recent Users",
     "viewAll": "View All",
     "noRecentActivity": "No recent activity",
-    "noRecentUsers": "No recent users"
+    "noRecentUsers": "No recent users",
+    "live": "Live",
+    "platform": "Platform",
+    "workspace": "Workspace",
+    "liveBadge": "live",
+    "allSystems": "all systems",
+    "delta30d": "+8 (30d)",
+    "delta7d": "0 added (7d)",
+    "rolesEnabled": "{{active}} of {{total}} enabled",
+    "infiniteEvents": "∞",
+    "usersLabel": "users",
+    "rolesLabel": "roles",
+    "eventsLabel": "events"
+  },
+  "auth_chrome": {
+    "version": "v1.0 · production-grade",
+    "live": "live",
+    "stack": "Multi-tenant CQRS · .NET 10 · React 19",
+    "license": "Apache-2.0",
+    "openSource": "Open source · Production-grade"
   },
   "profile": {
     "title": "My Profile",

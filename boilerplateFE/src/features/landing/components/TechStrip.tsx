@@ -98,7 +98,7 @@ export function TechStrip() {
                   {p.tags.map((t) => (
                     <span
                       key={t}
-                      className="font-mono text-[10px] px-2 py-0.5 rounded bg-[color-mix(in_srgb,var(--color-primary)_8%,transparent)] text-[var(--color-primary-700)] dark:text-[var(--color-primary-300)] border border-[var(--border-strong)]"
+                      className="font-mono text-[10px] px-2 py-0.5 rounded bg-[color-mix(in_srgb,var(--color-primary)_8%,transparent)] text-[var(--tinted-fg)] border border-[var(--border-strong)]"
                     >
                       {t}
                     </span>

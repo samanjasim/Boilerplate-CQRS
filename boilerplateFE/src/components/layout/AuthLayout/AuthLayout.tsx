@@ -1,7 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher, ThemeToggle } from '@/components/common';
-import { HeroLinesBackground } from '@/features/landing/components';
+import { HeroLinesBackground } from '@/components/common/backgrounds';
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || 'Starter';
 
@@ -17,8 +17,8 @@ export function AuthLayout() {
       <header className="relative z-20 flex items-center justify-between px-5 sm:px-7 py-4">
         <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.22em] text-muted-foreground">
           <span className="pulse-dot" />
-          <span className="hidden sm:inline">v1.0 · production-grade</span>
-          <span className="sm:hidden">live</span>
+          <span className="hidden sm:inline">{t('auth_chrome.version')}</span>
+          <span className="sm:hidden">{t('auth_chrome.live')}</span>
         </div>
         <div className="flex items-center gap-1">
           <LanguageSwitcher variant="text" />
@@ -31,6 +31,9 @@ export function AuthLayout() {
         <div className="w-full max-w-md">
           {/* Brand block — animated logo + name */}
           <div className="text-center mb-7 animate-fade-up">
+            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary mb-5">
+              {t('auth_chrome.openSource')}
+            </div>
             <div className="relative mb-5 mx-auto inline-flex">
               {/* Outer pulsing halo ring */}
               <span
@@ -72,11 +75,9 @@ export function AuthLayout() {
 
           {/* Bottom meta */}
           <div className="mt-6 flex items-center justify-center gap-2 text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground/70 animate-fade-up-delay-2">
-            <span>Multi-tenant CQRS</span>
+            <span>{t('auth_chrome.stack')}</span>
             <span className="opacity-50">·</span>
-            <span>.NET 10 · React 19</span>
-            <span className="opacity-50">·</span>
-            <span>Apache-2.0</span>
+            <span>{t('auth_chrome.license')}</span>
           </div>
         </div>
       </main>

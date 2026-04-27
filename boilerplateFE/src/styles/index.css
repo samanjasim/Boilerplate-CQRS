@@ -89,6 +89,11 @@
     --surface-glass: rgba(255,255,255,0.92);
     --surface-glass-strong: rgba(255,255,255,0.96);
     --border-strong: color-mix(in srgb, var(--color-primary-900) 18%, transparent);
+
+    /* Semantic foreground for text on faintly-tinted backgrounds (mono tags, code chips, etc.).
+     * Use in place of `text-[var(--color-primary-700)] dark:text-[var(--color-primary-300)]` —
+     * lets the preset govern dark-mode behavior automatically per the CLAUDE.md theme rules. */
+    --tinted-fg: var(--color-primary-700);
   }
 
   .dark {
@@ -163,6 +168,8 @@
     --surface-glass: rgba(28,24,21,0.88);
     --surface-glass-strong: rgba(28,24,21,0.94);
     --border-strong: rgba(255,255,255,0.14);
+
+    --tinted-fg: var(--color-primary-300);
   }
 }
 
@@ -385,6 +392,12 @@ button { font-family: inherit; }
     filter: blur(20px);
     pointer-events: none;
     z-index: -1;
+    /* Slow drift consolidated here — was previously duplicated below. */
+    animation: aurora-drift 22s ease-in-out infinite alternate;
+    transform-origin: 30% 30%;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .aurora-canvas::before { animation: none; }
   }
 
   /* Single corner bloom — for dense list pages where full aurora would compete with data.
@@ -458,19 +471,10 @@ button { font-family: inherit; }
     color: hsl(var(--primary-foreground));
   }
 
-  /* ── J4 motion: aurora drifts slowly to feel alive ──
-   * Two layers (::before primary, ::after counter-drift) for visible mesh motion.
-   * Disabled via prefers-reduced-motion. */
-  .aurora-canvas::before {
-    animation: aurora-drift 22s ease-in-out infinite alternate;
-    transform-origin: 30% 30%;
-  }
-  .aurora-canvas {
-    /* Counter-rotating second aurora layer for richer mesh motion */
-    position: relative;
-  }
+  /* Counter-rotating second aurora layer for richer mesh motion.
+   * Rendered as a real <div className="aurora-layer-2" /> inside .aurora-canvas
+   * (NOT a pseudo-element — `content` doesn't apply to real elements). */
   .aurora-canvas > .aurora-layer-2 {
-    content: '';
     position: absolute;
     inset: -120px;
     background: var(--aurora-2), var(--aurora-3);
@@ -482,7 +486,6 @@ button { font-family: inherit; }
     transform-origin: 70% 70%;
   }
   @media (prefers-reduced-motion: reduce) {
-    .aurora-canvas::before,
     .aurora-canvas > .aurora-layer-2 { animation: none; }
   }
 
