@@ -94,6 +94,10 @@
      * Use in place of `text-[var(--color-primary-700)] dark:text-[var(--color-primary-300)]` —
      * lets the preset govern dark-mode behavior automatically per the CLAUDE.md theme rules. */
     --tinted-fg: var(--color-primary-700);
+
+    /* Floating-chrome shadow + inset top highlight (light) */
+    --floating-shadow: 0 8px 28px rgb(0 0 0 / 0.10);
+    --floating-highlight: inset 0 1px 0 rgb(255 255 255 / 0.6);
   }
 
   .dark {
@@ -170,6 +174,10 @@
     --border-strong: rgba(255,255,255,0.14);
 
     --tinted-fg: var(--color-primary-300);
+
+    /* Floating-chrome shadow + inset top highlight (dark) */
+    --floating-shadow: 0 10px 36px rgb(0 0 0 / 0.45);
+    --floating-highlight: inset 0 1px 0 rgb(255 255 255 / 0.06);
   }
 }
 
@@ -403,7 +411,13 @@ button { font-family: inherit; }
   /* Single corner bloom — for dense list pages where full aurora would compete with data.
    * Activate by adding data-page-style="dense" on the canvas container. */
   [data-page-style="dense"].aurora-canvas::before {
-    background: var(--aurora-corner);
+    background:
+      radial-gradient(ellipse 60% 80% at 80% 10%,
+        color-mix(in srgb, hsl(var(--primary)) 18%, transparent),
+        transparent 65%),
+      radial-gradient(ellipse 70% 55% at 12% 90%,
+        color-mix(in srgb, var(--color-violet-500) 13%, transparent),
+        transparent 70%);
     filter: none;
   }
 
@@ -444,6 +458,28 @@ button { font-family: inherit; }
     border: 1px solid var(--border-strong);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
+  }
+
+  /* Floating glass surface — extends surface-glass with shadow + inset highlight.
+   * Use for chrome elements that float over the aurora canvas (sidebar, header). */
+  .surface-floating {
+    background-color: var(--surface-glass);
+    border: 1px solid var(--border-strong);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: var(--floating-shadow), var(--floating-highlight);
+  }
+
+  /* Pill active state — sidebar nav item only. Gradient + halo + inset border.
+   * NOT a replacement for state-active (used by buttons / chips elsewhere). */
+  .pill-active {
+    background: linear-gradient(135deg,
+      color-mix(in srgb, hsl(var(--primary)) 22%, transparent),
+      color-mix(in srgb, hsl(var(--primary)) 10%, transparent));
+    color: hsl(var(--primary));
+    box-shadow:
+      0 0 22px color-mix(in srgb, hsl(var(--primary)) 18%, transparent),
+      inset 0 0 0 1px color-mix(in srgb, hsl(var(--primary)) 30%, transparent);
   }
 
   /* Primary-colored glow halos — for the primary CTA and brand mark. */
