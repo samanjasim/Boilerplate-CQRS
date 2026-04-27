@@ -7,6 +7,7 @@ import { CardsSection } from '../components/sections/CardsSection';
 import { BadgesSection } from '../components/sections/BadgesSection';
 import { TablesSection } from '../components/sections/TablesSection';
 import { DialogsSection } from '../components/sections/DialogsSection';
+import { DropdownsSection } from '../components/sections/DropdownsSection';
 
 const SECTIONS: { id: string; label: string }[] = [
   { id: 'tokens', label: 'Tokens' },
@@ -17,6 +18,7 @@ const SECTIONS: { id: string; label: string }[] = [
   { id: 'badges', label: 'Badges' },
   { id: 'tables', label: 'Tables' },
   { id: 'dialogs', label: 'Dialogs' },
+  { id: 'dropdowns', label: 'Dropdowns' },
 ];
 
 export default function StyleguidePage() {
@@ -66,6 +68,7 @@ export default function StyleguidePage() {
             <BadgesSection />
             <TablesSection />
             <DialogsSection />
+            <DropdownsSection />
           </div>
         </main>
       </div>
