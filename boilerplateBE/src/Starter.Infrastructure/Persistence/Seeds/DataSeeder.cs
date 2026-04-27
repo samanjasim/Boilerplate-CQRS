@@ -424,6 +424,12 @@ public static class DataSeeder
             FeatureFlag.Create("exports.enabled", "Exports Enabled", "Enable data exports", "true", FlagValueType.Boolean, FlagCategory.System, true),
             FeatureFlag.Create("comments.activity_enabled", "Comments & Activity Enabled", "Enable comments and activity timeline on supported entities", "true", FlagValueType.Boolean, FlagCategory.System, true),
             FeatureFlag.Create("workflow.enabled", "Workflow Enabled", "Enable workflow and approvals module", "true", FlagValueType.Boolean, FlagCategory.System, true),
+            // AI agent identity + cost enforcement (Plan 5d-1)
+            FeatureFlag.Create("ai.cost.tenant_monthly_usd", "AI Tenant Monthly USD Cap", "Monthly USD ceiling for AI agent runs per tenant", "0", FlagValueType.Integer, FlagCategory.Ai, true),
+            FeatureFlag.Create("ai.cost.tenant_daily_usd", "AI Tenant Daily USD Cap", "Daily USD ceiling for AI agent runs per tenant", "0", FlagValueType.Integer, FlagCategory.Ai, true),
+            FeatureFlag.Create("ai.agents.max_count", "Max AI Agents", "Maximum number of AI agents per tenant", "0", FlagValueType.Integer, FlagCategory.Ai, true),
+            FeatureFlag.Create("ai.agents.operational_enabled", "Operational AI Agents Enabled", "Allow event-/cron-triggered AI agents (no human caller)", "false", FlagValueType.Boolean, FlagCategory.Ai, true),
+            FeatureFlag.Create("ai.agents.requests_per_minute_default", "Default Agent RPM", "Default per-agent requests-per-minute ceiling", "0", FlagValueType.Integer, FlagCategory.Ai, true),
         };
 
         context.Set<FeatureFlag>().AddRange(flags);

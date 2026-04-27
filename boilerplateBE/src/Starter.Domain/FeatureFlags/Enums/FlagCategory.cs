@@ -8,5 +8,6 @@ public enum FlagCategory
     ApiKeys = 3,
     Billing = 4,
     System = 5,
-    Custom = 6
+    Custom = 6,
+    Ai = 7
 }
