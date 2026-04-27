@@ -9,11 +9,12 @@ export default function LoginPage() {
   return (
     <div>
       <div className="mb-7">
-        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary mb-2">
+        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary mb-2 inline-flex items-center gap-2">
+          <span className="pulse-dot" />
           {t('auth.signIn')}
         </div>
-        <h2 className="text-[26px] font-light tracking-[-0.025em] leading-[1.12] font-display text-foreground">
-          {t('auth.welcomeBack')}
+        <h2 className="text-[28px] font-light tracking-[-0.025em] leading-[1.12] font-display text-foreground">
+          <span className="gradient-text font-medium">{t('auth.welcomeBack')}</span>
         </h2>
         <p className="mt-2 text-sm text-muted-foreground leading-[1.55]">{t('auth.signInContinue')}</p>
       </div>
