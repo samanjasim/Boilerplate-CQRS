@@ -136,6 +136,17 @@ internal sealed class AiAssistantConfiguration : IEntityTypeConfiguration<AiAssi
             .HasColumnName("template_source_version")
             .HasMaxLength(32);
 
+        builder.Property(e => e.MonthlyCostCapUsd)
+            .HasColumnName("monthly_cost_cap_usd")
+            .HasColumnType("decimal(18,4)");
+
+        builder.Property(e => e.DailyCostCapUsd)
+            .HasColumnName("daily_cost_cap_usd")
+            .HasColumnType("decimal(18,4)");
+
+        builder.Property(e => e.RequestsPerMinute)
+            .HasColumnName("requests_per_minute");
+
         builder.Property(e => e.CreatedAt)
             .HasColumnName("created_at")
             .IsRequired();
