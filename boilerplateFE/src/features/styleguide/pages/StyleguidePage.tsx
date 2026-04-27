@@ -6,6 +6,7 @@ import { FormsSection } from '../components/sections/FormsSection';
 import { CardsSection } from '../components/sections/CardsSection';
 import { BadgesSection } from '../components/sections/BadgesSection';
 import { TablesSection } from '../components/sections/TablesSection';
+import { DialogsSection } from '../components/sections/DialogsSection';
 
 const SECTIONS: { id: string; label: string }[] = [
   { id: 'tokens', label: 'Tokens' },
@@ -15,6 +16,7 @@ const SECTIONS: { id: string; label: string }[] = [
   { id: 'cards', label: 'Cards' },
   { id: 'badges', label: 'Badges' },
   { id: 'tables', label: 'Tables' },
+  { id: 'dialogs', label: 'Dialogs' },
 ];
 
 export default function StyleguidePage() {
@@ -63,6 +65,7 @@ export default function StyleguidePage() {
             <CardsSection />
             <BadgesSection />
             <TablesSection />
+            <DialogsSection />
           </div>
         </main>
       </div>
