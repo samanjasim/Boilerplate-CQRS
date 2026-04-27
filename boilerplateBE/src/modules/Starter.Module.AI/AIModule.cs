@@ -105,6 +105,7 @@ public sealed class AIModule : IModule
         services.AddSingleton<ICostCapAccountant, RedisCostCapAccountant>();
         services.AddSingleton<IAgentRateLimiter, RedisAgentRateLimiter>();
         services.AddScoped<IAgentPermissionResolver, AgentPermissionResolver>();
+        services.AddHostedService<Infrastructure.Background.AiCostReconciliationJob>();
 
         services.AddSingleton<TokenCounter>();
 
