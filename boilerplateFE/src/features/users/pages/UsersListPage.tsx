@@ -1,7 +1,14 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Clock,
+  Mail,
+  UserPlus,
+  Users,
+  X,
+} from 'lucide-react';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -13,40 +20,65 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { PageHeader, EmptyState, ExportButton, UserAvatar, Pagination, getPersistedPageSize } from '@/components/common';
-import { useSearchUsers } from '../api';
-import { useInvitations, useRevokeInvitation } from '@/features/auth/api';
-import { InviteUserModal } from '../components';
-import { ROUTES } from '@/config';
-import { Users, UserPlus, X, Mail, Clock } from 'lucide-react';
-import { formatDate } from '@/utils/format';
-import { usePermissions } from '@/hooks';
+import {
+  EmptyState,
+  ExportButton,
+  getPersistedPageSize,
+  PageHeader,
+  Pagination,
+  StatCard,
+  UserAvatar,
+} from '@/components/common';
 import { PERMISSIONS } from '@/constants';
+import { ROUTES } from '@/config';
+import { usePermissions } from '@/hooks';
+import { useInvitations, useRevokeInvitation } from '@/features/auth/api';
 import { Slot } from '@/lib/extensions';
+import { formatDate } from '@/utils/format';
+import { InviteUserModal } from '../components';
+import { useSearchUsers } from '../api';
+
+/* ─── Sparkline paths (static stylised shapes) ──────────────────────────── */
+const SPARK_USERS = 'M0,28 L12,24 L25,22 L38,20 L50,18 L63,14 L75,10 L88,8 L100,4';
+const SPARK_INVITES = 'M0,24 L20,20 L35,22 L50,16 L65,18 L80,12 L100,10';
 
 export default function UsersListPage() {
   const { t } = useTranslation();
   const { hasPermission } = usePermissions();
   const canExport = hasPermission(PERMISSIONS.System.ExportData);
+
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(getPersistedPageSize);
-  const { data, isLoading, isError, refetch } = useSearchUsers({ pageNumber, pageSize, sortBy: 'createdAt', sortDescending: true });
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+
+  const { data, isLoading, isError, refetch } = useSearchUsers({
+    pageNumber,
+    pageSize,
+    sortBy: 'createdAt',
+    sortDescending: true,
+  });
   const { data: invitationsData } = useInvitations();
   const { mutate: revokeInvitation } = useRevokeInvitation();
-  const [inviteModalOpen, setInviteModalOpen] = useState(false);
 
   const users = data?.data ?? [];
   const pagination = data?.pagination;
+  const totalUsers = pagination?.totalCount ?? users.length;
+
   const invitations = invitationsData?.data ?? [];
   const pendingInvitations = invitations.filter(
-    (inv) => !inv.isAccepted && new Date(inv.expiresAt) > new Date()
+    (inv) => !inv.isAccepted && new Date(inv.expiresAt) > new Date(),
   );
+  const pendingCount = pendingInvitations.length;
 
   if (isError) {
     return (
       <div className="space-y-6">
         <PageHeader title={t('users.title')} />
-        <EmptyState icon={Users} title={t('common.errorOccurred')} description={t('common.tryAgain')} />
+        <EmptyState
+          icon={Users}
+          title={t('common.errorOccurred')}
+          description={t('common.tryAgain')}
+        />
       </div>
     );
   }
@@ -76,110 +108,163 @@ export default function UsersListPage() {
         }
       />
 
+      {/* ─── Hero metric strip ─── */}
+      <section className="grid gap-4 sm:grid-cols-2">
+        <StatCard
+          icon={Users}
+          label={t('users.title')}
+          value={totalUsers}
+          tone="copper"
+          variant="hero"
+          spark={SPARK_USERS}
+          delta={t('users.allUsers')}
+        />
+        <StatCard
+          icon={Mail}
+          label={t('invitations.pendingInvitations')}
+          value={pendingCount}
+          tone={pendingCount > 0 ? 'warn' : 'amber'}
+          spark={SPARK_INVITES}
+        />
+      </section>
+
+      {/* ─── User table ─── */}
       {users.length === 0 ? (
         <EmptyState icon={Users} title={t('common.noResults')} />
       ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('users.userName')}</TableHead>
-                  <TableHead>{t('users.userEmail')}</TableHead>
-                  <TableHead>{t('users.userRoles')}</TableHead>
-                  <TableHead>{t('users.userCreated')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <Link to={ROUTES.USERS.getDetail(user.id)} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                        <UserAvatar firstName={user.firstName} lastName={user.lastName} size="sm" />
-                        <div>
-                          <p className="font-medium text-foreground">{user.firstName} {user.lastName}</p>
-                          <p className="text-xs text-muted-foreground">@{user.username}</p>
-                        </div>
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{user.email}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {user.roles?.map((role) => (
-                          <Badge key={role} variant="default">{role}</Badge>
-                        )) || <span className="text-muted-foreground">-</span>}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {user.createdAt ? formatDate(user.createdAt) : '-'}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t('users.userName')}</TableHead>
+              <TableHead>{t('users.userEmail')}</TableHead>
+              <TableHead>{t('users.userRoles')}</TableHead>
+              <TableHead>{t('common.status')}</TableHead>
+              <TableHead>{t('users.userCreated')}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {users.map((user) => (
+              <TableRow key={user.id}>
+                <TableCell>
+                  <Link
+                    to={ROUTES.USERS.getDetail(user.id)}
+                    className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                  >
+                    <UserAvatar
+                      firstName={user.firstName}
+                      lastName={user.lastName}
+                      size="sm"
+                    />
+                    <div>
+                      <p className="font-medium text-foreground">
+                        {user.firstName} {user.lastName}
+                      </p>
+                      <p className="text-xs text-muted-foreground">@{user.username}</p>
+                    </div>
+                  </Link>
+                </TableCell>
+                <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap gap-1">
+                    {user.roles?.map((role) => (
+                      <Badge key={role} variant="outline">
+                        {role}
+                      </Badge>
+                    )) ?? <span className="text-muted-foreground">—</span>}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <UserStatusBadge status={user.status} />
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {user.createdAt ? formatDate(user.createdAt) : '—'}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
 
       {pagination && (
         <Pagination
           pagination={pagination}
           onPageChange={setPageNumber}
-          onPageSizeChange={(size) => { setPageSize(size); setPageNumber(1); }}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPageNumber(1);
+          }}
         />
       )}
 
-      {/* Pending Invitations Section */}
-      {pendingInvitations.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Mail className="h-5 w-5" />
+      {/* ─── Pending invitations table ─── */}
+      {pendingCount > 0 && (
+        <div className="surface-glass rounded-2xl border border-border/40 overflow-hidden">
+          <div className="flex items-center gap-2 px-6 py-4 border-b border-border/40">
+            <Mail className="h-4 w-4 text-[var(--color-amber-500)]" />
+            <h2 className="text-[15px] font-semibold text-foreground tracking-tight">
               {t('invitations.pendingInvitations')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('common.email')}</TableHead>
-                  <TableHead>{t('invitations.role')}</TableHead>
-                  <TableHead>{t('invitations.invitedBy')}</TableHead>
-                  <TableHead>{t('invitations.expiresAt')}</TableHead>
-                  <TableHead>{t('common.actions')}</TableHead>
+            </h2>
+            <Badge variant="outline" className="ml-auto font-mono text-xs">
+              {pendingCount}
+            </Badge>
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('common.email')}</TableHead>
+                <TableHead>{t('invitations.role')}</TableHead>
+                <TableHead>{t('invitations.invitedBy')}</TableHead>
+                <TableHead>{t('invitations.expiresAt')}</TableHead>
+                <TableHead>{t('common.actions')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pendingInvitations.map((invitation) => (
+                <TableRow key={invitation.id}>
+                  <TableCell className="font-medium">{invitation.email}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{invitation.roleName}</Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {invitation.invitedByName}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {formatDate(invitation.expiresAt)}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => revokeInvitation(invitation.id)}
+                    >
+                      <X className="mr-1 h-4 w-4" />
+                      {t('invitations.revoke')}
+                    </Button>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pendingInvitations.map((invitation) => (
-                  <TableRow key={invitation.id}>
-                    <TableCell className="font-medium">{invitation.email}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{invitation.roleName}</Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {invitation.invitedByName}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {formatDate(invitation.expiresAt)}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => revokeInvitation(invitation.id)}
-                      >
-                        <X className="mr-1 h-4 w-4" />
-                        {t('invitations.revoke')}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       <InviteUserModal open={inviteModalOpen} onOpenChange={setInviteModalOpen} />
     </div>
   );
+}
+
+/* ─── Status badge ───────────────────────────────────────────────────────── */
+function UserStatusBadge({ status }: { status?: string }) {
+  if (!status) return <span className="text-muted-foreground">—</span>;
+
+  const s = status.toLowerCase();
+  if (s === 'active') return <Badge variant="healthy">Active</Badge>;
+  if (s === 'suspended') return <Badge variant="failed">Suspended</Badge>;
+  if (s === 'deactivated') return <Badge variant="failed">Deactivated</Badge>;
+  if (s === 'pending' || s === 'pendingverification')
+    return <Badge variant="pending">Pending</Badge>;
+  return <Badge variant="outline">{status}</Badge>;
 }

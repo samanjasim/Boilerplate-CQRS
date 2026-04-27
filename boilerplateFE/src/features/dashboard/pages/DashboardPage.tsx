@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import {
   Activity,
   ArrowRight,
@@ -6,8 +5,8 @@ import {
   ClipboardList,
   Pencil,
   Shield,
-  TrendingUp,
   Trash2,
+  TrendingUp,
   UserPlus,
   Users,
   type LucideIcon,
@@ -15,59 +14,22 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
-import { useTimeAgoFormatter } from '@/hooks';
+import { useCountUp, useTimeAgoFormatter, usePermissions } from '@/hooks';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { UserAvatar } from '@/components/common';
+import { UserAvatar, StatCard, STAT_TONE_BG, type StatTone } from '@/components/common';
 import { Slot } from '@/lib/extensions';
 import { cn } from '@/lib/utils';
 import { useAuthStore, selectUser } from '@/stores';
 import { useUsers, useSearchUsers } from '@/features/users/api';
 import { useRoles } from '@/features/roles/api';
 import { useAuditLogs } from '@/features/audit-logs/api';
-import { usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
 import { ROUTES } from '@/config';
 
 /* ───────────────────────────────────────────────────────────────────────────
  * Helpers
  * ─────────────────────────────────────────────────────────────────────── */
-
-type StatTone = 'copper' | 'emerald' | 'violet' | 'amber';
-
-const TONE_BG: Record<StatTone, string> = {
-  copper: 'btn-primary-gradient glow-primary-sm',
-  emerald:
-    'bg-gradient-to-br from-[var(--color-accent-400)] to-[var(--color-accent-700)] shadow-[0_4px_12px_color-mix(in_srgb,var(--color-accent-500)_30%,transparent)]',
-  violet:
-    'bg-gradient-to-br from-[var(--color-violet-400)] to-[var(--color-violet-700)] shadow-[0_4px_12px_color-mix(in_srgb,var(--color-violet-500)_30%,transparent)]',
-  amber:
-    'bg-gradient-to-br from-[var(--color-amber-400)] to-[var(--color-amber-700)] shadow-[0_4px_12px_color-mix(in_srgb,var(--color-amber-500)_30%,transparent)]',
-};
-
-function useCountUp(target: number, duration = 1000) {
-  const [reducedMotion] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
-  );
-  const [animated, setAnimated] = useState(0);
-
-  useEffect(() => {
-    if (reducedMotion) return; // render derives value from target directly
-    if (target === 0) return;
-    const start = performance.now();
-    let frameId: number;
-    const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / duration);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setAnimated(Math.round(target * eased));
-      if (t < 1) frameId = requestAnimationFrame(tick);
-    };
-    frameId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frameId);
-  }, [target, duration, reducedMotion]);
-
-  return reducedMotion ? target : animated;
-}
 
 const ACTION_ICONS: Record<string, LucideIcon> = {
   Created: UserPlus,
@@ -85,76 +47,6 @@ function actionIcon(a: string): LucideIcon {
 }
 function actionTone(a: string): StatTone {
   return ACTION_TONE[a] ?? 'violet';
-}
-
-/* ───────────────────────────────────────────────────────────────────────────
- * Stat card
- * ─────────────────────────────────────────────────────────────────────── */
-
-interface StatCardProps {
-  icon: LucideIcon;
-  label: string;
-  value: number | string;
-  delta?: string;
-  tone: StatTone;
-  spark?: string;
-}
-
-function StatCard({ icon: Icon, label, value, delta, tone, spark }: StatCardProps) {
-  const numericTarget = typeof value === 'number' ? value : 0;
-  const animatedValue = useCountUp(numericTarget);
-  const display = typeof value === 'number' ? animatedValue.toLocaleString() : value;
-
-  return (
-    <div className="surface-glass hover-lift-card rounded-2xl p-5 border border-border/40">
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white ${TONE_BG[tone]}`}>
-          <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
-        </div>
-        {spark && (
-          <svg viewBox="0 0 100 30" className="h-7 w-20 shrink-0" preserveAspectRatio="none">
-            <defs>
-              <linearGradient id={`stat-spark-${label}`} x1="0" x2="1" y1="0" y2="0">
-                <stop offset="0%" stopColor="var(--color-primary-700)" />
-                <stop offset="100%" stopColor="var(--color-violet-500)" />
-              </linearGradient>
-            </defs>
-            <path
-              d={spark}
-              fill="none"
-              stroke={`url(#stat-spark-${label})`}
-              strokeWidth="1.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              opacity="0.45"
-            />
-            <path
-              d={spark}
-              pathLength={100}
-              fill="none"
-              stroke={`url(#stat-spark-${label})`}
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="spark-shimmer"
-            />
-          </svg>
-        )}
-      </div>
-      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground mb-1">
-        {label}
-      </div>
-      <div className="text-[32px] font-light tracking-[-0.025em] leading-none font-display text-foreground mb-1.5 font-feature-settings">
-        {display}
-      </div>
-      {delta && (
-        <div className="text-[11px] font-mono text-[var(--color-accent-700)] dark:text-[var(--color-accent-300)] inline-flex items-center gap-1">
-          <TrendingUp className="h-3 w-3" />
-          {delta}
-        </div>
-      )}
-    </div>
-  );
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
@@ -191,7 +83,7 @@ export default function DashboardPage() {
   const recentUsers = recentUsersData?.data ?? [];
 
   const heroMetric = users.length;
-  const heroAnimated = useCountUp(heroMetric, 1200);
+  const { value: heroAnimated } = useCountUp(heroMetric, { duration: 1200 });
 
   return (
     <div className="space-y-6">
@@ -307,7 +199,7 @@ export default function DashboardPage() {
                       className="flex items-start gap-3 px-6 py-3 transition-colors duration-150 hover:bg-secondary/40"
                     >
                       <div
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white ${TONE_BG[tone]}`}
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white ${STAT_TONE_BG[tone]}`}
                       >
                         <ActionIcon className="h-3.5 w-3.5" strokeWidth={2} />
                       </div>
@@ -469,7 +361,7 @@ function ActionCard({
       )}
     >
       <div className="flex items-start justify-between mb-4">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white ${TONE_BG[tone]}`}>
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white ${STAT_TONE_BG[tone]}`}>
           <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
         </div>
         {!disabled && (

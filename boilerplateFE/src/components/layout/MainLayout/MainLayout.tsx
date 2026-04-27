@@ -37,7 +37,7 @@ export function MainLayout() {
 
   return (
     <div
-      className="aurora-canvas min-h-screen bg-background overflow-x-clip"
+      className="aurora-canvas min-h-screen bg-background overflow-clip"
       data-page-style="dense"
     >
       <ScrollToTopOnNavigate />
