@@ -119,6 +119,16 @@ public sealed class AIModule : IModule
         // Moderation + safety profile resolution (Plan 5d-2)
         services.AddScoped<ISafetyProfileResolver, SafetyProfileResolver>();
         services.AddScoped<IPendingApprovalService, PendingApprovalService>();
+        services.AddScoped<IModerationKeyResolver, ConfigurationModerationKeyResolver>();
+        services.AddScoped<IPiiRedactor, RegexPiiRedactor>();
+        services.AddSingleton<IModerationRefusalProvider, ResxModerationRefusalProvider>();
+        services.AddScoped<IContentModerator>(sp =>
+        {
+            var resolver = sp.GetRequiredService<IModerationKeyResolver>();
+            return string.IsNullOrWhiteSpace(resolver.Resolve())
+                ? new NoOpContentModerator()
+                : ActivatorUtilities.CreateInstance<OpenAiContentModerator>(sp);
+        });
         services.AddScoped<CurrentAgentRunContextAccessor>();
         services.AddScoped<ICurrentAgentRunContextAccessor>(sp =>
             sp.GetRequiredService<CurrentAgentRunContextAccessor>());
@@ -203,6 +213,10 @@ public sealed class AIModule : IModule
         yield return (AiPermissions.AssignAgentRole, "Assign roles to AI agent principals", "AI");
         yield return (AiPermissions.ManageAgentBudget, "Set per-agent cost caps and rate limits", "AI");
         yield return (AiPermissions.ManagePricing, "Manage AI model pricing (superadmin)", "AI");
+        yield return (AiPermissions.SafetyProfilesManage, "Manage AI safety preset profiles", "AI");
+        yield return (AiPermissions.AgentsApproveAction, "Approve or deny dangerous AI agent actions", "AI");
+        yield return (AiPermissions.AgentsViewApprovals, "View pending AI agent approval inbox", "AI");
+        yield return (AiPermissions.ModerationView, "View AI moderation events", "AI");
     }
 
     public IEnumerable<(string Role, string[] Permissions)> GetDefaultRolePermissions()
@@ -225,7 +239,11 @@ public sealed class AIModule : IModule
             AiPermissions.AssignPersona,
             AiPermissions.AssignAgentRole,
             AiPermissions.ManageAgentBudget,
-            AiPermissions.ManagePricing
+            AiPermissions.ManagePricing,
+            AiPermissions.SafetyProfilesManage,
+            AiPermissions.AgentsApproveAction,
+            AiPermissions.AgentsViewApprovals,
+            AiPermissions.ModerationView
         ]);
 
         yield return ("Admin", [
@@ -243,14 +261,19 @@ public sealed class AIModule : IModule
             AiPermissions.ManagePersonas,
             AiPermissions.AssignPersona,
             AiPermissions.AssignAgentRole,
-            AiPermissions.ManageAgentBudget
+            AiPermissions.ManageAgentBudget,
+            AiPermissions.SafetyProfilesManage,
+            AiPermissions.AgentsApproveAction,
+            AiPermissions.AgentsViewApprovals,
+            AiPermissions.ModerationView
         ]);
 
         yield return ("User", [
             AiPermissions.Chat,
             AiPermissions.ViewConversations,
             AiPermissions.DeleteConversation,
-            AiPermissions.ViewPersonas
+            AiPermissions.ViewPersonas,
+            AiPermissions.AgentsViewApprovals
         ]);
     }
 
