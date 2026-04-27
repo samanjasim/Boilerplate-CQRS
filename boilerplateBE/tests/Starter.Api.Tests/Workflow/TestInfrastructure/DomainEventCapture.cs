@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Starter.Domain.Common;
 
@@ -5,9 +6,9 @@ namespace Starter.Api.Tests.Workflow.TestInfrastructure;
 
 internal sealed class DomainEventCapture
 {
-    private readonly List<IDomainEvent> _events = [];
-    public IReadOnlyList<IDomainEvent> Events => _events;
-    public void Add(IEnumerable<IDomainEvent> events) => _events.AddRange(events);
+    private readonly List<INotification> _events = [];
+    public IReadOnlyList<INotification> Events => _events;
+    public void Add(IEnumerable<INotification> events) => _events.AddRange(events);
 }
 
 internal sealed class DomainEventCaptureInterceptor(DomainEventCapture capture) : SaveChangesInterceptor
