@@ -76,6 +76,15 @@ internal sealed class CreateAssistantCommandHandler(
             assistant.SetPersonaTargets(request.PersonaTargetSlugs);
 
         context.AiAssistants.Add(assistant);
+
+        // Plan 5d-1: pair with an AiAgentPrincipal so the agent can act as a security
+        // subject (hybrid intersection in dispatcher). Same EF transaction.
+        if (assistant.TenantId is { } principalTenantId)
+        {
+            var principal = AiAgentPrincipal.Create(assistant.Id, principalTenantId, assistant.IsActive);
+            context.AiAgentPrincipals.Add(principal);
+        }
+
         await context.SaveChangesAsync(cancellationToken);
 
         return Result.Success(assistant.ToDto());

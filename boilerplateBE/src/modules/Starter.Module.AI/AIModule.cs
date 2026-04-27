@@ -248,6 +248,10 @@ public sealed class AIModule : IModule
         // Always seed model pricing (idempotent — skips if any rows already exist)
         await ModelPricingSeed.SeedAsync(aiDb, cancellationToken);
 
+        // Plan 5d-1 backfill: pair any pre-existing assistant with an AiAgentPrincipal
+        // (idempotent — only inserts for assistants without a paired principal).
+        await AgentPrincipalBackfill.RunAsync(aiDb, cancellationToken);
+
         var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
         if (!configuration.GetValue<bool>("AI:InstallDemoTemplatesOnStartup"))
             return;

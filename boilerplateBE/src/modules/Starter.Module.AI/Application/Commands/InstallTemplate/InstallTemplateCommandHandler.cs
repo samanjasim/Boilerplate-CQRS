@@ -124,6 +124,15 @@ internal sealed class InstallTemplateCommandHandler(
 
         // 10. Persist
         db.AiAssistants.Add(assistant);
+
+        // Plan 5d-1: pair with an AiAgentPrincipal in the same EF transaction so the
+        // installed template is immediately operable as a security subject.
+        if (assistant.TenantId is { } tenantId)
+        {
+            var principal = AiAgentPrincipal.Create(assistant.Id, tenantId, assistant.IsActive);
+            db.AiAgentPrincipals.Add(principal);
+        }
+
         await db.SaveChangesAsync(ct);
 
         return Result<Guid>.Success(assistant.Id);
