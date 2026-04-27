@@ -65,7 +65,18 @@ internal sealed class AiUsageLogConfiguration : IEntityTypeConfiguration<AiUsage
         builder.Property(e => e.ModifiedAt)
             .HasColumnName("modified_at");
 
-        builder.HasIndex(e => new { e.TenantId, e.CreatedAt });
+        builder.Property(x => x.AiAssistantId)
+            .HasColumnName("ai_assistant_id");
+
+        builder.Property(x => x.AgentPrincipalId)
+            .HasColumnName("agent_principal_id");
+
+        builder.HasIndex(x => new { x.TenantId, x.AiAssistantId, x.CreatedAt })
+               .HasDatabaseName("ix_ai_usage_logs_tenant_id_ai_assistant_id_created_at");
+
+        builder.HasIndex(x => new { x.TenantId, x.CreatedAt })
+               .HasDatabaseName("ix_ai_usage_logs_tenant_id_created_at");
+
         builder.HasIndex(e => e.ConversationId);
         builder.HasIndex(e => e.AgentTaskId);
     }

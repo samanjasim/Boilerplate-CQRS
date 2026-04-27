@@ -16,6 +16,8 @@ public sealed class AiUsageLog : BaseEntity, ITenantEntity
     public int OutputTokens { get; private set; }
     public decimal EstimatedCost { get; private set; }
     public AiRequestType RequestType { get; private set; }
+    public Guid? AiAssistantId { get; private set; }
+    public Guid? AgentPrincipalId { get; private set; }
 
     private AiUsageLog() { }
 
@@ -30,7 +32,9 @@ public sealed class AiUsageLog : BaseEntity, ITenantEntity
         int inputTokens,
         int outputTokens,
         decimal estimatedCost,
-        AiRequestType requestType) : base(id)
+        AiRequestType requestType,
+        Guid? aiAssistantId,
+        Guid? agentPrincipalId) : base(id)
     {
         TenantId = tenantId;
         UserId = userId;
@@ -42,6 +46,8 @@ public sealed class AiUsageLog : BaseEntity, ITenantEntity
         OutputTokens = outputTokens;
         EstimatedCost = estimatedCost;
         RequestType = requestType;
+        AiAssistantId = aiAssistantId;
+        AgentPrincipalId = agentPrincipalId;
     }
 
     public static AiUsageLog Create(
@@ -54,7 +60,9 @@ public sealed class AiUsageLog : BaseEntity, ITenantEntity
         decimal estimatedCost,
         AiRequestType requestType,
         Guid? conversationId = null,
-        Guid? agentTaskId = null)
+        Guid? agentTaskId = null,
+        Guid? aiAssistantId = null,
+        Guid? agentPrincipalId = null)
     {
         return new AiUsageLog(
             Guid.NewGuid(),
@@ -67,6 +75,8 @@ public sealed class AiUsageLog : BaseEntity, ITenantEntity
             inputTokens,
             outputTokens,
             estimatedCost,
-            requestType);
+            requestType,
+            aiAssistantId,
+            agentPrincipalId);
     }
 }
