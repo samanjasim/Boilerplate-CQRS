@@ -38,10 +38,10 @@ param(
     [string]$Modules,  # Comma-separated list of OPTIONAL modules to include, "All" (default), or "None"
 
     [Parameter(Mandatory = $false)]
-    [switch]$IncludeMobile = $true,  # Include the Flutter mobile boilerplate (default: true)
+    [bool]$IncludeMobile = $true,  # Include the Flutter mobile boilerplate (default: true)
 
     [Parameter(Mandatory = $false)]
-    [switch]$MobileMultiTenancy = $true  # Enable multi-tenancy in mobile flavors (default: true)
+    [bool]$MobileMultiTenancy = $true  # Enable multi-tenancy in mobile flavors (default: true)
 )
 
 $ErrorActionPreference = "Stop"
@@ -487,62 +487,92 @@ if ($null -ne $modulesConfig) {
             Set-Content -Path $slnFile.FullName -Value $slnContent -NoNewline
         }
 
-        # 4. Delete frontend feature folder
-        $feFolderPath = Join-Path (Join-Path (Join-Path $TargetFE "src") "features") $frontendFeature
-        if (Test-Path $feFolderPath) {
-            Remove-Item $feFolderPath -Recurse -Force -ErrorAction SilentlyContinue
-        }
-
-        # 5. Update modules.config.ts:
-        #    a) Set the activeModules.{configKey} flag to false (kept for any
-        #       legacy `isModuleActive(...)` callers).
-        #    b) Strip the `import { Xmodule } from '@/features/{feature}';` line.
-        #       Without this, tsc fails to compile because the feature folder
-        #       was deleted in step 4.
-        #    c) Strip the matching identifier from the `enabledModules = [...]`
-        #       array so `registerAllModules()` doesn't reference an undefined
-        #       symbol.
-        $modulesConfigTsPath = Join-Path (Join-Path (Join-Path $TargetFE "src") "config") "modules.config.ts"
-        if (Test-Path $modulesConfigTsPath) {
-            $tsContent = Get-Content $modulesConfigTsPath -Raw
-            $featureEscaped = [regex]::Escape($frontendFeature)
-
-            # (a) flag → false
-            $tsContent = $tsContent -replace "(?m)(\s+$configKey\s*:\s*)true", "`${1}false"
-
-            # (b) Capture the imported identifier(s), then drop the import line.
-            # Pattern: import { foo } from '@/features/{feature}';
-            $importedSymbols = @()
-            $importPattern = "(?m)^\s*import\s*\{\s*([^}]+?)\s*\}\s*from\s*'@/features/$featureEscaped'\s*;\s*\r?\n?"
-            $importMatches = [regex]::Matches($tsContent, $importPattern)
-            foreach ($m in $importMatches) {
-                $importedSymbols += $m.Groups[1].Value -split ',' | ForEach-Object { $_.Trim() }
-            }
-            $tsContent = $tsContent -replace $importPattern, ""
-
-            # (c) Remove each captured symbol from the enabledModules array.
-            # The array has one entry per line followed by a comma; strip the
-            # whole line so we don't leave a dangling comma.
-            foreach ($symbol in $importedSymbols) {
-                if ([string]::IsNullOrWhiteSpace($symbol)) { continue }
-                $symbolEscaped = [regex]::Escape($symbol)
-                $tsContent = $tsContent -replace "(?m)^\s*$symbolEscaped\s*,?\s*\r?\n?", ""
+        # 3b. Remove AI-only tooling when the AI module is excluded. The warmup
+        # tool imports AI module types directly, so leaving it in a reduced
+        # solution breaks `dotnet build`.
+        if ($moduleKey -eq "ai") {
+            $evalToolPath = Join-Path (Join-Path $TargetBE "tools") "EvalCacheWarmup"
+            if (Test-Path $evalToolPath) {
+                Remove-Item $evalToolPath -Recurse -Force -ErrorAction SilentlyContinue
             }
 
-            Set-Content -Path $modulesConfigTsPath -Value $tsContent -NoNewline
+            if ($slnFile) {
+                $slnContent = Get-Content $slnFile.FullName -Raw
+                $toolGuid = $null
+                if ($slnContent -match "(?ms)Project\(`"\{[^}]+\}`"\)\s*=\s*`"EvalCacheWarmup`"[^\r\n]*,\s*`"\{([0-9A-Fa-f-]+)\}`"") {
+                    $toolGuid = $matches[1]
+                }
+
+                $toolPattern = "(?ms)Project\(`"\{[^}]+\}`"\)\s*=\s*`"EvalCacheWarmup`".*?EndProject\s*\r?\n?"
+                $slnContent = $slnContent -replace $toolPattern, ""
+
+                if ($toolGuid) {
+                    $nestedPattern = "(?m)^\s*\{$toolGuid\}\s*=\s*\{[^}]+\}\s*\r?\n?"
+                    $slnContent = $slnContent -replace $nestedPattern, ""
+                }
+
+                Set-Content -Path $slnFile.FullName -Value $slnContent -NoNewline
+            }
         }
 
-        # 6. Redirect dead lazy imports in routes.tsx to NotFoundPage stub
-        # TypeScript doesn't tree-shake conditional imports — dead paths still fail to resolve.
-        # Since activeModules.{key} is false, these imports never actually run; we just need a
-        # valid path so tsc passes. Replace '@/features/{feature}/...' with '@/routes/NotFoundPage'.
-        $routesTsxPath = Join-Path (Join-Path (Join-Path $TargetFE "src") "routes") "routes.tsx"
-        if (Test-Path $routesTsxPath) {
-            $routesContent = Get-Content $routesTsxPath -Raw
-            $featureEscaped = [regex]::Escape($frontendFeature)
-            # Replace: import('@/features/{feature}/path') → import('@/routes/NotFoundPage')
-            $routesContent = $routesContent -replace "import\('@/features/$featureEscaped/[^']+'\)", "import('@/routes/NotFoundPage')"
-            Set-Content -Path $routesTsxPath -Value $routesContent -NoNewline
+        if (-not [string]::IsNullOrWhiteSpace($frontendFeature)) {
+            # 4. Delete frontend feature folder
+            $feFolderPath = Join-Path (Join-Path (Join-Path $TargetFE "src") "features") $frontendFeature
+            if (Test-Path $feFolderPath) {
+                Remove-Item $feFolderPath -Recurse -Force -ErrorAction SilentlyContinue
+            }
+
+            # 5. Update modules.config.ts:
+            #    a) Set the activeModules.{configKey} flag to false (kept for any
+            #       legacy `isModuleActive(...)` callers).
+            #    b) Strip the `import { Xmodule } from '@/features/{feature}';` line.
+            #       Without this, tsc fails to compile because the feature folder
+            #       was deleted in step 4.
+            #    c) Strip the matching identifier from the `enabledModules = [...]`
+            #       array so `registerAllModules()` doesn't reference an undefined
+            #       symbol.
+            $modulesConfigTsPath = Join-Path (Join-Path (Join-Path $TargetFE "src") "config") "modules.config.ts"
+            if (Test-Path $modulesConfigTsPath) {
+                $tsContent = Get-Content $modulesConfigTsPath -Raw
+                $featureEscaped = [regex]::Escape($frontendFeature)
+
+                # (a) flag → false
+                $tsContent = $tsContent -replace "(?m)(\s+$configKey\s*:\s*)true", "`${1}false"
+
+                # (b) Capture the imported identifier(s), then drop the import line.
+                # Pattern: import { foo } from '@/features/{feature}';
+                $importedSymbols = @()
+                $importPattern = "(?m)^\s*import\s*\{\s*([^}]+?)\s*\}\s*from\s*'@/features/$featureEscaped'\s*;\s*\r?\n?"
+                $importMatches = [regex]::Matches($tsContent, $importPattern)
+                foreach ($m in $importMatches) {
+                    $importedSymbols += $m.Groups[1].Value -split ',' | ForEach-Object { $_.Trim() }
+                }
+                $tsContent = $tsContent -replace $importPattern, ""
+
+                # (c) Remove each captured symbol from the enabledModules array.
+                # The array has one entry per line followed by a comma; strip the
+                # whole line so we don't leave a dangling comma.
+                foreach ($symbol in $importedSymbols) {
+                    if ([string]::IsNullOrWhiteSpace($symbol)) { continue }
+                    $symbolEscaped = [regex]::Escape($symbol)
+                    $tsContent = $tsContent -replace "(?m)^\s*$symbolEscaped\s*,?\s*\r?\n?", ""
+                }
+
+                Set-Content -Path $modulesConfigTsPath -Value $tsContent -NoNewline
+            }
+
+            # 6. Redirect dead lazy imports in routes.tsx to NotFoundPage stub
+            # TypeScript doesn't tree-shake conditional imports — dead paths still fail to resolve.
+            # Since activeModules.{key} is false, these imports never actually run; we just need a
+            # valid path so tsc passes. Replace '@/features/{feature}/...' with '@/routes/NotFoundPage'.
+            $routesTsxPath = Join-Path (Join-Path (Join-Path $TargetFE "src") "routes") "routes.tsx"
+            if (Test-Path $routesTsxPath) {
+                $routesContent = Get-Content $routesTsxPath -Raw
+                $featureEscaped = [regex]::Escape($frontendFeature)
+                # Replace: import('@/features/{feature}/path') → import('@/routes/NotFoundPage')
+                $routesContent = $routesContent -replace "import\('@/features/$featureEscaped/[^']+'\)", "import('@/routes/NotFoundPage')"
+                Set-Content -Path $routesTsxPath -Value $routesContent -NoNewline
+            }
         }
 
         # 7. Delete module-owned test folder under tests/{Name}.Api.Tests/
