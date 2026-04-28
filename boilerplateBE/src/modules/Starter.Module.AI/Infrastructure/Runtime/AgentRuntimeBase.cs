@@ -20,6 +20,7 @@ internal abstract class AgentRuntimeBase(
     IAgentToolDispatcher toolDispatcher,
     AiDbContext aiDb,
     IAgentPermissionResolver agentPermissions,
+    CurrentAgentRunContextAccessor runCtxAccessor,
     ILogger<AgentRuntimeBase> logger) : IAiAgentRuntime
 {
     protected ILogger<AgentRuntimeBase> Logger { get; } = logger;
@@ -39,6 +40,11 @@ internal abstract class AgentRuntimeBase(
         // writes inside the run) sees hybrid-intersection permissions. When AssistantId is
         // null (legacy/test callers without a paired principal), skip the scope and fall
         // back to the default IExecutionContext behaviour.
+        // Plan 5d-2: when the caller threads AssistantName through AgentRunContext, also
+        // install the AsyncLocal `ICurrentAgentRunContextAccessor` ambient value so the
+        // tool dispatcher can read assistant + conversation linkage when staging pending
+        // approvals. Older callers that don't set AssistantName fall back to the original
+        // Begin overload (accessor stays empty for the run).
         AgentExecutionScope? scope = null;
         if (ctx.AssistantId is { } assistantId)
         {
@@ -51,12 +57,24 @@ internal abstract class AgentRuntimeBase(
             if (principal != Guid.Empty)
             {
                 var agentPerms = await agentPermissions.GetPermissionsAsync(principal, ct);
-                scope = AgentExecutionScope.Begin(
-                    userId: ctx.CallerUserId,
-                    agentPrincipalId: principal,
-                    tenantId: ctx.TenantId,
-                    callerHasPermission: ctx.CallerHasPermission,
-                    agentHasPermission: agentPerms.Contains);
+                scope = ctx.AssistantName is { Length: > 0 } assistantName
+                    ? AgentExecutionScope.Begin(
+                        userId: ctx.CallerUserId,
+                        agentPrincipalId: principal,
+                        tenantId: ctx.TenantId,
+                        callerHasPermission: ctx.CallerHasPermission,
+                        agentHasPermission: agentPerms.Contains,
+                        assistantId: assistantId,
+                        assistantName: assistantName,
+                        conversationId: ctx.ConversationId,
+                        agentTaskId: ctx.AgentTaskId,
+                        runCtxAccessor: runCtxAccessor)
+                    : AgentExecutionScope.Begin(
+                        userId: ctx.CallerUserId,
+                        agentPrincipalId: principal,
+                        tenantId: ctx.TenantId,
+                        callerHasPermission: ctx.CallerHasPermission,
+                        agentHasPermission: agentPerms.Contains);
                 scope.AttachRunId(activity?.Id is { } id && Guid.TryParse(id, out var runId)
                     ? runId
                     : Guid.NewGuid());

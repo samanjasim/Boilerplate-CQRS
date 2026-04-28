@@ -1,15 +1,17 @@
+using MediatR;
+
 namespace Starter.Domain.Common;
 
 public abstract class AggregateRoot<TId> : BaseAuditableEntity<TId> where TId : notnull
 {
-    private readonly List<IDomainEvent> _domainEvents = [];
+    private readonly List<INotification> _domainEvents = [];
 
-    public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+    public IReadOnlyCollection<INotification> DomainEvents => _domainEvents.AsReadOnly();
 
     protected AggregateRoot() : base() { }
     protected AggregateRoot(TId id) : base(id) { }
 
-    protected void RaiseDomainEvent(IDomainEvent domainEvent)
+    protected void RaiseDomainEvent(INotification domainEvent)
     {
         _domainEvents.Add(domainEvent);
     }
@@ -19,7 +21,7 @@ public abstract class AggregateRoot<TId> : BaseAuditableEntity<TId> where TId : 
         _domainEvents.Clear();
     }
 
-    public IReadOnlyCollection<IDomainEvent> GetDomainEventsAndClear()
+    public IReadOnlyCollection<INotification> GetDomainEventsAndClear()
     {
         var events = _domainEvents.ToList();
         _domainEvents.Clear();

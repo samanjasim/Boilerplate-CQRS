@@ -20,7 +20,14 @@ internal sealed record AgentRunContext(
     Guid? AssistantId = null,
     Guid? TenantId = null,
     Guid? CallerUserId = null,
-    Func<string, bool>? CallerHasPermission = null);
+    Func<string, bool>? CallerHasPermission = null,
+    // Plan 5d-2: assistant display name + conversation/task linkage threaded through
+    // to AgentExecutionScope so AsyncLocal `ICurrentAgentRunContextAccessor` can be set
+    // for the duration of the run (consumed by AgentToolDispatcher when staging
+    // pending approvals). Null on legacy callers / tests without an assistant.
+    string? AssistantName = null,
+    Guid? ConversationId = null,
+    Guid? AgentTaskId = null);
 
 internal sealed record AgentModelConfig(
     AiProviderType Provider,

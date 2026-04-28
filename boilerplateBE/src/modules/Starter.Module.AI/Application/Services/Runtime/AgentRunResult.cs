@@ -1,3 +1,5 @@
+using Starter.Module.AI.Domain.Entities;
+
 namespace Starter.Module.AI.Application.Services.Runtime;
 
 internal sealed record AgentRunResult(
@@ -6,7 +8,8 @@ internal sealed record AgentRunResult(
     IReadOnlyList<AgentStepEvent> Steps,
     long TotalInputTokens,
     long TotalOutputTokens,
-    string? TerminationReason);
+    string? TerminationReason,
+    IReadOnlyList<AiModerationEvent>? ModerationEvents = null);
 
 internal enum AgentRunStatus
 {
@@ -17,4 +20,8 @@ internal enum AgentRunStatus
     Cancelled,
     CostCapExceeded,
     RateLimitExceeded,
+    InputBlocked = 7,
+    OutputBlocked = 8,
+    AwaitingApproval = 9,
+    ModerationProviderUnavailable = 10,
 }

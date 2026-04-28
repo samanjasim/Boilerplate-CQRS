@@ -252,6 +252,22 @@ internal sealed class ChatExecutionTestFixture
                 == Task.FromException<decimal>(new InvalidOperationException("no pricing"))));
         services.AddSingleton<IAgentPermissionResolver>(Mock.Of<IAgentPermissionResolver>());
 
+        // Plan 5d-2 dispatcher dependencies — stubs since [DangerousAction] tools aren't exercised.
+        services.AddSingleton<Starter.Module.AI.Infrastructure.Runtime.CurrentAgentRunContextAccessor>();
+        services.AddSingleton<Starter.Module.AI.Application.Services.Runtime.ICurrentAgentRunContextAccessor>(
+            sp => sp.GetRequiredService<Starter.Module.AI.Infrastructure.Runtime.CurrentAgentRunContextAccessor>());
+        services.AddSingleton<Starter.Module.AI.Application.Services.Approvals.IPendingApprovalService>(
+            Mock.Of<Starter.Module.AI.Application.Services.Approvals.IPendingApprovalService>());
+
+        // Plan 5d-2 moderation decorator dependencies — stubs since these tests assert
+        // RAG injection, not moderation. AssistantId+TenantId are present, so the decorator
+        // engages; we set up the profile resolver + moderator + redactor to be allow-all.
+        services.AddSingleton(Starter.Api.Tests.Ai.Fakes.AllowAllModeration.BuildModerator());
+        services.AddSingleton(Starter.Api.Tests.Ai.Fakes.AllowAllModeration.BuildRedactor());
+        services.AddSingleton(Starter.Api.Tests.Ai.Fakes.AllowAllModeration.BuildResolver());
+        services.AddSingleton<Starter.Module.AI.Application.Services.Moderation.IModerationRefusalProvider>(
+            Mock.Of<Starter.Module.AI.Application.Services.Moderation.IModerationRefusalProvider>());
+
         // Persona services (Plan 5b) — feature flag disabled above, so resolver is never called.
         services.AddScoped<Starter.Module.AI.Application.Services.Personas.IPersonaResolver,
             Starter.Module.AI.Infrastructure.Services.Personas.PersonaResolver>();

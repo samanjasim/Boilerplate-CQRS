@@ -1,12 +1,15 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Starter.Api.Tests.Ai.Fakes;
 using Starter.Application.Common.Interfaces;
+using Starter.Abstractions.Capabilities;
 using Starter.Module.AI.Application.Services.Costs;
+using Starter.Module.AI.Application.Services.Moderation;
 using Starter.Module.AI.Application.Services.Pricing;
 using Starter.Module.AI.Application.Services.Runtime;
 using Starter.Abstractions.Ai;
@@ -36,6 +39,15 @@ public sealed class AiAgentRuntimeFactoryTests
         services.AddSingleton<IAgentRateLimiter>(Mock.Of<IAgentRateLimiter>());
         services.AddSingleton<IModelPricingService>(Mock.Of<IModelPricingService>());
         services.AddSingleton<IAgentPermissionResolver>(Mock.Of<IAgentPermissionResolver>());
+
+        // Plan 5d-2 dependencies — factory now wraps cost-cap with ContentModerationEnforcingAgentRuntime.
+        services.AddSingleton<IContentModerator>(Mock.Of<IContentModerator>());
+        services.AddSingleton<IPiiRedactor>(Mock.Of<IPiiRedactor>());
+        services.AddSingleton<ISafetyProfileResolver>(Mock.Of<ISafetyProfileResolver>());
+        services.AddSingleton<IModerationRefusalProvider>(Mock.Of<IModerationRefusalProvider>());
+        services.AddSingleton<IWebhookPublisher>(Mock.Of<IWebhookPublisher>());
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+        services.AddSingleton<CurrentAgentRunContextAccessor>();
 
         var cu = new Mock<ICurrentUserService>();
         services.AddSingleton(cu.Object);

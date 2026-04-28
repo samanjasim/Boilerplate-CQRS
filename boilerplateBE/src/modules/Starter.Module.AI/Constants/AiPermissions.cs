@@ -20,4 +20,8 @@ public static class AiPermissions
     public const string AssignAgentRole = "Ai.AssignAgentRole";
     public const string ManageAgentBudget = "Ai.ManageAgentBudget";
     public const string ManagePricing = "Ai.ManagePricing";
+    public const string SafetyProfilesManage = "Ai.SafetyProfiles.Manage";
+    public const string AgentsApproveAction = "Ai.Agents.ApproveAction";
+    public const string AgentsViewApprovals = "Ai.Agents.ViewApprovals";
+    public const string ModerationView = "Ai.Moderation.View";
 }
