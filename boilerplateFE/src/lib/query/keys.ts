@@ -48,6 +48,7 @@ export const queryKeys = {
   auditLogs: {
     all: () => ['auditLogs'] as const,
     list: () => [...queryKeys.auditLogs.all(), 'list'] as const,
+    detail: (id: string) => [...queryKeys.auditLogs.all(), 'detail', id] as const,
   },
 
   notifications: {

@@ -41,8 +41,11 @@ internal sealed class GetAuditLogsQueryHandler(
 
         if (request.DateTo.HasValue)
         {
-            // Inclusive end-of-day so a single-day filter (from=X, to=X) returns same-day rows.
-            var to = DateTime.SpecifyKind(request.DateTo.Value, DateTimeKind.Utc).AddDays(1).AddTicks(-1);
+            // Inclusive end-of-day for date-only filters, exact timestamp for timeline windows.
+            var rawTo = DateTime.SpecifyKind(request.DateTo.Value, DateTimeKind.Utc);
+            var to = rawTo.TimeOfDay == TimeSpan.Zero
+                ? rawTo.AddDays(1).AddTicks(-1)
+                : rawTo;
             query = query.Where(a => a.PerformedAt <= to);
         }
 
@@ -77,7 +80,10 @@ internal sealed class GetAuditLogsQueryHandler(
             a.PerformedByName,
             a.PerformedAt,
             a.IpAddress,
-            a.CorrelationId));
+            a.CorrelationId,
+            a.OnBehalfOfUserId,
+            a.AgentPrincipalId,
+            a.AgentRunId));
 
         var paginatedList = await projected.ToPaginatedListAsync(
             request.PageNumber,

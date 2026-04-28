@@ -51,6 +51,8 @@ export const ROUTES = {
   // Audit Logs
   AUDIT_LOGS: {
     LIST: '/audit-logs',
+    DETAIL: '/audit-logs/:id',
+    getDetail: (id: string) => `/audit-logs/${id}`,
   },
 
   // Files

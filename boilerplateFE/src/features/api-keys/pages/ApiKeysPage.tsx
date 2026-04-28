@@ -63,9 +63,16 @@ function TenantUserView() {
   const [showCreate, setShowCreate] = useState(false);
   const [createdKey, setCreatedKey] = useState<CreateApiKeyResponse | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<ApiKeyDto | null>(null);
+  const [now] = useState(() => Date.now());
 
   const apiKeys: ApiKeyDto[] = data?.data ?? [];
   const pagination = data?.pagination;
+  const activeCount = apiKeys.filter((key) => !key.isRevoked && !key.isExpired).length;
+  const expiringCount = apiKeys.filter((key) => {
+    if (key.isRevoked || key.isExpired || !key.expiresAt) return false;
+    const daysUntilExpiry = (new Date(key.expiresAt).getTime() - now) / 86400000;
+    return daysUntilExpiry >= 0 && daysUntilExpiry <= 30;
+  }).length;
 
   const handleCreated = (response: CreateApiKeyResponse) => {
     setShowCreate(false);
@@ -99,7 +106,7 @@ function TenantUserView() {
     <div className="space-y-6">
       <PageHeader
         title={t('apiKeys.title')}
-        subtitle={t('apiKeys.description')}
+        subtitle={`${t('apiKeys.kpi.active', { count: activeCount })} · ${t('apiKeys.kpi.expiringSoon', { count: expiringCount })}`}
         actions={
           hasPermission(PERMISSIONS.ApiKeys.Create) ? (
             <Button onClick={() => setShowCreate(true)}>
@@ -193,7 +200,12 @@ function TenantUserView() {
 
       <CreateApiKeyDialog open={showCreate} onOpenChange={setShowCreate} onCreated={handleCreated} />
       {createdKey && (
-        <ApiKeySecretDisplay open={!!createdKey} onOpenChange={() => setCreatedKey(null)} response={createdKey} />
+        <ApiKeySecretDisplay
+          key={createdKey.id}
+          open={!!createdKey}
+          onOpenChange={() => setCreatedKey(null)}
+          response={createdKey}
+        />
       )}
       <ConfirmDialog
         isOpen={!!revokeTarget}

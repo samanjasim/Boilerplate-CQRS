@@ -12,4 +12,11 @@ export const auditLogsApi = {
     );
     return response.data;
   },
+
+  getAuditLog: async (id: string): Promise<AuditLog> => {
+    const response = await apiClient.get<{ data: AuditLog }>(
+      API_ENDPOINTS.AUDIT_LOGS.BY_ID(id)
+    );
+    return response.data.data ?? (response.data as unknown as AuditLog);
+  },
 };
