@@ -260,6 +260,10 @@ internal sealed class ChatExecutionService(
 
         var citations = CitationParser.Parse(finalContent, retrieved.Children);
         var finalOrder = sink.NextOrder;
+        // Stage moderation events (input + output Allowed/Redacted from the decorator) onto
+        // the change tracker BEFORE FinalizeTurnAsync so they flush in the same SaveChanges.
+        // Without this, LogAllOutcomes-emitted events on the happy path are silently dropped.
+        PersistModerationEvents(runResult.ModerationEvents);
         var finalMessage = await FinalizeTurnAsync(
             state, finalContent,
             (int)runResult.TotalInputTokens, (int)runResult.TotalOutputTokens,
@@ -566,6 +570,9 @@ internal sealed class ChatExecutionService(
         }
 
         var finalOrder = sink.NextOrder;
+        // Stage moderation events from the decorator (LogAllOutcomes Allowed/Redacted) BEFORE
+        // FinalizeTurnAsync so they flush atomically with the assistant message + usage log.
+        PersistModerationEvents(runResult.ModerationEvents);
         var assistantMessage = await FinalizeTurnAsync(
             state, finalContent,
             (int)runResult.TotalInputTokens, (int)runResult.TotalOutputTokens,

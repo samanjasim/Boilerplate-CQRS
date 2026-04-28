@@ -15,7 +15,17 @@ internal sealed class BufferingSink(IAgentRunSink inner) : IAgentRunSink
     private readonly StringBuilder _buffer = new();
     private AgentAssistantMessage? _heldMessage;
 
-    public string BufferedContent => _buffer.ToString();
+    /// <summary>
+    /// Returns the held content from whichever runtime channel produced it: streaming
+    /// runs accumulate in <c>_buffer</c> via <see cref="OnDeltaAsync"/>; non-streaming
+    /// chat-completion runs deliver the full content once via
+    /// <see cref="OnAssistantMessageAsync"/>. The buffer alone misses non-streaming
+    /// content entirely — fall back to the held message if the buffer is empty.
+    /// </summary>
+    public string BufferedContent =>
+        _buffer.Length > 0
+            ? _buffer.ToString()
+            : (_heldMessage?.Content ?? string.Empty);
 
     public Task OnStepStartedAsync(int stepIndex, CancellationToken ct) => inner.OnStepStartedAsync(stepIndex, ct);
     public Task OnToolCallAsync(AgentToolCallEvent call, CancellationToken ct) => inner.OnToolCallAsync(call, ct);
