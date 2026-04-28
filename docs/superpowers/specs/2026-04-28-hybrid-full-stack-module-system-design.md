@@ -1,7 +1,7 @@
 # Hybrid Full-Stack Module System Design
 
 **Date:** 2026-04-28
-**Status:** Draft approved for planning
+**Status:** Draft approved for planning. Open decisions resolved 2026-04-28 (see §14).
 **Scope:** Backend .NET modules, React web modules, Flutter mobile modules, source and package distribution, module selection, dependency validation, and guardrails.
 
 ---
@@ -410,4 +410,87 @@ These should be resolved in the implementation plan:
 3. Which pilot module becomes the first packaged module.
 4. Whether web module package format should be ESM-only or dual ESM/CJS. Recommendation: ESM-only for Vite.
 5. How version compatibility is expressed, for example `coreRange: ">=1.0.0 <2.0.0"`.
+
+---
+
+## 14. Resolved Decisions (2026-04-28)
+
+Each entry records the choice, the reasoning, and whether it lands in Tier 1 (immediate, source-mode host cleanup) or is recorded for Phase 3+.
+
+### D1. Dependency selection: strict by default, opt-in auto-include
+
+The CLI fails when a selected module's dependencies are not also selected. The error message names the missing modules and prints the corrected command. An `-AutoIncludeDependencies` flag opts into automatic resolution and prints the resulting module set.
+
+```
+./scripts/rename.ps1 -Modules "workflow"
+  → Fails: "Module 'workflow' requires 'commentsActivity', 'communication'.
+            Re-run with: -Modules 'workflow,commentsActivity,communication'
+            Or pass: -AutoIncludeDependencies"
+```
+
+**Reasoning:** The CLI runs at project bootstrap, not in a tight loop. A one-time error that teaches the dependency graph is cheaper than silent expansion that surprises someone six months later. Self-healing error message keeps friction under ten seconds.
+
+**Tier 1 scope:** Implement strict failure with helpful error. Defer `-AutoIncludeDependencies` until a real workflow demands it.
+
+### D2. Catalog location: top-level `modules.catalog.json`
+
+Move the catalog from `scripts/modules.json` to the repository root as `modules.catalog.json`.
+
+**Reasoning:** §5 designates the catalog as the single source of truth for generation, docs, dependency validation, architecture tests, and FE/BE/mobile module config. The `scripts/` location implies tooling-only ownership, which is no longer accurate. Top-level placement signals peer status with `package.json` and `Starter.sln`.
+
+**Tier 1 scope:** File move, update `rename.ps1` path constant, update doc references.
+
+### D3. First packaged pilot: Products
+
+Products is the first module to be delivered as both source and package in Phase 3.
+
+**Reasoning:**
+- Self-contained domain (CRUD + image upload + demo seed).
+- Exercises capability consumption (`IQuotaChecker`, `IWebhookPublisher`) — proves package-mode modules can depend on core capabilities without source access.
+- Backend + Web only, no mobile contribution — keeps the first pilot to two platforms instead of three.
+- Commercially relevant — e-commerce is sellable, so the pilot doubles as product.
+- Lower stakes than Billing, AI, or Workflow if the v1 contract has rough edges.
+
+CommentsActivity is the recommended **second** pilot once the contract is proven, because it exposes four services and stress-tests multi-service packages.
+
+**Tier 1 scope:** None. Recorded for Phase 3.
+
+### D4. Web package format: ESM-only
+
+Web modules are published as ESM only. No dual ESM/CJS, no CommonJS fallback.
+
+**Reasoning:** Vite is ESM-native, the boilerplate has no SSR or Next.js, and dual-package hazard is not worth solving for a problem the boilerplate's target stack does not have.
+
+**Tier 1 scope:** None. Recorded for Phase 3.
+
+### D5. Version compatibility: `coreCompat` semver range, runtime + install-time enforcement
+
+The catalog gains one field per module:
+
+```json
+"workflow": {
+  "coreCompat": ">=1.0.0 <2.0.0",
+  ...
+}
+```
+
+Enforcement per platform:
+
+- **Backend:** module assembly carries `[CoreCompat(">=1.0.0 <2.0.0")]`. The module host fails startup with a clear message when the loaded `Starter.Core` assembly version does not satisfy the range.
+- **Web:** npm `peerDependencies` on `@starter/core`. npm enforces at install.
+- **Mobile:** pub `dependencies` constraint on `starter_core`. pub enforces at `flutter pub get`.
+
+**Reasoning:** Semver range is the universal primitive across NuGet, npm, and pub. Runtime enforcement on backend catches assembly mismatches that NuGet resolution can miss (stale local caches, manual DLL drops). Install-time enforcement on web and mobile is free from existing package managers.
+
+**Tier 1 scope:** None. The `coreCompat` field is added the day Phase 3 starts — adding it earlier with no enforcer creates a rotting field that gets copied without thought.
+
+### Summary
+
+| # | Decision | Tier 1 |
+|---|---|---|
+| D1 | Strict deps with helpful error, `-AutoIncludeDependencies` deferred | Yes |
+| D2 | Move catalog to `/modules.catalog.json` | Yes |
+| D3 | Products as first packaged pilot | Phase 3 |
+| D4 | ESM-only web packages | Phase 3 |
+| D5 | `coreCompat` semver, runtime + install enforcement | Phase 3 |
 
