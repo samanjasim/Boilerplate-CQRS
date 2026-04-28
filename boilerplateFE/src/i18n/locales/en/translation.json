@@ -175,6 +175,14 @@
     "language": "Language",
     "searchPlaceholder": "Search anything…"
   },
+  "command_palette": {
+    "title": "Command palette",
+    "description": "Search and jump to any page in the app.",
+    "placeholder": "Search pages…",
+    "recent": "Recent",
+    "empty": "Start typing to search pages, or pick a recent one.",
+    "noResults": "No matches for \"{{query}}\"."
+  },
   "dashboard": {
     "welcomeBack": "Welcome back, {{name}}!",
     "subtitle": "Here's what's happening on your platform",

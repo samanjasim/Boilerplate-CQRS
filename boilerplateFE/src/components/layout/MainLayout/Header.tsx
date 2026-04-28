@@ -33,8 +33,13 @@ export function Header() {
   const isCollapsed = useUIStore(selectSidebarCollapsed);
   const sidebarOpen = useUIStore(selectSidebarOpen);
   const toggleSidebar = useUIStore((state) => state.toggleSidebar);
+  const openCommandPalette = () => useUIStore.getState().setCommandPaletteOpen(true);
   const navigate = useNavigate();
   const handleLogout = useLogout();
+  const modKey =
+    typeof navigator !== 'undefined' && /Mac|iPhone|iPad/i.test(navigator.platform)
+      ? '⌘'
+      : 'Ctrl';
 
   return (
     <header
@@ -67,10 +72,12 @@ export function Header() {
         {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
       </button>
 
-      {/* Search palette trigger — lg+ only. Click currently no-op; palette content ships in next plan. */}
+      {/* Search palette trigger — lg+ only. Opens the command palette. */}
       <button
         type="button"
+        onClick={openCommandPalette}
         aria-label={t('header.searchPlaceholder')}
+        aria-haspopup="dialog"
         className={cn(
           'hidden lg:flex h-8 items-center gap-2 rounded-[9px] border border-foreground/10 bg-foreground/5 px-3',
           'text-sm text-muted-foreground',
@@ -82,8 +89,24 @@ export function Header() {
         <Search className="h-4 w-4 opacity-60" />
         <span className="flex-1 text-start">{t('header.searchPlaceholder')}</span>
         <span className="ms-auto rounded-md border border-foreground/15 bg-foreground/8 px-1.5 py-0.5 font-mono text-[10px] tracking-[0.05em] text-muted-foreground">
-          ⌘K
+          {modKey}K
         </span>
+      </button>
+
+      {/* Mobile palette trigger — <lg only, icon-only */}
+      <button
+        type="button"
+        onClick={openCommandPalette}
+        aria-label={t('header.searchPlaceholder')}
+        aria-haspopup="dialog"
+        className={cn(
+          'lg:hidden flex h-8 w-8 items-center justify-center rounded-[9px] border border-foreground/10 bg-foreground/5',
+          'text-muted-foreground',
+          'motion-safe:transition-colors motion-safe:duration-150',
+          'hover:bg-foreground/10 hover:text-foreground'
+        )}
+      >
+        <Search className="h-4 w-4" />
       </button>
 
       {/* Spacer pushes right cluster to the end */}
