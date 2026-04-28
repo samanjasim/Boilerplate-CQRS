@@ -144,7 +144,7 @@ export default function UserDetailPage() {
                 <h2 className="text-[22px] font-semibold tracking-tight font-display text-foreground">
                   {user.firstName} {user.lastName}
                 </h2>
-                <Badge variant={statusVariant as any}>{statusLabel}</Badge>
+                <Badge variant={statusVariant}>{statusLabel}</Badge>
               </div>
 
               <p className="text-[13px] text-muted-foreground mb-3">@{user.username}</p>

@@ -3,6 +3,7 @@ import { useCountUp } from '@/hooks';
 
 export type StatTone = 'copper' | 'emerald' | 'violet' | 'amber' | 'warn';
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const STAT_TONE_BG: Record<StatTone, string> = {
   copper:
     'btn-primary-gradient glow-primary-sm',
