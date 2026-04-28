@@ -82,8 +82,14 @@ public static class ModuleLoader
 
         foreach (var dep in module.Dependencies)
         {
-            if (moduleMap.TryGetValue(dep, out var depModule))
-                Visit(depModule, moduleMap, sorted, visited, visiting);
+            if (!moduleMap.TryGetValue(dep, out var depModule))
+            {
+                throw new InvalidOperationException(
+                    $"Module '{module.Name}' declares a dependency on '{dep}', but '{dep}' is not installed. " +
+                    $"Installed modules: {string.Join(", ", moduleMap.Keys)}.");
+            }
+
+            Visit(depModule, moduleMap, sorted, visited, visiting);
         }
 
         visiting.Remove(module.Name);
