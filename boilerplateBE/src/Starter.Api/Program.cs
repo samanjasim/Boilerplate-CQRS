@@ -3,8 +3,8 @@ using Starter.Api.Middleware;
 using Starter.Application;
 using Starter.Infrastructure;
 using Starter.Infrastructure.Identity;
+using Starter.Infrastructure.Modularity;
 using Starter.Infrastructure.Persistence.Seeds;
-using Starter.Module.Workflow.Infrastructure;
 using Serilog;
 using Serilog.Sinks.OpenTelemetry;
 
@@ -48,7 +48,13 @@ builder.Services.AddApplication(moduleAssemblies);
 builder.Services.AddInfrastructure(
     builder.Configuration,
     moduleAssemblies,
-    configureBus: bus => bus.AddWorkflowOutbox());
+    configureBus: bus =>
+    {
+        foreach (var contributor in orderedModules.OfType<IModuleBusContributor>())
+        {
+            contributor.ConfigureBus(bus);
+        }
+    });
 builder.Services.AddIdentityInfrastructure(builder.Configuration);
 
 // Module-specific services

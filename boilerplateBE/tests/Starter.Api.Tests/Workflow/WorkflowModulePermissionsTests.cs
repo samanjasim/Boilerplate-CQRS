@@ -82,10 +82,15 @@ public sealed class WorkflowModulePermissionsTests
     }
 
     [Fact]
-    public void Module_DeclaresNoHardDependencies()
+    public void Module_DeclaresRequiredOptionalModuleDependencies()
     {
-        // Cross-module coupling must go through capability contracts + events.
-        // A non-empty Dependencies list would break composability.
-        _module.Dependencies.Should().BeEmpty();
+        // Workflow registers WorkflowInstance as commentable and email templates
+        // through optional module capability contracts; startup must fail loud if
+        // those modules are removed while Workflow remains installed.
+        _module.Dependencies.Should().BeEquivalentTo(new[]
+        {
+            "Starter.Module.CommentsActivity",
+            "Starter.Module.Communication",
+        });
     }
 }

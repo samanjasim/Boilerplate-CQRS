@@ -2,7 +2,8 @@ using FluentAssertions;
 using MassTransit;
 using MassTransit.EntityFrameworkCoreIntegration;
 using Microsoft.EntityFrameworkCore;
-using Starter.Module.Workflow.Infrastructure;
+using Starter.Infrastructure.Modularity;
+using Starter.Module.Workflow;
 using Starter.Module.Workflow.Infrastructure.Persistence;
 using Xunit;
 
@@ -29,15 +30,21 @@ public sealed class WorkflowOutboxRegistrationTests
     }
 
     [Fact]
-    public void AddWorkflowOutbox_Extension_Is_Callable_On_BusRegistrationConfigurator()
+    public void WorkflowModule_Implements_ModuleBusContributor()
     {
-        // Smoke test: the extension method exists and accepts an IBusRegistrationConfigurator.
+        typeof(WorkflowModule).Should().Implement<IModuleBusContributor>();
+    }
+
+    [Fact]
+    public void WorkflowModule_ConfigureBus_Is_Callable_On_BusRegistrationConfigurator()
+    {
+        // Smoke test: the contributor method exists and accepts an IBusRegistrationConfigurator.
         // We cannot build a full IBusRegistrationConfigurator outside an IServiceCollection,
         // but resolving the method via reflection guards against a refactor that drops it.
-        var method = typeof(WorkflowMassTransitExtensions)
-            .GetMethod(nameof(WorkflowMassTransitExtensions.AddWorkflowOutbox));
+        var method = typeof(WorkflowModule)
+            .GetMethod(nameof(IModuleBusContributor.ConfigureBus));
 
-        method.Should().NotBeNull("WorkflowMassTransitExtensions.AddWorkflowOutbox is the public entry point used by Program.cs");
+        method.Should().NotBeNull("WorkflowModule.ConfigureBus is the neutral host contract used by Program.cs");
         method!.GetParameters().Single().ParameterType.Should().Be<IBusRegistrationConfigurator>();
     }
 }

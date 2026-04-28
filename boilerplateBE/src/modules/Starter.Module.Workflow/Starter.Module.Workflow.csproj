@@ -11,5 +11,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Starter.Abstractions.Web\Starter.Abstractions.Web.csproj" />
+    <ProjectReference Include="..\..\Starter.Infrastructure\Starter.Infrastructure.csproj" />
   </ItemGroup>
 </Project>
