@@ -14,5 +14,6 @@ namespace Starter.Module.Billing.Application.Queries.GetUsage;
     RequiredPermission = BillingPermissions.View,
     IsReadOnly = true)]
 public sealed record GetUsageQuery(
+    [property: AiParameterIgnore]
     [Description("Optional tenant id; superadmin-only when set to a value other than the caller's tenant.")]
     Guid? TenantId = null) : IRequest<Result<UsageDto>>;

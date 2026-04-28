@@ -1,6 +1,8 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Starter.Abstractions.Ai;
 using Starter.Abstractions.Capabilities;
@@ -10,6 +12,7 @@ using Starter.Module.AI.Application.Commands.InstallTemplate;
 using Starter.Module.AI.Application.Services;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Module.AI.Infrastructure.Persistence;
+using Starter.Module.Billing;
 using Starter.Shared.Constants;
 using Xunit;
 
@@ -75,6 +78,41 @@ public class Plan5eAcidTests
             .SafetyPresetOverride.Should().BeNull();
         new Starter.Module.Products.Application.Templates.ProductExpertOpenAiTemplate()
             .SafetyPresetOverride.Should().BeNull();
+    }
+
+    [Fact]
+    public void Billing_module_registers_platform_insights_billing_tools()
+    {
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=test",
+            })
+            .Build();
+
+        new BillingModule().ConfigureServices(services, configuration);
+
+        using var provider = services.BuildServiceProvider();
+        var names = provider.GetServices<IAiToolDefinition>()
+            .Select(t => t.Name)
+            .ToList();
+
+        names.Should().Contain(new[] { "list_subscriptions", "list_usage" });
+    }
+
+    [Fact]
+    public void Conversation_tool_name_matches_platform_insights_template()
+    {
+        var services = new ServiceCollection();
+        services.AddAiToolsFromAssembly(typeof(Starter.Module.AI.AIModule).Assembly);
+
+        using var provider = services.BuildServiceProvider();
+        var names = provider.GetServices<IAiToolDefinition>()
+            .Select(t => t.Name)
+            .ToList();
+
+        names.Should().Contain("list_conversations");
     }
 
     [Fact]

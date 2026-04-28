@@ -9,7 +9,7 @@ using Starter.Shared.Results;
 namespace Starter.Module.AI.Application.Queries.GetConversations;
 
 [AiTool(
-    Name = "list_my_conversations",
+    Name = "list_conversations",
     Description = "List the current user's recent AI conversations with title, message count, and last-message timestamp.",
     Category = "AI",
     RequiredPermission = AiPermissions.ViewConversations,

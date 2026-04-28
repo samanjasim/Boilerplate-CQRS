@@ -46,6 +46,7 @@ public sealed class BillingModule : IModule
         });
 
         services.AddScoped<IBillingProvider, MockBillingProvider>();
+        services.AddAiToolsFromAssembly(typeof(BillingModule).Assembly);
         return services;
     }
 
