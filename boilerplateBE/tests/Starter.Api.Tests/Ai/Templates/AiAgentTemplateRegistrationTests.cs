@@ -33,6 +33,6 @@ public class AiAgentTemplateRegistrationTests
         public AssistantExecutionMode ExecutionMode => AssistantExecutionMode.Chat;
         public IReadOnlyList<string> EnabledToolNames { get; } = new[] { "fixture_tool" };
         public IReadOnlyList<string> PersonaTargetSlugs { get; } = new[] { "default" };
-        public SafetyPreset? SafetyPresetHint => SafetyPreset.Standard;
+        public SafetyPreset? SafetyPresetOverride => SafetyPreset.Standard;
     }
 }
