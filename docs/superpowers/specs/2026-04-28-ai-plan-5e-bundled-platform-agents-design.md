@@ -231,57 +231,26 @@ public sealed record GetAuditLogsQuery(...) : IRequest<Result<PagedResult<AuditL
 
 ---
 
-## 8. Startup install flag
+## 8. Startup install — single flag, all templates
 
-### 8.1 New config key
+The existing `InstallDemoTemplatesOnStartup` loop in `AIModule.SeedDataAsync` already iterates over **every** template in `IAiAgentTemplateRegistry.GetAll()`. Once the five 5e templates are registered by the existing per-module discovery scan, the existing flag installs them automatically — no new flag needed.
 
-`appsettings.json`:
+This is simpler than the two-flag design (no new config key, no new loop block, no slug-list filtering) and matches the natural shape of the existing code. A fresh dev tenant gets nine assistants installed (four 5c-2 demos + five 5e bundled); admins delete what they don't want post-install. Production default for `InstallDemoTemplatesOnStartup` remains `false`, so prod isn't affected.
 
-```jsonc
-"AI": {
-  "InstallDemoTemplatesOnStartup": false,        // existing — unchanged
-  "InstallBundledAgentsOnStartup": false          // NEW — default OFF
-}
-```
+### 8.1 No config changes
 
-`appsettings.Development.json`:
+`appsettings.json` and `appsettings.Development.json` are not touched in 5e.
 
-```jsonc
-"AI": {
-  "InstallDemoTemplatesOnStartup": true,         // existing
-  "InstallBundledAgentsOnStartup": true          // NEW — ON in dev
-}
-```
-
-Two flags are intentional: the existing `InstallDemoTemplatesOnStartup` covers the 5c-2 primitive smoke-test templates (`support_assistant_*`, `product_expert_*`); `InstallBundledAgentsOnStartup` covers the 5e "real" boilerplate-shipped agents. Operators can enable each independently.
-
-### 8.2 `AIModule.SeedDataAsync` extension
-
-A new `InstallBundledAgentsAsync` block runs after `FlagshipPersonasBackfillSeed.SeedAsync` and parallel to the existing `InstallDemoTemplatesAsync` block. For each tenant and each of the five 5e template slugs:
-
-```csharp
-var result = await mediator.Send(new InstallTemplateCommand
-{
-    TargetTenantId = tenant.Id,
-    TemplateSlug = slug,
-    CreatedByUserIdOverride = Guid.Empty,  // system seed actor
-}, ct);
-// AlreadyInstalled is the expected idempotent path on re-runs.
-```
-
-`Result.Failure` returning `TemplateErrors.AlreadyInstalled` is logged at `Debug` and ignored. Any other failure is logged at `Warning` and the loop continues. This matches the existing 5c-2 demo-install loop's tolerance.
-
-### 8.3 Order of operations in `SeedDataAsync`
+### 8.2 `AIModule.SeedDataAsync` order of operations
 
 1. `AiRoleMetadataSeed.SeedAsync` (existing)
 2. `ModelPricingSeed.SeedAsync` (existing)
 3. `SafetyPresetProfileSeed.SeedAsync` (5d-2)
-4. `AgentPrincipalBackfill.RunAsync` (5d-1)
-5. **`FlagshipPersonasBackfillSeed.SeedAsync` (NEW — 5e)**
-6. `InstallDemoTemplatesAsync` (5c-2; gated by old flag)
-7. **`InstallBundledAgentsAsync` (NEW — 5e; gated by new flag)**
+4. **`FlagshipPersonasBackfillSeed.SeedAsync` (NEW — 5e)** — must run before the install loop or `teacher_tutor` / `brand_content` will fail persona-target validation.
+5. `AgentPrincipalBackfill.RunAsync` (5d-1)
+6. Existing template-install loop (5c-2; gated by `InstallDemoTemplatesOnStartup`) — now installs all nine templates.
 
-Step 5 must precede step 7 or `teacher_tutor` / `brand_content` will fail persona-target validation.
+The persona backfill must run unconditionally (outside the flag-gated block) so that `TenantCreatedEvent`-driven flows that don't go through the demo-install path still benefit from the new personas.
 
 ---
 
@@ -301,8 +270,8 @@ In `boilerplateBE/tests/Starter.Api.Tests/Ai/AcidTests/`. Use the existing `Plan
 | `NewTenantGetsAllEightPersonas` | Raise `TenantCreatedEvent`; query `AiPersonas` for that tenant; assert exactly 8 rows with the expected slugs and safety presets. |
 | `BackfillSeedAddsMissingPersonasToOldTenant` | Seed a tenant with only `anonymous` + `default`; run `FlagshipPersonasBackfillSeed.SeedAsync`; assert all 8 personas now exist; assert idempotency by running it twice. |
 | `PlatformInsightsAgentCanCallAuditLogTool` | Install `platform_insights_anthropic`; submit a chat completion that elicits a `list_audit_logs` tool call; assert the dispatcher invokes the audit-log tool and the response surfaces results. (Uses the existing `AllowAllModeration` + fake-runtime fixture.) |
-| `BundledAgentsInstallFlagOff_NoAutoInstall` | Set `AI:InstallBundledAgentsOnStartup = false`; run `SeedDataAsync`; assert no 5e assistants exist. |
-| `BundledAgentsInstallFlagOn_FreshTenantHasFiveAssistants` | Flag true; assert all five 5e assistants installed for every existing tenant. |
+| `InstallFlagOff_No5eTemplatesAutoInstalled` | Set `AI:InstallDemoTemplatesOnStartup = false`; run `SeedDataAsync`; assert no 5e assistants exist (and no 5c-2 demos either — same flag). |
+| `InstallFlagOn_FreshTenantHasAllNineAssistants` | Flag true; assert all nine boilerplate assistants (4 demos + 5 bundled) installed for every existing tenant. |
 
 ### 9.2 Unit tests
 
@@ -358,8 +327,6 @@ In `boilerplateBE/tests/Starter.Api.Tests/Ai/AcidTests/`. Use the existing `Plan
 | `boilerplateBE/src/Starter.Application/Features/AuditLogs/Queries/GetAuditLogs/GetAuditLogsQuery.cs` | `[AiTool]` attribute. |
 | `boilerplateBE/src/modules/Starter.Module.Billing/Application/Queries/GetAllSubscriptions/GetAllSubscriptionsQuery.cs` | `[AiTool]` attribute. |
 | `boilerplateBE/src/modules/Starter.Module.Billing/Application/Queries/GetUsage/GetUsageQuery.cs` | `[AiTool]` attribute. |
-| `boilerplateBE/src/Starter.Api/appsettings.json` | New `InstallBundledAgentsOnStartup = false` flag. |
-| `boilerplateBE/src/Starter.Api/appsettings.Development.json` | New flag = `true`. |
 | `docs/superpowers/specs/2026-04-25-ai-plan-5c-2-agent-templates-design.md` | "Superseded by 5e" pointer in §3.1. |
 
 (Test-file updates per §9.3 not double-counted here.)
@@ -395,7 +362,7 @@ Both flagship acid tests slot neatly under existing tenants once `FlagshipPerson
 | Risk | Mitigation |
 |---|---|
 | Renaming `SafetyPresetHint` → `SafetyPresetOverride` breaks downstream consumers (DTOs, FE types). | Low blast radius — the field is only consumed inside the AI module and its tests. The grep for `SafetyPresetHint` returns only the four 5c-2 template files plus `IAiAgentTemplate.cs` and the mapper. The FE surface for templates lands in 7a. |
-| Auto-install on startup creates noise (a fresh dev tenant gets 9 demo assistants). | Two flags isolate intents. Devs running smoke tests can flip `InstallDemoTemplatesOnStartup = false` and keep just the five 5e agents. |
+| Auto-install on startup creates noise (a fresh dev tenant gets 9 boilerplate assistants). | Single flag remains opt-in (`false` in prod, `true` in dev). Admins delete unwanted assistants post-install. The benefit of one flag outweighs the noise. |
 | Backfill seed runs against every tenant on every startup. | Idempotent — query existing slugs first, skip tenants already complete. The query is per-tenant and indexed by `(TenantId, Slug)`. Cost is negligible at boilerplate scale. |
 | Adding `[AiTool]` to `GetAllSubscriptionsQuery` exposes billing data to AI calls. | Already gated by `BillingPermissions.View`; the user dispatching the tool must hold the permission. Same model as the existing `list_users` tool. |
 | `Teacher Tutor` chat with no tools is a thin acid-test demo. | This is intentional — the flagship-tool authoring is Plan 8b. The acid test is *"ready to fork per grade"*, which is a configuration story, not a tool story. |
@@ -410,7 +377,7 @@ Both flagship acid tests slot neatly under existing tenants once `FlagshipPerson
 2. **Personas** — extend `AiPersona` with six factory methods; extend `SeedTenantPersonasDomainEventHandler`; write `FlagshipPersonasBackfillSeed`; wire it into `AIModule.SeedDataAsync`. Build green; persona unit tests pass.
 3. **Tools** — add three `[AiTool]` attributes; assert discovery via the existing scan tests.
 4. **Templates** — write the five new template + prompt files; verify discovery test passes.
-5. **Auto-install flag** — add config key + `InstallBundledAgentsAsync` block in `SeedDataAsync`.
+5. **Wire seed order** — insert `FlagshipPersonasBackfillSeed.SeedAsync` into the always-on block of `AIModule.SeedDataAsync` (before the existing template-install loop). No new flag.
 6. **Acid tests** — write `Plan5eAcidTests.cs` last; require steps 1–5 to be in place.
 7. **Documentation** — append "Superseded by 5e" pointer to 5c-2 design doc.
 
