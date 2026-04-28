@@ -11,7 +11,9 @@ import { PageHeader, EmptyState, getPersistedPageSize, Pagination } from '@/comp
 import { useFeatureFlags, useOptOutFeatureFlag, useRemoveOptOut } from '../api';
 import type { FeatureFlagDto } from '../api';
 import { FeatureFlagsList } from '../components/FeatureFlagsList';
+import { FeatureFlagStatStrip } from '../components/FeatureFlagStatStrip';
 import { CreateFeatureFlagDialog } from '../components/CreateFeatureFlagDialog';
+import { getFlagStatus } from '../utils/flag-status';
 import { usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
 import { useAuthStore, selectUser } from '@/stores';
@@ -27,6 +29,23 @@ const VALUE_TYPE_LABEL_KEYS: Record<string | number, string> = {
   Integer: 'featureFlags.integer',
   Json: 'featureFlags.json',
 };
+
+function getFeatureFlagStats(flags: FeatureFlagDto[]) {
+  const isBooleanOn = (value: string) => value.toLowerCase() === 'true';
+  const enabledCount = flags.filter((flag) =>
+    flag.valueType === 'Boolean' ? isBooleanOn(flag.resolvedValue ?? flag.defaultValue) : false
+  ).length;
+  const tenantOverrideCount = flags.filter((flag) => flag.tenantOverrideValue !== null).length;
+  const optedOutCount = flags.filter((flag) =>
+    flag.valueType === 'Boolean' && flag.tenantOverrideValue?.toLowerCase() === 'false'
+  ).length;
+
+  return {
+    enabledCount,
+    tenantOverrideCount,
+    optedOutCount,
+  };
+}
 
 export default function FeatureFlagsPage() {
   const { t } = useTranslation();
@@ -64,6 +83,9 @@ export default function FeatureFlagsPage() {
 
   // Platform admin: full CRUD view
   if (!isTenantUser) {
+    const flags = data?.data ?? [];
+    const stats = getFeatureFlagStats(flags);
+
     return (
       <div className="space-y-6">
         <PageHeader
@@ -79,8 +101,15 @@ export default function FeatureFlagsPage() {
           }
         />
 
+        <FeatureFlagStatStrip
+          enabledCount={stats.enabledCount}
+          totalCount={flags.length}
+          tenantOverrideCount={stats.tenantOverrideCount}
+          optedOutCount={stats.optedOutCount}
+        />
+
         <FeatureFlagsList
-          flags={data?.data ?? []}
+          flags={flags}
           pagination={data?.pagination}
           onPageChange={setPageNumber}
           onPageSizeChange={(size) => { setPageSize(size); setPageNumber(1); }}
@@ -92,6 +121,9 @@ export default function FeatureFlagsPage() {
   }
 
   // Tenant admin: read-only resolved flags with opt-out for non-system booleans
+  const flags = data?.data ?? [];
+  const stats = getFeatureFlagStats(flags);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -99,8 +131,15 @@ export default function FeatureFlagsPage() {
         subtitle={t('featureFlags.tenantDescription')}
       />
 
+      <FeatureFlagStatStrip
+        enabledCount={stats.enabledCount}
+        totalCount={flags.length}
+        tenantOverrideCount={stats.tenantOverrideCount}
+        optedOutCount={stats.optedOutCount}
+      />
+
       <TenantFlagsList
-        flags={data?.data ?? []}
+        flags={flags}
         tenantId={user!.tenantId!}
         pagination={data?.pagination}
         onPageChange={setPageNumber}
@@ -158,6 +197,7 @@ function TenantFlagsList({
             <TableHead>{t('featureFlags.type')}</TableHead>
             <TableHead>{t('featureFlags.defaultValue')}</TableHead>
             <TableHead>{t('featureFlags.resolvedValue')}</TableHead>
+            <TableHead>{t('featureFlags.status.title')}</TableHead>
             <TableHead className="text-end">{t('common.actions')}</TableHead>
           </TableRow>
         </TableHeader>
@@ -189,6 +229,12 @@ function TenantFlagsList({
                     </Badge>
                   )}
                 </div>
+              </TableCell>
+              <TableCell>
+                {(() => {
+                  const status = getFlagStatus(flag, t);
+                  return <Badge variant={status.variant}>{status.label}</Badge>;
+                })()}
               </TableCell>
               <TableCell className="text-end">
                 {/* Only non-system boolean flags can be opted out by tenant admins */}

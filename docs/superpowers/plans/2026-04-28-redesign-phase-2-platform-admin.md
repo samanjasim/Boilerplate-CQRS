@@ -4,7 +4,7 @@
 
 **Goal:** Polish the four Platform admin pages (`audit-logs`, `feature-flags`, `api-keys`, `settings`) into J4-native form, add an `AuditLogDetailPage` route, with a small backend addition (`GetAuditLogByIdQuery` + controller action) to support it.
 
-**Architecture:** Pure FE work plus one small BE addition. New FE code is page-scoped under each feature's `components/` and `pages/` folders — no shared `@/components/common/` extractions this phase. The BE addition mirrors the existing `GetAuditLogsQueryHandler` pattern (CQRS + Result + multi-tenant via `ApplicationDbContext` global filter).
+**Architecture:** Pure FE work plus one small BE addition. New FE code is page-scoped under each feature's `components/` and `pages/` folders, while reusing existing primitives (`PageHeader`, `Table`, `Badge`, `Card`, `queryKeys`) instead of creating parallel local variants. The BE addition mirrors the existing `GetAuditLogsQueryHandler` pattern (CQRS + Result + multi-tenant via `ApplicationDbContext` global filter).
 
 **Tech Stack:** React 19 + TypeScript + Tailwind CSS 4 + shadcn/ui + TanStack Query · .NET 10 / MediatR / EF Core (BE) · Playwright MCP for visual verification.
 
@@ -13,6 +13,8 @@
 **Branch:** `fe/redesign-phase-2-views` (already created off `origin/main`).
 
 **Verification model:** This codebase has no unit test runner configured (no vitest/jest in `package.json`). Per-task verification is `npm run build` + `npm run lint` for code-correctness, plus Playwright MCP for visual checks. Each task ends with a commit.
+
+**Plan review adjustments:** Routes use the existing app paths (`/audit-logs`, no `/admin` prefix). API endpoints preserve the current PascalCase controller casing (`/AuditLogs`). Detail queries extend the shared `queryKeys` registry. Detail-page navigation uses `PageHeader.breadcrumbs` because `useBackNavigation` is deprecated in this codebase. Metric surfaces reuse existing shared UI primitives; no fake trend chart should imply time-series data when no history exists.
 
 ---
 
@@ -55,6 +57,7 @@ If `_testJ4visual/` directory still exists at repo root, restart its BE/FE proce
 - Modify: `boilerplateBE/src/Starter.Api/Controllers/AuditLogsController.cs` (add `GET {id}` action)
 - Modify: `boilerplateFE/src/types/audit-log.types.ts` (add new fields)
 - Modify: `boilerplateFE/src/config/api.config.ts` (add `BY_ID` endpoint)
+- Modify: `boilerplateFE/src/lib/query/keys.ts` (add audit-log detail key)
 - Modify: `boilerplateFE/src/features/audit-logs/api/audit-logs.api.ts` (add `getAuditLog`)
 - Modify: `boilerplateFE/src/features/audit-logs/api/audit-logs.queries.ts` (add `useAuditLog`)
 
@@ -101,6 +104,23 @@ var projected = query.Select(a => new AuditLogDto(
     a.AgentPrincipalId,
     a.AgentRunId));
 ```
+
+- [ ] **Step 2b: Preserve exact `DateTo` timestamps for timeline queries**
+
+In `GetAuditLogsQueryHandler.cs`, keep the existing inclusive end-of-day behavior for date-only filters, but do not add a day when the caller passes an exact timestamp. This lets the audit timeline request "last 24 hours" without accidentally fetching tomorrow's rows:
+
+```csharp
+if (request.DateTo.HasValue)
+{
+    var rawTo = DateTime.SpecifyKind(request.DateTo.Value, DateTimeKind.Utc);
+    var to = rawTo.TimeOfDay == TimeSpan.Zero
+        ? rawTo.AddDays(1).AddTicks(-1)
+        : rawTo;
+    query = query.Where(a => a.PerformedAt <= to);
+}
+```
+
+Leave the existing `DateFrom` normalization unchanged.
 
 - [ ] **Step 3: Create `GetAuditLogByIdQuery.cs`**
 
@@ -151,7 +171,7 @@ internal sealed class GetAuditLogByIdQueryHandler(
             .FirstOrDefaultAsync(cancellationToken);
 
         if (dto is null)
-            return Result.Failure<AuditLogDto>(new Error("AuditLog.NotFound", "Audit log not found"));
+            return Result.Failure<AuditLogDto>(Error.NotFound("AuditLog.NotFound", "Audit log not found"));
 
         return Result.Success(dto);
     }
@@ -162,7 +182,13 @@ The multi-tenant global query filter on `ApplicationDbContext` automatically res
 
 - [ ] **Step 5: Add the `GET {id}` controller action**
 
-Modify `AuditLogsController.cs`. Add this method after the existing `GetAuditLogs` action:
+Modify `AuditLogsController.cs`. Add this using next to the existing `GetAuditLogs` import:
+
+```csharp
+using Starter.Application.Features.AuditLogs.Queries.GetAuditLogById;
+```
+
+Then add this method after the existing `GetAuditLogs` action:
 
 ```csharp
 /// <summary>
@@ -175,7 +201,7 @@ Modify `AuditLogsController.cs`. Add this method after the existing `GetAuditLog
 [ProducesResponseType(StatusCodes.Status404NotFound)]
 public async Task<IActionResult> GetAuditLog(Guid id)
 {
-    var result = await Mediator.Send(new Queries.GetAuditLogById.GetAuditLogByIdQuery(id));
+    var result = await Mediator.Send(new GetAuditLogByIdQuery(id));
     return HandleResult(result);
 }
 ```
@@ -195,11 +221,11 @@ Run BE locally (or against the test-app harness), grab a log id from the list en
 ```bash
 TOKEN="<jwt-from-login>"
 LOG_ID="<id-from-list>"
-curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/api/v1/audit-logs/$LOG_ID | jq .
+curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/api/v1/AuditLogs/$LOG_ID | jq .
 ```
 
 Expected: 200 with the dto including `onBehalfOfUserId`, `agentPrincipalId`, `agentRunId` fields.
-Then test 404: `curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/api/v1/audit-logs/00000000-0000-0000-0000-000000000000 -o /dev/null -w "%{http_code}\n"` — expect `404`.
+Then test 404: `curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/api/v1/AuditLogs/00000000-0000-0000-0000-000000000000 -o /dev/null -w "%{http_code}\n"` — expect `404`.
 
 - [ ] **Step 8: Update FE `AuditLog` type**
 
@@ -229,8 +255,8 @@ Edit `boilerplateFE/src/config/api.config.ts`. Locate the `AUDIT_LOGS` block (~l
 
 ```ts
 AUDIT_LOGS: {
-  LIST: '/audit-logs',
-  BY_ID: (id: string) => `/audit-logs/${id}`,
+  LIST: '/AuditLogs',
+  BY_ID: (id: string) => `/AuditLogs/${id}`,
 },
 ```
 
@@ -266,33 +292,34 @@ export const auditLogsApi = {
 
 The `response.data.data ?? response.data` fallback follows the project's documented convention (CLAUDE.md "API Response Envelope") — list endpoints flatten differently than singular ones, so the pattern is intentional.
 
-- [ ] **Step 11: Add `useAuditLog` query hook**
+- [ ] **Step 11: Add the shared detail query key + `useAuditLog` query hook**
 
-Edit `boilerplateFE/src/features/audit-logs/api/audit-logs.queries.ts`. Add to the existing file:
+First edit `boilerplateFE/src/lib/query/keys.ts` and extend the existing `auditLogs` block:
+
+```ts
+auditLogs: {
+  all: () => ['auditLogs'] as const,
+  list: () => [...queryKeys.auditLogs.all(), 'list'] as const,
+  detail: (id: string) => [...queryKeys.auditLogs.all(), 'detail', id] as const,
+},
+```
+
+Then edit `boilerplateFE/src/features/audit-logs/api/audit-logs.queries.ts`. Add `useAuditLog` to the existing file:
 
 ```ts
 import { useQuery } from '@tanstack/react-query';
 import { auditLogsApi } from './audit-logs.api';
-
-// ...existing useAuditLogs hook stays unchanged...
-
-export const auditLogsQueryKeys = {
-  all: ['audit-logs'] as const,
-  list: (params?: Record<string, unknown>) => [...auditLogsQueryKeys.all, 'list', params] as const,
-  detail: (id: string) => [...auditLogsQueryKeys.all, 'detail', id] as const,
-};
+import { queryKeys } from '@/lib/query/keys';
 
 export function useAuditLog(id: string | undefined, options?: { enabled?: boolean }) {
   return useQuery({
-    queryKey: auditLogsQueryKeys.detail(id ?? ''),
+    queryKey: queryKeys.auditLogs.detail(id ?? ''),
     queryFn: () => auditLogsApi.getAuditLog(id!),
     enabled: !!id && (options?.enabled ?? true),
     staleTime: 60_000,
   });
 }
 ```
-
-If the file already defines `auditLogsQueryKeys` with a different shape, integrate the `detail` key into the existing object instead of redeclaring.
 
 - [ ] **Step 12: Run FE build + lint**
 
@@ -309,6 +336,7 @@ git add boilerplateBE/src/Starter.Application/Features/AuditLogs/ \
         boilerplateBE/src/Starter.Api/Controllers/AuditLogsController.cs \
         boilerplateFE/src/types/audit-log.types.ts \
         boilerplateFE/src/config/api.config.ts \
+        boilerplateFE/src/lib/query/keys.ts \
         boilerplateFE/src/features/audit-logs/api/
 git commit -m "feat(audit-logs): add GetAuditLogByIdQuery + GET {id} endpoint + useAuditLog hook"
 ```
@@ -512,9 +540,19 @@ function CopyableField({ label, value, icon: Icon }: { label: string; value: str
   );
 }
 
+function splitDisplayName(name: string | null | undefined) {
+  const parts = (name ?? '').trim().split(/\s+/).filter(Boolean);
+  return {
+    firstName: parts[0],
+    lastName: parts.length > 1 ? parts[parts.length - 1] : undefined,
+  };
+}
+
 export function AuditMetadataCard({ log, isSuperAdmin, tenantName }: AuditMetadataCardProps) {
   const { t } = useTranslation();
   const hasAgentAttribution = !!log.agentPrincipalId;
+  const actorName = log.performedByName ?? t('auditLogs.detail.unknownActor');
+  const actorNameParts = splitDisplayName(log.performedByName);
 
   return (
     <Card>
@@ -524,9 +562,9 @@ export function AuditMetadataCard({ log, isSuperAdmin, tenantName }: AuditMetada
           <div className="text-xs text-muted-foreground mb-2">{t('auditLogs.detail.actor')}</div>
           {log.performedBy ? (
             <div className="flex items-center gap-3">
-              <UserAvatar userId={log.performedBy} name={log.performedByName ?? ''} size="sm" />
+              <UserAvatar {...actorNameParts} size="sm" />
               <div className="min-w-0">
-                <div className="text-sm font-medium truncate">{log.performedByName ?? t('auditLogs.detail.unknownActor')}</div>
+                <div className="text-sm font-medium truncate">{actorName}</div>
                 <div className="text-xs text-muted-foreground font-mono truncate">{log.performedBy}</div>
               </div>
             </div>
@@ -585,13 +623,13 @@ export function AuditMetadataCard({ log, isSuperAdmin, tenantName }: AuditMetada
 }
 ```
 
-- [ ] **Step 2: Verify `UserAvatar` import path**
+- [ ] **Step 2: Verify `UserAvatar` props**
 
 ```bash
-grep -r "export.*UserAvatar" boilerplateFE/src/components/common/ | head -3
+sed -n '1,80p' boilerplateFE/src/components/common/UserAvatar.tsx
 ```
 
-If `UserAvatar` is exported from a different barrel/file, adjust the import accordingly. The component must accept `userId`, `name`, `size` props (these are the conventions documented in CLAUDE.md).
+The current shared component accepts `firstName`, `lastName`, and `size`. Keep using that shape so audit metadata aligns with existing Identity/profile surfaces.
 
 - [ ] **Step 3: Build + lint**
 
@@ -625,7 +663,8 @@ In `routes.config.ts`, locate the `AUDIT_LOGS` block (~line 52) and add `DETAIL`
 ```ts
 AUDIT_LOGS: {
   LIST: '/audit-logs',
-  DETAIL: (id: string = ':id') => `/audit-logs/${id}`,
+  DETAIL: '/audit-logs/:id',
+  getDetail: (id: string) => `/audit-logs/${id}`,
 },
 ```
 
@@ -635,7 +674,7 @@ Edit `boilerplateFE/src/i18n/locales/en/translation.json`. Locate the `auditLogs
 
 ```json
 "auditLogs": {
-  "title": "...existing...",
+  "title": "Audit Logs",
   "timeline": {
     "totalEvents": "{{count}} event",
     "totalEvents_other": "{{count}} events",
@@ -681,12 +720,13 @@ Edit `boilerplateFE/src/i18n/locales/en/translation.json`. Locate the `auditLogs
 import { useParams, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
+import { PageHeader } from '@/components/common';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { useAuditLog } from '@/features/audit-logs/api/audit-logs.queries';
-import { useBackNavigation } from '@/hooks/useBackNavigation';
-import { useAuthStore } from '@/stores/auth.store';
+import { ROUTES } from '@/config';
+import { useAuthStore, selectUser } from '@/stores';
 import { JsonView } from '../components/JsonView';
 import { AuditMetadataCard } from '../components/AuditMetadataCard';
 
@@ -703,10 +743,8 @@ function statusForAction(action: string): StatusVariant {
 export default function AuditLogDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation();
-  const { user } = useAuthStore();
+  const user = useAuthStore(selectUser);
   const isSuperAdmin = !user?.tenantId;
-
-  useBackNavigation('/audit-logs', t('auditLogs.detail.back'));
 
   const { data: log, isLoading, isError, error } = useAuditLog(id);
 
@@ -738,6 +776,14 @@ export default function AuditLogDetailPage() {
 
   return (
     <div className="space-y-6">
+      <PageHeader
+        title={t('auditLogs.detail.title')}
+        breadcrumbs={[
+          { label: t('auditLogs.title'), to: ROUTES.AUDIT_LOGS.LIST },
+          { label: log.action },
+        ]}
+      />
+
       {/* Header band */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -766,7 +812,7 @@ export default function AuditLogDetailPage() {
 }
 ```
 
-> Verify the auth-store hook name (`useAuthStore`) and the user shape match this codebase. If `user.tenantId` is named differently or if there's a `usePermissions()` hook that exposes super-admin status more cleanly, prefer that. The intent is unchanged: super-admin sees the tenant chip, tenant-admins do not.
+> Use `PageHeader.breadcrumbs` for the back affordance. `useBackNavigation` is deprecated in this codebase and no longer renders visible header UI.
 
 - [ ] **Step 4: Register the route**
 
@@ -777,28 +823,17 @@ const AuditLogsPage = lazy(() => import('@/features/audit-logs/pages/AuditLogsPa
 const AuditLogDetailPage = lazy(() => import('@/features/audit-logs/pages/AuditLogDetailPage'));
 ```
 
-Then add the route inside the same array that already includes `ROUTES.AUDIT_LOGS.LIST`:
+Then add the detail route inside the existing Audit Logs permission group:
 
 ```tsx
 {
-  path: ROUTES.AUDIT_LOGS.LIST,
-  element: (
-    <PermissionGuard required={PERMISSIONS.System.ViewAuditLogs}>
-      <AuditLogsPage />
-    </PermissionGuard>
-  ),
-},
-{
-  path: ROUTES.AUDIT_LOGS.DETAIL(),  // resolves to '/audit-logs/:id'
-  element: (
-    <PermissionGuard required={PERMISSIONS.System.ViewAuditLogs}>
-      <AuditLogDetailPage />
-    </PermissionGuard>
-  ),
+  element: <PermissionGuard permission={PERMISSIONS.System.ViewAuditLogs} />,
+  children: [
+    { path: ROUTES.AUDIT_LOGS.LIST, element: <AuditLogsPage /> },
+    { path: ROUTES.AUDIT_LOGS.DETAIL, element: <AuditLogDetailPage /> },
+  ],
 },
 ```
-
-If the existing list route entry doesn't use `PermissionGuard` (older patterns might rely on the `MainLayout` or sidebar to gate visibility only), match the existing pattern verbatim — do not introduce a `PermissionGuard` if the rest of the routes don't use one.
 
 - [ ] **Step 5: Build + lint**
 
@@ -817,7 +852,7 @@ With the test app running:
 4. Verify the URL becomes `/audit-logs/{guid}`.
 5. Verify the JSON payload renders with key/value highlighting and line numbers.
 6. Verify the metadata card shows actor + IP (when present) + correlation ID with copy button.
-7. Click the back arrow — verify it returns to `/audit-logs`.
+7. Click the breadcrumb back link — verify it returns to `/audit-logs`.
 8. Visit `/audit-logs/00000000-0000-0000-0000-000000000000` directly — verify 404 redirect.
 
 Capture screenshots of the detail page.
@@ -993,6 +1028,10 @@ In the page component, after the existing `useAuditLogs` call, add a second quer
 import { AuditTimelineHero } from '../components/AuditTimelineHero';
 import { useAuditLogs } from '../api/audit-logs.queries';
 import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '@/config';
+
+// Add useEffect to the existing React import because the timeline debounce helper uses it.
+// import { useEffect, useMemo, useState, Fragment } from 'react';
 
 // Inside the component:
 const navigate = useNavigate();
@@ -1000,36 +1039,40 @@ const navigate = useNavigate();
 // Compute window for the timeline (separate from table paging)
 const now = useMemo(() => Date.now(), []);
 const windowMs = useMemo(() => {
-  if (filters.dateFrom && filters.dateTo) {
-    return new Date(filters.dateTo).getTime() - new Date(filters.dateFrom).getTime();
+  if (list.filters.dateFrom && list.filters.dateTo) {
+    return new Date(list.filters.dateTo).getTime() - new Date(list.filters.dateFrom).getTime();
   }
   return 24 * 60 * 60 * 1000; // default: last 24h
-}, [filters.dateFrom, filters.dateTo]);
+}, [list.filters.dateFrom, list.filters.dateTo]);
 
 const timelineFilters = useMemo(() => ({
-  ...filters,           // share entityType / action / performedBy / search filters
+  ...list.filters,      // share entityType / action / performedBy / search filters
   pageNumber: 1,
   pageSize: 2000,       // capacity per spec §4.4
-  dateFrom: filters.dateFrom ?? new Date(now - windowMs).toISOString(),
-  dateTo: filters.dateTo ?? new Date(now).toISOString(),
+  dateFrom: list.filters.dateFrom ?? new Date(now - windowMs).toISOString(),
+  dateTo: list.filters.dateTo ?? new Date(now).toISOString(),
   sortBy: 'performedAt',
   sortDescending: true,
-}), [filters, now, windowMs]);
+}), [list.filters, now, windowMs]);
 
-const { data: timelineData } = useAuditLogs(timelineFilters);
-const timelineRows = timelineData?.data?.items ?? timelineData?.items ?? [];
-const timelineTotal = timelineData?.data?.totalCount ?? timelineData?.totalCount ?? 0;
+const debouncedTimelineFilters = useDebouncedValue(timelineFilters, 500);
+const { data: timelineData } = useAuditLogs(debouncedTimelineFilters);
+const timelineRows = timelineData?.data ?? [];
+const timelineTotal = timelineData?.pagination?.totalCount ?? timelineRows.length;
 const truncated = timelineTotal > 2000;
 ```
 
-Adjust the `data` access to match how the existing page reads from `useAuditLogs` (look for the existing `.items` / `.data.items` access in the same file).
+This matches the frontend `PaginatedResponse<T>` shape (`data: T[]`, `pagination.totalCount`). Do not use an `.items` fallback unless the API type changes.
 
 - [ ] **Step 3: Render the hero above the filter row**
 
 In the JSX, place `<AuditTimelineHero>` immediately under the `<PageHeader>` and above the filter row:
 
 ```tsx
-<PageHeader ... />
+<PageHeader
+  title={t('auditLogs.title')}
+  actions={canExport ? <ExportButton reportType="AuditLogs" filters={exportFilters} /> : undefined}
+/>
 
 <AuditTimelineHero
   rows={timelineRows}
@@ -1038,9 +1081,9 @@ In the JSX, place `<AuditTimelineHero>` immediately under the `<PageHeader>` and
   truncated={truncated}
   className="mb-6"
 />
-
-{/* existing filter row + table */}
 ```
+
+Leave the current `ListToolbar`, `ListPageState`, `Table`, and `Pagination` blocks below this hero.
 
 - [ ] **Step 4: Wire row click-through**
 
@@ -1050,29 +1093,52 @@ Locate the existing `<TableRow>` for each log item. If the row has an inline exp
 <TableRow
   key={log.id}
   className="cursor-pointer hover:bg-[var(--hover-bg)]"
-  onClick={() => navigate(`/audit-logs/${log.id}`)}
+  onClick={() => navigate(ROUTES.AUDIT_LOGS.getDetail(log.id))}
 >
-  {/* existing cells unchanged */}
+  <TableCell>
+    <span className="font-medium">{log.entityType}</span>
+    <span className="ms-1 text-xs text-muted-foreground">
+      {log.entityId.substring(0, 8)}...
+    </span>
+  </TableCell>
+  <TableCell>
+    <Badge variant={AUDIT_ACTION_VARIANTS[log.action] ?? 'secondary'}>
+      {log.action}
+    </Badge>
+  </TableCell>
+  <TableCell>{log.performedByName ?? '-'}</TableCell>
+  <TableCell>{formatDateTime(log.performedAt)}</TableCell>
+  <TableCell>{log.ipAddress ?? '-'}</TableCell>
 </TableRow>
 ```
 
 If the existing rows have a "Details" button or an inline expansion arrow, remove those — the whole row click is the new affordance.
 
-- [ ] **Step 5: Add a 500ms debounce on filter changes**
+- [ ] **Step 5: Add a 500ms debounce for the timeline query**
 
-If the page already debounces, leave it. If not, wrap the filter setter:
+Keep the table filters responsive through `useListPage`, but debounce the heavier 2,000-row timeline query so typing in search does not fire one large request per keypress. Add a tiny local helper above the page component:
 
 ```tsx
-import { useEffect, useState as useStateReact } from 'react';
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
 
-const [filterDraft, setFilterDraft] = useStateReact(filters);
-useEffect(() => {
-  const id = setTimeout(() => setFilters(filterDraft), 500);
-  return () => clearTimeout(id);
-}, [filterDraft]);
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebounced(value), delayMs);
+    return () => window.clearTimeout(id);
+  }, [value, delayMs]);
+
+  return debounced;
+}
 ```
 
-The exact wiring depends on how filters are currently set. The intent: refetch fires only after the user pauses typing/clicking for 500ms. Skip this step if there's already a debounced filter pattern.
+Then pass the debounced filters into the timeline query:
+
+```tsx
+const debouncedTimelineFilters = useDebouncedValue(timelineFilters, 500);
+const { data: timelineData } = useAuditLogs(debouncedTimelineFilters);
+```
+
+Do not refactor `useListPage` for this phase.
 
 - [ ] **Step 6: Build + lint**
 
@@ -1115,7 +1181,7 @@ In `translation.json`, under `featureFlags`:
 
 ```json
 "featureFlags": {
-  ...existing...,
+  "title": "Feature Flags",
   "stats": {
     "enabledFlags": "Enabled flags",
     "tenantOverrides": "Tenant overrides",
@@ -1148,12 +1214,11 @@ interface FeatureFlagStatStripProps {
   className?: string;
 }
 
-function MiniSparkline({ ratio }: { ratio: number }) {
-  // Decorative — no real time-series; show a smooth curve scaled by the ratio
+function MiniSparkline() {
+  // Flat baseline: current API does not expose 30d history, so do not fake a trend.
   const height = 30;
   const width = 100;
-  const r = Math.max(0.05, Math.min(1, ratio));
-  const path = `M 0 ${height} Q ${width / 2} ${height - height * r * 1.2} ${width} ${height - height * r}`;
+  const path = `M 0 ${height / 2} L ${width} ${height / 2}`;
   return (
     <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="h-7 w-full">
       <path d={path} fill="none" stroke="var(--primary)" strokeWidth="1.5" strokeLinecap="round" />
@@ -1165,7 +1230,6 @@ export function FeatureFlagStatStrip({
   enabledCount, totalCount, tenantOverrideCount, tenantsOverridingCount, optedOutCount, className,
 }: FeatureFlagStatStripProps) {
   const { t } = useTranslation();
-  const enabledRatio = totalCount > 0 ? enabledCount / totalCount : 0;
 
   return (
     <div className={cn('grid gap-4 sm:grid-cols-3', className)}>
@@ -1178,7 +1242,7 @@ export function FeatureFlagStatStrip({
             <span className="text-2xl font-semibold tabular-nums gradient-text">{enabledCount}</span>
             <span className="text-sm text-muted-foreground">/ {totalCount}</span>
           </div>
-          <MiniSparkline ratio={enabledRatio} />
+          <MiniSparkline />
         </CardContent>
       </Card>
 
@@ -1209,7 +1273,7 @@ export function FeatureFlagStatStrip({
 }
 ```
 
-The `MiniSparkline` is intentionally decorative because Phase 2 doesn't ship a 30d enabled-history data source. This honors the spec's "design tolerates either" hedge — the sparkline shape encodes the enabled ratio, not a time-series. If a 30d series later becomes available, `MiniSparkline` is replaced at one call site.
+The `MiniSparkline` is intentionally flat because Phase 2 doesn't ship a 30d enabled-history data source. Do not encode ratios as curved "trends"; that would imply historical data the user does not have. If a 30d series later becomes available, `MiniSparkline` is replaced at one call site.
 
 - [ ] **Step 3: Wire it into `FeatureFlagsPage`**
 
@@ -1219,12 +1283,15 @@ Edit `FeatureFlagsPage.tsx`. After the `PageHeader`, derive counts from the exis
 import { FeatureFlagStatStrip } from '../components/FeatureFlagStatStrip';
 
 // Inside the component, after const flags = ... :
-const enabledCount = flags.filter((f) => f.isEnabled).length;
-const tenantOverrideCount = flags.reduce((sum, f) => sum + (f.tenantOverrides?.length ?? 0), 0);
-const tenantsOverridingCount = new Set(
-  flags.flatMap((f) => f.tenantOverrides?.map((o) => o.tenantId) ?? [])
-).size;
-const optedOutCount = flags.reduce((sum, f) => sum + (f.optedOutTenants?.length ?? 0), 0);
+const isBooleanOn = (value: string) => value.toLowerCase() === 'true';
+const enabledCount = flags.filter((f) =>
+  f.valueType === 'Boolean' ? isBooleanOn(f.resolvedValue ?? f.defaultValue) : false
+).length;
+const tenantOverrideCount = flags.filter((f) => f.tenantOverrideValue !== null).length;
+const tenantsOverridingCount = tenantOverrideCount > 0 ? 1 : 0; // current DTO exposes only the active tenant's override
+const optedOutCount = flags.filter((f) =>
+  f.valueType === 'Boolean' && f.tenantOverrideValue?.toLowerCase() === 'false'
+).length;
 
 // In JSX, after PageHeader:
 <FeatureFlagStatStrip
@@ -1237,21 +1304,25 @@ const optedOutCount = flags.reduce((sum, f) => sum + (f.optedOutTenants?.length 
 />
 ```
 
-> Verify the field names against `FeatureFlag` / `TenantFeatureFlag` types. If `tenantOverrides` / `optedOutTenants` aren't on the flag DTO, derive from whatever shape the API returns (it may be a separate query). Adjust accordingly.
+> The current `FeatureFlagDto` exposes `tenantOverrideValue`, not arrays of tenant overrides or opt-outs. Keep the strip honest: show counts only for the active result set / active tenant unless a future backend stats endpoint provides global counts.
 
 - [ ] **Step 4: Add status pill column**
 
 In the existing flag table, add a "Status" column:
 
 ```tsx
-function flagStatusVariant(flag: FeatureFlag): 'healthy' | 'failed' | 'info' {
-  if (flag.tenantOverrides?.length) return 'info';
-  return flag.isEnabled ? 'healthy' : 'failed';
+import type { TFunction } from 'i18next';
+
+function flagStatusVariant(flag: FeatureFlagDto): 'healthy' | 'failed' | 'info' {
+  if (flag.tenantOverrideValue !== null) return 'info';
+  return flag.valueType === 'Boolean' && flag.resolvedValue.toLowerCase() === 'true' ? 'healthy' : 'failed';
 }
 
-function flagStatusLabel(t: TFunction, flag: FeatureFlag): string {
-  if (flag.tenantOverrides?.length) return t('featureFlags.status.perTenant');
-  return flag.isEnabled ? t('featureFlags.status.on') : t('featureFlags.status.off');
+function flagStatusLabel(t: TFunction, flag: FeatureFlagDto): string {
+  if (flag.tenantOverrideValue !== null) return t('featureFlags.status.perTenant');
+  return flag.valueType === 'Boolean' && flag.resolvedValue.toLowerCase() === 'true'
+    ? t('featureFlags.status.on')
+    : t('featureFlags.status.off');
 }
 
 // In the table:
@@ -1289,7 +1360,7 @@ git commit -m "feat(feature-flags): add stat strip + status pill column + J4 pol
 ## Task 8: API keys — KPI badge + secret reveal redesign
 
 **Files:**
-- Create: `boilerplateFE/src/features/api-keys/components/ApiKeySecretReveal.tsx`
+- Modify: `boilerplateFE/src/features/api-keys/components/ApiKeySecretDisplay.tsx` (redesign existing one-time secret dialog)
 - Modify: `boilerplateFE/src/features/api-keys/pages/ApiKeysPage.tsx`
 - Modify: `boilerplateFE/src/i18n/locales/en/translation.json` (`apiKeys.reveal.*`)
 
@@ -1297,7 +1368,7 @@ git commit -m "feat(feature-flags): add stat strip + status pill column + J4 pol
 
 ```json
 "apiKeys": {
-  ...existing...,
+  "title": "API Keys",
   "reveal": {
     "title": "API key created",
     "warning": "Shown once. Copy it now — it cannot be recovered later.",
@@ -1315,7 +1386,9 @@ git commit -m "feat(feature-flags): add stat strip + status pill column + J4 pol
 }
 ```
 
-- [ ] **Step 2: Implement `ApiKeySecretReveal`**
+- [ ] **Step 2: Redesign the existing `ApiKeySecretDisplay`**
+
+Do not create a second secret-display component unless the existing file becomes hard to follow. The current code already owns the dialog lifecycle (`open`, `onOpenChange`, `response`); keep that contract and redesign the internals.
 
 ```tsx
 import { useEffect, useRef, useState } from 'react';
@@ -1323,23 +1396,24 @@ import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
+import { ConfirmDialog } from '@/components/common';
+import type { CreateApiKeyResponse } from '../api';
 
-interface ApiKeySecretRevealProps {
-  secret: string;
-  onClose: () => void;
+interface ApiKeySecretDisplayProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  response: CreateApiKeyResponse;
 }
 
-export function ApiKeySecretReveal({ secret, onClose }: ApiKeySecretRevealProps) {
+export function ApiKeySecretDisplay({ open, onOpenChange, response }: ApiKeySecretDisplayProps) {
   const { t } = useTranslation();
-  // Belt-and-braces: hold the secret in a ref so a parent re-render can't unmount it before copy
-  const secretRef = useRef(secret);
+  const secretRef = useRef(response.fullKey);
   const [copied, setCopied] = useState(false);
   const [confirmingClose, setConfirmingClose] = useState(false);
 
-  useEffect(() => { secretRef.current = secret; }, [secret]);
+  useEffect(() => { secretRef.current = response.fullKey; }, [response.fullKey]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(secretRef.current).then(() => {
@@ -1350,59 +1424,57 @@ export function ApiKeySecretReveal({ secret, onClose }: ApiKeySecretRevealProps)
 
   const handleAttemptClose = () => {
     if (!copied) { setConfirmingClose(true); return; }
-    onClose();
+    onOpenChange(false);
   };
 
   return (
-    <div className="space-y-4">
-      <div role="alert" aria-live="assertive" className="sr-only">
-        {t('apiKeys.reveal.ariaAnnouncement')}
-      </div>
+    <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : handleAttemptClose())}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{t('apiKeys.reveal.title')}</DialogTitle>
+          <DialogDescription>{response.name}</DialogDescription>
+        </DialogHeader>
 
-      <div className="flex items-start gap-3 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 p-4">
-        <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-        <div className="text-sm text-amber-800 dark:text-amber-200">
-          <div className="font-medium mb-1">{t('apiKeys.reveal.title')}</div>
-          <div>{t('apiKeys.reveal.warning')}</div>
+        <div role="alert" aria-live="assertive" className="sr-only">
+          {t('apiKeys.reveal.ariaAnnouncement')}
         </div>
-      </div>
 
-      <div className="rounded-lg border bg-card p-4 font-mono text-sm break-all gradient-text" dir="ltr">
-        {secretRef.current}
-      </div>
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 p-4">
+            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div className="text-sm text-amber-800 dark:text-amber-200">{t('apiKeys.reveal.warning')}</div>
+          </div>
 
-      <div className="flex gap-2 justify-end">
-        <Button variant="outline" onClick={handleAttemptClose}>
-          {t('apiKeys.reveal.doneButton')}
-        </Button>
-        <Button onClick={handleCopy}>
-          {copied ? <><Check className="h-4 w-4 mr-1" />{t('apiKeys.reveal.copiedConfirmation')}</>
-                  : <><Copy className="h-4 w-4 mr-1" />{t('apiKeys.reveal.copyButton')}</>}
-        </Button>
-      </div>
+          <div className="rounded-lg border bg-card p-4 font-mono text-sm break-all gradient-text" dir="ltr">
+            {secretRef.current}
+          </div>
+        </div>
 
-      <AlertDialog open={confirmingClose} onOpenChange={setConfirmingClose}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('apiKeys.reveal.closeConfirmTitle')}</AlertDialogTitle>
-            <AlertDialogDescription>{t('apiKeys.reveal.closeConfirmDescription')}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={onClose}>OK</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={handleAttemptClose}>{t('apiKeys.reveal.doneButton')}</Button>
+          <Button onClick={handleCopy}>
+            {copied ? <><Check className="h-4 w-4 me-1" />{t('apiKeys.reveal.copiedConfirmation')}</>
+                    : <><Copy className="h-4 w-4 me-1" />{t('apiKeys.reveal.copyButton')}</>}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+
+      <ConfirmDialog
+        isOpen={confirmingClose}
+        onClose={() => setConfirmingClose(false)}
+        title={t('apiKeys.reveal.closeConfirmTitle')}
+        description={t('apiKeys.reveal.closeConfirmDescription')}
+        confirmLabel={t('common.close')}
+        onConfirm={() => onOpenChange(false)}
+      />
+    </Dialog>
   );
 }
 ```
 
-If `AlertDialog` isn't already in `@/components/ui`, the existing modal component used by ApiKeysPage may suffice — adapt accordingly. The intent: a confirm step before close-without-copy.
+- [ ] **Step 3: Keep `ApiKeysPage` using `ApiKeySecretDisplay`**
 
-- [ ] **Step 3: Replace inline secret display in `ApiKeysPage`**
-
-Find the existing post-create modal/dialog in `ApiKeysPage.tsx`. Replace the inline `<code>{newKey}</code>` (or whatever currently renders the secret) with `<ApiKeySecretReveal secret={newKey} onClose={...} />`.
+`ApiKeysPage.tsx` already renders `<ApiKeySecretDisplay open={!!createdKey} onOpenChange={() => setCreatedKey(null)} response={createdKey} />`. Keep that wiring; only adjust it if the close callback needs to accept the boolean argument.
 
 - [ ] **Step 4: Add KPI badge to `PageHeader`**
 
@@ -1467,6 +1539,8 @@ sed -n '180,260p' boilerplateFE/src/features/settings/pages/SettingsPage.tsx
 ```
 
 Identify: how categories are computed, how the active tab is set, how dirty state is tracked, where the save button currently lives.
+
+While reading, remove the duplicate unreachable `return groups.map((g) => g.category);` in the `categories` memo if it is still present.
 
 - [ ] **Step 2: Implement `SettingsCategoryNav`**
 
@@ -1575,12 +1649,24 @@ const items = useMemo(() => groups.map((g) => ({
   count: g.settings.length,
 })), [groups, t]);
 
+const hasUnsavedChanges = changedCount > 0;
+const handleResetAll = () => {
+  if (!groups) return;
+  const values: Record<string, string> = {};
+  for (const group of groups) {
+    for (const setting of group.settings) {
+      values[setting.key] = setting.value;
+    }
+  }
+  setLocalValues(values);
+};
+
 return (
   <div
     className="space-y-6"
-    style={{ ['--settings-save-bar-h' as string]: dirty ? '72px' : '0px' }}
+    style={{ ['--settings-save-bar-h' as string]: hasUnsavedChanges ? '72px' : '0px' }}
   >
-    <PageHeader title={t('settings.title')} />
+    <PageHeader title={t('settings.title')} subtitle={t('settings.subtitle')} />
 
     <div className="grid gap-6 lg:grid-cols-[200px_1fr]">
       <SettingsCategoryNav
@@ -1604,12 +1690,12 @@ return (
     </div>
 
     {/* Sticky save bar */}
-    {dirty && (
+    {hasUnsavedChanges && (
       <div className="fixed bottom-4 end-4 z-40 flex items-center gap-3 rounded-2xl surface-glass-strong px-4 py-3 shadow-xl">
-        <Badge variant="info">{t('settings.dirtyCount', { count: dirtyCount })}</Badge>
-        <Button variant="ghost" onClick={handleReset}>{t('common.reset')}</Button>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? <Spinner /> : t('common.save')}
+        <Badge variant="info">{t('settings.unsavedChanges', { count: changedCount })}</Badge>
+        <Button variant="ghost" onClick={handleResetAll}>{t('common.reset')}</Button>
+        <Button onClick={handleSave} disabled={isPending}>
+          {isPending ? <Spinner /> : t('settings.save')}
         </Button>
       </div>
     )}
@@ -1617,14 +1703,14 @@ return (
 );
 ```
 
-Carry over the existing `dirty`, `saving`, `handleSave`, `handleReset` state/handlers from the current implementation. Do not refactor them — only relocate them.
+Carry over the existing `changedCount`, `isPending`, `handleSave`, `localValues`, and per-setting `handleReset` behavior. Add only `handleResetAll` for the sticky save bar's reset action, and remove the old save button from `PageHeader.actions` so there is one primary save surface.
 
 - [ ] **Step 4: Per-tenant override badges**
 
 Where each `SettingInput` is rendered, if the setting has a tenant-override flag (check the existing `SystemSetting` type for the boolean), append a small badge:
 
 ```tsx
-{setting.hasOverride && (
+{setting.isOverridden && (
   <Badge variant="outline" className="ms-2 text-[10px] bg-primary/10 text-primary">
     {t('settings.overridden')}
   </Badge>
@@ -1699,9 +1785,9 @@ grep -r "auditLogs.detail\|auditLogs.timeline\|featureFlags.stats\|featureFlags.
 
 Confirm every new key referenced by the new code is present in `en/translation.json`. Missing keys silently fall back to the key string — visual regression check should have caught any, but this grep is a final guard.
 
-- [ ] **Step 6: Dispatch the code-review agent**
+- [ ] **Step 6: Request code review**
 
-Run `superpowers:code-reviewer` against the diff:
+Use `superpowers:requesting-code-review` against the diff:
 
 ```
 Review the diff for fe/redesign-phase-2-views vs origin/main against:
@@ -1733,7 +1819,7 @@ gh pr create --title "feat(fe): Phase 2 redesign — Platform admin cluster poli
 - Feature flags: hero metric strip + status pill column
 - API keys: KPI badge in header + redesigned secret reveal screen with close-confirm
 - Settings: sticky sidebar nav + glass content groups + sticky save bar
-- Backend addition: GetAuditLogByIdQuery + GET api/v1/audit-logs/{id} (current controller was list-only)
+- Backend addition: GetAuditLogByIdQuery + GET api/v1/AuditLogs/{id} (current controller was list-only)
 
 Spec: docs/superpowers/specs/2026-04-28-redesign-phase-2-design.md
 Plan: docs/superpowers/plans/2026-04-28-redesign-phase-2-platform-admin.md
@@ -1758,10 +1844,10 @@ After writing the plan, I checked it against the spec:
 - ✅ Spec §2.1 — `AuditTimelineHero` covered in Task 5; integration in Task 6.
 - ✅ Spec §2.2 — `AuditLogDetailPage` + `JsonView` (renamed from `JsonDiff`) + `AuditMetadataCard` covered in Tasks 2, 3, 4. BE addition in Task 1.
 - ✅ Spec §2.3 — `FeatureFlagStatStrip` + status pill covered in Task 7.
-- ✅ Spec §2.4 — `ApiKeySecretReveal` + KPI badge covered in Task 8.
+- ✅ Spec §2.4 — existing `ApiKeySecretDisplay` redesign + KPI badge covered in Task 8.
 - ✅ Spec §2.5 — `SettingsCategoryNav` + sticky save bar covered in Task 9.
 - ✅ Spec §10 — accessibility, RTL, permission gates covered in Task 10's verification checklist.
 - ✅ Spec §11 — task ordering matches.
 - ✅ Spec §12 — verification checklist exercised in Task 10.
 
-No placeholders, no "TODO", no "implement later". Type names consistent across tasks (`JsonView` everywhere; `AuditTimelineHero`, `AuditMetadataCard`, `FeatureFlagStatStrip`, `ApiKeySecretReveal`, `SettingsCategoryNav` consistent). Tasks are dependency-ordered: BE+hooks (Task 1) → presentational components (Tasks 2-3) → page assembly (Task 4) → list-page integration (Tasks 5-6) → independent feature pages (Tasks 7-9) → review (Task 10).
+No placeholders, no "TODO", no "implement later". Type names consistent across tasks (`JsonView` everywhere; `AuditTimelineHero`, `AuditMetadataCard`, `FeatureFlagStatStrip`, `ApiKeySecretDisplay`, `SettingsCategoryNav` consistent). Tasks are dependency-ordered: BE+hooks (Task 1) → presentational components (Tasks 2-3) → page assembly (Task 4) → list-page integration (Tasks 5-6) → independent feature pages (Tasks 7-9) → review (Task 10).

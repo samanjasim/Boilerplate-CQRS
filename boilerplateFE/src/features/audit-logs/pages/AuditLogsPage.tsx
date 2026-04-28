@@ -1,7 +1,8 @@
-import { useMemo, useState, Fragment } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { formatDateTime } from '@/utils/format';
-import { ChevronDown, ChevronRight, ClipboardList } from 'lucide-react';
+import { ClipboardList } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import {
@@ -13,8 +14,9 @@ import {
   DateRangePicker,
   type DateRange,
 } from '@/components/common';
-import { usePermissions, useListPage } from '@/hooks';
+import { usePermissions, useListPage, useDebounce } from '@/hooks';
 import { PERMISSIONS, AUDIT_ACTION_VARIANTS } from '@/constants';
+import { ROUTES } from '@/config';
 import {
   Table,
   TableBody,
@@ -31,6 +33,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAuditLogs } from '../api';
+import { AuditTimelineHero } from '../components/AuditTimelineHero';
 import type { AuditLog } from '@/types';
 
 interface AuditLogFilters {
@@ -41,60 +44,69 @@ interface AuditLogFilters {
   dateTo?: string;
 }
 
-function ChangesDetail({ changes }: { changes: string | null }) {
-  const { t } = useTranslation();
+const DEFAULT_TIMELINE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
-  if (!changes) return null;
+// Mirrors backend Starter.Domain.Common.Enums.AuditEntityType. The select serialises by
+// enum name (the BE handler maps the string back via Enum.Parse).
+const ENTITY_TYPE_OPTIONS = [
+  { value: 'User', labelKey: 'auditLogs.user' },
+  { value: 'Role', labelKey: 'auditLogs.role' },
+  { value: 'Tenant', labelKey: 'auditLogs.tenant' },
+  { value: 'File', labelKey: 'auditLogs.file' },
+  { value: 'ApiKey', labelKey: 'auditLogs.apiKey' },
+  { value: 'ResourceGrant', labelKey: 'auditLogs.resourceGrant' },
+  { value: 'AiAssistant', labelKey: 'auditLogs.aiAssistant' },
+] as const;
 
-  let parsed: Record<string, unknown> | null = null;
-  try {
-    parsed = JSON.parse(changes);
-  } catch {
-    // invalid JSON — falls through to raw render below
-  }
-
-  if (!parsed) {
-    return <pre className="overflow-auto rounded bg-muted p-4 text-xs">{changes}</pre>;
-  }
-
-  return (
-    <div className="grid gap-4 p-4 sm:grid-cols-2">
-      {'OldValues' in parsed && parsed.OldValues != null && (
-        <div>
-          <p className="mb-2 text-xs font-semibold text-muted-foreground">
-            {t('auditLogs.oldValues')}
-          </p>
-          <pre className="overflow-auto rounded bg-muted p-2 text-xs">
-            {JSON.stringify(parsed.OldValues, null, 2)}
-          </pre>
-        </div>
-      )}
-      {'NewValues' in parsed && parsed.NewValues != null && (
-        <div>
-          <p className="mb-2 text-xs font-semibold text-muted-foreground">
-            {t('auditLogs.newValues')}
-          </p>
-          <pre className="overflow-auto rounded bg-muted p-2 text-xs">
-            {JSON.stringify(parsed.NewValues, null, 2)}
-          </pre>
-        </div>
-      )}
-      {!parsed.OldValues && !parsed.NewValues && (
-        <pre className="overflow-auto rounded bg-muted p-2 text-xs sm:col-span-2">
-          {JSON.stringify(parsed, null, 2)}
-        </pre>
-      )}
-    </div>
-  );
-}
+// Mirrors backend Starter.Domain.Common.Enums.AuditAction.
+const ACTION_OPTIONS = [
+  { value: 'Created', labelKey: 'auditLogs.created' },
+  { value: 'Updated', labelKey: 'auditLogs.updated' },
+  { value: 'Deleted', labelKey: 'auditLogs.deleted' },
+  { value: 'EmergencyRevoked', labelKey: 'auditLogs.emergencyRevoked' },
+] as const;
 
 export default function AuditLogsPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { hasPermission } = usePermissions();
   const canExport = hasPermission(PERMISSIONS.System.ExportData);
-  const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   const list = useListPage<AuditLogFilters, AuditLog>({ queryHook: useAuditLogs });
+
+  const windowMs = useMemo(() => {
+    if (list.filters.dateFrom && list.filters.dateTo) {
+      return new Date(list.filters.dateTo).getTime() - new Date(list.filters.dateFrom).getTime();
+    }
+    return DEFAULT_TIMELINE_WINDOW_MS;
+  }, [list.filters.dateFrom, list.filters.dateTo]);
+
+  // Debounce filter changes before re-fetching the timeline; recompute `now` on each
+  // accepted filter change so the rolling default-window stays aligned with wall clock
+  // for an open page that's used over time.
+  const debouncedFilters = useDebounce(list.filters, 500);
+  const timelineFilters = useMemo(() => {
+    const now = Date.now();
+    return {
+      ...debouncedFilters,
+      pageNumber: 1,
+      pageSize: 2000,
+      dateFrom: debouncedFilters.dateFrom ?? new Date(now - windowMs).toISOString(),
+      dateTo: debouncedFilters.dateTo ?? new Date(now).toISOString(),
+      sortBy: 'performedAt',
+      sortDescending: true,
+    };
+  }, [debouncedFilters, windowMs]);
+
+  const heroNow = useMemo(
+    () => new Date(timelineFilters.dateTo).getTime(),
+    [timelineFilters.dateTo],
+  );
+
+  const { data: timelineData } = useAuditLogs(timelineFilters);
+  const timelineRows = timelineData?.data ?? [];
+  const timelineTotal = timelineData?.pagination?.totalCount ?? timelineRows.length;
+  const truncated = timelineTotal > 2000;
 
   const exportFilters = useMemo(() => {
     const f: Record<string, unknown> = {};
@@ -116,15 +128,19 @@ export default function AuditLogsPage() {
     list.setFilter('dateTo', next.to ?? '');
   };
 
-  const toggleRow = (id: string) => {
-    setExpandedRow((prev) => (prev === id ? null : id));
-  };
-
   return (
     <div className="space-y-6">
       <PageHeader
         title={t('auditLogs.title')}
         actions={canExport ? <ExportButton reportType="AuditLogs" filters={exportFilters} /> : undefined}
+      />
+
+      <AuditTimelineHero
+        rows={timelineRows}
+        totalCount={timelineTotal}
+        windowMs={windowMs}
+        now={heroNow}
+        truncated={truncated}
       />
 
       <ListToolbar
@@ -143,8 +159,9 @@ export default function AuditLogsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('auditLogs.allEntities')}</SelectItem>
-                <SelectItem value="User">{t('auditLogs.user')}</SelectItem>
-                <SelectItem value="Role">{t('auditLogs.role')}</SelectItem>
+                {ENTITY_TYPE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>{t(opt.labelKey)}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -157,9 +174,9 @@ export default function AuditLogsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('auditLogs.allActions')}</SelectItem>
-                <SelectItem value="Created">{t('auditLogs.created')}</SelectItem>
-                <SelectItem value="Updated">{t('auditLogs.updated')}</SelectItem>
-                <SelectItem value="Deleted">{t('auditLogs.deleted')}</SelectItem>
+                {ACTION_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>{t(opt.labelKey)}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -192,7 +209,6 @@ export default function AuditLogsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-10" />
                 <TableHead>{t('auditLogs.entityType')}</TableHead>
                 <TableHead>{t('auditLogs.action')}</TableHead>
                 <TableHead>{t('auditLogs.performedBy')}</TableHead>
@@ -202,42 +218,26 @@ export default function AuditLogsPage() {
             </TableHeader>
             <TableBody>
               {list.data.map((log) => (
-                <Fragment key={log.id}>
-                  <TableRow
-                    className="cursor-pointer"
-                    onClick={() => log.changes && toggleRow(log.id)}
-                  >
-                    <TableCell>
-                      {log.changes &&
-                        (expandedRow === log.id ? (
-                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4 text-muted-foreground rtl:rotate-180" />
-                        ))}
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-medium">{log.entityType}</span>
-                      <span className="ms-1 text-xs text-muted-foreground">
-                        {log.entityId.substring(0, 8)}...
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={AUDIT_ACTION_VARIANTS[log.action] ?? 'secondary'}>
-                        {log.action}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{log.performedByName ?? '-'}</TableCell>
-                    <TableCell>{formatDateTime(log.performedAt)}</TableCell>
-                    <TableCell>{log.ipAddress ?? '-'}</TableCell>
-                  </TableRow>
-                  {expandedRow === log.id && log.changes && (
-                    <TableRow key={`${log.id}-changes`}>
-                      <TableCell colSpan={6} className="bg-muted/50 p-0">
-                        <ChangesDetail changes={log.changes} />
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </Fragment>
+                <TableRow
+                  key={log.id}
+                  className="cursor-pointer hover:bg-[var(--hover-bg)]"
+                  onClick={() => navigate(ROUTES.AUDIT_LOGS.getDetail(log.id))}
+                >
+                  <TableCell>
+                    <span className="font-medium">{log.entityType}</span>
+                    <span className="ms-1 text-xs text-muted-foreground">
+                      {log.entityId.substring(0, 8)}...
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={AUDIT_ACTION_VARIANTS[log.action] ?? 'secondary'}>
+                      {log.action}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{log.performedByName ?? '-'}</TableCell>
+                  <TableCell>{formatDateTime(log.performedAt)}</TableCell>
+                  <TableCell>{log.ipAddress ?? '-'}</TableCell>
+                </TableRow>
               ))}
             </TableBody>
           </Table>

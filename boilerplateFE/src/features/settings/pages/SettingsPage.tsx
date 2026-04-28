@@ -13,6 +13,7 @@ import { useSettings, useUpdateSettings } from '@/features/settings/api';
 import { useAssignableRoles } from '@/features/roles/api/roles.queries';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { SystemSetting, UpdateSettingData } from '@/types';
+import { SettingsCategoryNav } from '../components/SettingsCategoryNav';
 
 /** Resolves an i18n label for a setting key.
  *  Tries `settings.{lastPart}` (camelCase), falls back to description, then raw key. */
@@ -237,6 +238,18 @@ export default function SettingsPage() {
     [settingsMap]
   );
 
+  const handleResetAll = useCallback(() => {
+    if (!groups) return;
+
+    const values: Record<string, string> = {};
+    for (const group of groups) {
+      for (const setting of group.settings) {
+        values[setting.key] = setting.value;
+      }
+    }
+    setLocalValues(values);
+  }, [groups]);
+
   // Count unsaved changes across ALL tabs
   const changedCount = useMemo(() => {
     if (!groups) return 0;
@@ -274,11 +287,14 @@ export default function SettingsPage() {
     updateSettings(changed);
   }, [groups, localValues, updateSettings]);
 
-  // Derive categories from API response
-  const categories = useMemo(() => {
+  const categoryItems = useMemo(() => {
     if (!groups) return [];
-    return groups.map((g) => g.category);
-  }, [groups]);
+    return groups.map((group) => ({
+      category: group.category,
+      label: resolveCategoryLabel(t, group.category),
+      count: group.settings.length,
+    }));
+  }, [groups, t]);
 
   // Current active group
   const activeGroup = useMemo(() => {
@@ -323,73 +339,33 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div
+      className="space-y-6"
+      style={{ ['--settings-save-bar-h' as string]: changedCount > 0 ? '72px' : '0px' }}
+    >
       <PageHeader
         title={t('settings.title')}
         subtitle={t('settings.subtitle')}
-        actions={
-          <Button onClick={handleSave} disabled={isPending || changedCount === 0}>
-            <Save className="h-4 w-4" />
-            {isPending ? t('common.saving') : t('settings.save')}
-            {changedCount > 0 && (
-              <Badge variant="secondary" className="ms-2">
-                {t('settings.unsavedChanges', { count: changedCount })}
-              </Badge>
-            )}
-          </Button>
-        }
       />
 
-      {/* Mobile: horizontal scrollable pills */}
-      <div className="flex gap-2 overflow-x-auto pb-2 md:hidden">
-        {categories.map((cat) => (
-          <button
-            key={cat}
-            type="button"
-            onClick={() => setActiveTab(cat)}
-            className={cn(
-              'shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
-              activeTab === cat
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            )}
-          >
-            {resolveCategoryLabel(t, cat)}
-          </button>
-        ))}
-      </div>
+      <div className="grid gap-6 lg:grid-cols-[200px_minmax(0,1fr)]">
+        <SettingsCategoryNav
+          items={categoryItems}
+          activeCategory={activeTab}
+          onSelect={setActiveTab}
+        />
 
-      {/* Desktop: vertical tabs left + form right */}
-      <div className="flex gap-6">
-        {/* Vertical tab list — hidden on mobile */}
-        <nav className="hidden md:flex w-48 shrink-0 flex-col">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => setActiveTab(cat)}
-              className={cn(
-                'px-4 py-2.5 text-sm text-start transition-colors duration-150 cursor-pointer ltr:border-l-2 rtl:border-r-2',
-                activeTab === cat
-                  ? 'state-active-border font-semibold [color:var(--active-text)]'
-                  : 'border-transparent state-hover'
-              )}
-            >
-              {resolveCategoryLabel(t, cat)}
-            </button>
-          ))}
-        </nav>
-
-        {/* Settings form for active tab */}
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0">
           {activeGroup && (
-            <Card>
+            <Card variant="glass">
               <CardContent className="py-6">
                 <div className="mb-6">
                   <h3 className="text-base font-semibold text-foreground">
                     {resolveCategoryLabel(t, activeGroup.category)}
                   </h3>
-                  <p className="text-sm text-muted-foreground mt-0.5">General application configuration</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {t('settings.subtitle')}
+                  </p>
                 </div>
 
                 <div className="border-t border-border/40 pt-6">
@@ -407,7 +383,9 @@ export default function SettingsPage() {
                           <div className="flex items-center gap-2">
                             <Label className="text-sm font-medium text-foreground">{label}</Label>
                             {setting.isOverridden && (
-                              <Badge variant="outline">{t('settings.overridden')}</Badge>
+                              <Badge variant="outline" className="bg-primary/10 text-primary">
+                                {t('settings.overridden')}
+                              </Badge>
                             )}
                             {setting.isSecret && (
                               <Badge variant="secondary">{t('settings.secret')}</Badge>
@@ -453,6 +431,20 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
+
+      {changedCount > 0 && (
+        <div className="fixed bottom-4 end-4 z-40 flex flex-wrap items-center justify-end gap-3 rounded-2xl surface-glass-strong px-4 py-3 shadow-float">
+          <Badge variant="info">{t('settings.unsavedChanges', { count: changedCount })}</Badge>
+          <Button type="button" variant="ghost" onClick={handleResetAll}>
+            <RotateCcw className="h-4 w-4" />
+            {t('common.reset')}
+          </Button>
+          <Button type="button" onClick={handleSave} disabled={isPending}>
+            {isPending ? <Spinner size="sm" /> : <Save className="h-4 w-4" />}
+            {isPending ? t('common.saving') : t('settings.save')}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

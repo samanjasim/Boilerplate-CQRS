@@ -11,6 +11,7 @@ import { useDeleteFeatureFlag } from '../api';
 import type { FeatureFlagDto } from '../api';
 import { EditFeatureFlagDialog } from './EditFeatureFlagDialog';
 import { TenantOverrideDialog } from './TenantOverrideDialog';
+import { getFlagStatus } from '../utils/flag-status';
 import { usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
 import type { PaginationMeta } from '@/types';
@@ -84,6 +85,7 @@ export function FeatureFlagsList({ flags, pagination, onPageChange, onPageSizeCh
             <TableHead>{t('featureFlags.category')}</TableHead>
             <TableHead>{t('featureFlags.defaultValue')}</TableHead>
             <TableHead>{t('featureFlags.resolvedValue')}</TableHead>
+            <TableHead>{t('featureFlags.status.title')}</TableHead>
             {hasActions && <TableHead className="text-end">{t('common.actions')}</TableHead>}
           </TableRow>
         </TableHeader>
@@ -118,6 +120,12 @@ export function FeatureFlagsList({ flags, pagination, onPageChange, onPageSizeCh
                     </Badge>
                   )}
                 </div>
+              </TableCell>
+              <TableCell>
+                {(() => {
+                  const status = getFlagStatus(flag, t);
+                  return <Badge variant={status.variant}>{status.label}</Badge>;
+                })()}
               </TableCell>
               {hasActions && (
                 <TableCell className="text-end">
