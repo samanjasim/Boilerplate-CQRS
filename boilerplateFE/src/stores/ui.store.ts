@@ -9,12 +9,16 @@ interface BackNavigation {
   label: string;
 }
 
+const RECENT_ROUTES_LIMIT = 5;
+
 interface UIState {
   theme: Theme;
   language: Language;
   sidebarOpen: boolean;
   sidebarCollapsed: boolean;
   morePanelOpen: boolean;
+  commandPaletteOpen: boolean;
+  recentRoutes: string[];
   activeModal: string | null;
   modalData: unknown;
   activeTenantId: string | null;
@@ -30,6 +34,9 @@ interface UIActions {
   toggleSidebarCollapse: () => void;
   setMorePanelOpen: (open: boolean) => void;
   toggleMorePanel: () => void;
+  setCommandPaletteOpen: (open: boolean) => void;
+  toggleCommandPalette: () => void;
+  pushRecentRoute: (path: string) => void;
   openModal: (modalId: string, data?: unknown) => void;
   closeModal: () => void;
   setActiveTenantId: (tenantId: string | null) => void;
@@ -65,6 +72,8 @@ export const useUIStore = create<UIStore>()(
       sidebarOpen: false,
       sidebarCollapsed: false,
       morePanelOpen: false,
+      commandPaletteOpen: false,
+      recentRoutes: [],
       activeModal: null,
       modalData: null,
       activeTenantId: null,
@@ -91,6 +100,19 @@ export const useUIStore = create<UIStore>()(
       setMorePanelOpen: (morePanelOpen) => set({ morePanelOpen }),
       toggleMorePanel: () => set((state) => ({ morePanelOpen: !state.morePanelOpen })),
 
+      setCommandPaletteOpen: (commandPaletteOpen) => set({ commandPaletteOpen }),
+      toggleCommandPalette: () =>
+        set((state) => ({ commandPaletteOpen: !state.commandPaletteOpen })),
+
+      pushRecentRoute: (path) =>
+        set((state) => {
+          const next = [path, ...state.recentRoutes.filter((p) => p !== path)].slice(
+            0,
+            RECENT_ROUTES_LIMIT
+          );
+          return { recentRoutes: next };
+        }),
+
       openModal: (activeModal, modalData = null) => set({ activeModal, modalData }),
 
       closeModal: () => set({ activeModal: null, modalData: null }),
@@ -108,6 +130,7 @@ export const useUIStore = create<UIStore>()(
         theme: state.theme,
         language: state.language,
         sidebarCollapsed: state.sidebarCollapsed,
+        recentRoutes: state.recentRoutes,
         activeTenantId: state.activeTenantId,
         tenantSlug: state.tenantSlug,
       }),
@@ -126,6 +149,8 @@ export const selectLanguage = (state: UIStore) => state.language;
 export const selectSidebarOpen = (state: UIStore) => state.sidebarOpen;
 export const selectSidebarCollapsed = (state: UIStore) => state.sidebarCollapsed;
 export const selectMorePanelOpen = (state: UIStore) => state.morePanelOpen;
+export const selectCommandPaletteOpen = (state: UIStore) => state.commandPaletteOpen;
+export const selectRecentRoutes = (state: UIStore) => state.recentRoutes;
 export const selectActiveModal = (state: UIStore) => state.activeModal;
 export const selectModalData = (state: UIStore) => state.modalData;
 export const selectActiveTenantId = (state: UIStore) => state.activeTenantId;

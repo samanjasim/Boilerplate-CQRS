@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 
 import { RouteErrorBoundary, ScrollToTopOnNavigate } from '@/components/common';
 import { OnboardingWizard } from '@/features/onboarding/components/OnboardingWizard';
@@ -8,6 +8,7 @@ import { useOnboardingCheck } from '@/features/onboarding/hooks/useOnboardingChe
 import { cn } from '@/lib/utils';
 import { selectSidebarCollapsed, selectSidebarOpen, useUIStore } from '@/stores';
 
+import { CommandPalette } from './CommandPalette';
 import { Header } from './Header';
 import { MorePanel } from './MorePanel';
 import { Sidebar } from './Sidebar';
@@ -18,6 +19,7 @@ export function MainLayout() {
   const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
   const { showOnboarding, completeOnboarding, remindLater } = useOnboardingCheck();
   const { t } = useTranslation();
+  const location = useLocation();
 
   // Lock body scroll while the mobile drawer is open.
   useEffect(() => {
@@ -28,6 +30,36 @@ export function MainLayout() {
       document.body.style.overflow = previous;
     };
   }, [sidebarOpen]);
+
+  // Global mod+K opens the command palette. Skipped while focus is in an editable field.
+  useEffect(() => {
+    const isEditable = (el: EventTarget | null) => {
+      if (!(el instanceof HTMLElement)) return false;
+      const tag = el.tagName;
+      return (
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        tag === 'SELECT' ||
+        el.isContentEditable
+      );
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        if (isEditable(e.target)) return;
+        e.preventDefault();
+        useUIStore.getState().toggleCommandPalette();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  // Auto-close palette on navigation (defensive — clicks already close it).
+  useEffect(() => {
+    if (useUIStore.getState().commandPaletteOpen) {
+      useUIStore.getState().setCommandPaletteOpen(false);
+    }
+  }, [location.pathname]);
 
   if (showOnboarding) {
     return (
@@ -44,6 +76,7 @@ export function MainLayout() {
       <Sidebar />
       <MorePanel />
       <Header />
+      <CommandPalette />
       {/* Mobile drawer backdrop */}
       {sidebarOpen && (
         <button
