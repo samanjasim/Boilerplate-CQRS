@@ -484,6 +484,28 @@ Enforcement per platform:
 
 **Tier 1 scope:** None. The `coreCompat` field is added the day Phase 3 starts — adding it earlier with no enforcer creates a rotting field that gets copied without thought.
 
+### D6. Hard vs soft module dependencies: prefer soft via capability contracts
+
+Two layers of dependency declaration exist and serve different purposes; conflating them defeats the architecture.
+
+| | Catalog `dependencies` (advisory) | `IModule.Dependencies` (enforced) |
+|---|---|---|
+| Read by | `rename.ps1` strict-mode | `ModuleLoader.ResolveOrder` |
+| Identifier | Catalog id (lowerCamelCase, e.g. `commentsActivity`) | Runtime `IModule.Name` (FQN, e.g. `Starter.Module.CommentsActivity`) |
+| When checked | Generation time | Application startup |
+| Purpose | Composition UX (don't ship a half-baked app) | Runtime ordering for **hard** deps only |
+| Workflow value | `["commentsActivity", "communication"]` | `[]` |
+
+**Default:** modules use capability contracts with Null Object fallbacks (see `IBillingProvider`, `IWebhookPublisher`, `IQuotaChecker`, `ICommentableEntityRegistry`, `ITemplateRegistrar` — all with documented null-fallback registrations). Modules SHOULD leave `IModule.Dependencies` empty and rely on capabilities for soft coupling. The catalog `dependencies` field documents which modules are recommended companions and is enforced only at generation time so users don't accidentally ship a Workflow-only app with degraded comments/email.
+
+**When to use `IModule.Dependencies` (hard):** only when a module genuinely cannot start without the other module's services in DI — typically because no null fallback is possible (e.g. a database extension that has no neutral form). This should be rare.
+
+**Reasoning:** declaring soft deps as hard `IModule.Dependencies` defeats the Null Object pattern by forcing `ModuleLoader.ResolveOrder` to fail startup when the dep is absent — exactly the failure mode the null-fallback architecture was introduced to avoid. The previous `Module_DeclaresNoHardDependencies` test on Workflow correctly captured this intent; reverting to that pattern keeps the architecture coherent.
+
+**Catalog vs runtime naming gap is intentional.** The two layers use different identifiers because they have different consumers (PowerShell CLI vs .NET reflection). A separate `CatalogConsistencyTests` enforces that catalog `dependencies` entries reference known catalog ids; runtime FQN consistency is enforced by C# compilation.
+
+**Tier 1 scope:** Revert `WorkflowModule.Dependencies` to `[]`. Restore the `Module_DeclaresNoHardDependencies` test. Add `CatalogConsistencyTests` that asserts every catalog `dependencies` value resolves to a top-level catalog id. Document the two-layer model here so future modules know which layer to use.
+
 ### Summary
 
 | # | Decision | Tier 1 |
@@ -493,4 +515,5 @@ Enforcement per platform:
 | D3 | Products as first packaged pilot | Phase 3 |
 | D4 | ESM-only web packages | Phase 3 |
 | D5 | `coreCompat` semver, runtime + install enforcement | Phase 3 |
+| D6 | Soft deps via capabilities by default; catalog `dependencies` is composition-time only | Yes |
 

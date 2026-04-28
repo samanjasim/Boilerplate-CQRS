@@ -82,15 +82,16 @@ public sealed class WorkflowModulePermissionsTests
     }
 
     [Fact]
-    public void Module_DeclaresRequiredOptionalModuleDependencies()
+    public void Module_DeclaresNoHardDependencies()
     {
-        // Workflow registers WorkflowInstance as commentable and email templates
-        // through optional module capability contracts; startup must fail loud if
-        // those modules are removed while Workflow remains installed.
-        _module.Dependencies.Should().BeEquivalentTo(new[]
-        {
-            "Starter.Module.CommentsActivity",
-            "Starter.Module.Communication",
-        });
+        // Workflow couples to CommentsActivity and Communication through capability
+        // contracts (ICommentableEntityRegistry, ITemplateRegistrar) that have
+        // null-fallback registrations. Soft coupling lets a deployment ship Workflow
+        // without those modules and degrade gracefully — declaring them as hard
+        // IModule.Dependencies would defeat the Null Object pattern by forcing
+        // ModuleLoader.ResolveOrder to fail startup. Composition-time guidance
+        // (don't ship a half-baked Workflow) is surfaced via the catalog
+        // dependencies array consumed by rename.ps1, not at runtime. See spec §14 D6.
+        _module.Dependencies.Should().BeEmpty();
     }
 }

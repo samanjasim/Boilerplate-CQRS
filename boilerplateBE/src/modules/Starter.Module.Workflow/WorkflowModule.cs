@@ -18,11 +18,14 @@ public sealed class WorkflowModule : IModule, IModuleBusContributor
     public string Name => "Starter.Module.Workflow";
     public string DisplayName => "Workflow & Approvals";
     public string Version => "1.0.0";
-    public IReadOnlyList<string> Dependencies =>
-    [
-        "Starter.Module.CommentsActivity",
-        "Starter.Module.Communication",
-    ];
+    // No hard runtime dependencies — Workflow couples to CommentsActivity and
+    // Communication through capability contracts (ICommentableEntityRegistry,
+    // ITemplateRegistrar) which have null-fallback registrations. The catalog
+    // dependencies array (modules.catalog.json) surfaces this soft coupling
+    // at generation time so users don't accidentally ship a Workflow-only app
+    // with degraded comments/email; ModuleLoader.ResolveOrder enforces only
+    // hard runtime ordering deps. See spec §14 D6.
+    public IReadOnlyList<string> Dependencies => [];
 
     public IServiceCollection ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
