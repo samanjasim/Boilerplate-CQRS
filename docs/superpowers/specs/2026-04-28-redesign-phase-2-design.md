@@ -16,7 +16,7 @@ Phase 2 also lands the only new route in the J4 redesign so far — `AuditLogDet
 ## 2. Scope (in)
 
 1. **`audit-logs/AuditLogsPage`** — timeline hero (events-in-window count + SVG sparkline), polished filter row + table, click-through wiring to detail page.
-2. **`audit-logs/AuditLogDetailPage`** *(new route)* — diff card (before/after JSON with highlighted deltas) + metadata card (actor, IP, user agent, trace ID, correlation links).
+2. **`audit-logs/AuditLogDetailPage`** *(new route)* — event details card (syntax-highlighted JSON viewer of the `Changes` blob) + metadata card (actor, IP, trace ID, agent attribution, correlation links). Requires a small **backend addition**: `GetAuditLogByIdQuery` + handler + `GET api/v1/audit-logs/{id}` controller action (current controller exposes only the list endpoint).
 3. **`feature-flags/FeatureFlagsPage`** — three sparkline stat cards (enabled / overridden / opted-out) + status pill column on the flag table; tenant-override drilldown stays inline (no new route).
 4. **`api-keys/ApiKeysPage`** — restrained: header KPI badge ("N active · N expiring in 30d"), glass table, redesigned secret-reveal screen (the most-delicate UX in the cluster).
 5. **`settings/SettingsPage`** — restrained: existing category tabs become a sticky sidebar (`≥lg`) / horizontal tabs (`<lg`), glass cards per setting group, sticky save bar when dirty, per-tenant override badges.
@@ -35,7 +35,7 @@ Listed here so a future session can pick them up without re-reviewing this work.
 | **Mobile (Flutter) J4 port** | Phase 7 |
 | **`FeatureFlagDetailPage`** (per-tenant override matrix as its own route, opt-out list, audit history) | Re-evaluate after Phase 2 ships — only if the inline drilldown proves inadequate |
 | **AR + KU translations** for new keys (`auditLogs.detail.*`, `auditLogs.timeline.*`, `featureFlags.stats.*`, `apiKeys.reveal.*`) | EN ships in Phase 2; translation pass when localizer available (i18next falls back to EN — does not block merge) |
-| **`react-diff-viewer` (or similar) adoption** for the audit diff | Re-evaluate if `JsonDiff` proves inadequate AND a second consumer of richer diff UI appears |
+| **State-diff UX for audit logs** (paired before/after) | Requires BE schema changes — store before/after on `AuditLog`. Out of scope for Phase 2; revisit if/when audit data model evolves. |
 | **Top-actors strip on audit timeline** (top 3 acting users + top 3 affected entities) | Re-evaluate if existing filter chips don't satisfy investigation flows |
 | **Stacked-by-severity timeline** (Info / Warning / Error bands) | Re-evaluate post-Phase 2 — current filter chips already cover severity |
 | **BE endpoint for audit timeline buckets** (replacing client-side 2000-row fetch) | Only if production usage shows the client-side approach is too slow |
@@ -77,7 +77,7 @@ Filter changes refetch the timeline rows. Debounce: 500ms before re-fetch fires.
 
 - Timeline buckets are derived **client-side** from existing paged audit list. For the active filter window, fetch up to **N=2000** most-recent matching rows and bucket in JS.
 - `>2000` rows in window → show banner above sparkline ("Showing last 2,000 events for the timeline. Refine the filter for accurate counts.") and continue rendering. Table itself remains paged independently.
-- No new BE endpoint in this phase.
+- No new BE endpoint for the timeline itself. (The detail page does add `GET api/v1/audit-logs/{id}` — see §5.4.)
 
 ## 5. Audit logs — detail page (`AuditLogDetailPage`) *(new route)*
 
@@ -91,30 +91,34 @@ Filter changes refetch the timeline rows. Debounce: 500ms before re-fetch fires.
 ### 5.2 Layout
 
 - `useBackNavigation('/admin/audit-logs', t('auditLogs.title'))` for the header back arrow.
-- **Header band:** action verb as `.gradient-text` (e.g., "User updated"), entity display name, timestamp. Status pill (Info / Warning / Error) using J4 status `Badge` variants.
+- **Header band:** action verb as `.gradient-text` (derived from the `action` field — e.g., `Updated` → "User updated"), entity display name, timestamp. Status pill derived from action category: destructive actions (`Deleted`, `Revoked`, `Suspended`) → `failed` (red); auth-related (`Login`, `Logout`, `LoginFailed`) → `info`; everything else → `info`. Pill uses J4 status `Badge` variants.
 - **Body:** two columns on `≥lg`, single column below.
-  - **Left column — Diff card** (`Card variant="glass"`): JSON diff between `Before` and `After` (see §5.3).
-  - **Right column — Metadata card** (`Card variant="solid"`): actor row (`UserAvatar` + name + email), IP, user agent (`<details>` for the raw UA string), trace/conversation ID with copy button, tenant (super-admin only — never shown to tenant users), correlation links ("Same conversation: 3 events" → filtered list).
+  - **Left column — Event card** (`Card variant="glass"`): syntax-highlighted JSON viewer for the `changes` blob (see §5.3).
+  - **Right column — Metadata card** (`Card variant="solid"`): actor row (`UserAvatar` + name + email), IP, trace/conversation ID with copy button, agent attribution block (visible only when `agentPrincipalId` is set: "Acted on behalf of {user}" + agent run link), tenant (super-admin only — never shown to tenant users), correlation links ("Same conversation: 3 events" → filtered list using `correlationId`).
 
-### 5.3 `JsonDiff` component
+> **Data shape note:** the existing `AuditLog` entity has no `severity`, no `userAgent`, and no paired `before`/`after` fields. `changes` is a single JSON blob describing the event (e.g., `{ Event: "ResourceGrantCreated", ResourceType: "...", ... }`). The original spec assumed a diff UX; reality is event-shaped logs. The detail page therefore displays the event as syntax-highlighted JSON rather than a side-by-side diff. This matches the data the BE actually emits and avoids over-engineering for a paired-state shape that doesn't exist.
 
-- Pure presentational. Walks keys recursively.
-- **Highlighting:**
-  - Changed value — copper tint.
-  - Added key — emerald tint.
-  - Removed key — red-tinted.
-  - Each delta gets a unicode prefix (`+ `, `− `, `~ `) so the diff is legible without color (a11y).
-- **Arrays:** when both sides are arrays of equal length, diff index-paired. Otherwise show "Array changed (N → M items)" + collapsed JSON for both. Document the limitation in a code comment.
+### 5.3 `JsonView` component
+
+A read-only JSON viewer (not a diff). Pure presentational, walks the parsed `changes` value recursively.
+
+- **Syntax highlighting:**
+  - Object/array braces — muted foreground.
+  - Keys — copper tint.
+  - String values — emerald tint.
+  - Number / boolean / null values — accent (violet) tint.
+  - All tints come from existing semantic CSS vars (`--tinted-fg`, `--color-violet-600`, etc.); no new tokens.
+- **Layout:** monospace font (`font-mono`), 2-space indent, line-numbers in copper, hover-row highlight via `--hover-bg`.
 - **Container:** `dir="ltr"` override so JSON keys render left-aligned even in RTL apps (consistent with code blocks).
-- Monospace font (existing `--font-mono` token if present, else `font-mono`).
-- Line-numbers in copper.
-- ARIA: each delta span gets `aria-label="changed from X to Y"` (or "added", "removed").
-- Size budget: ~150 LOC. No external diff library.
+- **Robustness:** `JSON.parse` wrapped in try/catch — on parse failure, render the raw string as preformatted text + a small "Raw event payload" caption.
+- **A11y:** `role="region"` + `aria-label="Event payload"`; container is keyboard-scrollable.
+- Size budget: ~120 LOC. No external library.
 
 ### 5.4 Data shape
 
-- `useAuditLog(id)` query hook in `audit-logs.queries.ts`.
-- If a `getById` endpoint isn't already present in `audit-logs.api.ts`, add one. Backend already exposes the row via the audit logs controller; verify route shape during execution.
+- New BE endpoint: `GET api/v1/audit-logs/{id}` (see Task 1 of §11). Returns `AuditLogDto`. Permission: `System.ViewAuditLogs`. Multi-tenant filter applied automatically via the existing `ApplicationDbContext` global filter (super-admins see cross-tenant; tenant users see their tenant's rows; mismatched id returns 404).
+- New FE pieces: `auditLogsApi.getAuditLog(id)` in `audit-logs.api.ts`; `useAuditLog(id)` hook in `audit-logs.queries.ts`.
+- The frontend `AuditLog` type gains `onBehalfOfUserId`, `agentPrincipalId`, `agentRunId` (already present on the BE entity, surface them in the DTO + TS type).
 
 ## 6. Feature flags (`FeatureFlagsPage`)
 
@@ -180,9 +184,11 @@ Bottom-right floating bar appears when any setting is dirty. Contains: dirty-cou
 | File | Purpose | LOC budget |
 |---|---|---|
 | `features/audit-logs/components/AuditTimelineHero.tsx` | Hero block (count + SVG sparkline + bucket logic) | ~120 |
-| `features/audit-logs/components/JsonDiff.tsx` | Recursive key-walker with highlighted deltas | ~150 |
-| `features/audit-logs/components/AuditMetadataCard.tsx` | Actor / IP / UA / trace block | ~80 |
-| `features/audit-logs/pages/AuditLogDetailPage.tsx` | New route, assembles above | ~120 |
+| `features/audit-logs/components/JsonView.tsx` | Read-only syntax-highlighted JSON viewer | ~120 |
+| `features/audit-logs/components/AuditMetadataCard.tsx` | Actor / IP / trace / agent attribution block | ~90 |
+| `features/audit-logs/pages/AuditLogDetailPage.tsx` | New route, assembles above | ~140 |
+| `boilerplateBE/.../Features/AuditLogs/Queries/GetAuditLogById/...` | New BE query + handler | ~80 |
+| `boilerplateBE/.../Controllers/AuditLogsController.cs` | Add `GET {id}` action | +15 |
 | `features/audit-logs/pages/AuditLogsPage.tsx` | Refactored — adds hero, removes expand row, wires click-through | net +30 |
 | `features/audit-logs/api/audit-logs.queries.ts` | Add `useAuditLog(id)` if absent | +20 |
 | `features/feature-flags/components/FeatureFlagStatStrip.tsx` | Three sparkline stat cards | ~100 |
@@ -201,7 +207,7 @@ Bottom-right floating bar appears when any setting is dirty. Contains: dirty-cou
 ### 10.1 Risks & mitigations
 
 - **Audit timeline performance** — fetching 2000 rows on every filter change is the risk. TanStack Query cache keyed on the filter object + 500ms debounce on filter change before re-fetch.
-- **JsonDiff for nested arrays** — naive recursion misbehaves on reordered arrays. Audit logs almost always emit object-shaped before/after, but accept arrays gracefully: equal-length → index-paired diff; otherwise show "array changed (N → M items)" + collapsed JSON. Limitation documented in a code comment.
+- **`JsonView` malformed payloads** — older audit rows or third-party events may store non-JSON strings in `changes`. Wrap `JSON.parse` in try/catch; on failure render the raw string as preformatted text with a "Raw event payload" caption.
 - **API key secret reveal** — re-render that drops the secret from memory before copy is a real UX loss. `useRef` + state. Close-confirmation if copy hasn't fired.
 - **Sticky settings save bar layout shift** — sidebar's `bottom` reads `--settings-save-bar-h` CSS var, set on the page container when dirty.
 - **Sparkline empty state** — flat baseline + caption "No events in this window" instead of a degenerate single-point line.
@@ -210,14 +216,14 @@ Bottom-right floating bar appears when any setting is dirty. Contains: dirty-cou
 ### 10.2 Accessibility
 
 - Timeline sparkline gets `role="img"` + `aria-label="Events over the last 24 hours: 1,234 events"`. Bucket-list `<ul>` (visually hidden) exposes per-bucket counts to screen readers.
-- `JsonDiff` highlighted spans get `aria-label="changed from X to Y"` (or "added", "removed"). Each delta also has a unicode prefix (`+ `, `− `, `~ `) so the diff is legible without color.
+- `JsonView` container gets `role="region"` + `aria-label="Event payload"`; keyboard-scrollable.
 - Secret reveal — `aria-live="assertive"` announcement on render.
 - Settings sticky sidebar — `aria-current="true"` on active category; arrow-key navigation between categories.
 
 ### 10.3 RTL
 
 - Timeline reads left-to-right always (time is universal). Sparkline does **not** mirror.
-- `JsonDiff` container gets `dir="ltr"` override (JSON is always LTR, same convention as code blocks).
+- `JsonView` container gets `dir="ltr"` override (JSON is always LTR, same convention as code blocks).
 - All other surfaces follow standard `text-start` / `ltr:` / `rtl:` patterns.
 
 ## 11. Execution plan
@@ -227,13 +233,13 @@ Single plan executed via `superpowers:subagent-driven-development`. Each task is
 | Task | Scope | Estimate |
 |---|---|---|
 | 1 | Audit logs list polish (timeline hero, click-through wiring, table polish) | ~1 day |
-| 2 | `AuditLogDetailPage` + `JsonDiff` + `AuditMetadataCard` (new route, route registration, EN translations) | ~1.5 days |
+| 2 | BE `GetAuditLogByIdQuery` + handler + controller action + FE `useAuditLog`; `AuditLogDetailPage` + `JsonView` + `AuditMetadataCard` (new route, route registration, EN translations) | ~2 days |
 | 3 | Feature flags hero metric strip + status pill column + table polish | ~1 day |
 | 4 | API keys polish + secret reveal redesign | ~0.5 day |
 | 5 | Settings polish (sticky sidebar / horizontal tabs, glass groups, sticky save bar) | ~1 day |
 | 6 | Code review pass via `superpowers:code-reviewer`, final polish, EN translation key sweep | ~0.5 day |
 
-**Total: ~5.5 days.**
+**Total: ~6 days.**
 
 PR opens after task 6. AR + KU translations ship as a separate localizer pass (i18next falls back to EN — does not block merge).
 
