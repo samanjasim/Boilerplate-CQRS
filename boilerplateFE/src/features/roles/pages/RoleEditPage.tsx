@@ -130,9 +130,9 @@ export default function RoleEditPage() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Role Details */}
         {canUpdate && (
-          <Card>
+          <Card variant="glass" className="border border-border/40">
             <CardContent className="py-6">
-              <h3 className="mb-4 text-lg font-semibold text-foreground">{t('roles.roleDetail')}</h3>
+              <h3 className="mb-4 text-[15px] font-semibold text-foreground tracking-tight">{t('roles.roleDetail')}</h3>
               <div className="space-y-4 max-w-lg">
                 <div className="space-y-2">
                   <Label>{t('roles.name')}</Label>
@@ -160,9 +160,9 @@ export default function RoleEditPage() {
 
         {/* Permission Matrix */}
         {canManagePermissions && allPermissions && (
-          <Card>
+          <Card variant="glass" className="border border-border/40">
             <CardContent className="py-6">
-              <h3 className="mb-4 text-lg font-semibold text-foreground">{t('roles.rolePermissions')}</h3>
+              <h3 className="mb-4 text-[15px] font-semibold text-foreground tracking-tight">{t('roles.rolePermissions')}</h3>
               <PermissionMatrix
                 allPermissions={allPermissions}
                 selectedIds={selectedPermissionIds}

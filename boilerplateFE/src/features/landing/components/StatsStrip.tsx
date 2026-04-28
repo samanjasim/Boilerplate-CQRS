@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCountUp } from '@/hooks';
 
 interface Stat {
   target: number;
@@ -40,46 +40,8 @@ const STATS: Stat[] = [
   },
 ];
 
-function useCountUp(target: number, duration = 1400) {
-  const elementRef = useRef<HTMLDivElement | null>(null);
-  const [reducedMotion] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
-  );
-  const [animated, setAnimated] = useState(0);
-  const started = useRef(false);
-
-  useEffect(() => {
-    if (reducedMotion) return; // render derives from target directly
-    if (target === 0) return;
-    const node = elementRef.current;
-    if (!node) return;
-    const obs = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting && !started.current) {
-            started.current = true;
-            const start = performance.now();
-            const tick = (now: number) => {
-              const t = Math.min(1, (now - start) / duration);
-              const eased = 1 - Math.pow(1 - t, 3);
-              setAnimated(Math.round(target * eased));
-              if (t < 1) requestAnimationFrame(tick);
-            };
-            requestAnimationFrame(tick);
-          }
-        }
-      },
-      { threshold: 0.4 },
-    );
-    obs.observe(node);
-    return () => obs.disconnect();
-  }, [target, duration, reducedMotion]);
-
-  return { value: reducedMotion ? target : animated, ref: elementRef };
-}
-
 function StatItem({ stat }: { stat: Stat }) {
-  const { value, ref } = useCountUp(stat.target);
+  const { value, ref } = useCountUp(stat.target, { duration: 1400, observe: true });
   return (
     <div ref={ref} className="px-4 py-2">
       <div className="flex items-baseline justify-between gap-3 mb-2">

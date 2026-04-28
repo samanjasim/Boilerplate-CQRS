@@ -8,3 +8,4 @@ export * from './useBackNavigation';
 export * from './useFeatureFlag';
 export * from './useTimeAgo';
 export * from './useListPage';
+export * from './useCountUp';

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ArrowRight, Github, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HeroLinesBackground } from '@/components/common/backgrounds';
+import { useCountUp } from '@/hooks';
 import { ScrambleText } from './ScrambleText';
 
 export function HeroSection() {
@@ -174,28 +175,10 @@ function DashboardPreviewCard() {
 }
 
 function CountUpDisplay({ target, active }: { target: number; active: boolean }) {
-  const [reducedMotion] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
-  );
-  const [v, setV] = useState(0);
-  useEffect(() => {
-    if (!active) return;
-    if (reducedMotion) return;
-    const start = performance.now();
-    const duration = 900;
-    let frameId: number;
-    const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / duration);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setV(Math.round(target * eased));
-      if (t < 1) frameId = requestAnimationFrame(tick);
-    };
-    frameId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frameId);
-  }, [target, active, reducedMotion]);
+  const { value } = useCountUp(target, { duration: 900, active });
   return (
     <div className="font-display text-5xl font-extralight tracking-[-0.04em] leading-none text-foreground font-feature-settings">
-      {active && reducedMotion ? target : v}
+      {value}
     </div>
   );
 }

@@ -74,10 +74,10 @@ export function TenantKeysTab() {
               </TableCell>
               <TableCell>
                 {key.isRevoked
-                  ? <Badge variant="destructive">{t('apiKeys.statusRevoked')}</Badge>
+                  ? <Badge variant="failed">{t('apiKeys.statusRevoked')}</Badge>
                   : key.isExpired
                     ? <Badge variant="secondary">{t('apiKeys.statusExpired')}</Badge>
-                    : <Badge variant="default">{t('apiKeys.statusActive')}</Badge>}
+                    : <Badge variant="healthy">{t('apiKeys.statusActive')}</Badge>}
               </TableCell>
               <TableCell className="text-muted-foreground">
                 {key.lastUsedAt ? formatDateTime(key.lastUsedAt) : t('apiKeys.never')}
