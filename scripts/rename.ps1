@@ -355,7 +355,7 @@ class MainActivity: FlutterActivity()
 
 # ── Module selection (remove excluded modules) ──────────────────────────────
 
-$modulesJsonPath = Join-Path (Join-Path $RepoRoot "scripts") "modules.json"
+$modulesJsonPath = Join-Path $RepoRoot "modules.catalog.json"
 $excludedModules = @()
 $includedOptional = @()
 $allRequired = @()
