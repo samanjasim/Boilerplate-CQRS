@@ -17,5 +17,5 @@ public sealed class ProductExpertAnthropicTemplate : IAiAgentTemplate
     public AssistantExecutionMode ExecutionMode => AssistantExecutionMode.Chat;
     public IReadOnlyList<string> EnabledToolNames { get; } = new[] { "list_products" };
     public IReadOnlyList<string> PersonaTargetSlugs { get; } = new[] { "default" };
-    public SafetyPreset? SafetyPresetHint => SafetyPreset.Standard;
+    public SafetyPreset? SafetyPresetOverride => null;
 }

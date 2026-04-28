@@ -313,6 +313,10 @@ public sealed class AIModule : IModule
         // Always seed platform-default safety preset profiles (idempotent — skips if any platform row exists)
         await SafetyPresetProfileSeed.SeedAsync(aiDb, cancellationToken);
 
+        // Plan 5e: backfill flagship demo personas for every existing tenant
+        // (idempotent — only inserts missing personas per tenant).
+        await FlagshipPersonasBackfillSeed.SeedAsync(aiDb, appDb, cancellationToken);
+
         // Plan 5d-1 backfill: pair any pre-existing assistant with an AiAgentPrincipal
         // (idempotent — only inserts for assistants without a paired principal).
         await AgentPrincipalBackfill.RunAsync(aiDb, cancellationToken);

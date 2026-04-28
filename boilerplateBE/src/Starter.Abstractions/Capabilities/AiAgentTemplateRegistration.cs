@@ -18,7 +18,7 @@ internal sealed class AiAgentTemplateRegistration(
     public AssistantExecutionMode ExecutionMode => inner.ExecutionMode;
     public IReadOnlyList<string> EnabledToolNames => inner.EnabledToolNames;
     public IReadOnlyList<string> PersonaTargetSlugs => inner.PersonaTargetSlugs;
-    public SafetyPreset? SafetyPresetHint => inner.SafetyPresetHint;
+    public SafetyPreset? SafetyPresetOverride => inner.SafetyPresetOverride;
 
     public string ModuleSource => moduleSource;
 }

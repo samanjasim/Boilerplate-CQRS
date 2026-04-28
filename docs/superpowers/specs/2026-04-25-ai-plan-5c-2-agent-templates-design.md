@@ -103,6 +103,8 @@ public interface IAiAgentTemplate
 }
 ```
 
+> **Update (Plan 5e, 2026-04-28):** `SafetyPresetHint` was renamed to `SafetyPresetOverride` and made load-bearing in 5e. `InstallTemplateCommandHandler` now stamps the value onto `AiAssistant.SafetyPresetOverride` (added in 5d-2). The four 5c-2 demo templates were updated to return `null` (inherit from persona) since their original `Standard` value matched the persona-default and added no information. See [Plan 5e design](./2026-04-28-ai-plan-5e-bundled-platform-agents-design.md).
+
 ### 3.2 `IAiAgentTemplateModuleSource` capability
 
 New file: `boilerplateBE/src/Starter.Abstractions/Capabilities/IAiAgentTemplateModuleSource.cs`.

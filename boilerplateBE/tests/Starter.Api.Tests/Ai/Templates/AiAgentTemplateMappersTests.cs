@@ -18,7 +18,7 @@ public class AiAgentTemplateMappersTests
             model: "gpt-4o-mini",
             tools: new[] { "tool_a" },
             personas: new[] { "default", "anonymous" },
-            safetyHint: SafetyPreset.ChildSafe);
+            safetyOverride: SafetyPreset.ChildSafe);
 
         var reg = new AiAgentTemplateRegistration(template, "Products");
         var dto = ((IAiAgentTemplate)reg).ToDto();
@@ -30,7 +30,7 @@ public class AiAgentTemplateMappersTests
         Assert.Equal("gpt-4o-mini", dto.Model);
         Assert.Equal(new[] { "tool_a" }, dto.EnabledToolNames);
         Assert.Equal(new[] { "default", "anonymous" }, dto.PersonaTargetSlugs);
-        Assert.Equal("ChildSafe", dto.SafetyPresetHint);
+        Assert.Equal("ChildSafe", dto.SafetyPresetOverride);
     }
 
     [Fact]
@@ -45,9 +45,9 @@ public class AiAgentTemplateMappersTests
     [Fact]
     public void ToDto_serialises_null_safety_hint_as_null()
     {
-        var template = new TestTemplate(slug: "no_safety", safetyHint: null);
+        var template = new TestTemplate(slug: "no_safety", safetyOverride: null);
         var dto = template.ToDto();
 
-        Assert.Null(dto.SafetyPresetHint);
+        Assert.Null(dto.SafetyPresetOverride);
     }
 }
