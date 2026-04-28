@@ -124,6 +124,14 @@ When in doubt: if more than one module needs it, it's core.
 - Use `.IgnoreQueryFilters()` when cross-tenant access is needed (e.g., uniqueness checks)
 - Never expose `TenantId` in API responses — it's an internal concern
 
+### `[AiTool]` vs Controller Authorization
+
+When a query is exposed both as an HTTP controller endpoint and as an AI tool via `[AiTool]`, the two paths share one handler. The `[AiTool]` `RequiredPermission` is the gate that LLM dispatchers check before calling the handler — it must be **at least as restrictive** as every controller `[Authorize]` policy that dispatches the same query, *and* the handler must be tenant-scoped via `currentUser.TenantId` or EF query filters. Specifically:
+
+- If the handler calls `IgnoreQueryFilters()` *and* never filters by `currentUser.TenantId`, it's a SuperAdmin admin-list — do **not** decorate it with `[AiTool]` under a `View`-level permission. Either tighten the permission to a SuperAdmin-only policy (e.g. `BillingPermissions.ManageTenantSubscriptions`) or expose a separate tenant-scoped query for agents instead.
+- Server-trusted parameters (`TenantId`, `UserId`, role flags) on `[AiTool]`-decorated records must carry `[property: AiParameterIgnore]`. The `AiToolSchemaGenerator.EnforceTrustBoundary` check throws at startup if you forget.
+- The acid test at `Plan5eAcidTests.Server_trusted_tool_parameters_carry_AiParameterIgnore` enumerates the explicit list — extend it whenever a new server-trusted field surfaces on an `[AiTool]` query.
+
 ### Integration Events & Messaging
 
 Cross-module events are published via the **transactional outbox pattern**. Events are committed atomically with business data, then delivered asynchronously by MassTransit. Full reference: [docs/architecture/cross-module-communication.md § Pattern 2](docs/architecture/cross-module-communication.md).

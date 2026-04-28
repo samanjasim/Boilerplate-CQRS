@@ -98,7 +98,10 @@ public class Plan5eAcidTests
             .Select(t => t.Name)
             .ToList();
 
-        names.Should().Contain(new[] { "list_subscriptions", "list_usage" });
+        // Plan 5e review C1: list_subscriptions was a SuperAdmin admin-list query
+        // (cross-tenant). Replaced by get_my_subscription which is tenant-scoped.
+        names.Should().Contain(new[] { "get_my_subscription", "list_usage" });
+        names.Should().NotContain("list_subscriptions");
     }
 
     [Fact]
@@ -152,7 +155,7 @@ public class Plan5eAcidTests
     {
         var (handler, db, _) = SetupHandler(
             templates: new IAiAgentTemplate[] { new PlatformInsightsAnthropicTemplate() },
-            tools: new[] { "list_users", "list_audit_logs", "list_subscriptions", "list_usage", "list_conversations" });
+            tools: new[] { "list_users", "list_audit_logs", "get_my_subscription", "list_usage", "list_conversations" });
 
         var result = await handler.Handle(
             new InstallTemplateCommand("platform_insights_anthropic"), default);
@@ -162,8 +165,130 @@ public class Plan5eAcidTests
         assistant.SafetyPresetOverride.Should().BeNull();
         assistant.EnabledToolNames.Should().BeEquivalentTo(new[]
         {
-            "list_users", "list_audit_logs", "list_subscriptions", "list_usage", "list_conversations",
+            "list_users", "list_audit_logs", "get_my_subscription", "list_usage", "list_conversations",
         });
+    }
+
+    // ── Plan 5e post-review additions ──────────────────────────────────────────
+
+    [Fact]
+    public void Every_registered_template_references_only_tools_in_the_registry()
+    {
+        // Plan 5e review S2: guards against the live-test bug where a template
+        // declared "list_my_conversations" but the registered tool was named
+        // "list_conversations". Walks all registered templates and resolves every
+        // EnabledToolName against the merged tool registry across all assemblies.
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=test",
+            })
+            .Build();
+
+        // Scan every assembly that registers tools or templates today.
+        services.AddAiToolsFromAssembly(typeof(Starter.Application.DependencyInjection).Assembly);
+        services.AddAiToolsFromAssembly(typeof(Starter.Module.AI.AIModule).Assembly);
+        services.AddAiToolsFromAssembly(typeof(Starter.Module.Products.ProductsModule).Assembly);
+        services.AddAiToolsFromAssembly(typeof(BillingModule).Assembly);
+
+        services.AddAiAgentTemplatesFromAssembly(typeof(Starter.Application.DependencyInjection).Assembly);
+        services.AddAiAgentTemplatesFromAssembly(typeof(Starter.Module.Products.ProductsModule).Assembly);
+
+        using var provider = services.BuildServiceProvider();
+
+        var registeredToolNames = provider.GetServices<IAiToolDefinition>()
+            .Select(t => t.Name)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var templates = provider.GetServices<IAiAgentTemplate>().ToList();
+        templates.Should().NotBeEmpty("at least one template should be registered");
+
+        var problems = templates
+            .SelectMany(t => t.EnabledToolNames.Select(n => (Template: t.Slug, Tool: n)))
+            .Where(x => !registeredToolNames.Contains(x.Tool))
+            .ToList();
+
+        problems.Should().BeEmpty(
+            "every template's EnabledToolNames must resolve in the tool registry: " +
+            string.Join(", ", problems.Select(p => $"{p.Template} -> {p.Tool}")));
+    }
+
+    [Fact]
+    public void Server_trusted_tool_parameters_carry_AiParameterIgnore()
+    {
+        // Plan 5e review S3: catches future regressions where a query exposes
+        // TenantId / UserId / role flags directly to the LLM tool schema. The
+        // AiToolSchemaGenerator throws at startup if it sees one un-ignored, but
+        // a reflection assertion catches it closer to the source.
+        AssertIgnored(typeof(Starter.Module.Billing.Application.Queries.GetUsage.GetUsageQuery), "TenantId");
+        AssertIgnored(typeof(Starter.Module.Billing.Application.Queries.GetSubscription.GetSubscriptionQuery), "TenantId");
+        AssertIgnored(typeof(Starter.Module.Products.Application.Queries.GetProducts.GetProductsQuery), "TenantId");
+
+        static void AssertIgnored(Type type, string propertyName)
+        {
+            var prop = type.GetProperty(propertyName);
+            prop.Should().NotBeNull($"{type.Name} should declare {propertyName}");
+            prop!
+                .GetCustomAttributes(typeof(AiParameterIgnoreAttribute), inherit: true)
+                .Should().NotBeEmpty(
+                    $"{type.FullName}.{propertyName} is server-trusted and must carry [AiParameterIgnore].");
+        }
+    }
+
+    [Fact]
+    public void All_nine_boilerplate_templates_are_discovered_and_resolvable()
+    {
+        // Plan 5e review S1: spec §9.1 row 10 "InstallFlagOn_FreshTenantHasAllNineAssistants".
+        // The full SeedDataAsync flow can't be tested in-memory without the whole DI graph,
+        // but we can prove the template registry is complete and every template would install
+        // successfully against a fresh tenant (persona + tool dependencies satisfied).
+        var services = new ServiceCollection();
+
+        services.AddAiToolsFromAssembly(typeof(Starter.Application.DependencyInjection).Assembly);
+        services.AddAiToolsFromAssembly(typeof(Starter.Module.AI.AIModule).Assembly);
+        services.AddAiToolsFromAssembly(typeof(Starter.Module.Products.ProductsModule).Assembly);
+        services.AddAiToolsFromAssembly(typeof(BillingModule).Assembly);
+
+        services.AddAiAgentTemplatesFromAssembly(typeof(Starter.Application.DependencyInjection).Assembly);
+        services.AddAiAgentTemplatesFromAssembly(typeof(Starter.Module.Products.ProductsModule).Assembly);
+
+        using var provider = services.BuildServiceProvider();
+
+        var slugs = provider.GetServices<IAiAgentTemplate>()
+            .Select(t => t.Slug)
+            .OrderBy(s => s, StringComparer.Ordinal)
+            .ToList();
+
+        slugs.Should().BeEquivalentTo(new[]
+        {
+            "brand_content",
+            "platform_insights_anthropic",
+            "platform_insights_openai",
+            "product_expert_anthropic",
+            "product_expert_openai",
+            "support_assistant_anthropic",
+            "support_assistant_openai",
+            "support_copilot",
+            "teacher_tutor",
+        });
+    }
+
+    [Fact]
+    public void Every_seeded_persona_slug_is_in_AllSeededPersonaFactories()
+    {
+        // Plan 5e review S5: the AiPersona slug constants and factory table must
+        // stay in lockstep. Catches a future contributor adding a slug constant
+        // (or a Create* factory) without wiring it through both seed paths.
+        var slugConstants = typeof(AiPersona)
+            .GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+            .Where(f => f.Name.EndsWith("Slug") && f.FieldType == typeof(string))
+            .Select(f => (string)f.GetValue(null)!)
+            .ToHashSet(StringComparer.Ordinal);
+
+        AiPersona.AllSeededPersonaFactories.Keys
+            .Should().BeEquivalentTo(slugConstants,
+                "every Slug constant must be wired into AllSeededPersonaFactories");
     }
 
     private static (

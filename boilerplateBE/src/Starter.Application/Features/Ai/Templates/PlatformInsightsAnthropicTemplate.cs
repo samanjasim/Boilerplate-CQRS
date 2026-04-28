@@ -17,7 +17,7 @@ public sealed class PlatformInsightsAnthropicTemplate : IAiAgentTemplate
     public AssistantExecutionMode ExecutionMode => AssistantExecutionMode.Chat;
     public IReadOnlyList<string> EnabledToolNames { get; } = new[]
     {
-        "list_users", "list_audit_logs", "list_subscriptions", "list_usage", "list_conversations",
+        "list_users", "list_audit_logs", "get_my_subscription", "list_usage", "list_conversations",
     };
     public IReadOnlyList<string> PersonaTargetSlugs { get; } = new[] { "default" };
     public SafetyPreset? SafetyPresetOverride => null;

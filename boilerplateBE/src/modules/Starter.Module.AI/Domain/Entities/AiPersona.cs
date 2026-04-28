@@ -191,6 +191,44 @@ public sealed class AiPersona : AggregateRoot, ITenantEntity
             isActive: true,
             createdByUserId);
 
+    /// <summary>
+    /// System personas reserved by the platform (anonymous + default). Seeded by
+    /// <c>SeedTenantPersonasDomainEventHandler</c> on <c>TenantCreatedEvent</c>.
+    /// </summary>
+    public static IReadOnlyDictionary<string, Func<Guid, Guid, AiPersona>> SystemPersonaFactories { get; } =
+        new Dictionary<string, Func<Guid, Guid, AiPersona>>(StringComparer.Ordinal)
+        {
+            [AnonymousSlug] = CreateAnonymous,
+            [DefaultSlug]   = CreateDefault,
+        };
+
+    /// <summary>
+    /// Plan 5e flagship demo personas. Boilerplate-shipped starters that flagship
+    /// templates (Teacher Tutor, Brand Content) and future flagship plans target.
+    /// Seeded for new tenants by <c>SeedTenantPersonasDomainEventHandler</c> and
+    /// backfilled for existing tenants by <c>FlagshipPersonasBackfillSeed</c>.
+    /// </summary>
+    public static IReadOnlyDictionary<string, Func<Guid, Guid, AiPersona>> FlagshipDemoPersonaFactories { get; } =
+        new Dictionary<string, Func<Guid, Guid, AiPersona>>(StringComparer.Ordinal)
+        {
+            [StudentSlug]   = CreateStudent,
+            [TeacherSlug]   = CreateTeacher,
+            [ParentSlug]    = CreateParent,
+            [EditorSlug]    = CreateEditor,
+            [ApproverSlug]  = CreateApprover,
+            [ClientSlug]    = CreateClient,
+        };
+
+    /// <summary>
+    /// Every persona slug the platform seeds (system + flagship demo).
+    /// Single source of truth for both the tenant-creation event handler and the
+    /// backfill seed.
+    /// </summary>
+    public static IReadOnlyDictionary<string, Func<Guid, Guid, AiPersona>> AllSeededPersonaFactories { get; } =
+        SystemPersonaFactories
+            .Concat(FlagshipDemoPersonaFactories)
+            .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
+
     public void Update(
         string displayName,
         string? description,

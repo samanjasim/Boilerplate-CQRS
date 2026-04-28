@@ -7,8 +7,8 @@ namespace Starter.Module.AI.Infrastructure.Persistence.Seed;
 /// <summary>
 /// Plan 5e: idempotently adds the six flagship demo personas (student, teacher,
 /// parent, editor, approver, client) to every tenant that doesn't yet have them.
-/// New tenants get these via <c>SeedTenantPersonasDomainEventHandler</c>; this seed
-/// covers tenants that pre-date 5e.
+/// New tenants get these via <see cref="EventHandlers.SeedTenantPersonasDomainEventHandler"/>;
+/// this seed covers tenants that pre-date 5e.
 /// </summary>
 internal static class FlagshipPersonasBackfillSeed
 {
@@ -25,24 +25,34 @@ internal static class FlagshipPersonasBackfillSeed
             .ToListAsync(ct);
         if (tenantIds.Count == 0) return;
 
+        var flagshipFactories = AiPersona.FlagshipDemoPersonaFactories;
+        var flagshipSlugs = flagshipFactories.Keys.ToHashSet(StringComparer.Ordinal);
+
+        // Single bulk read for every flagship persona row across all tenants.
+        var existingByTenant = await db.AiPersonas
+            .IgnoreQueryFilters()
+            .Where(p => tenantIds.Contains(p.TenantId!.Value) && flagshipSlugs.Contains(p.Slug))
+            .Select(p => new { p.TenantId, p.Slug })
+            .ToListAsync(ct);
+
+        var haveByTenant = existingByTenant
+            .GroupBy(x => x.TenantId!.Value)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.Slug).ToHashSet(StringComparer.Ordinal));
+
         foreach (var tenantId in tenantIds)
         {
-            var existing = await db.AiPersonas
-                .IgnoreQueryFilters()
-                .Where(p => p.TenantId == tenantId)
-                .Select(p => p.Slug)
-                .ToListAsync(ct);
-            var have = existing.ToHashSet(StringComparer.Ordinal);
+            haveByTenant.TryGetValue(tenantId, out var have);
+            have ??= new HashSet<string>(StringComparer.Ordinal);
 
-            if (!have.Contains(AiPersona.StudentSlug)) db.AiPersonas.Add(AiPersona.CreateStudent(tenantId, SystemSeedActor));
-            if (!have.Contains(AiPersona.TeacherSlug)) db.AiPersonas.Add(AiPersona.CreateTeacher(tenantId, SystemSeedActor));
-            if (!have.Contains(AiPersona.ParentSlug)) db.AiPersonas.Add(AiPersona.CreateParent(tenantId, SystemSeedActor));
-            if (!have.Contains(AiPersona.EditorSlug)) db.AiPersonas.Add(AiPersona.CreateEditor(tenantId, SystemSeedActor));
-            if (!have.Contains(AiPersona.ApproverSlug)) db.AiPersonas.Add(AiPersona.CreateApprover(tenantId, SystemSeedActor));
-            if (!have.Contains(AiPersona.ClientSlug)) db.AiPersonas.Add(AiPersona.CreateClient(tenantId, SystemSeedActor));
-
-            if (db.ChangeTracker.HasChanges())
-                await db.SaveChangesAsync(ct);
+            foreach (var (slug, factory) in flagshipFactories)
+            {
+                if (have.Contains(slug)) continue;
+                db.AiPersonas.Add(factory(tenantId, SystemSeedActor));
+            }
         }
+
+        // Single SaveChangesAsync covers every tenant's missing rows.
+        if (db.ChangeTracker.HasChanges())
+            await db.SaveChangesAsync(ct);
     }
 }
