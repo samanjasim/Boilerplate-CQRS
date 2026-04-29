@@ -26,6 +26,7 @@
     "yes": "نعم",
     "no": "لا",
     "remove": "إزالة",
+    "reset": "إعادة التعيين",
     "createdAt": "تاريخ الإنشاء",
     "showing": "عرض {{start}}-{{end}} من {{total}}",
     "close": "إغلاق",
@@ -147,6 +148,21 @@
     "collapse": "طي",
     "taskInbox": "صندوق المهام",
     "workflowDefinitions": "التعريفات",
+    "groups": {
+      "workflow": "سير العمل",
+      "communication": "الاتصالات",
+      "products": "المنتجات",
+      "billing": "الفوترة",
+      "webhooks": "الويب هوكس",
+      "importExport": "الاستيراد / التصدير",
+      "people": "الأشخاص",
+      "content": "المحتوى",
+      "platform": "المنصة"
+    },
+    "toggle": {
+      "open": "فتح القائمة",
+      "close": "إغلاق القائمة"
+    },
     "more": {
       "label": "المزيد",
       "inMore": "في المزيد · {{group}}",
@@ -157,7 +173,8 @@
   "header": {
     "logout": "تسجيل الخروج",
     "theme": "المظهر",
-    "language": "اللغة"
+    "language": "اللغة",
+    "searchPlaceholder": "ابحث في أي شيء…"
   },
   "command_palette": {
     "title": "لوحة الأوامر",
@@ -331,6 +348,7 @@
     "created": "تم الإنشاء",
     "updated": "تم التحديث",
     "deleted": "تم الحذف",
+    "emergencyRevoked": "إلغاء طارئ",
     "oldValues": "القيم القديمة",
     "newValues": "القيم الجديدة",
     "filterByEntity": "تصفية حسب الكيان",
@@ -341,7 +359,45 @@
     "role": "دور",
     "permission": "صلاحية",
     "tenant": "مستأجر",
-    "dateRange": "نطاق التاريخ"
+    "file": "ملف",
+    "apiKey": "مفتاح API",
+    "resourceGrant": "منح المورد",
+    "aiAssistant": "مساعد ذكاء اصطناعي",
+    "dateRange": "نطاق التاريخ",
+    "timeline": {
+      "totalEvents": "{{count}} حدث",
+      "totalEvents_other": "{{count}} حدث",
+      "windowLabel": "خلال {{window}}",
+      "windowOptions": {
+        "lastHour": "الساعة الماضية",
+        "last24h": "الـ 24 ساعة الماضية",
+        "last7d": "الـ 7 أيام الماضية",
+        "last30d": "الـ 30 يوماً الماضية",
+        "custom": "النطاق المحدد"
+      },
+      "noEvents": "لا توجد أحداث في هذه الفترة",
+      "truncatedBanner": "يتم عرض أحدث 2,000 حدث للجدول الزمني. قم بتحسين عوامل التصفية للحصول على عدّ دقيق.",
+      "ariaLabel": "الأحداث عبر الزمن: {{count}} حدث إجمالي"
+    },
+    "detail": {
+      "title": "تفاصيل سجل التدقيق",
+      "back": "العودة إلى سجلات التدقيق",
+      "actor": "الفاعل",
+      "systemAction": "إجراء نظام (بدون مستخدم)",
+      "unknownActor": "مستخدم غير معروف",
+      "agentAction": "تم التنفيذ بواسطة وكيل ذكاء اصطناعي",
+      "onBehalfOf": "بالنيابة عن",
+      "agentPrincipal": "الوكيل الرئيسي",
+      "agentRun": "تشغيل الوكيل",
+      "ipAddress": "عنوان IP",
+      "correlationId": "معرّف الارتباط / التتبع",
+      "viewSameConversation": "عرض جميع الأحداث بنفس معرّف الارتباط",
+      "tenant": "المستأجر",
+      "eventPayload": "حمولة الحدث",
+      "noPayload": "لا توجد بيانات حمولة",
+      "rawPayload": "حمولة خام (ليست JSON صالحاً)",
+      "notFound": "لم يتم العثور على سجل التدقيق"
+    }
   },
   "twoFactor": {
     "title": "المصادقة الثنائية",
@@ -660,6 +716,20 @@
     "secretDescription": "انسخ مفتاح API الآن. لن تتمكن من رؤيته مرة أخرى.",
     "secretWarning": "هذه هي المرة الوحيدة التي سيظهر فيها مفتاح API الكامل. انسخه واحفظه بأمان.",
     "secretDone": "لقد نسخت المفتاح",
+    "reveal": {
+      "title": "تم إنشاء مفتاح API",
+      "warning": "يُعرض مرة واحدة فقط. انسخه الآن — لا يمكن استرداده لاحقاً.",
+      "copyButton": "نسخ",
+      "copiedConfirmation": "تم النسخ",
+      "doneButton": "تم",
+      "closeConfirmTitle": "لم تنسخ المفتاح بعد",
+      "closeConfirmDescription": "إذا أغلقت هذا الحوار دون نسخ المفتاح، فلن يمكن استرجاعه. هل تريد الإغلاق على أي حال؟",
+      "ariaAnnouncement": "تم إنشاء مفتاح API. انسخه الآن."
+    },
+    "kpi": {
+      "active": "{{count}} نشط",
+      "expiringSoon": "{{count}} ينتهي خلال 30 يوماً"
+    },
     "createdSuccess": "تم إنشاء مفتاح API بنجاح.",
     "updatedSuccess": "تم تحديث مفتاح API بنجاح.",
     "revokedSuccess": "تم إلغاء مفتاح API بنجاح.",
@@ -751,7 +821,19 @@
     "noOverride": "افتراضي",
     "optOutSuccess": "تم إلغاء الاشتراك في الميزة بنجاح",
     "optInSuccess": "تمت إزالة إلغاء الاشتراك، تمت استعادة الميزة إلى الافتراضي",
-    "cannotOptOut": "يمكن فقط إلغاء الاشتراك في الميزات المنطقية المفعّلة"
+    "cannotOptOut": "يمكن فقط إلغاء الاشتراك في الميزات المنطقية المفعّلة",
+    "stats": {
+      "enabledFlags": "الأعلام المفعّلة",
+      "tenantOverrides": "تجاوزات المستأجرين",
+      "optedOut": "المستأجرون الملغون"
+    },
+    "status": {
+      "title": "الحالة",
+      "on": "مفعّل",
+      "off": "معطّل",
+      "perTenant": "حسب المستأجر",
+      "configured": "مهيّأ"
+    }
   },
   "webhooks": {
     "title": "الويب هوكس",

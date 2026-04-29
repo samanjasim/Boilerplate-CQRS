@@ -26,6 +26,7 @@
     "yes": "بەڵێ",
     "no": "نەخێر",
     "remove": "لابردن",
+    "reset": "ڕێکخستنەوە",
     "createdAt": "دروستکراو",
     "showing": "پیشاندانی {{start}}-{{end}} لە {{total}}",
     "close": "داخستن",
@@ -147,6 +148,21 @@
     "collapse": "کچکردن",
     "taskInbox": "سندووقی ئەرکەکان",
     "workflowDefinitions": "پێناسەکان",
+    "groups": {
+      "workflow": "ڕێڕەوی کار",
+      "communication": "پەیوەندی",
+      "products": "بەرهەمەکان",
+      "billing": "پارەدان",
+      "webhooks": "وێبهووکەکان",
+      "importExport": "هاوردە / ناردە",
+      "people": "خەڵک",
+      "content": "ناوەڕۆک",
+      "platform": "سەکۆ"
+    },
+    "toggle": {
+      "open": "کردنەوەی پێڕست",
+      "close": "داخستنی پێڕست"
+    },
     "more": {
       "label": "زیاتر",
       "inMore": "لە زیاتر · {{group}}",
@@ -157,7 +173,8 @@
   "header": {
     "logout": "دەرچوون",
     "theme": "ڕووکار",
-    "language": "زمان"
+    "language": "زمان",
+    "searchPlaceholder": "گەڕان لە هەموو شتێک…"
   },
   "command_palette": {
     "title": "تابلۆی فەرمانەکان",
@@ -331,6 +348,7 @@
     "created": "دروستکراو",
     "updated": "نوێکراوەتەوە",
     "deleted": "سڕاوەتەوە",
+    "emergencyRevoked": "هەڵوەشاندنەوەی فریاکەوتن",
     "oldValues": "بەهاکانی کۆن",
     "newValues": "بەهاکانی نوێ",
     "filterByEntity": "پاڵاوتن بەپێی دانە",
@@ -341,7 +359,45 @@
     "role": "ڕۆڵ",
     "permission": "مۆڵەت",
     "tenant": "خاوەنکار",
-    "dateRange": "ماوەی بەروار"
+    "file": "پەڕگە",
+    "apiKey": "کلیلی API",
+    "resourceGrant": "بەخشینی سەرچاوە",
+    "aiAssistant": "یاریدەدەری AI",
+    "dateRange": "ماوەی بەروار",
+    "timeline": {
+      "totalEvents": "{{count}} ڕووداو",
+      "totalEvents_other": "{{count}} ڕووداو",
+      "windowLabel": "لە {{window}} دا",
+      "windowOptions": {
+        "lastHour": "کاتژمێری ڕابردوو",
+        "last24h": "٢٤ کاتژمێری ڕابردوو",
+        "last7d": "٧ ڕۆژی ڕابردوو",
+        "last30d": "٣٠ ڕۆژی ڕابردوو",
+        "custom": "ماوەی هەڵبژێردراو"
+      },
+      "noEvents": "هیچ ڕووداوێک لەم ماوەیەدا نییە",
+      "truncatedBanner": "پیشاندانی نوێترین ٢٬٠٠٠ ڕووداو بۆ تایم لاین. پاڵاوتنەکان بگۆڕە بۆ ژمارەی وردتر.",
+      "ariaLabel": "ڕووداوەکان لە کاتدا: کۆی ڕووداوەکان {{count}}"
+    },
+    "detail": {
+      "title": "وردەکارییەکانی تۆماری چاودێری",
+      "back": "گەڕانەوە بۆ تۆمارەکانی چاودێری",
+      "actor": "ئەنجامدەر",
+      "systemAction": "کرداری سیستەم (بێ بەکارهێنەر)",
+      "unknownActor": "بەکارهێنەری نەناسراو",
+      "agentAction": "ئەنجامدراوە لەلایەن وەکیلێکی AI",
+      "onBehalfOf": "لەجیاتی",
+      "agentPrincipal": "وەکیلی سەرەکی",
+      "agentRun": "جێبەجێکردنی وەکیل",
+      "ipAddress": "ناونیشانی IP",
+      "correlationId": "ناسنامەی پەیوەندی / شوێنپێ",
+      "viewSameConversation": "پیشاندانی هەموو ڕووداوەکان بە هەمان ناسنامەی پەیوەندی",
+      "tenant": "خاوەنکار",
+      "eventPayload": "هەڵگری ڕووداو",
+      "noPayload": "هیچ زانیاریی هەڵگر نییە",
+      "rawPayload": "هەڵگری خاو (JSONـی دروست نییە)",
+      "notFound": "تۆماری چاودێری نەدۆزرایەوە"
+    }
   },
   "twoFactor": {
     "title": "ناسینەوەی دوو هەنگاوی",
@@ -646,6 +702,20 @@
     "secretDescription": "کلیلی API ئێستا کۆپی بکە. ناتوانیت دووبارە ببینیتەوە.",
     "secretWarning": "ئەمە تەنها جارە کە کلیلی API ی تەواو دەبینرێت. کۆپی بکە و بە سەلامەتی هەڵیبگرە.",
     "secretDone": "کلیلەکەم کۆپی کرد",
+    "reveal": {
+      "title": "کلیلی API دروستکرا",
+      "warning": "تەنها یەک جار پیشاندەدرێت. ئێستا کۆپی بکە — دواتر ناتوانرێت بگەڕێنرێتەوە.",
+      "copyButton": "کۆپی",
+      "copiedConfirmation": "کۆپی کرا",
+      "doneButton": "تەواو",
+      "closeConfirmTitle": "هێشتا کلیلەکەت کۆپی نەکردووە",
+      "closeConfirmDescription": "ئەگەر ئەم گفتوگۆیە دابخەی بێ کۆپیکردن، کلیلەکە ناتوانرێت بگەڕێنرێتەوە. لەگەڵ ئەوەشدا دایبخە؟",
+      "ariaAnnouncement": "کلیلی API دروستکرا. ئێستا کۆپی بکە."
+    },
+    "kpi": {
+      "active": "{{count}} چالاک",
+      "expiringSoon": "{{count}} لە ٣٠ ڕۆژدا تەواو دەبێت"
+    },
     "createdSuccess": "کلیلی API بە سەرکەوتوویی دروستکرا.",
     "updatedSuccess": "کلیلی API بە سەرکەوتوویی نوێکرایەوە.",
     "revokedSuccess": "کلیلی API بە سەرکەوتوویی هەڵوەشێنرایەوە.",
@@ -737,7 +807,19 @@
     "noOverride": "بنەڕەت",
     "optOutSuccess": "تایبەتمەندی بە سەرکەوتوویی لەکارخرا",
     "optInSuccess": "دەرچوون لابرا، تایبەتمەندی گەڕایەوە بۆ بنەڕەت",
-    "cannotOptOut": "تەنها دەتوانرێت لە تایبەتمەندییە بوولی چالاکەکان دەربچیت"
+    "cannotOptOut": "تەنها دەتوانرێت لە تایبەتمەندییە بوولی چالاکەکان دەربچیت",
+    "stats": {
+      "enabledFlags": "ئاڵاکانی چالاککراو",
+      "tenantOverrides": "بەسەرکەوتنی خاوەنکار",
+      "optedOut": "خاوەنکارە دەرچووەکان"
+    },
+    "status": {
+      "title": "دۆخ",
+      "on": "چالاک",
+      "off": "ناچالاک",
+      "perTenant": "بەپێی خاوەنکار",
+      "configured": "ڕێکخراو"
+    }
   },
   "webhooks": {
     "title": "وێبهووکەکان",
