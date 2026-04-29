@@ -89,60 +89,108 @@ if (-not (Test-Path $SourceBE)) {
     exit 1
 }
 
-# ── Module selection preflight ──────────────────────────────────────────────
+function Get-CatalogModuleProperties {
+    param([object]$Catalog)
 
-$modulesJsonPath = Join-Path $RepoRoot "modules.catalog.json"
-$excludedModules = @()
-$includedOptional = @()
-$allRequired = @()
-$modulesConfig = $null
+    return @($Catalog.PSObject.Properties | Where-Object { -not $_.Name.StartsWith("_") })
+}
 
-if (Test-Path $modulesJsonPath) {
-    $modulesConfig = Get-Content $modulesJsonPath -Raw | ConvertFrom-Json
-    $allOptional = @()
-    foreach ($prop in $modulesConfig.PSObject.Properties) {
-        # Skip metadata fields (e.g., _comment)
-        if ($prop.Name.StartsWith("_")) { continue }
-        if ($prop.Value.required) {
-            $allRequired += $prop.Name
+function ConvertTo-SnakeCase {
+    param([Parameter(Mandatory = $true)][string]$Value)
+
+    return (($Value -creplace '([A-Z])', '_$1').TrimStart('_').ToLower())
+}
+
+function Get-WebModuleSymbol {
+    param([Parameter(Mandatory = $true)][string]$ConfigKey)
+
+    return "$($ConfigKey)Module"
+}
+
+function Resolve-ModuleSelection {
+    param(
+        [string]$RequestedModules,
+        [string[]]$AllOptional
+    )
+
+    if (-not $RequestedModules -or $RequestedModules -eq "All") {
+        return @{
+            Included = @($AllOptional)
+            Excluded = @()
+        }
+    }
+
+    if ($RequestedModules -eq "None") {
+        return @{
+            Included = @()
+            Excluded = @($AllOptional)
+        }
+    }
+
+    $requested = @($RequestedModules -split "," | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    $validLookup = @{}
+    foreach ($moduleId in $AllOptional) {
+        $validLookup[$moduleId.ToLowerInvariant()] = $moduleId
+    }
+
+    $unknown = @()
+    $included = @()
+    foreach ($moduleId in $requested) {
+        $key = $moduleId.ToLowerInvariant()
+        if (-not $validLookup.ContainsKey($key)) {
+            $unknown += $moduleId
         } else {
-            $allOptional += $prop.Name
+            $included += $validLookup[$key]
         }
     }
 
-    # Determine which optional modules to exclude
-    if (-not $Modules -or $Modules -eq "All") {
-        $excludedModules = @()
-        $includedOptional = $allOptional
-    } elseif ($Modules -eq "None") {
-        $excludedModules = $allOptional
-        $includedOptional = @()
-    } else {
-        $includedList = $Modules -split "," | ForEach-Object { $_.Trim() }
-        # Case-insensitive match
-        $includedOptional = $allOptional | Where-Object {
-            $key = $_
-            $includedList | Where-Object { $_ -ieq $key }
-        }
-        $excludedModules = $allOptional | Where-Object { $_ -notin $includedOptional }
+    if ($unknown.Count -gt 0) {
+        $lines = @()
+        $lines += ""
+        $lines += "ERROR: Unknown module id(s): $($unknown -join ', ')"
+        $lines += "Valid optional module ids: $($AllOptional -join ', ')"
+        $lines += ""
+        Write-Error ($lines -join [Environment]::NewLine)
+        exit 1
     }
 
-    # --- Strict dependency validation (D1) ---------------------------------------
-    # Catalog declares a `dependencies` array per module (module ids it requires).
-    # If the user selects a module without selecting all of its dependencies, fail
-    # loud with a self-healing error. -AutoIncludeDependencies is intentionally NOT
-    # implemented in Tier 1; add it only when a real workflow demands it.
+    # Dedupe but preserve catalog enumeration order so generated `enabledModules`
+    # arrays are stable regardless of the order ids were typed on the CLI.
+    $seen = @{}
+    $orderedIncluded = @()
+    foreach ($id in $AllOptional) {
+        if (($included -contains $id) -and -not $seen.ContainsKey($id)) {
+            $orderedIncluded += $id
+            $seen[$id] = $true
+        }
+    }
+    $included = $orderedIncluded
+    $excluded = @($AllOptional | Where-Object { $_ -notin $included })
+
+    return @{
+        Included = $included
+        Excluded = $excluded
+    }
+}
+
+function Assert-ModuleDependencies {
+    param(
+        [object]$Catalog,
+        [string[]]$IncludedOptional
+    )
 
     $selectedSet = @{}
-    foreach ($moduleId in @($includedOptional)) { $selectedSet[$moduleId] = $true }
+    foreach ($moduleId in @($IncludedOptional)) { $selectedSet[$moduleId] = $true }
 
     $missing = @{}
-    foreach ($moduleId in @($includedOptional)) {
-        $entry = $modulesConfig.$moduleId
+    foreach ($moduleId in @($IncludedOptional)) {
+        $entry = $Catalog.$moduleId
         if ($null -eq $entry.dependencies) { continue }
         foreach ($dep in @($entry.dependencies)) {
             if (-not $selectedSet.ContainsKey($dep)) {
-                if (-not $missing.ContainsKey($moduleId)) { $missing[$moduleId] = New-Object System.Collections.ArrayList }
+                if (-not $missing.ContainsKey($moduleId)) {
+                    $missing[$moduleId] = New-Object System.Collections.ArrayList
+                }
                 [void]$missing[$moduleId].Add($dep)
             }
         }
@@ -153,7 +201,7 @@ if (Test-Path $modulesJsonPath) {
         foreach ($mod in $missing.Keys) {
             foreach ($dep in $missing[$mod]) { $allMissing[$dep] = $true }
         }
-        $resolvedSelection = @(@($includedOptional) + @($allMissing.Keys)) | Sort-Object -Unique
+        $resolvedSelection = @(@($IncludedOptional) + @($allMissing.Keys)) | Sort-Object -Unique
         $lines = @()
         $lines += ""
         $lines += "ERROR: One or more selected modules are missing required dependencies."
@@ -169,6 +217,201 @@ if (Test-Path $modulesJsonPath) {
         Write-Error ($lines -join [Environment]::NewLine)
         exit 1
     }
+}
+
+function Assert-SelectedModuleArtifacts {
+    param(
+        [object]$Catalog,
+        [string[]]$IncludedOptional,
+        [string]$SourceBE,
+        [string]$SourceFE,
+        [string]$SourceMobile,
+        [bool]$IncludeMobile
+    )
+
+    $problems = @()
+
+    foreach ($moduleId in @($IncludedOptional)) {
+        $module = $Catalog.$moduleId
+
+        if ($module.backendModule) {
+            $backendPath = Join-Path (Join-Path (Join-Path $SourceBE "src") "modules") $module.backendModule
+            if (-not (Test-Path $backendPath)) {
+                $problems += "[$moduleId/backend] Missing template project folder: $backendPath"
+            }
+        }
+
+        if ($module.frontendFeature) {
+            $featurePath = Join-Path (Join-Path (Join-Path $SourceFE "src") "features") $module.frontendFeature
+            $indexTs = Join-Path $featurePath "index.ts"
+            $indexTsx = Join-Path $featurePath "index.tsx"
+            if (-not (Test-Path $featurePath)) {
+                $problems += "[$moduleId/web] Missing template feature folder: $featurePath"
+            } elseif (-not ((Test-Path $indexTs) -or (Test-Path $indexTsx))) {
+                $problems += "[$moduleId/web] Missing feature entrypoint: $indexTs or $indexTsx"
+            }
+        }
+
+        if ($IncludeMobile -and $module.mobileFolder -and $module.mobileModule) {
+            $moduleFile = "$(ConvertTo-SnakeCase -Value $module.mobileModule).dart"
+            $mobilePath = Join-Path (Join-Path (Join-Path (Join-Path $SourceMobile "lib") "modules") $module.mobileFolder) $moduleFile
+            if (-not (Test-Path $mobilePath)) {
+                $problems += "[$moduleId/mobile] Missing mobile entrypoint: $mobilePath"
+            }
+        }
+    }
+
+    if ($problems.Count -gt 0) {
+        $lines = @()
+        $lines += ""
+        $lines += "ERROR: Selected module artifacts are missing from the template."
+        $lines += $problems
+        $lines += ""
+        Write-Error ($lines -join [Environment]::NewLine)
+        exit 1
+    }
+}
+
+function Write-WebModulesConfig {
+    param(
+        [object]$Catalog,
+        [string[]]$AllOptional,
+        [string[]]$IncludedOptional,
+        [string]$TargetFE
+    )
+
+    if (-not (Test-Path $TargetFE)) { return }
+
+    $imports = @()
+    $enabled = @()
+    foreach ($moduleId in @($IncludedOptional)) {
+        $module = $Catalog.$moduleId
+        if (-not $module.frontendFeature) { continue }
+        $symbol = Get-WebModuleSymbol -ConfigKey $module.configKey
+        $imports += "import { $symbol } from '@/features/$($module.frontendFeature)';"
+        $enabled += "  $symbol,"
+    }
+
+    $moduleNameUnion = @()
+    $allIds = @($AllOptional | ForEach-Object { $Catalog.$_.configKey })
+    for ($i = 0; $i -lt $allIds.Count; $i++) {
+        $moduleNameUnion += "  | '$($allIds[$i])'"
+    }
+
+    $derivedFlags = @()
+    foreach ($id in $allIds) {
+        $derivedFlags += "  $($id): isModuleActive('$id'),"
+    }
+
+    $contentLines = @()
+    $contentLines += $imports
+    if ($imports.Count -gt 0) { $contentLines += "" }
+    $contentLines += "import { registerWebModules, type WebModule } from '@/lib/modules';"
+    $contentLines += ""
+    $contentLines += "/**"
+    $contentLines += " * Optional module registry generated by rename.ps1 from modules.catalog.json."
+    $contentLines += " * Do not hand-edit generated apps; change the catalog or generator instead."
+    $contentLines += " *"
+    $contentLines += " * enabledModules is the single source of truth. isModuleActive() and the"
+    $contentLines += " * activeModules literal are both derived from it, so the two cannot drift."
+    $contentLines += " */"
+    $contentLines += "export type ModuleName ="
+    $contentLines += $moduleNameUnion
+    $contentLines += "  ;"
+    $contentLines += ""
+    $contentLines += "export const enabledModules: WebModule[] = ["
+    $contentLines += $enabled
+    $contentLines += "];"
+    $contentLines += ""
+    $contentLines += "const enabledIds = new Set<string>(enabledModules.map((m) => m.id));"
+    $contentLines += ""
+    $contentLines += "export function isModuleActive(module: ModuleName): boolean {"
+    $contentLines += "  return enabledIds.has(module);"
+    $contentLines += "}"
+    $contentLines += ""
+    $contentLines += "export const activeModules: Readonly<Record<ModuleName, boolean>> = Object.freeze({"
+    $contentLines += $derivedFlags
+    $contentLines += "});"
+    $contentLines += ""
+    $contentLines += "export function registerAllModules(): void {"
+    $contentLines += "  registerWebModules(enabledModules);"
+    $contentLines += "}"
+
+    $modulesConfigTsPath = Join-Path (Join-Path (Join-Path $TargetFE "src") "config") "modules.config.ts"
+    Set-Content -Path $modulesConfigTsPath -Value ($contentLines -join [Environment]::NewLine) -NoNewline
+}
+
+function Write-MobileModulesConfig {
+    param(
+        [object]$Catalog,
+        [string[]]$IncludedOptional,
+        [string]$TargetMobile,
+        [string]$PackageName,
+        [bool]$IncludeMobile
+    )
+
+    if (-not $IncludeMobile -or -not (Test-Path $TargetMobile)) { return }
+
+    $imports = @()
+    $instances = @()
+    foreach ($moduleId in @($IncludedOptional)) {
+        $module = $Catalog.$moduleId
+        if (-not ($module.mobileFolder -and $module.mobileModule)) { continue }
+
+        $moduleFile = "$(ConvertTo-SnakeCase -Value $module.mobileModule).dart"
+        $imports += "import 'package:$PackageName/modules/$($module.mobileFolder)/$moduleFile';"
+        $instances += "      $($module.mobileModule)(),"
+    }
+
+    $contentLines = @()
+    $contentLines += "import 'package:$PackageName/core/modularity/app_module.dart';"
+    if ($imports.Count -gt 0) {
+        $contentLines += ""
+        $contentLines += $imports
+    }
+    $contentLines += ""
+    $contentLines += "/// Optional modules generated by rename.ps1 from modules.catalog.json."
+    $contentLines += "/// Do not hand-edit generated apps; change the catalog or generator instead."
+    $contentLines += "List<AppModule> activeModules() => <AppModule>["
+    $contentLines += $instances
+    $contentLines += "    ];"
+
+    $mobileModulesConfigPath = Join-Path (Join-Path (Join-Path $TargetMobile "lib") "app") "modules.config.dart"
+    Set-Content -Path $mobileModulesConfigPath -Value ($contentLines -join [Environment]::NewLine) -NoNewline
+}
+
+# ── Module selection preflight ──────────────────────────────────────────────
+
+$modulesJsonPath = Join-Path $RepoRoot "modules.catalog.json"
+$excludedModules = @()
+$includedOptional = @()
+$allRequired = @()
+$modulesConfig = $null
+
+if (Test-Path $modulesJsonPath) {
+    $modulesConfig = Get-Content $modulesJsonPath -Raw | ConvertFrom-Json
+    $allOptional = @()
+
+    foreach ($prop in Get-CatalogModuleProperties -Catalog $modulesConfig) {
+        if ($prop.Value.required) {
+            $allRequired += $prop.Name
+        } else {
+            $allOptional += $prop.Name
+        }
+    }
+
+    $selection = Resolve-ModuleSelection -RequestedModules $Modules -AllOptional $allOptional
+    $includedOptional = @($selection.Included)
+    $excludedModules = @($selection.Excluded)
+
+    Assert-ModuleDependencies -Catalog $modulesConfig -IncludedOptional $includedOptional
+    Assert-SelectedModuleArtifacts `
+        -Catalog $modulesConfig `
+        -IncludedOptional $includedOptional `
+        -SourceBE $SourceBE `
+        -SourceFE $SourceFE `
+        -SourceMobile $SourceMobile `
+        -IncludeMobile $IncludeMobile
 }
 
 # ── Lowercase variant ──────────────────────────────────────────────────────
@@ -445,7 +688,6 @@ if ($null -ne $modulesConfig) {
         $module = $modulesConfig.$moduleKey
         $backendModuleName = $module.backendModule -replace "Starter", $Name
         $frontendFeature = $module.frontendFeature
-        $configKey = $module.configKey
 
         # 1. Delete backend module project folder
         $beModulePath = Join-Path (Join-Path (Join-Path $TargetBE "src") "modules") $backendModuleName
@@ -516,66 +758,17 @@ if ($null -ne $modulesConfig) {
         }
 
         if (-not [string]::IsNullOrWhiteSpace($frontendFeature)) {
-            # 4. Delete frontend feature folder
+            # Delete frontend feature folder. Optional routes/nav/slot wiring
+            # lives entirely inside the feature folder and is excluded from
+            # the generated app via Write-WebModulesConfig — no surgical
+            # rewrites against core source files needed.
             $feFolderPath = Join-Path (Join-Path (Join-Path $TargetFE "src") "features") $frontendFeature
             if (Test-Path $feFolderPath) {
                 Remove-Item $feFolderPath -Recurse -Force -ErrorAction SilentlyContinue
             }
-
-            # 5. Update modules.config.ts:
-            #    a) Set the activeModules.{configKey} flag to false (kept for any
-            #       legacy `isModuleActive(...)` callers).
-            #    b) Strip the `import { Xmodule } from '@/features/{feature}';` line.
-            #       Without this, tsc fails to compile because the feature folder
-            #       was deleted in step 4.
-            #    c) Strip the matching identifier from the `enabledModules = [...]`
-            #       array so `registerAllModules()` doesn't reference an undefined
-            #       symbol.
-            $modulesConfigTsPath = Join-Path (Join-Path (Join-Path $TargetFE "src") "config") "modules.config.ts"
-            if (Test-Path $modulesConfigTsPath) {
-                $tsContent = Get-Content $modulesConfigTsPath -Raw
-                $featureEscaped = [regex]::Escape($frontendFeature)
-
-                # (a) flag → false
-                $tsContent = $tsContent -replace "(?m)(\s+$configKey\s*:\s*)true", "`${1}false"
-
-                # (b) Capture the imported identifier(s), then drop the import line.
-                # Pattern: import { foo } from '@/features/{feature}';
-                $importedSymbols = @()
-                $importPattern = "(?m)^\s*import\s*\{\s*([^}]+?)\s*\}\s*from\s*'@/features/$featureEscaped'\s*;\s*\r?\n?"
-                $importMatches = [regex]::Matches($tsContent, $importPattern)
-                foreach ($m in $importMatches) {
-                    $importedSymbols += $m.Groups[1].Value -split ',' | ForEach-Object { $_.Trim() }
-                }
-                $tsContent = $tsContent -replace $importPattern, ""
-
-                # (c) Remove each captured symbol from the enabledModules array.
-                # The array has one entry per line followed by a comma; strip the
-                # whole line so we don't leave a dangling comma.
-                foreach ($symbol in $importedSymbols) {
-                    if ([string]::IsNullOrWhiteSpace($symbol)) { continue }
-                    $symbolEscaped = [regex]::Escape($symbol)
-                    $tsContent = $tsContent -replace "(?m)^\s*$symbolEscaped\s*,?\s*\r?\n?", ""
-                }
-
-                Set-Content -Path $modulesConfigTsPath -Value $tsContent -NoNewline
-            }
-
-            # 6. Redirect dead lazy imports in routes.tsx to NotFoundPage stub
-            # TypeScript doesn't tree-shake conditional imports — dead paths still fail to resolve.
-            # Since activeModules.{key} is false, these imports never actually run; we just need a
-            # valid path so tsc passes. Replace '@/features/{feature}/...' with '@/routes/NotFoundPage'.
-            $routesTsxPath = Join-Path (Join-Path (Join-Path $TargetFE "src") "routes") "routes.tsx"
-            if (Test-Path $routesTsxPath) {
-                $routesContent = Get-Content $routesTsxPath -Raw
-                $featureEscaped = [regex]::Escape($frontendFeature)
-                # Replace: import('@/features/{feature}/path') → import('@/routes/NotFoundPage')
-                $routesContent = $routesContent -replace "import\('@/features/$featureEscaped/[^']+'\)", "import('@/routes/NotFoundPage')"
-                Set-Content -Path $routesTsxPath -Value $routesContent -NoNewline
-            }
         }
 
-        # 7. Delete module-owned test folder under tests/{Name}.Api.Tests/
+        # 5. Delete module-owned test folder under tests/{Name}.Api.Tests/
         # Tests for each module live in tests/Starter.Api.Tests/{testsFolder}/. Leaving
         # them behind after the module is removed orphans references to deleted types
         # and breaks `dotnet build`.
@@ -587,38 +780,34 @@ if ($null -ne $modulesConfig) {
             }
         }
 
-        # 8. Delete mobile module folder and strip from modules.config.dart
+        # 6. Delete mobile module folder
         if ($IncludeMobile -and (Test-Path $TargetMobile)) {
             $mobileFolder = $module.mobileFolder
             $mobileModuleName = $module.mobileModule
 
             if ($mobileFolder -and $mobileModuleName) {
-                # Delete the module folder
                 $mobileFolderPath = Join-Path (Join-Path (Join-Path $TargetMobile "lib") "modules") $mobileFolder
                 if (Test-Path $mobileFolderPath) {
                     Remove-Item $mobileFolderPath -Recurse -Force -ErrorAction SilentlyContinue
-                }
-
-                # Strip from modules.config.dart
-                $mobileModulesConfigPath = Join-Path (Join-Path (Join-Path $TargetMobile "lib") "app") "modules.config.dart"
-                if (Test-Path $mobileModulesConfigPath) {
-                    $mobileConfigContent = Get-Content $mobileModulesConfigPath -Raw
-                    $mobileModuleEscaped = [regex]::Escape($mobileFolder)
-
-                    # Strip the import line for this module
-                    $mobileConfigContent = $mobileConfigContent -replace "(?m)^\s*import\s*'package:[^']*modules/$mobileModuleEscaped/[^']*';\s*\r?\n?", ""
-
-                    # Strip the module instance from activeModules() list
-                    $moduleClassEscaped = [regex]::Escape($mobileModuleName)
-                    $mobileConfigContent = $mobileConfigContent -replace "(?m)^\s*$moduleClassEscaped\(\)\s*,?\s*\r?\n?", ""
-
-                    Set-Content -Path $mobileModulesConfigPath -Value $mobileConfigContent -NoNewline
                 }
             }
         }
 
         Write-Host "    - Removed: $($module.displayName)" -ForegroundColor Yellow
     }
+
+    Write-WebModulesConfig `
+        -Catalog $modulesConfig `
+        -AllOptional $allOptional `
+        -IncludedOptional $includedOptional `
+        -TargetFE $TargetFE
+
+    Write-MobileModulesConfig `
+        -Catalog $modulesConfig `
+        -IncludedOptional $includedOptional `
+        -TargetMobile $TargetMobile `
+        -PackageName $NameSnake `
+        -IncludeMobile $IncludeMobile
 
     if ($excludedModules.Count -eq 0 -and $includedOptional.Count -gt 0) {
         Write-Host "    All modules included." -ForegroundColor Gray

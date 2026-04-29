@@ -1,68 +1,32 @@
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
 import {
-  ArrowLeftRight,
   Bell,
   Building,
-  ClipboardCheck,
   ClipboardList,
-  CreditCard,
   FileBarChart2,
-  FileText,
   FolderOpen,
-  GitBranch,
-  History,
   KeyRound,
   LayoutDashboard,
-  Link2,
-  ListChecks,
-  MessageSquare,
-  Package,
-  ReceiptText,
-  ScrollText,
   Settings2,
   Shield,
   ToggleRight,
   Users,
-  Webhook,
-  Zap,
-  type LucideIcon,
 } from 'lucide-react';
 
 import { ROUTES } from '@/config';
-import { API_ENDPOINTS } from '@/config/api.config';
-import { activeModules, isModuleActive } from '@/config/modules.config';
 import { PERMISSIONS } from '@/constants';
-import { apiClient } from '@/lib/axios';
-import { queryKeys } from '@/lib/query/keys';
-import type { ApiResponse } from '@/types/api.types';
 import { useFeatureFlag, usePermissions } from '@/hooks';
+import {
+  getModuleNavGroups,
+  getModuleNavItems,
+  type ModuleNavContext,
+  type ModuleNavGroup,
+  type ModuleNavItem,
+} from '@/lib/modules';
 import { selectUser, useAuthStore } from '@/stores';
 
-export interface SidebarNavItem {
-  label: string;
-  icon: LucideIcon;
-  path: string;
-  end?: boolean;
-  badge?: number;
-}
-
-export interface SidebarNavGroup {
-  id: string;
-  label?: string;
-  items: SidebarNavItem[];
-}
-
-function useWorkflowPendingTaskCount(enabled: boolean) {
-  return useQuery({
-    queryKey: queryKeys.workflow.tasks.count(),
-    queryFn: () =>
-      apiClient
-        .get<ApiResponse<number>>(API_ENDPOINTS.WORKFLOW.TASKS_COUNT)
-        .then((r) => r.data.data),
-    enabled,
-  });
-}
+export type SidebarNavItem = ModuleNavItem;
+export type SidebarNavGroup = ModuleNavGroup;
 
 /**
  * Builds the sidebar nav as a list of permission/module/flag-gated groups.
@@ -78,7 +42,17 @@ export function useNavGroups(): SidebarNavGroup[] {
   const importsFlag = useFeatureFlag('imports.enabled');
   const exportsFlag = useFeatureFlag('exports.enabled');
 
-  const { data: pendingTaskCount = 0 } = useWorkflowPendingTaskCount(isModuleActive('workflow'));
+  const navCtx: ModuleNavContext = {
+    t,
+    hasPermission,
+    tenantScoped,
+    isFeatureEnabled: (key) => {
+      if (key === 'webhooks.enabled') return webhooksFlag.isEnabled;
+      if (key === 'imports.enabled') return importsFlag.isEnabled;
+      if (key === 'exports.enabled') return exportsFlag.isEnabled;
+      return false;
+    },
+  };
 
   const groups: SidebarNavGroup[] = [];
 
@@ -91,90 +65,7 @@ export function useNavGroups(): SidebarNavGroup[] {
     ],
   });
 
-  // Workflow module
-  if (activeModules.workflow) {
-    const items: SidebarNavItem[] = [];
-    if (hasPermission(PERMISSIONS.Workflows.View)) {
-      items.push({
-        label: t('workflow.sidebar.taskInbox'),
-        icon: ClipboardCheck,
-        path: ROUTES.WORKFLOWS.INBOX,
-        badge: pendingTaskCount > 0 ? pendingTaskCount : undefined,
-      });
-      items.push({
-        label: t('workflow.sidebar.history'),
-        icon: History,
-        path: ROUTES.WORKFLOWS.INSTANCES,
-      });
-    }
-    if (hasPermission(PERMISSIONS.Workflows.ManageDefinitions)) {
-      items.push({
-        label: t('workflow.sidebar.definitions'),
-        icon: GitBranch,
-        path: ROUTES.WORKFLOWS.DEFINITIONS,
-      });
-    }
-    groups.push({ id: 'workflow', label: t('nav.groups.workflow'), items });
-  }
-
-  // Communication module (tenant-scoped only)
-  if (activeModules.communication && tenantScoped) {
-    const items: SidebarNavItem[] = [];
-    if (hasPermission(PERMISSIONS.Communication.View)) {
-      items.push({ label: t('nav.channels'), icon: MessageSquare, path: ROUTES.COMMUNICATION.CHANNELS });
-      items.push({ label: t('nav.templates'), icon: FileText, path: ROUTES.COMMUNICATION.TEMPLATES });
-      items.push({ label: t('nav.triggerRules'), icon: Zap, path: ROUTES.COMMUNICATION.TRIGGER_RULES });
-      items.push({ label: t('nav.integrations'), icon: Link2, path: ROUTES.COMMUNICATION.INTEGRATIONS });
-    }
-    if (hasPermission(PERMISSIONS.Communication.ViewDeliveryLog)) {
-      items.push({ label: t('nav.deliveryLog'), icon: ScrollText, path: ROUTES.COMMUNICATION.DELIVERY_LOG });
-    }
-    groups.push({ id: 'communication', label: t('nav.groups.communication'), items });
-  }
-
-  // Products module
-  if (activeModules.products) {
-    const items: SidebarNavItem[] = [];
-    if (hasPermission(PERMISSIONS.Products.View)) {
-      items.push({ label: t('nav.products', 'Products'), icon: Package, path: ROUTES.PRODUCTS.LIST });
-    }
-    groups.push({ id: 'products', label: t('nav.groups.products'), items });
-  }
-
-  // Billing module (tenant-scoped only for the main Billing page; Plans/Subscriptions reachable by platform admins too)
-  if (activeModules.billing) {
-    const items: SidebarNavItem[] = [];
-    if (hasPermission(PERMISSIONS.Billing.View) && tenantScoped) {
-      items.push({ label: t('nav.billing'), icon: CreditCard, path: ROUTES.BILLING, end: true });
-    }
-    if (hasPermission(PERMISSIONS.Billing.ViewPlans)) {
-      items.push({ label: t('nav.billingPlans'), icon: ReceiptText, path: ROUTES.BILLING_PLANS });
-    }
-    if (hasPermission(PERMISSIONS.Billing.ManageTenantSubscriptions)) {
-      items.push({ label: t('nav.subscriptions'), icon: ListChecks, path: ROUTES.SUBSCRIPTIONS.LIST, end: true });
-    }
-    groups.push({ id: 'billing', label: t('nav.groups.billing'), items });
-  }
-
-  // Webhooks module — tenant-scoped link only (the platform-admin link lives in the Platform group).
-  if (activeModules.webhooks && tenantScoped && webhooksFlag.isEnabled) {
-    const items: SidebarNavItem[] = [];
-    if (hasPermission(PERMISSIONS.Webhooks.View)) {
-      items.push({ label: t('nav.webhooks'), icon: Webhook, path: ROUTES.WEBHOOKS });
-    }
-    groups.push({ id: 'webhooks', label: t('nav.groups.webhooks'), items });
-  }
-
-  // Import / Export module
-  if (activeModules.importExport) {
-    const items: SidebarNavItem[] = [];
-    const canExport = hasPermission(PERMISSIONS.System.ExportData) && exportsFlag.isEnabled;
-    const canImport = hasPermission(PERMISSIONS.System.ImportData) && importsFlag.isEnabled;
-    if (canExport || canImport) {
-      items.push({ label: t('nav.importExport'), icon: ArrowLeftRight, path: ROUTES.IMPORT_EXPORT });
-    }
-    groups.push({ id: 'importExport', label: t('nav.groups.importExport'), items });
-  }
+  groups.push(...getModuleNavGroups(navCtx));
 
   // People (core)
   {
@@ -219,13 +110,13 @@ export function useNavGroups(): SidebarNavGroup[] {
     if (hasPermission(PERMISSIONS.FeatureFlags.View)) {
       items.push({ label: t('nav.featureFlags'), icon: ToggleRight, path: ROUTES.FEATURE_FLAGS.LIST });
     }
-    if (activeModules.webhooks && hasPermission(PERMISSIONS.Webhooks.ViewPlatform)) {
-      items.push({ label: t('nav.webhooksAdmin'), icon: Webhook, path: ROUTES.WEBHOOKS_ADMIN.LIST, end: true });
-    }
     if (hasPermission(PERMISSIONS.System.ManageSettings)) {
       items.push({ label: t('nav.settings'), icon: Settings2, path: ROUTES.SETTINGS });
     }
-    groups.push({ id: 'platform', label: t('nav.groups.platform'), items });
+    items.push(...getModuleNavItems('platform', navCtx));
+    if (items.length > 0) {
+      groups.push({ id: 'platform', label: t('nav.groups.platform'), items });
+    }
   }
 
   // Strip empty groups so labels and dividers never render for nothing.

@@ -1,8 +1,15 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { routes } from './routes';
+import { createRoutes } from './routes';
 
-const router = createBrowserRouter(routes);
+let cachedRouter: ReturnType<typeof createBrowserRouter> | null = null;
+
+function getRouter() {
+  if (!cachedRouter) {
+    cachedRouter = createBrowserRouter(createRoutes());
+  }
+  return cachedRouter;
+}
 
 export function AppRouter() {
-  return <RouterProvider router={router} />;
+  return <RouterProvider router={getRouter()} />;
 }

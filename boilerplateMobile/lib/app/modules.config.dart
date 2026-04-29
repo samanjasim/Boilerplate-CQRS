@@ -1,22 +1,17 @@
 import 'package:boilerplate_mobile/core/modularity/app_module.dart';
-
-// MODULE IMPORTS — rename.ps1 strips lines between these markers
 import 'package:boilerplate_mobile/modules/billing/billing_module.dart';
-// (end MODULE IMPORTS)
 
-/// The list of optional modules active in this build.
+/// Optional modules active in this build.
 ///
-/// `rename.ps1` rewrites this list based on the `-Modules` flag.
-/// When all modules are stripped, the list is empty and the app
-/// runs with core features only.
+/// In generated apps, `rename.ps1` overwrites this file from
+/// `modules.catalog.json` based on the `-Modules` flag. When the flag
+/// excludes every optional module, the list is empty and the app runs
+/// with core features only.
 ///
-/// To add a new module:
-/// 1. Create `lib/modules/{name}/{name}_module.dart` implementing `AppModule`
-/// 2. Import it between the MODULE IMPORTS markers above
-/// 3. Add `{Name}Module()` between the MODULE INSTANCES markers below
-/// 4. Add a `mobileModule` / `mobileFolder` entry to `scripts/modules.json`
+/// To add a new module to the boilerplate template:
+/// 1. Create `lib/modules/{name}/{name}_module.dart` implementing `AppModule`.
+/// 2. Add an entry under `mobileModule` / `mobileFolder` in `modules.catalog.json`.
+/// 3. Import the module class above and instantiate it in the list below.
 List<AppModule> activeModules() => <AppModule>[
-      // MODULE INSTANCES — rename.ps1 strips lines between these markers
       BillingModule(),
-      // (end MODULE INSTANCES)
     ];

@@ -22,14 +22,14 @@ class _FakeModuleA extends AppModule {
 
   @override
   List<ModuleNavItem> getNavItems() => [
-        const ModuleNavItem(
-          label: 'A',
-          icon: Icons.abc,
-          routePath: '/a',
-          requiredPermissions: ['A.View'],
-          order: 100,
-        ),
-      ];
+    const ModuleNavItem(
+      label: 'A',
+      icon: Icons.abc,
+      routePath: '/a',
+      requiredPermissions: ['A.View'],
+      order: 100,
+    ),
+  ];
 }
 
 class _FakeModuleB extends AppModule {
@@ -49,13 +49,13 @@ class _FakeModuleB extends AppModule {
 
   @override
   List<ModuleNavItem> getNavItems() => [
-        const ModuleNavItem(
-          label: 'B',
-          icon: Icons.abc,
-          routePath: '/b',
-          order: 200,
-        ),
-      ];
+    const ModuleNavItem(
+      label: 'B',
+      icon: Icons.abc,
+      routePath: '/b',
+      order: 200,
+    ),
+  ];
 }
 
 class _FakeModuleMissingDep extends AppModule {
@@ -120,6 +120,19 @@ void main() {
       expect(
         () => registry.init([_FakeModuleMissingDep()], sl),
         throwsA(isA<StateError>()),
+      );
+    });
+
+    test('throws on duplicate module id', () {
+      expect(
+        () => registry.init([_FakeModuleA(), _FakeModuleA()], sl),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('Duplicate module id "module_a"'),
+          ),
+        ),
       );
     });
 

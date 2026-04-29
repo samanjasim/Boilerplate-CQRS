@@ -1,14 +1,14 @@
 import { lazy } from 'react';
-import { registerSlot } from '@/lib/extensions';
+import type { WebModule } from '@/lib/modules';
 
 const EntityTimelineSlot = lazy(() =>
   import('./components/EntityTimelineSlot').then((m) => ({ default: m.EntityTimelineSlot })),
 );
 
-export const commentsActivityModule = {
-  name: 'commentsActivity',
-  register(): void {
-    registerSlot('entity-detail-timeline', {
+export const commentsActivityModule: WebModule = {
+  id: 'commentsActivity',
+  register(ctx): void {
+    ctx.registerSlot('entity-detail-timeline', {
       id: 'commentsActivity.entity-timeline',
       module: 'commentsActivity',
       order: 10,
