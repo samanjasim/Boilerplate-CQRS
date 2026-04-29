@@ -1,9 +1,8 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
-using Starter.Domain.Common.Enums;
-using Starter.Module.AI.Application.Commands.Settings.ProviderCredentials;
 using Starter.Module.AI.Application.DTOs;
+using Starter.Module.AI.Application.Events;
 using Starter.Module.AI.Application.Services.Settings;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Module.AI.Domain.Enums;
@@ -15,10 +14,11 @@ namespace Starter.Module.AI.Application.Commands.Settings.ProviderCredentials.Cr
 
 internal sealed class CreateProviderCredentialCommandHandler(
     AiDbContext db,
-    IApplicationDbContext coreDb,
+    IApplicationDbContext appDb,
     ICurrentUserService currentUser,
     IAiEntitlementResolver entitlements,
-    IAiSecretProtector secrets) : IRequestHandler<CreateProviderCredentialCommand, Result<AiProviderCredentialDto>>
+    IAiSecretProtector secrets,
+    IIntegrationEventCollector eventCollector) : IRequestHandler<CreateProviderCredentialCommand, Result<AiProviderCredentialDto>>
 {
     public async Task<Result<AiProviderCredentialDto>> Handle(CreateProviderCredentialCommand request, CancellationToken ct)
     {
@@ -55,13 +55,18 @@ internal sealed class CreateProviderCredentialCommandHandler(
         db.AiProviderCredentials.Add(credential);
         await db.SaveChangesAsync(ct);
 
-        AiProviderCredentialAudit.Add(
-            coreDb,
-            currentUser,
-            credential,
-            "AiProviderCredential.Created",
-            AuditAction.Created);
-        await coreDb.SaveChangesAsync(ct);
+        // Audit is written asynchronously by AiProviderCredentialAuditConsumer so a
+        // transient AppDb hiccup retries via MT outbox instead of leaving a credential
+        // without an audit row.
+        eventCollector.Schedule(new AiProviderCredentialCreatedEvent(
+            TenantId: tenantId.Value,
+            CredentialId: credential.Id,
+            Provider: credential.Provider,
+            KeyPrefix: credential.KeyPrefix,
+            PerformedBy: currentUser.UserId,
+            PerformedByEmail: currentUser.Email,
+            OccurredAt: DateTime.UtcNow));
+        await appDb.SaveChangesAsync(ct);
 
         return Result.Success(AiProviderCredentialDtos.ToDto(credential, secrets));
     }

@@ -64,7 +64,8 @@ public sealed class Plan5fAcidTests
             appDb,
             CurrentUser(tenantId).Object,
             EntitlementResolver(Entitlements(byokEnabled: false)).Object,
-            protector.Object);
+            protector.Object,
+            Mock.Of<IIntegrationEventCollector>());
 
         var result = await handler.Handle(new CreateProviderCredentialCommand(
             tenantId,

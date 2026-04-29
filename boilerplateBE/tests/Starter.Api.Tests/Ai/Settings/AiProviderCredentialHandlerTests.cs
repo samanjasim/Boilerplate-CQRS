@@ -4,13 +4,13 @@ using Microsoft.EntityFrameworkCore;
 using Moq;
 using Starter.Abstractions.Ai;
 using Starter.Application.Common.Interfaces;
-using Starter.Domain.Common.Enums;
 using Starter.Infrastructure.Persistence;
 using Starter.Module.AI.Application.Commands.Settings.ProviderCredentials.CreateProviderCredential;
 using Starter.Module.AI.Application.Commands.Settings.ProviderCredentials.RevokeProviderCredential;
 using Starter.Module.AI.Application.Commands.Settings.ProviderCredentials.RotateProviderCredential;
 using Starter.Module.AI.Application.Commands.Settings.ProviderCredentials.TestProviderCredential;
 using Starter.Module.AI.Application.DTOs;
+using Starter.Module.AI.Application.Events;
 using Starter.Module.AI.Application.Queries.Settings.ProviderCredentials.GetProviderCredentials;
 using Starter.Module.AI.Application.Services.Settings;
 using Starter.Module.AI.Domain.Entities;
@@ -30,7 +30,8 @@ public sealed class AiProviderCredentialHandlerTests
         var tenantId = Guid.NewGuid();
         await using var aiDb = CreateAiDb(tenantId);
         await using var appDb = CreateAppDb(tenantId);
-        var handler = CreateCreateHandler(aiDb, appDb, tenantId, Entitlements(byokEnabled: false));
+        var collector = new RecordingEventCollector();
+        var handler = CreateCreateHandler(aiDb, appDb, tenantId, Entitlements(byokEnabled: false), collector: collector);
 
         var result = await handler.Handle(new CreateProviderCredentialCommand(
             tenantId,
@@ -41,7 +42,7 @@ public sealed class AiProviderCredentialHandlerTests
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("AiSettings.ByokDisabledByPlan");
         (await aiDb.AiProviderCredentials.IgnoreQueryFilters().CountAsync()).Should().Be(0);
-        (await appDb.AuditLogs.IgnoreQueryFilters().CountAsync()).Should().Be(0);
+        collector.Scheduled.Should().BeEmpty();
     }
 
     [Fact]
@@ -175,12 +176,14 @@ public sealed class AiProviderCredentialHandlerTests
     }
 
     [Fact]
-    public async Task CreateCredential_Writes_Audit_Without_Secret()
+    public async Task CreateCredential_Schedules_Created_Event_With_Audit_Metadata()
     {
         var tenantId = Guid.NewGuid();
-        await using var aiDb = CreateAiDb(tenantId);
-        await using var appDb = CreateAppDb(tenantId);
-        var handler = CreateCreateHandler(aiDb, appDb, tenantId, Entitlements());
+        var userId = Guid.NewGuid();
+        await using var aiDb = CreateAiDb(tenantId, userId);
+        await using var appDb = CreateAppDb(tenantId, userId);
+        var collector = new RecordingEventCollector();
+        var handler = CreateCreateHandler(aiDb, appDb, tenantId, Entitlements(), collector: collector, userId: userId);
 
         var result = await handler.Handle(new CreateProviderCredentialCommand(
             tenantId,
@@ -189,104 +192,111 @@ public sealed class AiProviderCredentialHandlerTests
             PlaintextSecret), default);
 
         result.IsSuccess.Should().BeTrue();
-        var audit = await appDb.AuditLogs.IgnoreQueryFilters().SingleAsync();
-        AssertAudit(audit, "AiProviderCredential.Created", result.Value.Id);
-        audit.Action.Should().Be(AuditAction.Created);
+        var evt = collector.Scheduled.OfType<AiProviderCredentialCreatedEvent>().Single();
+        AssertEvent(evt, tenantId, result.Value.Id, AiProviderType.OpenAI, userId);
+        // Plaintext / encrypted secret never appears in the event payload.
+        JsonSerializer.Serialize(evt).Should().NotContain(PlaintextSecret);
+        JsonSerializer.Serialize(evt).Should().NotContain("protected-secret");
     }
 
     [Fact]
-    public async Task RotateCredential_Writes_Audit_Without_Secret()
+    public async Task RotateCredential_Schedules_Rotated_Event_With_Audit_Metadata()
     {
         var tenantId = Guid.NewGuid();
-        await using var aiDb = CreateAiDb(tenantId);
-        await using var appDb = CreateAppDb(tenantId);
+        var userId = Guid.NewGuid();
+        await using var aiDb = CreateAiDb(tenantId, userId);
+        await using var appDb = CreateAppDb(tenantId, userId);
         var credential = AiProviderCredential.Create(
             tenantId,
             AiProviderType.OpenAI,
             "OpenAI primary",
             "protected-old",
             "sk-live-old",
-            Guid.NewGuid());
+            userId);
         aiDb.AiProviderCredentials.Add(credential);
         await aiDb.SaveChangesAsync();
-        var handler = CreateRotateHandler(aiDb, appDb, tenantId, Entitlements());
+        var collector = new RecordingEventCollector();
+        var handler = CreateRotateHandler(aiDb, appDb, tenantId, Entitlements(), collector: collector, userId: userId);
 
         var result = await handler.Handle(new RotateProviderCredentialCommand(credential.Id, PlaintextSecret), default);
 
         result.IsSuccess.Should().BeTrue();
-        var audit = await appDb.AuditLogs.IgnoreQueryFilters().SingleAsync();
-        AssertAudit(audit, "AiProviderCredential.Rotated", result.Value.Id);
-        audit.Action.Should().Be(AuditAction.Updated);
+        var evt = collector.Scheduled.OfType<AiProviderCredentialRotatedEvent>().Single();
+        AssertEvent(evt, tenantId, result.Value.Id, AiProviderType.OpenAI, userId);
+        JsonSerializer.Serialize(evt).Should().NotContain(PlaintextSecret);
     }
 
     [Fact]
-    public async Task RevokeCredential_Writes_Audit_Without_Secret()
+    public async Task RevokeCredential_Schedules_Revoked_Event_With_Audit_Metadata()
     {
         var tenantId = Guid.NewGuid();
-        await using var aiDb = CreateAiDb(tenantId);
-        await using var appDb = CreateAppDb(tenantId);
+        var userId = Guid.NewGuid();
+        await using var aiDb = CreateAiDb(tenantId, userId);
+        await using var appDb = CreateAppDb(tenantId, userId);
         var credential = AiProviderCredential.Create(
             tenantId,
             AiProviderType.OpenAI,
             "OpenAI primary",
             "protected-secret",
             "sk-live-revoke",
-            Guid.NewGuid());
+            userId);
         aiDb.AiProviderCredentials.Add(credential);
         await aiDb.SaveChangesAsync();
-        var handler = CreateRevokeHandler(aiDb, appDb, tenantId);
+        var collector = new RecordingEventCollector();
+        var handler = CreateRevokeHandler(aiDb, appDb, tenantId, userId, collector);
 
         var result = await handler.Handle(new RevokeProviderCredentialCommand(credential.Id), default);
 
         result.IsSuccess.Should().BeTrue();
-        var audit = await appDb.AuditLogs.IgnoreQueryFilters().SingleAsync();
-        AssertAudit(audit, "AiProviderCredential.Revoked", credential.Id);
-        audit.Action.Should().Be(AuditAction.Deleted);
+        var evt = collector.Scheduled.OfType<AiProviderCredentialRevokedEvent>().Single();
+        AssertEvent(evt, tenantId, credential.Id, AiProviderType.OpenAI, userId);
     }
 
     [Fact]
-    public async Task TestCredential_Writes_Audit_Without_Secret()
+    public async Task TestCredential_Schedules_Tested_Event_With_Audit_Metadata()
     {
         var tenantId = Guid.NewGuid();
-        await using var aiDb = CreateAiDb(tenantId);
-        await using var appDb = CreateAppDb(tenantId);
+        var userId = Guid.NewGuid();
+        await using var aiDb = CreateAiDb(tenantId, userId);
+        await using var appDb = CreateAppDb(tenantId, userId);
         var credential = AiProviderCredential.Create(
             tenantId,
             AiProviderType.OpenAI,
             "OpenAI primary",
             "protected-secret",
             "sk-live-test",
-            Guid.NewGuid());
+            userId);
         aiDb.AiProviderCredentials.Add(credential);
         await aiDb.SaveChangesAsync();
         var protector = SecretProtector();
         protector.Setup(x => x.Unprotect("protected-secret")).Returns(PlaintextSecret);
-        var handler = CreateTestHandler(aiDb, appDb, tenantId, protector);
+        var collector = new RecordingEventCollector();
+        var handler = CreateTestHandler(aiDb, appDb, tenantId, protector, userId, collector);
 
         var result = await handler.Handle(new TestProviderCredentialCommand(credential.Id), default);
 
         result.IsSuccess.Should().BeTrue();
         var row = await aiDb.AiProviderCredentials.IgnoreQueryFilters().SingleAsync();
         row.LastValidatedAt.Should().NotBeNull();
-        var audit = await appDb.AuditLogs.IgnoreQueryFilters().SingleAsync();
-        AssertAudit(audit, "AiProviderCredential.Tested", credential.Id);
-        audit.Action.Should().Be(AuditAction.Updated);
+        var evt = collector.Scheduled.OfType<AiProviderCredentialTestedEvent>().Single();
+        AssertEvent(evt, tenantId, credential.Id, AiProviderType.OpenAI, userId);
+        JsonSerializer.Serialize(evt).Should().NotContain(PlaintextSecret);
+        JsonSerializer.Serialize(evt).Should().NotContain("protected-secret");
     }
 
-    private static void AssertAudit(Starter.Domain.Common.AuditLog audit, string actionCode, Guid credentialId)
+    private static void AssertEvent(
+        dynamic evt,
+        Guid tenantId,
+        Guid credentialId,
+        AiProviderType provider,
+        Guid userId)
     {
-        audit.EntityType.Should().Be(AuditEntityType.AiProviderCredential);
-        audit.EntityId.Should().Be(credentialId);
-        audit.Changes.Should().NotBeNullOrWhiteSpace();
-        audit.Changes.Should().Contain(actionCode);
-        audit.Changes.Should().Contain("\"actionCode\"");
-        audit.Changes.Should().Contain("\"Provider\"");
-        audit.Changes.Should().Contain("\"KeyPrefix\"");
-        audit.Changes.Should().NotContain(PlaintextSecret);
-        audit.Changes.Should().NotContain("protected-secret");
-        audit.Changes.Should().NotContain("protected-old");
-        audit.Changes.Should().NotContain("protected-new");
-        audit.Changes.Should().NotContain("protected-rotated");
+        ((Guid)evt.TenantId).Should().Be(tenantId);
+        ((Guid)evt.CredentialId).Should().Be(credentialId);
+        ((AiProviderType)evt.Provider).Should().Be(provider);
+        ((string)evt.KeyPrefix).Should().NotBeNullOrWhiteSpace();
+        ((Guid?)evt.PerformedBy).Should().Be(userId);
+        ((DateTime)evt.OccurredAt).Should().NotBe(default);
     }
 
     private static CreateProviderCredentialCommandHandler CreateCreateHandler(
@@ -295,14 +305,16 @@ public sealed class AiProviderCredentialHandlerTests
         Guid tenantId,
         AiEntitlementsDto entitlements,
         Mock<IAiSecretProtector>? protector = null,
-        Guid? userId = null)
+        Guid? userId = null,
+        RecordingEventCollector? collector = null)
     {
         return new CreateProviderCredentialCommandHandler(
             aiDb,
             appDb,
             CurrentUser(tenantId, userId).Object,
             EntitlementResolver(entitlements).Object,
-            (protector ?? SecretProtector()).Object);
+            (protector ?? SecretProtector()).Object,
+            collector ?? new RecordingEventCollector());
     }
 
     private static RotateProviderCredentialCommandHandler CreateRotateHandler(
@@ -311,26 +323,30 @@ public sealed class AiProviderCredentialHandlerTests
         Guid tenantId,
         AiEntitlementsDto entitlements,
         Mock<IAiSecretProtector>? protector = null,
-        Guid? userId = null)
+        Guid? userId = null,
+        RecordingEventCollector? collector = null)
     {
         return new RotateProviderCredentialCommandHandler(
             aiDb,
             appDb,
             CurrentUser(tenantId, userId).Object,
             EntitlementResolver(entitlements).Object,
-            (protector ?? SecretProtector()).Object);
+            (protector ?? SecretProtector()).Object,
+            collector ?? new RecordingEventCollector());
     }
 
     private static RevokeProviderCredentialCommandHandler CreateRevokeHandler(
         AiDbContext aiDb,
         ApplicationDbContext appDb,
         Guid tenantId,
-        Guid? userId = null)
+        Guid? userId = null,
+        RecordingEventCollector? collector = null)
     {
         return new RevokeProviderCredentialCommandHandler(
             aiDb,
             appDb,
-            CurrentUser(tenantId, userId).Object);
+            CurrentUser(tenantId, userId).Object,
+            collector ?? new RecordingEventCollector());
     }
 
     private static TestProviderCredentialCommandHandler CreateTestHandler(
@@ -338,13 +354,15 @@ public sealed class AiProviderCredentialHandlerTests
         ApplicationDbContext appDb,
         Guid tenantId,
         Mock<IAiSecretProtector> protector,
-        Guid? userId = null)
+        Guid? userId = null,
+        RecordingEventCollector? collector = null)
     {
         return new TestProviderCredentialCommandHandler(
             aiDb,
             appDb,
             CurrentUser(tenantId, userId).Object,
-            protector.Object);
+            protector.Object,
+            collector ?? new RecordingEventCollector());
     }
 
     private static AiDbContext CreateAiDb(Guid? tenantId, Guid? userId = null)
@@ -411,4 +429,18 @@ public sealed class AiProviderCredentialHandlerTests
             WidgetRequestsPerMinute: 30,
             AllowedProviders: ["OpenAI", "Anthropic"],
             AllowedModels: ["gpt-4o-mini"]);
+
+    /// <summary>
+    /// Captures every event scheduled by handlers so tests can assert payload + count
+    /// without standing up a real MassTransit bus.
+    /// </summary>
+    private sealed class RecordingEventCollector : IIntegrationEventCollector
+    {
+        public List<object> Scheduled { get; } = new();
+
+        public void Schedule<T>(T message) where T : class
+        {
+            Scheduled.Add(message);
+        }
+    }
 }

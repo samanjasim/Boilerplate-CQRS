@@ -1,8 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
-using Starter.Domain.Common.Enums;
-using Starter.Module.AI.Application.Commands.Settings.ProviderCredentials;
+using Starter.Module.AI.Application.Events;
 using Starter.Module.AI.Domain.Errors;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Shared.Results;
@@ -11,8 +10,9 @@ namespace Starter.Module.AI.Application.Commands.Settings.ProviderCredentials.Re
 
 internal sealed class RevokeProviderCredentialCommandHandler(
     AiDbContext db,
-    IApplicationDbContext coreDb,
-    ICurrentUserService currentUser) : IRequestHandler<RevokeProviderCredentialCommand, Result>
+    IApplicationDbContext appDb,
+    ICurrentUserService currentUser,
+    IIntegrationEventCollector eventCollector) : IRequestHandler<RevokeProviderCredentialCommand, Result>
 {
     public async Task<Result> Handle(RevokeProviderCredentialCommand request, CancellationToken ct)
     {
@@ -32,13 +32,15 @@ internal sealed class RevokeProviderCredentialCommandHandler(
         credential.Revoke();
         await db.SaveChangesAsync(ct);
 
-        AiProviderCredentialAudit.Add(
-            coreDb,
-            currentUser,
-            credential,
-            "AiProviderCredential.Revoked",
-            AuditAction.Deleted);
-        await coreDb.SaveChangesAsync(ct);
+        eventCollector.Schedule(new AiProviderCredentialRevokedEvent(
+            TenantId: credential.TenantId!.Value,
+            CredentialId: credential.Id,
+            Provider: credential.Provider,
+            KeyPrefix: credential.KeyPrefix,
+            PerformedBy: currentUser.UserId,
+            PerformedByEmail: currentUser.Email,
+            OccurredAt: DateTime.UtcNow));
+        await appDb.SaveChangesAsync(ct);
 
         return Result.Success();
     }

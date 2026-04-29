@@ -1,9 +1,8 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
-using Starter.Domain.Common.Enums;
-using Starter.Module.AI.Application.Commands.Settings.ProviderCredentials;
 using Starter.Module.AI.Application.DTOs;
+using Starter.Module.AI.Application.Events;
 using Starter.Module.AI.Application.Services.Settings;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Module.AI.Domain.Enums;
@@ -15,10 +14,11 @@ namespace Starter.Module.AI.Application.Commands.Settings.ProviderCredentials.Ro
 
 internal sealed class RotateProviderCredentialCommandHandler(
     AiDbContext db,
-    IApplicationDbContext coreDb,
+    IApplicationDbContext appDb,
     ICurrentUserService currentUser,
     IAiEntitlementResolver entitlements,
-    IAiSecretProtector secrets) : IRequestHandler<RotateProviderCredentialCommand, Result<AiProviderCredentialDto>>
+    IAiSecretProtector secrets,
+    IIntegrationEventCollector eventCollector) : IRequestHandler<RotateProviderCredentialCommand, Result<AiProviderCredentialDto>>
 {
     public async Task<Result<AiProviderCredentialDto>> Handle(RotateProviderCredentialCommand request, CancellationToken ct)
     {
@@ -52,13 +52,15 @@ internal sealed class RotateProviderCredentialCommandHandler(
         db.AiProviderCredentials.Add(replacement);
         await db.SaveChangesAsync(ct);
 
-        AiProviderCredentialAudit.Add(
-            coreDb,
-            currentUser,
-            replacement,
-            "AiProviderCredential.Rotated",
-            AuditAction.Updated);
-        await coreDb.SaveChangesAsync(ct);
+        eventCollector.Schedule(new AiProviderCredentialRotatedEvent(
+            TenantId: replacement.TenantId!.Value,
+            CredentialId: replacement.Id,
+            Provider: replacement.Provider,
+            KeyPrefix: replacement.KeyPrefix,
+            PerformedBy: currentUser.UserId,
+            PerformedByEmail: currentUser.Email,
+            OccurredAt: DateTime.UtcNow));
+        await appDb.SaveChangesAsync(ct);
 
         return Result.Success(AiProviderCredentialDtos.ToDto(replacement, secrets));
     }

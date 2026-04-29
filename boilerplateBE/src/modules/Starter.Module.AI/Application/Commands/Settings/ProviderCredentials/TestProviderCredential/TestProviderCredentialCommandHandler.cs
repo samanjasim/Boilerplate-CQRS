@@ -1,9 +1,8 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
-using Starter.Domain.Common.Enums;
-using Starter.Module.AI.Application.Commands.Settings.ProviderCredentials;
 using Starter.Module.AI.Application.DTOs;
+using Starter.Module.AI.Application.Events;
 using Starter.Module.AI.Application.Services.Settings;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Domain.Errors;
@@ -14,9 +13,10 @@ namespace Starter.Module.AI.Application.Commands.Settings.ProviderCredentials.Te
 
 internal sealed class TestProviderCredentialCommandHandler(
     AiDbContext db,
-    IApplicationDbContext coreDb,
+    IApplicationDbContext appDb,
     ICurrentUserService currentUser,
-    IAiSecretProtector secrets) : IRequestHandler<TestProviderCredentialCommand, Result<AiProviderCredentialDto>>
+    IAiSecretProtector secrets,
+    IIntegrationEventCollector eventCollector) : IRequestHandler<TestProviderCredentialCommand, Result<AiProviderCredentialDto>>
 {
     public async Task<Result<AiProviderCredentialDto>> Handle(TestProviderCredentialCommand request, CancellationToken ct)
     {
@@ -38,13 +38,15 @@ internal sealed class TestProviderCredentialCommandHandler(
         credential.MarkValidated();
         await db.SaveChangesAsync(ct);
 
-        AiProviderCredentialAudit.Add(
-            coreDb,
-            currentUser,
-            credential,
-            "AiProviderCredential.Tested",
-            AuditAction.Updated);
-        await coreDb.SaveChangesAsync(ct);
+        eventCollector.Schedule(new AiProviderCredentialTestedEvent(
+            TenantId: credential.TenantId!.Value,
+            CredentialId: credential.Id,
+            Provider: credential.Provider,
+            KeyPrefix: credential.KeyPrefix,
+            PerformedBy: currentUser.UserId,
+            PerformedByEmail: currentUser.Email,
+            OccurredAt: DateTime.UtcNow));
+        await appDb.SaveChangesAsync(ct);
 
         return Result.Success(AiProviderCredentialDtos.ToDto(credential, secrets));
     }
