@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/table';
 import { PageHeader, EmptyState, Pagination } from '@/components/common';
 import { getPersistedPageSize } from '@/components/common/pagination-utils';
+import { STATUS_BADGE_VARIANT } from '@/constants/status';
 import { useWorkflowDefinitions, useCloneDefinition } from '../api';
 
 export default function WorkflowDefinitionsPage() {
@@ -85,8 +86,10 @@ export default function WorkflowDefinitionsPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={def.isActive ? 'default' : 'secondary'}>
-                      {def.isActive ? t('workflow.definitions.activate') : t('workflow.definitions.deactivate')}
+                    <Badge variant={STATUS_BADGE_VARIANT[def.isActive ? 'Active' : 'Inactive'] ?? 'outline'}>
+                      {def.isActive
+                        ? t('workflow.definitions.statusValue.active')
+                        : t('workflow.definitions.statusValue.inactive')}
                     </Badge>
                   </TableCell>
                   <TableCell>
