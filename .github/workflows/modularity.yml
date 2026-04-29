@@ -51,17 +51,21 @@ jobs:
           dotnet build --no-restore -c Release
 
       - name: Run generated app's architecture tests
-        # CatalogConsistencyTests is excluded: the catalog is a template-time
-        # artifact (lives only at the boilerplate repo root). Generated apps
-        # don't ship it, so those tests would fail with FileNotFound. The other
-        # architecture tests (ModuleIsolation, ModuleNameUniqueness,
+        # CatalogConsistencyTests + PermissionCodegenTests are excluded: both
+        # depend on template-time artifacts (modules.catalog.json, the FE/mobile
+        # source layout discovered by walking up to the catalog). Generated
+        # apps don't ship the catalog and rename their FE/mobile directories,
+        # so those tests would throw TypeInitializationException at class init.
+        # Source-repo CI covers them separately; the modularity workflow's own
+        # permissions-codegen-drift job covers the codegen surface.
+        # The other architecture tests (ModuleIsolation, ModuleNameUniqueness,
         # ModulePermission, etc.) validate the *generated* app's structure and
         # are exactly what the killer test should gate on.
         working-directory: ${{ runner.temp }}/killerSmoke/killerSmoke-BE
         run: |
           dotnet test tests/killerSmoke.Api.Tests/killerSmoke.Api.Tests.csproj \
             --no-build -c Release \
-            --filter "FullyQualifiedName~Architecture&FullyQualifiedName!~CatalogConsistencyTests"
+            --filter "FullyQualifiedName~Architecture&FullyQualifiedName!~CatalogConsistencyTests&FullyQualifiedName!~PermissionCodegenTests"
 
   frontend-killer:
     name: Frontend (modules=${{ matrix.label }})
