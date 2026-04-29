@@ -21,12 +21,14 @@ using Starter.Module.AI.Application.Services.Costs;
 using Starter.Module.AI.Application.Services.Pricing;
 using Starter.Module.AI.Application.Services.Retrieval;
 using Starter.Module.AI.Application.Services.Runtime;
+using Starter.Module.AI.Application.Services.Settings;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Runtime;
+using Starter.Shared.Results;
 using Xunit;
 
 namespace Starter.Api.Tests.Ai.Retrieval;
@@ -232,6 +234,14 @@ internal sealed class ChatExecutionTestFixture
 
         services.AddSingleton<IAiProviderFactory>(new ScriptedProviderFactory(FakeProvider));
         services.AddSingleton<IResourceAccessService>(new StubResourceAccessService());
+        services.AddSingleton<IAiProviderCredentialResolver>(
+            Mock.Of<IAiProviderCredentialResolver>(r =>
+                r.ResolveAsync(It.IsAny<Guid?>(), It.IsAny<AiProviderType>(), It.IsAny<CancellationToken>())
+                == Task.FromResult(Result.Success(new ResolvedProviderCredential(
+                    AiProviderType.Anthropic,
+                    "test-provider-key",
+                    ProviderCredentialSource.Platform,
+                    ProviderCredentialId: null)))));
 
         // Agent runtime factory (Task 10 — ChatExecutionService.ExecuteAsync now delegates here)
         services.AddScoped<IAgentToolDispatcher, AgentToolDispatcher>();

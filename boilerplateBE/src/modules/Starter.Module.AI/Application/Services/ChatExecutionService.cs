@@ -13,6 +13,7 @@ using Starter.Module.AI.Application.DTOs;
 using Starter.Module.AI.Application.Services.Personas;
 using Starter.Module.AI.Application.Services.Retrieval;
 using Starter.Module.AI.Application.Services.Runtime;
+using Starter.Module.AI.Application.Services.Settings;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
@@ -40,6 +41,7 @@ internal sealed class ChatExecutionService(
     IPersonaResolver personaResolver,
     ISafetyPresetClauseProvider safetyClauses,
     IPersonaContextAccessor personaContextAccessor,
+    IAiProviderCredentialResolver providerCredentialResolver,
     ILogger<ChatExecutionService> logger) : IChatExecutionService
 {
     private const string AiTokensMetric = "ai_tokens";
@@ -68,6 +70,14 @@ internal sealed class ChatExecutionService(
         var effectiveSystemPrompt = ResolveSystemPrompt(state.Assistant, retrieved, state.Persona);
 
         var provider = ResolveProvider(state.Assistant);
+        var credentialResult = await providerCredentialResolver.ResolveAsync(
+            state.Assistant.TenantId,
+            provider,
+            ct);
+        if (credentialResult.IsFailure)
+            return Result.Failure<AiChatReplyDto>(credentialResult.Error);
+
+        var credential = credentialResult.Value;
         var stepBudget = Math.Clamp(state.Assistant.MaxAgentSteps, 1, 20);
         var ctx = new AgentRunContext(
             Messages: state.ProviderMessages,
@@ -89,7 +99,10 @@ internal sealed class ChatExecutionService(
             // Plan 5d-2: thread display name + conversation id so the runtime can install
             // ICurrentAgentRunContextAccessor for the agent dispatcher (pending approvals).
             AssistantName: state.Assistant.Name,
-            ConversationId: state.Conversation.Id);
+            ConversationId: state.Conversation.Id,
+            ProviderApiKey: credential.Secret,
+            ProviderCredentialSource: credential.Source,
+            ProviderCredentialId: credential.ProviderCredentialId);
 
         var sink = new ChatAgentRunSink(context, state.Conversation.Id, state.NextOrder, streamWriter: null);
 
@@ -160,7 +173,7 @@ internal sealed class ChatExecutionService(
             var refusalContent = runResult.FinalContent ?? "Response blocked by content moderation.";
             PersistModerationEvents(runResult.ModerationEvents);
             var refusalMessage = await FinalizeTurnAsync(
-                state, refusalContent,
+                state, ctx, refusalContent,
                 (int)runResult.TotalInputTokens, (int)runResult.TotalOutputTokens,
                 sink.NextOrder, Array.Empty<AiMessageCitation>(), ct);
 
@@ -198,7 +211,7 @@ internal sealed class ChatExecutionService(
 
             if (runResult.TotalInputTokens > 0 || runResult.TotalOutputTokens > 0)
             {
-                var usage = await CreateUsageLogAsync(state,
+                var usage = await CreateUsageLogAsync(state, ctx,
                     (int)runResult.TotalInputTokens, (int)runResult.TotalOutputTokens, ct);
                 context.AiUsageLogs.Add(usage);
             }
@@ -265,7 +278,7 @@ internal sealed class ChatExecutionService(
         // Without this, LogAllOutcomes-emitted events on the happy path are silently dropped.
         PersistModerationEvents(runResult.ModerationEvents);
         var finalMessage = await FinalizeTurnAsync(
-            state, finalContent,
+            state, ctx, finalContent,
             (int)runResult.TotalInputTokens, (int)runResult.TotalOutputTokens,
             finalOrder, citations, ct);
 
@@ -312,6 +325,21 @@ internal sealed class ChatExecutionService(
         var effectiveSystemPrompt = ResolveSystemPrompt(state.Assistant, retrieved, state.Persona);
 
         var provider = ResolveProvider(state.Assistant);
+        var credentialResult = await providerCredentialResolver.ResolveAsync(
+            state.Assistant.TenantId,
+            provider,
+            ct);
+        if (credentialResult.IsFailure)
+        {
+            yield return new ChatStreamEvent("error", new
+            {
+                Code = credentialResult.Error.Code,
+                Message = credentialResult.Error.Description
+            });
+            yield break;
+        }
+
+        var credential = credentialResult.Value;
         var stepBudget = Math.Clamp(state.Assistant.MaxAgentSteps, 1, 20);
         var ctx = new AgentRunContext(
             Messages: state.ProviderMessages,
@@ -333,7 +361,10 @@ internal sealed class ChatExecutionService(
             // Plan 5d-2: thread display name + conversation id so the runtime can install
             // ICurrentAgentRunContextAccessor for the agent dispatcher (pending approvals).
             AssistantName: state.Assistant.Name,
-            ConversationId: state.Conversation.Id);
+            ConversationId: state.Conversation.Id,
+            ProviderApiKey: credential.Secret,
+            ProviderCredentialSource: credential.Source,
+            ProviderCredentialId: credential.ProviderCredentialId);
 
         var channel = Channel.CreateUnbounded<ChatStreamEvent>(new UnboundedChannelOptions
         {
@@ -443,7 +474,7 @@ internal sealed class ChatExecutionService(
                 refusalContent = runResult.FinalContent ?? "Response blocked by content moderation.";
                 PersistModerationEvents(runResult.ModerationEvents);
                 var assistantMsg = await FinalizeTurnAsync(
-                    state, refusalContent,
+                    state, ctx, refusalContent,
                     (int)runResult.TotalInputTokens, (int)runResult.TotalOutputTokens,
                     sink.NextOrder, Array.Empty<AiMessageCitation>(), ct);
                 messageId = assistantMsg.Id;
@@ -481,7 +512,7 @@ internal sealed class ChatExecutionService(
 
             if (runResult.TotalInputTokens > 0 || runResult.TotalOutputTokens > 0)
             {
-                var usage = await CreateUsageLogAsync(state,
+                var usage = await CreateUsageLogAsync(state, ctx,
                     (int)runResult.TotalInputTokens, (int)runResult.TotalOutputTokens, ct);
                 context.AiUsageLogs.Add(usage);
             }
@@ -574,7 +605,7 @@ internal sealed class ChatExecutionService(
         // FinalizeTurnAsync so they flush atomically with the assistant message + usage log.
         PersistModerationEvents(runResult.ModerationEvents);
         var assistantMessage = await FinalizeTurnAsync(
-            state, finalContent,
+            state, ctx, finalContent,
             (int)runResult.TotalInputTokens, (int)runResult.TotalOutputTokens,
             finalOrder, citations, ct);
 
@@ -754,6 +785,7 @@ internal sealed class ChatExecutionService(
 
     private async Task<AiMessage> FinalizeTurnAsync(
         ChatTurnState state,
+        AgentRunContext ctx,
         string? content,
         int inputTokens,
         int outputTokens,
@@ -803,7 +835,7 @@ internal sealed class ChatExecutionService(
             state.Conversation.SetTitle(title);
         }
 
-        var usageLog = await CreateUsageLogAsync(state, inputTokens, outputTokens, ct);
+        var usageLog = await CreateUsageLogAsync(state, ctx, inputTokens, outputTokens, ct);
         context.AiUsageLogs.Add(usageLog);
 
         await context.SaveChangesAsync(ct);
@@ -901,13 +933,15 @@ internal sealed class ChatExecutionService(
     /// </summary>
     private async Task<AiUsageLog> CreateUsageLogAsync(
         ChatTurnState state,
+        AgentRunContext ctx,
         int inputTokens,
         int outputTokens,
         CancellationToken ct)
     {
-        var resolvedProvider = ResolveProvider(state.Assistant);
-        var model = state.Assistant.Model
-            ?? providerFactory.GetDefaultProviderType().ToString();
+        var resolvedProvider = ctx.ModelConfig.Provider;
+        var model = string.IsNullOrWhiteSpace(ctx.ModelConfig.Model)
+            ? providerFactory.GetDefaultProviderType().ToString()
+            : ctx.ModelConfig.Model;
         var estimatedCost = EstimateCost(resolvedProvider, inputTokens, outputTokens);
 
         // Plan 5d-1: stamp the usage log with the assistant + paired agent principal so
@@ -934,7 +968,9 @@ internal sealed class ChatExecutionService(
             requestType: AiRequestType.Chat,
             conversationId: state.Conversation.Id,
             aiAssistantId: state.Assistant.Id,
-            agentPrincipalId: agentPrincipalId);
+            agentPrincipalId: agentPrincipalId,
+            providerCredentialSource: ctx.ProviderCredentialSource,
+            providerCredentialId: ctx.ProviderCredentialId);
     }
 
     /// <summary>

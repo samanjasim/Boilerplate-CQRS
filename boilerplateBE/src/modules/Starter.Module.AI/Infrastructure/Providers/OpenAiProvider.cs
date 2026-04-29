@@ -18,9 +18,11 @@ internal sealed class OpenAiProvider(
     private const string DefaultChatModel = "gpt-4o";
     private const string DefaultEmbeddingModel = "text-embedding-3-small";
 
-    private string GetApiKey()
-        => configuration["AI:Providers:OpenAI:ApiKey"]
-           ?? throw new InvalidOperationException("OpenAI API key is not configured (AI:Providers:OpenAI:ApiKey).");
+    private string GetApiKey(string? resolvedApiKey = null)
+        => !string.IsNullOrWhiteSpace(resolvedApiKey)
+            ? resolvedApiKey
+            : configuration["AI:Providers:OpenAI:ApiKey"]
+              ?? throw new InvalidOperationException("OpenAI API key is not configured (AI:Providers:OpenAI:ApiKey).");
 
     // Route the OpenAI SDK's pipeline through a pooled HttpClient so socket/DNS caches
     // are shared instead of a fresh connection pool per ChatClient/EmbeddingClient instance.
@@ -50,7 +52,7 @@ internal sealed class OpenAiProvider(
         AiChatOptions options,
         CancellationToken ct = default)
     {
-        var apiKey = GetApiKey();
+        var apiKey = GetApiKey(options.ApiKey);
         var model = ResolveChatModel(options.Model);
         var client = new ChatClient(model, new ApiKeyCredential(apiKey), BuildClientOptions());
 
@@ -76,7 +78,7 @@ internal sealed class OpenAiProvider(
         AiChatOptions options,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
-        var apiKey = GetApiKey();
+        var apiKey = GetApiKey(options.ApiKey);
         var model = ResolveChatModel(options.Model);
         var client = new ChatClient(model, new ApiKeyCredential(apiKey), BuildClientOptions());
 

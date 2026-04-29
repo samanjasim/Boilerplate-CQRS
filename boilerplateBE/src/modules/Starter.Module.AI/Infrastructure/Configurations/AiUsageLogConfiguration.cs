@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Starter.Module.AI.Domain.Entities;
+using Starter.Module.AI.Domain.Enums;
 
 namespace Starter.Module.AI.Infrastructure.Configurations;
 
@@ -70,6 +71,15 @@ internal sealed class AiUsageLogConfiguration : IEntityTypeConfiguration<AiUsage
 
         builder.Property(x => x.AgentPrincipalId)
             .HasColumnName("agent_principal_id");
+
+        builder.Property(e => e.ProviderCredentialSource)
+            .HasColumnName("provider_credential_source")
+            .HasConversion<int>()
+            .HasDefaultValue(ProviderCredentialSource.Platform)
+            .IsRequired();
+
+        builder.Property(e => e.ProviderCredentialId)
+            .HasColumnName("provider_credential_id");
 
         builder.HasIndex(x => new { x.TenantId, x.AiAssistantId, x.CreatedAt })
                .HasDatabaseName("ix_ai_usage_logs_tenant_id_ai_assistant_id_created_at");

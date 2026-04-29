@@ -41,4 +41,25 @@ public sealed class AiUsageLogShapeTests
         log.AiAssistantId.Should().BeNull();
         log.AgentPrincipalId.Should().BeNull();
     }
+
+    [Fact]
+    public void Create_Stores_Provider_Credential_Source_And_Id()
+    {
+        var credentialId = Guid.NewGuid();
+
+        var log = AiUsageLog.Create(
+            tenantId: Guid.NewGuid(),
+            userId: Guid.NewGuid(),
+            provider: AiProviderType.OpenAI,
+            model: "gpt-4o",
+            inputTokens: 100,
+            outputTokens: 50,
+            estimatedCost: 0.001m,
+            requestType: AiRequestType.Chat,
+            providerCredentialSource: ProviderCredentialSource.Tenant,
+            providerCredentialId: credentialId);
+
+        log.ProviderCredentialSource.Should().Be(ProviderCredentialSource.Tenant);
+        log.ProviderCredentialId.Should().Be(credentialId);
+    }
 }

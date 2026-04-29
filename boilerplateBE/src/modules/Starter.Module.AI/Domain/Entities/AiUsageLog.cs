@@ -18,6 +18,8 @@ public sealed class AiUsageLog : BaseEntity, ITenantEntity
     public AiRequestType RequestType { get; private set; }
     public Guid? AiAssistantId { get; private set; }
     public Guid? AgentPrincipalId { get; private set; }
+    public ProviderCredentialSource ProviderCredentialSource { get; private set; } = ProviderCredentialSource.Platform;
+    public Guid? ProviderCredentialId { get; private set; }
 
     private AiUsageLog() { }
 
@@ -34,7 +36,9 @@ public sealed class AiUsageLog : BaseEntity, ITenantEntity
         decimal estimatedCost,
         AiRequestType requestType,
         Guid? aiAssistantId,
-        Guid? agentPrincipalId) : base(id)
+        Guid? agentPrincipalId,
+        ProviderCredentialSource providerCredentialSource,
+        Guid? providerCredentialId) : base(id)
     {
         TenantId = tenantId;
         UserId = userId;
@@ -48,6 +52,8 @@ public sealed class AiUsageLog : BaseEntity, ITenantEntity
         RequestType = requestType;
         AiAssistantId = aiAssistantId;
         AgentPrincipalId = agentPrincipalId;
+        ProviderCredentialSource = providerCredentialSource;
+        ProviderCredentialId = providerCredentialId;
     }
 
     public static AiUsageLog Create(
@@ -62,7 +68,9 @@ public sealed class AiUsageLog : BaseEntity, ITenantEntity
         Guid? conversationId = null,
         Guid? agentTaskId = null,
         Guid? aiAssistantId = null,
-        Guid? agentPrincipalId = null)
+        Guid? agentPrincipalId = null,
+        ProviderCredentialSource providerCredentialSource = ProviderCredentialSource.Platform,
+        Guid? providerCredentialId = null)
     {
         return new AiUsageLog(
             Guid.NewGuid(),
@@ -77,6 +85,8 @@ public sealed class AiUsageLog : BaseEntity, ITenantEntity
             estimatedCost,
             requestType,
             aiAssistantId,
-            agentPrincipalId);
+            agentPrincipalId,
+            providerCredentialSource,
+            providerCredentialId);
     }
 }

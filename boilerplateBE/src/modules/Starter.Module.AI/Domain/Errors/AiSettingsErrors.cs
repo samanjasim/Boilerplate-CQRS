@@ -16,6 +16,9 @@ public static class AiSettingsErrors
     public static Error TenantKeyRequired(string provider) =>
         Error.Validation("AiSettings.TenantKeyRequired", $"A tenant-owned key is required for provider '{provider}'.");
 
+    public static Error PlatformCredentialMissing(string provider) =>
+        Error.Validation("AiSettings.PlatformCredentialMissing", $"A platform key is required for provider '{provider}'.");
+
     public static Error SelfLimitExceedsEntitlement(string field) =>
         Error.Validation("AiSettings.SelfLimitExceedsEntitlement", $"AI self-limit '{field}' exceeds the tenant's plan entitlement.");
 

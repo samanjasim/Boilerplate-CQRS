@@ -27,7 +27,10 @@ internal sealed record AgentRunContext(
     // pending approvals). Null on legacy callers / tests without an assistant.
     string? AssistantName = null,
     Guid? ConversationId = null,
-    Guid? AgentTaskId = null);
+    Guid? AgentTaskId = null,
+    string? ProviderApiKey = null,
+    ProviderCredentialSource ProviderCredentialSource = ProviderCredentialSource.Platform,
+    Guid? ProviderCredentialId = null);
 
 internal sealed record AgentModelConfig(
     AiProviderType Provider,
