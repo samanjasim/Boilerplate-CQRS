@@ -36,8 +36,8 @@ export function TenantProductsTab({ tenantId }: TenantProductsTabProps) {
     return (
       <EmptyState
         icon={Package}
-        title={t('products.empty.title', 'No products found')}
-        description={t('products.empty.tenantDescription', 'This tenant has no products yet.')}
+        title={t('products.empty.title')}
+        description={t('products.empty.tenantDescription')}
       />
     );
   }
@@ -47,9 +47,9 @@ export function TenantProductsTab({ tenantId }: TenantProductsTabProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>{t('products.name', 'Name')}</TableHead>
-            <TableHead>{t('products.price', 'Price')}</TableHead>
-            <TableHead>{t('products.status.label', 'Status')}</TableHead>
+            <TableHead>{t('products.name')}</TableHead>
+            <TableHead>{t('products.price')}</TableHead>
+            <TableHead>{t('products.status.label')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

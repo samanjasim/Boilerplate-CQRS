@@ -66,7 +66,7 @@ export function ProductIdentityPanel({
         {isPlatformAdmin && (
           <div className="space-y-2 rounded-xl border border-[var(--border-strong)] bg-[var(--active-bg)] p-3">
             <div className="text-xs font-medium text-[var(--tinted-fg)]">
-              {t('common.tenant')}: {product.tenantName ?? t('common.none', 'None')}
+              {t('common.tenant')}: {product.tenantName ?? t('common.none')}
             </div>
             {canEdit && (
               <Button type="button" variant="ghost" size="sm" onClick={() => setReassignOpen(true)}>

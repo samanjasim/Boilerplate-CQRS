@@ -40,13 +40,13 @@ export default function ProductsListPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={t('products.title', 'Products')}
-        subtitle={t('products.subtitle', 'Manage your product catalog')}
+        title={t('products.title')}
+        subtitle={t('products.subtitle')}
         actions={
           canCreate ? (
             <Button onClick={() => navigate(ROUTES.PRODUCTS.CREATE)}>
               <Plus className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
-              {t('products.create', 'Create Product')}
+              {t('products.create')}
             </Button>
           ) : undefined
         }
@@ -66,13 +66,13 @@ export default function ProductsListPage() {
               onValueChange={(v) => list.setFilter('status', v === 'all' ? '' : v)}
             >
               <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder={t('products.allStatuses', 'All Statuses')} />
+                <SelectValue placeholder={t('products.allStatuses')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{t('products.allStatuses', 'All Statuses')}</SelectItem>
-                <SelectItem value="Draft">{t('products.status.draft', 'Draft')}</SelectItem>
-                <SelectItem value="Active">{t('products.status.active', 'Active')}</SelectItem>
-                <SelectItem value="Archived">{t('products.status.archived', 'Archived')}</SelectItem>
+                <SelectItem value="all">{t('products.allStatuses')}</SelectItem>
+                <SelectItem value="Draft">{t('products.status.draft')}</SelectItem>
+                <SelectItem value="Active">{t('products.status.active')}</SelectItem>
+                <SelectItem value="Archived">{t('products.status.archived')}</SelectItem>
               </SelectContent>
             </Select>
             {isPlatformAdmin && (
@@ -81,10 +81,10 @@ export default function ProductsListPage() {
                 onValueChange={(v) => list.setFilter('tenantId', v === 'all' ? '' : v)}
               >
                 <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder={t('products.allTenants', 'All Tenants')} />
+                  <SelectValue placeholder={t('products.allTenants')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{t('products.allTenants', 'All Tenants')}</SelectItem>
+                  <SelectItem value="all">{t('products.allTenants')}</SelectItem>
                   {tenants.map((tenant: { id: string; name: string }) => (
                     <SelectItem key={tenant.id} value={tenant.id}>
                       {tenant.name}
@@ -103,22 +103,22 @@ export default function ProductsListPage() {
         isEmpty={list.isEmpty}
         emptyState={{
           icon: Package,
-          title: t('products.empty.title', 'No products found'),
-          description: t('products.empty.description', 'Create your first product to get started.'),
+          title: t('products.empty.title'),
+          description: t('products.empty.description'),
           action: canCreate
-            ? { label: t('products.create', 'Create Product'), onClick: () => navigate(ROUTES.PRODUCTS.CREATE) }
+            ? { label: t('products.create'), onClick: () => navigate(ROUTES.PRODUCTS.CREATE) }
             : undefined,
         }}
       >
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{t('products.name', 'Name')}</TableHead>
-              {isPlatformAdmin && <TableHead>{t('common.tenant', 'Tenant')}</TableHead>}
-              <TableHead>{t('products.slug', 'Slug')}</TableHead>
-              <TableHead>{t('products.price', 'Price')}</TableHead>
-              <TableHead>{t('products.status.label', 'Status')}</TableHead>
-              <TableHead>{t('common.createdAt', 'Created')}</TableHead>
+              <TableHead>{t('products.name')}</TableHead>
+              {isPlatformAdmin && <TableHead>{t('common.tenant')}</TableHead>}
+              <TableHead>{t('products.slug')}</TableHead>
+              <TableHead>{t('products.price')}</TableHead>
+              <TableHead>{t('products.status.label')}</TableHead>
+              <TableHead>{t('common.createdAt')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -136,7 +136,7 @@ export default function ProductsListPage() {
                 {isPlatformAdmin && (
                   <TableCell>
                     <span className="inline-flex rounded-full border border-[var(--border-strong)] bg-[var(--active-bg)] px-2.5 py-1 text-xs font-medium text-[var(--tinted-fg)]">
-                      {product.tenantName ?? t('common.none', 'None')}
+                      {product.tenantName ?? t('common.none')}
                     </span>
                   </TableCell>
                 )}

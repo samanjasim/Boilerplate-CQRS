@@ -24,14 +24,12 @@ import type { Product } from '@/types';
 
 const CURRENCIES = ['IQD', 'USD'] as const;
 
-const schema = z.object({
-  name: z.string().min(1, 'Name is required').max(200),
-  description: z.string().max(2000).optional(),
-  price: z.number().min(0, 'Price must be non-negative'),
-  currency: z.string().min(1, 'Currency is required').max(3),
-});
-
-type FormValues = z.infer<typeof schema>;
+interface FormValues {
+  name: string;
+  description?: string;
+  price: number;
+  currency: string;
+}
 
 function getDefaultValues(product: Product): FormValues {
   return {
@@ -72,6 +70,12 @@ function ProductDetailForm({ product }: { product: Product }) {
   const [savedValues, setSavedValues] = useState<FormValues>(() => getDefaultValues(product));
 
   const canEdit = hasPermission(PERMISSIONS.Products.Update);
+  const schema = z.object({
+    name: z.string().min(1, t('products.validation.nameRequired')).max(200),
+    description: z.string().max(2000).optional(),
+    price: z.number().min(0, t('products.validation.priceNonNegative')),
+    currency: z.string().min(1, t('products.validation.currencyRequired')).max(3),
+  });
 
   const {
     register,

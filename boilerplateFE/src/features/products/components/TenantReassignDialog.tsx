@@ -32,7 +32,7 @@ export function TenantReassignDialog({ isOpen, onClose, product }: TenantReassig
     () => tenants.find((tenant: { id: string; name: string }) => tenant.id === selectedTenantId),
     [selectedTenantId, tenants],
   );
-  const oldTenantName = product.tenantName ?? t('common.none', 'None');
+  const oldTenantName = product.tenantName ?? t('common.none');
   const newTenantName = selectedTenant?.name ?? oldTenantName;
   const hasChanged = !!selectedTenantId && selectedTenantId !== (product.tenantId ?? '');
 

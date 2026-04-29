@@ -14,7 +14,7 @@ export function ProductsDashboardCard() {
     <Link to={ROUTES.PRODUCTS.LIST} className="block">
       <StatCard
         icon={Package}
-        label={t('dashboard.activeProducts', 'Active Products')}
+        label={t('dashboard.activeProducts')}
         value={totalActive}
         tone="copper"
       />
