@@ -13,6 +13,7 @@ public sealed class HttpExecutionContext(ICurrentUserService current) : IExecuti
     public Guid? AgentPrincipalId => null;
     public Guid? TenantId => current.TenantId;
     public Guid? AgentRunId => null;
+    public bool DangerousActionApprovalGrant => false;
 
     public bool HasPermission(string permission) => current.HasPermission(permission);
 }

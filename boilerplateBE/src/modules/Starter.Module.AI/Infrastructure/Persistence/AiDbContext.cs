@@ -34,13 +34,16 @@ public sealed class AiDbContext : DbContext, IModuleDbContext
     public DbSet<AiAgentPrincipal> AiAgentPrincipals => Set<AiAgentPrincipal>();
     public DbSet<AiAgentRole> AiAgentRoles => Set<AiAgentRole>();
     public DbSet<AiModelPricing> AiModelPricings => Set<AiModelPricing>();
+    public DbSet<AiSafetyPresetProfile> AiSafetyPresetProfiles => Set<AiSafetyPresetProfile>();
+    public DbSet<AiModerationEvent> AiModerationEvents => Set<AiModerationEvent>();
+    public DbSet<AiPendingApproval> AiPendingApprovals => Set<AiPendingApproval>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
 
-        // Tenant query filters — 6 entities are tenant-scoped
+        // Tenant query filters — 10 entities are tenant-scoped
         modelBuilder.Entity<AiAssistant>().HasQueryFilter(e =>
             CurrentTenantId == null || e.TenantId == CurrentTenantId);
         modelBuilder.Entity<AiConversation>().HasQueryFilter(e =>
@@ -58,6 +61,10 @@ public sealed class AiDbContext : DbContext, IModuleDbContext
         modelBuilder.Entity<UserPersona>().HasQueryFilter(e =>
             CurrentTenantId == null || e.TenantId == CurrentTenantId);
         modelBuilder.Entity<AiAgentPrincipal>().HasQueryFilter(e =>
+            CurrentTenantId == null || e.TenantId == CurrentTenantId);
+        modelBuilder.Entity<AiModerationEvent>().HasQueryFilter(e =>
+            CurrentTenantId == null || e.TenantId == CurrentTenantId);
+        modelBuilder.Entity<AiPendingApproval>().HasQueryFilter(e =>
             CurrentTenantId == null || e.TenantId == CurrentTenantId);
     }
 }

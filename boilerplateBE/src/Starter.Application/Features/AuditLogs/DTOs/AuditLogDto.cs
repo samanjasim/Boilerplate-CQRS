@@ -10,4 +10,7 @@ public sealed record AuditLogDto(
     string? PerformedByName,
     DateTime PerformedAt,
     string? IpAddress,
-    string? CorrelationId);
+    string? CorrelationId,
+    Guid? OnBehalfOfUserId,
+    Guid? AgentPrincipalId,
+    Guid? AgentRunId);

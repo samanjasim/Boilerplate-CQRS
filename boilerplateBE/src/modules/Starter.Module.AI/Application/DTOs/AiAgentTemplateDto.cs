@@ -13,4 +13,4 @@ public sealed record AiAgentTemplateDto(
     string ExecutionMode,
     IReadOnlyList<string> EnabledToolNames,
     IReadOnlyList<string> PersonaTargetSlugs,
-    string? SafetyPresetHint);
+    string? SafetyPresetOverride);

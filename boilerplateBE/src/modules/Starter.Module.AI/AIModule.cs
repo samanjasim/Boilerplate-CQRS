@@ -33,9 +33,12 @@ using Starter.Module.AI.Infrastructure.Eval.Fixtures;
 using Starter.Module.AI.Infrastructure.Retrieval;
 using Starter.Module.AI.Infrastructure.Retrieval.Classification;
 using Starter.Module.AI.Infrastructure.Retrieval.Resilience;
+using Starter.Module.AI.Application.Services.Approvals;
+using Starter.Module.AI.Application.Services.Moderation;
 using Starter.Module.AI.Application.Services.Personas;
 using Starter.Module.AI.Application.Services.Runtime;
 using Starter.Module.AI.Infrastructure.Runtime;
+using Starter.Module.AI.Infrastructure.Services.Moderation;
 using Starter.Module.AI.Infrastructure.Services.Personas;
 using Starter.Module.AI.Infrastructure.Settings;
 using Starter.Module.AI.Infrastructure.Persistence.Seed;
@@ -112,6 +115,37 @@ public sealed class AIModule : IModule
         services.AddSingleton<IAgentRateLimiter, RedisAgentRateLimiter>();
         services.AddScoped<IAgentPermissionResolver, AgentPermissionResolver>();
         services.AddHostedService<Infrastructure.Background.AiCostReconciliationJob>();
+        services.AddHostedService<Infrastructure.Background.AiPendingApprovalExpirationJob>();
+
+        // Moderation + safety profile resolution (Plan 5d-2)
+        services.AddScoped<ISafetyProfileResolver, SafetyProfileResolver>();
+        services.AddScoped<IPendingApprovalService, PendingApprovalService>();
+        services.AddScoped<IModerationKeyResolver, ConfigurationModerationKeyResolver>();
+        services.AddScoped<IPiiRedactor, RegexPiiRedactor>();
+        services.AddSingleton<IModerationRefusalProvider, ResxModerationRefusalProvider>();
+        services.AddScoped<IContentModerator>(sp =>
+        {
+            var resolver = sp.GetRequiredService<IModerationKeyResolver>();
+            var keyAvailable = !string.IsNullOrWhiteSpace(resolver.Resolve());
+            if (keyAvailable)
+                return ActivatorUtilities.CreateInstance<OpenAiContentModerator>(sp);
+
+            // Spec §5.1 — without an explicit opt-in, refuse to silently register
+            // NoOpContentModerator. The factory only fires lazily on first resolution
+            // (i.e., on the first chat invocation in a missing-key tenant), so this is
+            // a per-tenant lazy-fail, not a startup-fail. For 5d-2 simplicity that is
+            // acceptable — admins see the failure on first chat rather than at boot.
+            var allowFallback = configuration.GetValue<bool>("Ai:Moderation:AllowUnmoderatedFallback");
+            if (allowFallback)
+                return new NoOpContentModerator();
+
+            throw new InvalidOperationException(
+                "No OpenAI moderation key configured (AI:Moderation:OpenAi:ApiKey or AI:Providers:OpenAI:ApiKey). " +
+                "Set the key, or set Ai:Moderation:AllowUnmoderatedFallback=true to permit unmoderated runs (Standard preset only).");
+        });
+        services.AddScoped<CurrentAgentRunContextAccessor>();
+        services.AddScoped<ICurrentAgentRunContextAccessor>(sp =>
+            sp.GetRequiredService<CurrentAgentRunContextAccessor>());
 
         services.AddSingleton<TokenCounter>();
 
@@ -193,6 +227,10 @@ public sealed class AIModule : IModule
         yield return (AiPermissions.AssignAgentRole, "Assign roles to AI agent principals", "AI");
         yield return (AiPermissions.ManageAgentBudget, "Set per-agent cost caps and rate limits", "AI");
         yield return (AiPermissions.ManagePricing, "Manage AI model pricing (superadmin)", "AI");
+        yield return (AiPermissions.SafetyProfilesManage, "Manage AI safety preset profiles", "AI");
+        yield return (AiPermissions.AgentsApproveAction, "Approve or deny dangerous AI agent actions", "AI");
+        yield return (AiPermissions.AgentsViewApprovals, "View pending AI agent approval inbox", "AI");
+        yield return (AiPermissions.ModerationView, "View AI moderation events", "AI");
     }
 
     public IEnumerable<(string Role, string[] Permissions)> GetDefaultRolePermissions()
@@ -215,7 +253,11 @@ public sealed class AIModule : IModule
             AiPermissions.AssignPersona,
             AiPermissions.AssignAgentRole,
             AiPermissions.ManageAgentBudget,
-            AiPermissions.ManagePricing
+            AiPermissions.ManagePricing,
+            AiPermissions.SafetyProfilesManage,
+            AiPermissions.AgentsApproveAction,
+            AiPermissions.AgentsViewApprovals,
+            AiPermissions.ModerationView
         ]);
 
         yield return ("Admin", [
@@ -233,14 +275,19 @@ public sealed class AIModule : IModule
             AiPermissions.ManagePersonas,
             AiPermissions.AssignPersona,
             AiPermissions.AssignAgentRole,
-            AiPermissions.ManageAgentBudget
+            AiPermissions.ManageAgentBudget,
+            AiPermissions.SafetyProfilesManage,
+            AiPermissions.AgentsApproveAction,
+            AiPermissions.AgentsViewApprovals,
+            AiPermissions.ModerationView
         ]);
 
         yield return ("User", [
             AiPermissions.Chat,
             AiPermissions.ViewConversations,
             AiPermissions.DeleteConversation,
-            AiPermissions.ViewPersonas
+            AiPermissions.ViewPersonas,
+            AiPermissions.AgentsViewApprovals
         ]);
     }
 
@@ -262,6 +309,13 @@ public sealed class AIModule : IModule
 
         // Always seed model pricing (idempotent — skips if any rows already exist)
         await ModelPricingSeed.SeedAsync(aiDb, cancellationToken);
+
+        // Always seed platform-default safety preset profiles (idempotent — skips if any platform row exists)
+        await SafetyPresetProfileSeed.SeedAsync(aiDb, cancellationToken);
+
+        // Plan 5e: backfill flagship demo personas for every existing tenant
+        // (idempotent — only inserts missing personas per tenant).
+        await FlagshipPersonasBackfillSeed.SeedAsync(aiDb, appDb, cancellationToken);
 
         // Plan 5d-1 backfill: pair any pre-existing assistant with an AiAgentPrincipal
         // (idempotent — only inserts for assistants without a paired principal).

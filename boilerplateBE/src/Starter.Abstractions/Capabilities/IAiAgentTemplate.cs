@@ -37,8 +37,9 @@ public interface IAiAgentTemplate
     IReadOnlyList<string> PersonaTargetSlugs { get; }
 
     /// <summary>
-    /// Recommended safety preset. Today persona-level safety still applies at runtime;
-    /// this field becomes load-bearing when Plan 5d hoists safety onto the assistant.
+    /// Persisted to <c>AiAssistant.SafetyPresetOverride</c> on install by
+    /// <c>InstallTemplateCommandHandler</c>. <c>null</c> means
+    /// "inherit from the resolved persona's safety preset at runtime".
     /// </summary>
-    SafetyPreset? SafetyPresetHint { get; }
+    SafetyPreset? SafetyPresetOverride { get; }
 }

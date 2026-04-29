@@ -17,7 +17,7 @@ internal sealed class FixtureTemplateA : IAiAgentTemplate
     public AssistantExecutionMode ExecutionMode => AssistantExecutionMode.Chat;
     public IReadOnlyList<string> EnabledToolNames { get; } = new[] { "fixture_tool" };
     public IReadOnlyList<string> PersonaTargetSlugs { get; } = new[] { "default" };
-    public SafetyPreset? SafetyPresetHint => SafetyPreset.Standard;
+    public SafetyPreset? SafetyPresetOverride => SafetyPreset.Standard;
 }
 
 internal sealed class FixtureTemplateB : IAiAgentTemplate
@@ -34,7 +34,7 @@ internal sealed class FixtureTemplateB : IAiAgentTemplate
     public AssistantExecutionMode ExecutionMode => AssistantExecutionMode.Chat;
     public IReadOnlyList<string> EnabledToolNames { get; } = Array.Empty<string>();
     public IReadOnlyList<string> PersonaTargetSlugs { get; } = new[] { "anonymous" };
-    public SafetyPreset? SafetyPresetHint => null;
+    public SafetyPreset? SafetyPresetOverride => null;
 }
 
 // Skipped by scanner: abstract.
@@ -52,7 +52,7 @@ internal abstract class AbstractFixtureTemplate : IAiAgentTemplate
     public AssistantExecutionMode ExecutionMode => AssistantExecutionMode.Chat;
     public IReadOnlyList<string> EnabledToolNames { get; } = Array.Empty<string>();
     public IReadOnlyList<string> PersonaTargetSlugs { get; } = Array.Empty<string>();
-    public SafetyPreset? SafetyPresetHint => null;
+    public SafetyPreset? SafetyPresetOverride => null;
 }
 
 // Skipped by scanner: no parameterless ctor.
@@ -70,7 +70,7 @@ internal sealed class NoParameterlessCtorFixtureTemplate(string slugValue) : IAi
     public AssistantExecutionMode ExecutionMode => AssistantExecutionMode.Chat;
     public IReadOnlyList<string> EnabledToolNames { get; } = Array.Empty<string>();
     public IReadOnlyList<string> PersonaTargetSlugs { get; } = Array.Empty<string>();
-    public SafetyPreset? SafetyPresetHint => null;
+    public SafetyPreset? SafetyPresetOverride => null;
 }
 
 // Test-only mutable helper — used in handler/registry tests in later tasks.
@@ -84,7 +84,7 @@ internal sealed class TestTemplate(
     AiProviderType provider = AiProviderType.Anthropic,
     IReadOnlyList<string>? tools = null,
     IReadOnlyList<string>? personas = null,
-    SafetyPreset? safetyHint = null) : IAiAgentTemplate
+    SafetyPreset? safetyOverride = null) : IAiAgentTemplate
 {
     public string Slug { get; } = slug;
     public string DisplayName { get; } = displayName ?? slug;
@@ -98,5 +98,5 @@ internal sealed class TestTemplate(
     public AssistantExecutionMode ExecutionMode => AssistantExecutionMode.Chat;
     public IReadOnlyList<string> EnabledToolNames { get; } = tools ?? Array.Empty<string>();
     public IReadOnlyList<string> PersonaTargetSlugs { get; } = personas ?? Array.Empty<string>();
-    public SafetyPreset? SafetyPresetHint { get; } = safetyHint;
+    public SafetyPreset? SafetyPresetOverride { get; } = safetyOverride;
 }

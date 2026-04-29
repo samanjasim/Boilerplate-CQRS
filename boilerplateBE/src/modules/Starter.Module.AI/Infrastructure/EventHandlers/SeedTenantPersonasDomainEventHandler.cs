@@ -17,28 +17,29 @@ internal sealed class SeedTenantPersonasDomainEventHandler(
     public async Task Handle(TenantCreatedEvent notification, CancellationToken cancellationToken)
     {
         var tenantId = notification.TenantId;
+        var allFactories = AiPersona.AllSeededPersonaFactories;
 
         var existing = await db.AiPersonas
             .IgnoreQueryFilters()
-            .Where(p => p.TenantId == tenantId &&
-                        (p.Slug == AiPersona.AnonymousSlug || p.Slug == AiPersona.DefaultSlug))
+            .Where(p => p.TenantId == tenantId && allFactories.Keys.Contains(p.Slug))
             .Select(p => p.Slug)
             .ToListAsync(cancellationToken);
+        var have = existing.ToHashSet(StringComparer.Ordinal);
 
-        var hasAnonymous = existing.Contains(AiPersona.AnonymousSlug);
-        var hasDefault = existing.Contains(AiPersona.DefaultSlug);
+        var added = 0;
+        foreach (var (slug, factory) in allFactories)
+        {
+            if (have.Contains(slug)) continue;
+            db.AiPersonas.Add(factory(tenantId, SystemSeedActor));
+            added++;
+        }
 
-        if (!hasAnonymous)
-            db.AiPersonas.Add(AiPersona.CreateAnonymous(tenantId, SystemSeedActor));
-        if (!hasDefault)
-            db.AiPersonas.Add(AiPersona.CreateDefault(tenantId, SystemSeedActor));
-
-        if (!hasAnonymous || !hasDefault)
+        if (added > 0)
         {
             await db.SaveChangesAsync(cancellationToken);
             logger.LogInformation(
-                "Seeded personas for tenant {TenantId} (anonymous={Anon}, default={Default}).",
-                tenantId, !hasAnonymous, !hasDefault);
+                "Seeded {Count} personas for tenant {TenantId} (had {ExistingCount} of {ExpectedCount}).",
+                added, tenantId, existing.Count, allFactories.Count);
         }
     }
 }

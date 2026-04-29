@@ -65,13 +65,13 @@ export default function RoleCreatePage() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Step 1: Role Details */}
-        <Card>
+        <Card variant="glass" className="border border-border/40">
           <CardContent className="py-6">
             <div className="flex items-center gap-2 mb-5">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
-                <span className="text-xs font-bold text-primary">1</span>
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg btn-primary-gradient">
+                <span className="text-xs font-bold text-white">1</span>
               </div>
-              <h3 className="text-lg font-semibold text-foreground">{t('roles.roleDetail')}</h3>
+              <h3 className="text-[15px] font-semibold text-foreground tracking-tight">{t('roles.roleDetail')}</h3>
             </div>
             <div className="space-y-4 max-w-lg">
               <div className="space-y-2">
@@ -96,14 +96,14 @@ export default function RoleCreatePage() {
         </Card>
 
         {/* Step 2: Assign Permissions */}
-        <Card>
+        <Card variant="glass" className="border border-border/40">
           <CardContent className="py-6">
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
-                  <span className="text-xs font-bold text-primary">2</span>
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg btn-primary-gradient">
+                  <span className="text-xs font-bold text-white">2</span>
                 </div>
-                <h3 className="text-lg font-semibold text-foreground">{t('roles.assignPermissions')}</h3>
+                <h3 className="text-[15px] font-semibold text-foreground tracking-tight">{t('roles.assignPermissions')}</h3>
               </div>
               {selectedPermissionIds.size > 0 && (
                 <div className="flex items-center gap-1.5 text-xs text-primary font-medium">

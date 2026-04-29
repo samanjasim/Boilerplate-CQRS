@@ -133,6 +133,13 @@ internal sealed class InstallTemplateCommandHandler(
             assistant.SetPersonaTargets(template.PersonaTargetSlugs);
         assistant.SetVisibility(ResourceVisibility.TenantWide);
 
+        // 8.5 Apply template safety override (Plan 5e). When null, the assistant
+        // inherits the resolved persona's safety preset at runtime; the explicit
+        // null-skip avoids raising a no-op domain event if SetSafetyPreset ever
+        // does so in the future.
+        if (template.SafetyPresetOverride.HasValue)
+            assistant.SetSafetyPreset(template.SafetyPresetOverride);
+
         // 9. Stamp provenance
         assistant.StampTemplateSource(template.Slug, version: null);
 

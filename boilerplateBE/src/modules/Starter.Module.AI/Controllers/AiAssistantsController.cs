@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Starter.Abstractions.Ai;
 using Starter.Application.Common.Access.Contracts;
 using Starter.Application.Features.Access.Commands.GrantResourceAccess;
 using Starter.Application.Features.Access.Commands.RevokeResourceAccess;
@@ -12,6 +13,7 @@ using Starter.Domain.Common.Access.Enums;
 using Starter.Module.AI.Application.Commands.AssignAgentRole;
 using Starter.Module.AI.Application.Commands.CreateAssistant;
 using Starter.Module.AI.Application.Commands.DeleteAssistant;
+using Starter.Module.AI.Application.Commands.Safety.SetAssistantSafetyPresetOverride;
 using Starter.Module.AI.Application.Commands.SetAgentBudget;
 using Starter.Module.AI.Application.Commands.SetAssistantAccessMode;
 using Starter.Module.AI.Application.Commands.UnassignAgentRole;
@@ -241,6 +243,20 @@ public sealed class AiAssistantsController(ISender mediator)
         var result = await Mediator.Send(new GetAgentUsageQuery(id, window), ct);
         return HandleResult(result);
     }
+
+    // ----- Plan 5d-2: per-assistant safety preset override -----
+
+    [HttpPut("{id:guid}/safety-preset")]
+    [Authorize(Policy = AiPermissions.ManageAssistants)]
+    public async Task<IActionResult> SetSafetyPreset(
+        Guid id,
+        [FromBody] SafetyPresetBody? body,
+        CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(
+            new SetAssistantSafetyPresetOverrideCommand(id, body?.Preset), ct);
+        return HandleResult(result);
+    }
 }
 
 public sealed record GrantAssistantAccessRequest(
@@ -260,3 +276,5 @@ public sealed record SetAgentBudgetRequest(
     int? RequestsPerMinute);
 
 public sealed record AssignAgentRoleRequest(Guid RoleId);
+
+public sealed record SafetyPresetBody(SafetyPreset? Preset);

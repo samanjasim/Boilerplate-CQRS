@@ -21,4 +21,5 @@ export * from './SubjectPicker';
 export * from './SubjectStack';
 export * from './ThemeToggle';
 export * from './UserAvatar';
+export * from './StatCard';
 export * from './VisibilityBadge';

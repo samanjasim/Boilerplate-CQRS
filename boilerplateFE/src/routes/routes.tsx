@@ -35,6 +35,7 @@ const StyleguidePage = import.meta.env.DEV
 
 // Core feature pages (always loaded — these features ship with every build)
 const AuditLogsPage = lazy(() => import('@/features/audit-logs/pages/AuditLogsPage'));
+const AuditLogDetailPage = lazy(() => import('@/features/audit-logs/pages/AuditLogDetailPage'));
 const NotificationsPage = lazy(() => import('@/features/notifications/pages/NotificationsPage'));
 const FilesPage = lazy(() => import('@/features/files/pages/FilesPage'));
 const ReportsPage = lazy(() => import('@/features/reports/pages/ReportsPage'));
@@ -181,6 +182,7 @@ export const routes: RouteObject[] = [
             element: <PermissionGuard permission={PERMISSIONS.System.ViewAuditLogs} />,
             children: [
               { path: ROUTES.AUDIT_LOGS.LIST, element: <AuditLogsPage /> },
+              { path: ROUTES.AUDIT_LOGS.DETAIL, element: <AuditLogDetailPage /> },
             ],
           },
 

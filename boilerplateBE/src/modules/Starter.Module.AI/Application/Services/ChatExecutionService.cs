@@ -85,7 +85,11 @@ internal sealed class ChatExecutionService(
             AssistantId: state.Assistant.Id,
             TenantId: state.Assistant.TenantId,
             CallerUserId: currentUser.UserId,
-            CallerHasPermission: currentUser.HasPermission);
+            CallerHasPermission: currentUser.HasPermission,
+            // Plan 5d-2: thread display name + conversation id so the runtime can install
+            // ICurrentAgentRunContextAccessor for the agent dispatcher (pending approvals).
+            AssistantName: state.Assistant.Name,
+            ConversationId: state.Conversation.Id);
 
         var sink = new ChatAgentRunSink(context, state.Conversation.Id, state.NextOrder, streamWriter: null);
 
@@ -114,6 +118,117 @@ internal sealed class ChatExecutionService(
             // If ct wasn't cancelled but the runtime returned Cancelled (shouldn't happen),
             // surface as provider error for consistent API shape.
             return Result.Failure<AiChatReplyDto>(AiErrors.ProviderError("cancelled"));
+        }
+
+        // ──────────────────────────────────────────────────────────────
+        // Plan 5d-2: moderation outcomes from the outermost runtime decorator. Each branch
+        // has a distinct persistence shape — keep the order: InputBlocked first (no LLM
+        // ran, NO usage log), OutputBlocked next (LLM ran, full FinalizeTurnAsync),
+        // AwaitingApproval (partial run, conversation stays Active),
+        // ModerationProviderUnavailable (real outage, surface 5xx; do not pollute history).
+        // These run BEFORE CostCap/RateLimit because the moderation decorator is wired
+        // outermost — once it short-circuits, the inner decorators never observe the run.
+        // ──────────────────────────────────────────────────────────────
+        if (runResult.Status == AgentRunStatus.InputBlocked)
+        {
+            // No tokens used. M2 acid invariant: no AiUsageLog row may exist after this path.
+            // We still persist the user message + a refusal as the assistant message so
+            // chat history is honest about what happened.
+            var refusalContent = runResult.FinalContent ?? "Request blocked by content moderation.";
+            var assistantMsg = AiMessage.CreateAssistantMessage(
+                state.Conversation.Id, refusalContent, sink.NextOrder, 0, 0);
+            context.AiMessages.Add(assistantMsg);
+            state.Conversation.AddMessageStats(0, 0);
+            PersistModerationEvents(runResult.ModerationEvents);
+            await context.SaveChangesAsync(ct);
+
+            return Result.Success(new AiChatReplyDto(
+                state.Conversation.Id,
+                state.UserMessage.ToDto(),
+                assistantMsg.ToDto(),
+                PersonaSlug: state.Persona?.Slug)
+            {
+                Status = "blocked"
+            });
+        }
+
+        if (runResult.Status == AgentRunStatus.OutputBlocked)
+        {
+            // Tokens WERE consumed (the LLM ran before the output was blocked). Full
+            // FinalizeTurnAsync to persist the usage log alongside the refusal message —
+            // moderation events stage onto the change tracker first so they flush atomically.
+            var refusalContent = runResult.FinalContent ?? "Response blocked by content moderation.";
+            PersistModerationEvents(runResult.ModerationEvents);
+            var refusalMessage = await FinalizeTurnAsync(
+                state, refusalContent,
+                (int)runResult.TotalInputTokens, (int)runResult.TotalOutputTokens,
+                sink.NextOrder, Array.Empty<AiMessageCitation>(), ct);
+
+            return Result.Success(new AiChatReplyDto(
+                state.Conversation.Id,
+                state.UserMessage.ToDto(),
+                refusalMessage.ToDto(),
+                PersonaSlug: state.Persona?.Slug)
+            {
+                Status = "blocked"
+            });
+        }
+
+        if (runResult.Status == AgentRunStatus.AwaitingApproval)
+        {
+            // Partial run: persist the user msg + a placeholder "awaiting approval"
+            // assistant message so chat history shows the pause point. Conversation stays
+            // Active (NOT Failed) because the next /approve call will resume the turn.
+            // Usage log records tokens that were consumed during the partial run.
+            var approvalId = ExtractApprovalId(runResult);
+            var approval = approvalId is { } id
+                ? await context.AiPendingApprovals.FirstOrDefaultAsync(p => p.Id == id, ct)
+                : null;
+
+            var pauseMsgContent = $"Awaiting approval for action: {approval?.ToolName ?? "unknown"}";
+            var pauseMsg = AiMessage.CreateAssistantMessage(
+                state.Conversation.Id,
+                pauseMsgContent,
+                sink.NextOrder,
+                (int)runResult.TotalInputTokens,
+                (int)runResult.TotalOutputTokens);
+            context.AiMessages.Add(pauseMsg);
+            state.Conversation.AddMessageStats(
+                (int)runResult.TotalInputTokens, (int)runResult.TotalOutputTokens);
+
+            if (runResult.TotalInputTokens > 0 || runResult.TotalOutputTokens > 0)
+            {
+                var usage = await CreateUsageLogAsync(state,
+                    (int)runResult.TotalInputTokens, (int)runResult.TotalOutputTokens, ct);
+                context.AiUsageLogs.Add(usage);
+            }
+
+            AiAgentMetrics.PendingApprovals.Add(1,
+                new KeyValuePair<string, object?>("ai.approval.outcome", "created"));
+
+            await context.SaveChangesAsync(ct);
+
+            return Result.Success(new AiChatReplyDto(
+                state.Conversation.Id,
+                state.UserMessage.ToDto(),
+                pauseMsg.ToDto(),
+                PersonaSlug: state.Persona?.Slug)
+            {
+                Status = "awaiting_approval",
+                ApprovalId = approval?.Id,
+                ExpiresAt = approval?.ExpiresAt,
+                ToolName = approval?.ToolName,
+                ApprovalReason = approval?.ReasonHint
+            });
+        }
+
+        if (runResult.Status == AgentRunStatus.ModerationProviderUnavailable)
+        {
+            // Real moderator outage (FailClosed kicked in). Detach pending entities so we
+            // don't pollute history with a "service down" message; surface a 5xx-class
+            // error so clients retry.
+            await FailTurnAsync(state);
+            return Result.Failure<AiChatReplyDto>(AiModerationErrors.ProviderUnavailable);
         }
 
         // Plan 5d-1: surface cost-cap and rate-limit refusals as proper errors so the
@@ -145,6 +260,10 @@ internal sealed class ChatExecutionService(
 
         var citations = CitationParser.Parse(finalContent, retrieved.Children);
         var finalOrder = sink.NextOrder;
+        // Stage moderation events (input + output Allowed/Redacted from the decorator) onto
+        // the change tracker BEFORE FinalizeTurnAsync so they flush in the same SaveChanges.
+        // Without this, LogAllOutcomes-emitted events on the happy path are silently dropped.
+        PersistModerationEvents(runResult.ModerationEvents);
         var finalMessage = await FinalizeTurnAsync(
             state, finalContent,
             (int)runResult.TotalInputTokens, (int)runResult.TotalOutputTokens,
@@ -210,7 +329,11 @@ internal sealed class ChatExecutionService(
             TenantId: state.Assistant.TenantId,
             CallerUserId: currentUser.UserId,
             CallerHasPermission: currentUser.HasPermission,
-            Persona: state.Persona);
+            Persona: state.Persona,
+            // Plan 5d-2: thread display name + conversation id so the runtime can install
+            // ICurrentAgentRunContextAccessor for the agent dispatcher (pending approvals).
+            AssistantName: state.Assistant.Name,
+            ConversationId: state.Conversation.Id);
 
         var channel = Channel.CreateUnbounded<ChatStreamEvent>(new UnboundedChannelOptions
         {
@@ -284,6 +407,118 @@ internal sealed class ChatExecutionService(
             yield break;
         }
 
+        // ──────────────────────────────────────────────────────────────
+        // Plan 5d-2: streaming SSE frames for moderation outcomes. Emit the marker frame
+        // (moderation_blocked / awaiting_approval / error) BEFORE the terminal "done"
+        // frame so the client can branch on the marker and ignore "done" details for
+        // refused turns. ProviderUnavailable surfaces an "error" frame and skips "done".
+        // ──────────────────────────────────────────────────────────────
+        if (runResult.Status == AgentRunStatus.InputBlocked
+            || runResult.Status == AgentRunStatus.OutputBlocked)
+        {
+            yield return new ChatStreamEvent("moderation_blocked", new
+            {
+                Stage = runResult.Status == AgentRunStatus.InputBlocked ? "input" : "output",
+                Reason = runResult.TerminationReason
+            });
+
+            // Persistence semantics differ between input vs output blocked: input blocked
+            // never invoked the LLM (no usage log row). Output blocked did consume tokens
+            // (full FinalizeTurnAsync writes the usage log). Mirror the non-streaming path.
+            string refusalContent;
+            Guid messageId;
+            if (runResult.Status == AgentRunStatus.InputBlocked)
+            {
+                refusalContent = runResult.FinalContent ?? "Request blocked by content moderation.";
+                var assistantMsg = AiMessage.CreateAssistantMessage(
+                    state.Conversation.Id, refusalContent, sink.NextOrder, 0, 0);
+                context.AiMessages.Add(assistantMsg);
+                state.Conversation.AddMessageStats(0, 0);
+                PersistModerationEvents(runResult.ModerationEvents);
+                await context.SaveChangesAsync(ct);
+                messageId = assistantMsg.Id;
+            }
+            else
+            {
+                refusalContent = runResult.FinalContent ?? "Response blocked by content moderation.";
+                PersistModerationEvents(runResult.ModerationEvents);
+                var assistantMsg = await FinalizeTurnAsync(
+                    state, refusalContent,
+                    (int)runResult.TotalInputTokens, (int)runResult.TotalOutputTokens,
+                    sink.NextOrder, Array.Empty<AiMessageCitation>(), ct);
+                messageId = assistantMsg.Id;
+            }
+
+            yield return new ChatStreamEvent("done", new
+            {
+                MessageId = messageId,
+                InputTokens = (int)runResult.TotalInputTokens,
+                OutputTokens = (int)runResult.TotalOutputTokens,
+                FinishReason = runResult.Status.ToString()
+            });
+            yield break;
+        }
+
+        if (runResult.Status == AgentRunStatus.AwaitingApproval)
+        {
+            var approvalId = ExtractApprovalId(runResult);
+            var approval = approvalId is { } id
+                ? await context.AiPendingApprovals.FirstOrDefaultAsync(p => p.Id == id, ct)
+                : null;
+
+            // Persist the same "awaiting approval" placeholder + optional usage log as the
+            // non-streaming branch so chat history is consistent across both transports.
+            var pauseMsgContent = $"Awaiting approval for action: {approval?.ToolName ?? "unknown"}";
+            var pauseMsg = AiMessage.CreateAssistantMessage(
+                state.Conversation.Id,
+                pauseMsgContent,
+                sink.NextOrder,
+                (int)runResult.TotalInputTokens,
+                (int)runResult.TotalOutputTokens);
+            context.AiMessages.Add(pauseMsg);
+            state.Conversation.AddMessageStats(
+                (int)runResult.TotalInputTokens, (int)runResult.TotalOutputTokens);
+
+            if (runResult.TotalInputTokens > 0 || runResult.TotalOutputTokens > 0)
+            {
+                var usage = await CreateUsageLogAsync(state,
+                    (int)runResult.TotalInputTokens, (int)runResult.TotalOutputTokens, ct);
+                context.AiUsageLogs.Add(usage);
+            }
+
+            AiAgentMetrics.PendingApprovals.Add(1,
+                new KeyValuePair<string, object?>("ai.approval.outcome", "created"));
+
+            await context.SaveChangesAsync(ct);
+
+            yield return new ChatStreamEvent("awaiting_approval", new
+            {
+                ApprovalId = approval?.Id,
+                ExpiresAt = approval?.ExpiresAt,
+                ToolName = approval?.ToolName,
+                Reason = approval?.ReasonHint
+            });
+            yield return new ChatStreamEvent("done", new
+            {
+                MessageId = pauseMsg.Id,
+                InputTokens = (int)runResult.TotalInputTokens,
+                OutputTokens = (int)runResult.TotalOutputTokens,
+                FinishReason = "awaiting_approval"
+            });
+            yield break;
+        }
+
+        if (runResult.Status == AgentRunStatus.ModerationProviderUnavailable)
+        {
+            await FailTurnAsync(state);
+            yield return new ChatStreamEvent("error", new
+            {
+                Code = AiModerationErrors.ProviderUnavailable.Code,
+                Message = "Content moderation provider is unavailable; please retry."
+            });
+            yield break;
+        }
+
         // Plan 5d-1: emit explicit error frames for cap/rate-limit refusals so the
         // streaming client surfaces the correct error and doesn't get a phantom done event.
         if (runResult.Status == AgentRunStatus.CostCapExceeded)
@@ -335,6 +570,9 @@ internal sealed class ChatExecutionService(
         }
 
         var finalOrder = sink.NextOrder;
+        // Stage moderation events from the decorator (LogAllOutcomes Allowed/Redacted) BEFORE
+        // FinalizeTurnAsync so they flush atomically with the assistant message + usage log.
+        PersistModerationEvents(runResult.ModerationEvents);
         var assistantMessage = await FinalizeTurnAsync(
             state, finalContent,
             (int)runResult.TotalInputTokens, (int)runResult.TotalOutputTokens,
@@ -565,38 +803,7 @@ internal sealed class ChatExecutionService(
             state.Conversation.SetTitle(title);
         }
 
-        var resolvedProvider = ResolveProvider(state.Assistant);
-        var model = state.Assistant.Model
-            ?? providerFactory.GetDefaultProviderType().ToString();
-
-        var estimatedCost = EstimateCost(resolvedProvider, inputTokens, outputTokens);
-
-        // Plan 5d-1: stamp the usage log with the assistant + paired agent principal so
-        // GetAgentUsage queries and AiCostReconciliationJob can attribute spend to the
-        // right agent. Lookup is one-shot per turn (small) and the FK is nullable to
-        // preserve compatibility with non-agent code paths.
-        Guid? agentPrincipalId = null;
-        if (state.Assistant.Id != Guid.Empty)
-        {
-            agentPrincipalId = await context.AiAgentPrincipals
-                .Where(p => p.AiAssistantId == state.Assistant.Id)
-                .Select(p => (Guid?)p.Id)
-                .FirstOrDefaultAsync(ct);
-        }
-
-        var usageLog = AiUsageLog.Create(
-            tenantId: currentUser.TenantId,
-            userId: currentUser.UserId!.Value,   // safe — PrepareTurnAsync already guarded
-            provider: resolvedProvider,
-            model: model,
-            inputTokens: inputTokens,
-            outputTokens: outputTokens,
-            estimatedCost: estimatedCost,
-            requestType: AiRequestType.Chat,
-            conversationId: state.Conversation.Id,
-            aiAssistantId: state.Assistant.Id,
-            agentPrincipalId: agentPrincipalId);
-
+        var usageLog = await CreateUsageLogAsync(state, inputTokens, outputTokens, ct);
         context.AiUsageLogs.Add(usageLog);
 
         await context.SaveChangesAsync(ct);
@@ -686,6 +893,91 @@ internal sealed class ChatExecutionService(
 
     private AiProviderType ResolveProvider(AiAssistant assistant) =>
         assistant.Provider ?? providerFactory.GetDefaultProviderType();
+
+    /// <summary>
+    /// Plan 5d-2: shared helper used by both <see cref="FinalizeTurnAsync"/> and the
+    /// <c>AwaitingApproval</c> branch so a partial run can record the tokens it actually
+    /// consumed without duplicating the model + cost + agent-principal lookup.
+    /// </summary>
+    private async Task<AiUsageLog> CreateUsageLogAsync(
+        ChatTurnState state,
+        int inputTokens,
+        int outputTokens,
+        CancellationToken ct)
+    {
+        var resolvedProvider = ResolveProvider(state.Assistant);
+        var model = state.Assistant.Model
+            ?? providerFactory.GetDefaultProviderType().ToString();
+        var estimatedCost = EstimateCost(resolvedProvider, inputTokens, outputTokens);
+
+        // Plan 5d-1: stamp the usage log with the assistant + paired agent principal so
+        // GetAgentUsage queries and AiCostReconciliationJob can attribute spend to the
+        // right agent. Lookup is one-shot per turn (small) and the FK is nullable to
+        // preserve compatibility with non-agent code paths.
+        Guid? agentPrincipalId = null;
+        if (state.Assistant.Id != Guid.Empty)
+        {
+            agentPrincipalId = await context.AiAgentPrincipals
+                .Where(p => p.AiAssistantId == state.Assistant.Id)
+                .Select(p => (Guid?)p.Id)
+                .FirstOrDefaultAsync(ct);
+        }
+
+        return AiUsageLog.Create(
+            tenantId: currentUser.TenantId,
+            userId: currentUser.UserId!.Value,   // safe — PrepareTurnAsync already guarded
+            provider: resolvedProvider,
+            model: model,
+            inputTokens: inputTokens,
+            outputTokens: outputTokens,
+            estimatedCost: estimatedCost,
+            requestType: AiRequestType.Chat,
+            conversationId: state.Conversation.Id,
+            aiAssistantId: state.Assistant.Id,
+            agentPrincipalId: agentPrincipalId);
+    }
+
+    /// <summary>
+    /// Plan 5d-2: stages moderation events emitted by the moderation runtime decorator
+    /// onto the shared change tracker so they flush atomically alongside the user/assistant
+    /// messages and (where applicable) the usage log in the next SaveChangesAsync.
+    /// </summary>
+    private void PersistModerationEvents(IReadOnlyList<AiModerationEvent>? events)
+    {
+        if (events is null || events.Count == 0) return;
+        context.AiModerationEvents.AddRange(events);
+    }
+
+    /// <summary>
+    /// Plan 5d-2: pulls the approval ID out of the synthetic tool-result JSON written by
+    /// <c>AgentToolDispatcher</c> when a [DangerousAction] tool created an approval. The
+    /// JSON shape is <c>{"ok":false,"error":{"code":"AiAgent.AwaitingApproval","approvalId":"..."}}</c>.
+    /// Returns null if no tool invocation in the last step carries that envelope.
+    /// </summary>
+    private static Guid? ExtractApprovalId(AgentRunResult result)
+    {
+        var lastStep = result.Steps.LastOrDefault();
+        if (lastStep is null) return null;
+        var lastInvocation = lastStep.ToolInvocations.LastOrDefault();
+        if (lastInvocation is null || string.IsNullOrWhiteSpace(lastInvocation.ResultJson))
+            return null;
+
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(lastInvocation.ResultJson);
+            if (doc.RootElement.TryGetProperty("error", out var err) &&
+                err.TryGetProperty("approvalId", out var idEl) &&
+                Guid.TryParse(idEl.GetString(), out var id))
+            {
+                return id;
+            }
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            // Best-effort — a malformed envelope just means we don't surface the approval ID.
+        }
+        return null;
+    }
 
     private async Task<RetrievedContext> RetrieveContextSafelyAsync(
         AiAssistant assistant, string userMessage, IReadOnlyList<AiChatMessage> providerMessages, CancellationToken ct)

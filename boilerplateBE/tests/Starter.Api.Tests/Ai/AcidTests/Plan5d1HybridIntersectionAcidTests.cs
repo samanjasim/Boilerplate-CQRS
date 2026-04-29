@@ -1,10 +1,12 @@
 using FluentAssertions;
 using MediatR;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Starter.Abstractions.Capabilities;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Services;
+using Starter.Module.AI.Application.Services.Approvals;
 using Starter.Module.AI.Application.Services.Runtime;
 using Starter.Module.AI.Domain.Errors;
 using Starter.Module.AI.Infrastructure.Providers;
@@ -28,7 +30,12 @@ public sealed class Plan5d1HybridIntersectionAcidTests
     {
         var sender = new Mock<ISender>();
         return new AgentToolDispatcher(
-            sender.Object, execution, NullLogger<AgentToolDispatcher>.Instance);
+            sender.Object,
+            execution,
+            Mock.Of<ICurrentAgentRunContextAccessor>(),
+            Mock.Of<IPendingApprovalService>(),
+            new ConfigurationBuilder().Build(),
+            NullLogger<AgentToolDispatcher>.Instance);
     }
 
     private static ToolResolutionResult ToolsRequiringPermission(string toolName, string permission)

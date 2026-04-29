@@ -17,7 +17,7 @@ internal static class AiAgentTemplateMappers
         ExecutionMode: template.ExecutionMode.ToString(),
         EnabledToolNames: template.EnabledToolNames,
         PersonaTargetSlugs: template.PersonaTargetSlugs,
-        SafetyPresetHint: template.SafetyPresetHint?.ToString());
+        SafetyPresetOverride: template.SafetyPresetOverride?.ToString());
 
     private static string ModuleOf(IAiAgentTemplate template) =>
         template is IAiAgentTemplateModuleSource src ? src.ModuleSource : "Unknown";

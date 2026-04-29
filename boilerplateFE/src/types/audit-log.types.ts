@@ -9,4 +9,7 @@ export interface AuditLog {
   performedAt: string;
   ipAddress: string | null;
   correlationId: string | null;
+  onBehalfOfUserId: string | null;
+  agentPrincipalId: string | null;
+  agentRunId: string | null;
 }

@@ -64,6 +64,7 @@ public sealed class OllamaAgentRuntimeTests
             Mock.Of<IAgentToolDispatcher>(),
             NewAiDb(),
             Mock.Of<IAgentPermissionResolver>(),
+            new CurrentAgentRunContextAccessor(),
             NullLogger<AgentRuntimeBase>.Instance);
 
         var sink = new RecordingSink();
@@ -88,6 +89,7 @@ public sealed class OllamaAgentRuntimeTests
             Mock.Of<IAgentToolDispatcher>(),
             NewAiDb(),
             Mock.Of<IAgentPermissionResolver>(),
+            new CurrentAgentRunContextAccessor(),
             NullLogger<AgentRuntimeBase>.Instance);
 
         var ctx = BuildCtx(ToolsWithOne());
@@ -121,6 +123,7 @@ public sealed class OllamaAgentRuntimeTests
             Mock.Of<IAgentToolDispatcher>(),
             NewAiDb(),
             Mock.Of<IAgentPermissionResolver>(),
+            new CurrentAgentRunContextAccessor(),
             NullLogger<AgentRuntimeBase>.Instance);
 
         var result = await runtime.RunAsync(BuildCtx(emptyTools), new RecordingSink(), CancellationToken.None);

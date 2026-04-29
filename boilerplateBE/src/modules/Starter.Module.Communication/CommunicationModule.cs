@@ -4,8 +4,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Modularity;
+using Starter.Application.Common.Interfaces;
 using Starter.Module.Communication.Constants;
 using Starter.Module.Communication.Infrastructure.Persistence;
+using Starter.Module.Communication.Infrastructure.Persistence.Seed;
 using Starter.Module.Communication.Infrastructure.Providers;
 using Starter.Module.Communication.Infrastructure.Services;
 
@@ -121,9 +123,14 @@ public sealed class CommunicationModule : IModule
     {
         using var scope = services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<CommunicationDbContext>();
+        var appDb = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
         var loggerFactory = scope.ServiceProvider.GetRequiredService<ILoggerFactory>();
         var logger = loggerFactory.CreateLogger("Communication.Seed");
         await SystemTemplateRegistrar.SeedAsync(context, logger);
         await EventRegistrar.SeedAsync(context, logger);
+        // Plan 5d-2 Task F2: ensure every existing tenant has the four AI agent
+        // approval categories marked as required InApp notifications. New tenants
+        // pick up the rows via CommunicationTenantEventHandler.Handle(TenantCreatedEvent).
+        await RequiredNotificationSeed.SeedAllTenantsAsync(context, appDb, logger, cancellationToken);
     }
 }

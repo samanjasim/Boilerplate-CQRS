@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="xml:space" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="Standard.Internal"><value>لا يمكنني مساعدتك في هذا الطلب لأنه يتعارض مع سياسة الاستخدام لدينا. يُرجى إعادة صياغة سؤالك أو التواصل مع الدعم إذا كنت ترى أن هذا خطأ.</value></data>
+  <data name="Standard.EndCustomer"><value>عذراً، لا يمكنني الرد على هذا الطلب.</value></data>
+  <data name="Standard.Anonymous"><value>لا يمكن معالجة هذا الطلب هنا.</value></data>
+  <data name="Standard.ProviderUnavailable"><value>خدمة فحص المحتوى غير متوفرة مؤقتاً. يُرجى المحاولة بعد قليل.</value></data>
+
+  <data name="ChildSafe.Internal"><value>لا يمكنني المتابعة في هذا الموضوع — لنجرّب سؤالاً آخر.</value></data>
+  <data name="ChildSafe.EndCustomer"><value>لنجرّب سؤالاً آخر.</value></data>
+  <data name="ChildSafe.Anonymous"><value>لنجرّب سؤالاً آخر.</value></data>
+  <data name="ChildSafe.ProviderUnavailable"><value>لا يمكنني المحادثة الآن. يُرجى المحاولة لاحقاً.</value></data>
+
+  <data name="ProfessionalModerated.Internal"><value>لا يمكنني مشاركة هذا الرد بصيغته الحالية. يُرجى إعادة الصياغة.</value></data>
+  <data name="ProfessionalModerated.EndCustomer"><value>لا يمكنني تقديم هذا الرد. يُرجى التواصل مع فريق حسابك.</value></data>
+  <data name="ProfessionalModerated.Anonymous"><value>تعذّر الرد.</value></data>
+  <data name="ProfessionalModerated.ProviderUnavailable"><value>هذه الخدمة غير متوفرة مؤقتاً.</value></data>
+</root>

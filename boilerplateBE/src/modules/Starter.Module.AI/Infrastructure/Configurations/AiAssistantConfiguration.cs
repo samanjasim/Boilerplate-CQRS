@@ -147,6 +147,10 @@ internal sealed class AiAssistantConfiguration : IEntityTypeConfiguration<AiAssi
         builder.Property(e => e.RequestsPerMinute)
             .HasColumnName("requests_per_minute");
 
+        builder.Property(e => e.SafetyPresetOverride)
+            .HasColumnName("safety_preset_override")
+            .HasConversion<int?>();
+
         builder.Property(e => e.CreatedAt)
             .HasColumnName("created_at")
             .IsRequired();

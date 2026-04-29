@@ -60,6 +60,7 @@ export const API_ENDPOINTS = {
   },
   AUDIT_LOGS: {
     LIST: '/AuditLogs',
+    BY_ID: (id: string) => `/AuditLogs/${id}`,
   },
   NOTIFICATIONS: {
     LIST: '/Notifications',

@@ -76,7 +76,7 @@ export function PermissionMatrix({
   return (
     <div className="space-y-1">
       {/* Select All Header */}
-      <div className="flex items-center justify-between rounded-lg bg-muted px-4 py-3 border">
+      <div className="flex items-center justify-between rounded-xl surface-glass px-4 py-3 border border-border/40">
         <div className="flex items-center gap-3">
           <Checkbox
             checked={allSelected}
@@ -101,11 +101,11 @@ export function PermissionMatrix({
           const moduleSomeSelected = moduleIds.some((id) => selectedIds.has(id)) && !moduleAllSelected;
 
           return (
-            <div key={group.module} className="rounded-lg border overflow-hidden">
+            <div key={group.module} className="rounded-xl border border-border/40 overflow-hidden">
               {/* Module Header */}
               <div
                 className={cn(
-                  'flex items-center gap-3 px-4 py-2.5 bg-muted/50 cursor-pointer select-none',
+                  'flex items-center gap-3 px-4 py-2.5 bg-secondary/40 cursor-pointer select-none',
                   disabled && 'cursor-not-allowed opacity-60'
                 )}
                 onClick={() => toggleModule(group)}
@@ -116,9 +116,11 @@ export function PermissionMatrix({
                   onChange={() => toggleModule(group)}
                   disabled={disabled}
                 />
-                <span className="text-sm font-medium text-foreground">{group.module}</span>
-                <span className="text-xs text-muted-foreground">
-                  ({moduleIds.filter((id) => selectedIds.has(id)).length}/{moduleIds.length})
+                <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground flex-1">
+                  {group.module}
+                </span>
+                <span className="text-[11px] font-mono text-muted-foreground">
+                  {moduleIds.filter((id) => selectedIds.has(id)).length}/{moduleIds.length}
                 </span>
               </div>
 

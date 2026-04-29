@@ -9,3 +9,12 @@ export function useAuditLogs(params?: Record<string, unknown>, options?: { enabl
     ...options,
   });
 }
+
+export function useAuditLog(id: string | undefined, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: queryKeys.auditLogs.detail(id ?? ''),
+    queryFn: () => auditLogsApi.getAuditLog(id!),
+    enabled: !!id && (options?.enabled ?? true),
+    staleTime: 60_000,
+  });
+}

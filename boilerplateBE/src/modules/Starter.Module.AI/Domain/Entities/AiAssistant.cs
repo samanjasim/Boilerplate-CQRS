@@ -62,6 +62,7 @@ public sealed class AiAssistant : AggregateRoot, ITenantEntity, IShareable
     public decimal? MonthlyCostCapUsd { get; private set; }
     public decimal? DailyCostCapUsd { get; private set; }
     public int? RequestsPerMinute { get; private set; }
+    public SafetyPreset? SafetyPresetOverride { get; private set; }
 
     private AiAssistant() { }
 
@@ -245,6 +246,14 @@ public sealed class AiAssistant : AggregateRoot, ITenantEntity, IShareable
         MonthlyCostCapUsd = monthlyUsd;
         DailyCostCapUsd = dailyUsd;
         RequestsPerMinute = requestsPerMinute;
+        ModifiedAt = DateTime.UtcNow;
+        if (TenantId is { } tenantId)
+            RaiseDomainEvent(new Domain.Events.AssistantUpdatedEvent(tenantId, Id));
+    }
+
+    public void SetSafetyPreset(SafetyPreset? preset)
+    {
+        SafetyPresetOverride = preset;
         ModifiedAt = DateTime.UtcNow;
         if (TenantId is { } tenantId)
             RaiseDomainEvent(new Domain.Events.AssistantUpdatedEvent(tenantId, Id));

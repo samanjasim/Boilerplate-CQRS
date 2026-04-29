@@ -10,6 +10,12 @@ public sealed class AiPersona : AggregateRoot, ITenantEntity
 {
     public const string AnonymousSlug = "anonymous";
     public const string DefaultSlug = "default";
+    public const string StudentSlug = "student";
+    public const string TeacherSlug = "teacher";
+    public const string ParentSlug = "parent";
+    public const string EditorSlug = "editor";
+    public const string ApproverSlug = "approver";
+    public const string ClientSlug = "client";
 
     private List<string> _permittedAgentSlugs = new();
 
@@ -107,6 +113,122 @@ public sealed class AiPersona : AggregateRoot, ITenantEntity
             isActive: true,
             createdByUserId);
 
+    public static AiPersona CreateStudent(Guid tenantId, Guid createdByUserId) =>
+        new(
+            Guid.NewGuid(),
+            tenantId,
+            StudentSlug,
+            "Student",
+            "Boilerplate flagship demo persona - school-age learner. ChildSafe by default.",
+            PersonaAudienceType.Internal,
+            SafetyPreset.ChildSafe,
+            isSystemReserved: false,
+            isActive: true,
+            createdByUserId);
+
+    public static AiPersona CreateTeacher(Guid tenantId, Guid createdByUserId) =>
+        new(
+            Guid.NewGuid(),
+            tenantId,
+            TeacherSlug,
+            "Teacher",
+            "Boilerplate flagship demo persona - classroom teacher / instructor.",
+            PersonaAudienceType.Internal,
+            SafetyPreset.Standard,
+            isSystemReserved: false,
+            isActive: true,
+            createdByUserId);
+
+    public static AiPersona CreateParent(Guid tenantId, Guid createdByUserId) =>
+        new(
+            Guid.NewGuid(),
+            tenantId,
+            ParentSlug,
+            "Parent",
+            "Boilerplate flagship demo persona - parent / guardian (end-customer).",
+            PersonaAudienceType.EndCustomer,
+            SafetyPreset.Standard,
+            isSystemReserved: false,
+            isActive: true,
+            createdByUserId);
+
+    public static AiPersona CreateEditor(Guid tenantId, Guid createdByUserId) =>
+        new(
+            Guid.NewGuid(),
+            tenantId,
+            EditorSlug,
+            "Editor",
+            "Boilerplate flagship demo persona - content editor / copywriter.",
+            PersonaAudienceType.Internal,
+            SafetyPreset.Standard,
+            isSystemReserved: false,
+            isActive: true,
+            createdByUserId);
+
+    public static AiPersona CreateApprover(Guid tenantId, Guid createdByUserId) =>
+        new(
+            Guid.NewGuid(),
+            tenantId,
+            ApproverSlug,
+            "Approver",
+            "Boilerplate flagship demo persona - content reviewer / approver.",
+            PersonaAudienceType.Internal,
+            SafetyPreset.Standard,
+            isSystemReserved: false,
+            isActive: true,
+            createdByUserId);
+
+    public static AiPersona CreateClient(Guid tenantId, Guid createdByUserId) =>
+        new(
+            Guid.NewGuid(),
+            tenantId,
+            ClientSlug,
+            "Client",
+            "Boilerplate flagship demo persona - external client (end-customer). ProfessionallyModerated.",
+            PersonaAudienceType.EndCustomer,
+            SafetyPreset.ProfessionalModerated,
+            isSystemReserved: false,
+            isActive: true,
+            createdByUserId);
+
+    /// <summary>
+    /// System personas reserved by the platform (anonymous + default). Seeded by
+    /// <c>SeedTenantPersonasDomainEventHandler</c> on <c>TenantCreatedEvent</c>.
+    /// </summary>
+    public static IReadOnlyDictionary<string, Func<Guid, Guid, AiPersona>> SystemPersonaFactories { get; } =
+        new Dictionary<string, Func<Guid, Guid, AiPersona>>(StringComparer.Ordinal)
+        {
+            [AnonymousSlug] = CreateAnonymous,
+            [DefaultSlug]   = CreateDefault,
+        };
+
+    /// <summary>
+    /// Plan 5e flagship demo personas. Boilerplate-shipped starters that flagship
+    /// templates (Teacher Tutor, Brand Content) and future flagship plans target.
+    /// Seeded for new tenants by <c>SeedTenantPersonasDomainEventHandler</c> and
+    /// backfilled for existing tenants by <c>FlagshipPersonasBackfillSeed</c>.
+    /// </summary>
+    public static IReadOnlyDictionary<string, Func<Guid, Guid, AiPersona>> FlagshipDemoPersonaFactories { get; } =
+        new Dictionary<string, Func<Guid, Guid, AiPersona>>(StringComparer.Ordinal)
+        {
+            [StudentSlug]   = CreateStudent,
+            [TeacherSlug]   = CreateTeacher,
+            [ParentSlug]    = CreateParent,
+            [EditorSlug]    = CreateEditor,
+            [ApproverSlug]  = CreateApprover,
+            [ClientSlug]    = CreateClient,
+        };
+
+    /// <summary>
+    /// Every persona slug the platform seeds (system + flagship demo).
+    /// Single source of truth for both the tenant-creation event handler and the
+    /// backfill seed.
+    /// </summary>
+    public static IReadOnlyDictionary<string, Func<Guid, Guid, AiPersona>> AllSeededPersonaFactories { get; } =
+        SystemPersonaFactories
+            .Concat(FlagshipDemoPersonaFactories)
+            .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
+
     public void Update(
         string displayName,
         string? description,
@@ -120,6 +242,7 @@ public sealed class AiPersona : AggregateRoot, ITenantEntity
         _permittedAgentSlugs = Normalize(permittedAgentSlugs);
         IsActive = isActive;
         ModifiedAt = DateTime.UtcNow;
+        RaiseDomainEvent(new Domain.Events.PersonaUpdatedEvent(TenantId, Id, Slug, safetyPreset));
     }
 
     public void SetActive(bool isActive)

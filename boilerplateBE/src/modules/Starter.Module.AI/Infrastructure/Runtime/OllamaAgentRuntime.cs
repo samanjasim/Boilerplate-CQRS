@@ -18,8 +18,9 @@ internal sealed class OllamaAgentRuntime(
     IAgentToolDispatcher toolDispatcher,
     AiDbContext aiDb,
     IAgentPermissionResolver agentPermissions,
+    CurrentAgentRunContextAccessor runCtxAccessor,
     ILogger<AgentRuntimeBase> logger)
-    : AgentRuntimeBase(providerFactory, toolDispatcher, aiDb, agentPermissions, logger)
+    : AgentRuntimeBase(providerFactory, toolDispatcher, aiDb, agentPermissions, runCtxAccessor, logger)
 {
     public override async Task<AgentRunResult> RunAsync(
         AgentRunContext context,

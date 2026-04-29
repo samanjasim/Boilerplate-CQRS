@@ -11,5 +11,6 @@ internal sealed class OpenAiAgentRuntime(
     IAgentToolDispatcher toolDispatcher,
     AiDbContext aiDb,
     IAgentPermissionResolver agentPermissions,
+    CurrentAgentRunContextAccessor runCtxAccessor,
     ILogger<AgentRuntimeBase> logger)
-    : AgentRuntimeBase(providerFactory, toolDispatcher, aiDb, agentPermissions, logger);
+    : AgentRuntimeBase(providerFactory, toolDispatcher, aiDb, agentPermissions, runCtxAccessor, logger);
