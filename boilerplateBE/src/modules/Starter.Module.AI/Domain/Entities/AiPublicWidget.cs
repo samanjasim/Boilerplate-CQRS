@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Starter.Domain.Common;
 using Starter.Module.AI.Domain.Enums;
 
@@ -36,7 +37,8 @@ public sealed class AiPublicWidget : AggregateRoot, ITenantEntity
         int? monthlyTokenCap,
         int? dailyTokenCap,
         int? requestsPerMinute,
-        Guid? createdByUserId) : base(Guid.NewGuid())
+        Guid? createdByUserId,
+        string? metadataJson) : base(Guid.NewGuid())
     {
         TenantId = tenantId;
         Name = name.Trim();
@@ -47,6 +49,7 @@ public sealed class AiPublicWidget : AggregateRoot, ITenantEntity
         MonthlyTokenCap = monthlyTokenCap;
         DailyTokenCap = dailyTokenCap;
         RequestsPerMinute = requestsPerMinute;
+        MetadataJson = NormalizeMetadataJson(metadataJson);
         CreatedByUserId = createdByUserId;
     }
 
@@ -59,7 +62,8 @@ public sealed class AiPublicWidget : AggregateRoot, ITenantEntity
         int? monthlyTokenCap,
         int? dailyTokenCap,
         int? requestsPerMinute,
-        Guid? createdByUserId)
+        Guid? createdByUserId,
+        string? metadataJson = null)
     {
         ValidateQuotas(monthlyTokenCap, dailyTokenCap, requestsPerMinute);
 
@@ -72,7 +76,8 @@ public sealed class AiPublicWidget : AggregateRoot, ITenantEntity
             monthlyTokenCap,
             dailyTokenCap,
             requestsPerMinute,
-            createdByUserId);
+            createdByUserId,
+            metadataJson);
     }
 
     public void Update(
@@ -94,7 +99,7 @@ public sealed class AiPublicWidget : AggregateRoot, ITenantEntity
         MonthlyTokenCap = monthlyTokenCap;
         DailyTokenCap = dailyTokenCap;
         RequestsPerMinute = requestsPerMinute;
-        MetadataJson = string.IsNullOrWhiteSpace(metadataJson) ? null : metadataJson;
+        MetadataJson = NormalizeMetadataJson(metadataJson);
         ModifiedAt = DateTime.UtcNow;
     }
 
@@ -125,14 +130,42 @@ public sealed class AiPublicWidget : AggregateRoot, ITenantEntity
 
     private static string NormalizeOrigin(string origin)
     {
-        if (!Uri.TryCreate(origin.Trim(), UriKind.Absolute, out var uri))
+        if (string.IsNullOrWhiteSpace(origin))
+            throw new ArgumentException("Origin must not be blank.", nameof(origin));
+
+        var trimmed = origin.Trim();
+        if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri))
             throw new ArgumentException($"Invalid origin '{origin}'.", nameof(origin));
 
         if (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp)
             throw new ArgumentException($"Origin '{origin}' must use http or https.", nameof(origin));
 
+        if (!string.IsNullOrEmpty(uri.UserInfo))
+            throw new ArgumentException($"Origin '{origin}' must not include user info.", nameof(origin));
+
+        if (uri.AbsolutePath != "/" || !string.IsNullOrEmpty(uri.Query) || !string.IsNullOrEmpty(uri.Fragment))
+            throw new ArgumentException($"Origin '{origin}' must not include a path, query, or fragment.", nameof(origin));
+
         return uri.IsDefaultPort
             ? $"{uri.Scheme}://{uri.Host.ToLowerInvariant()}"
             : $"{uri.Scheme}://{uri.Host.ToLowerInvariant()}:{uri.Port}";
+    }
+
+    private static string? NormalizeMetadataJson(string? metadataJson)
+    {
+        if (string.IsNullOrWhiteSpace(metadataJson))
+            return null;
+
+        var trimmed = metadataJson.Trim();
+        try
+        {
+            using var _ = JsonDocument.Parse(trimmed);
+        }
+        catch (JsonException ex)
+        {
+            throw new ArgumentException("MetadataJson must be valid JSON.", nameof(metadataJson), ex);
+        }
+
+        return trimmed;
     }
 }

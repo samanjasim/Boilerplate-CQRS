@@ -24,6 +24,8 @@ public sealed class AiWidgetCredential : AggregateRoot, ITenantEntity
         DateTimeOffset? expiresAt,
         Guid? createdByUserId) : base(Guid.NewGuid())
     {
+        Validate(tenantId, widgetId, keyPrefix, keyHash);
+
         TenantId = tenantId;
         WidgetId = widgetId;
         KeyPrefix = keyPrefix.Trim();
@@ -41,6 +43,21 @@ public sealed class AiWidgetCredential : AggregateRoot, ITenantEntity
         DateTimeOffset? expiresAt,
         Guid? createdByUserId) =>
         new(tenantId, widgetId, keyPrefix, keyHash, expiresAt, createdByUserId);
+
+    private static void Validate(Guid tenantId, Guid widgetId, string keyPrefix, string keyHash)
+    {
+        if (tenantId == Guid.Empty)
+            throw new ArgumentException("Tenant id must not be empty.", nameof(tenantId));
+
+        if (widgetId == Guid.Empty)
+            throw new ArgumentException("Widget id must not be empty.", nameof(widgetId));
+
+        if (string.IsNullOrWhiteSpace(keyPrefix))
+            throw new ArgumentException("Key prefix must not be blank.", nameof(keyPrefix));
+
+        if (string.IsNullOrWhiteSpace(keyHash))
+            throw new ArgumentException("Key hash must not be blank.", nameof(keyHash));
+    }
 
     public void Revoke()
     {

@@ -31,5 +31,11 @@ internal sealed class AiWidgetCredentialConfiguration : IEntityTypeConfiguration
         builder.HasIndex(e => e.KeyPrefix)
             .IsUnique()
             .HasDatabaseName("ux_ai_widget_credentials_key_prefix");
+
+        builder.HasOne<AiPublicWidget>()
+            .WithMany()
+            .HasForeignKey(e => new { e.TenantId, e.WidgetId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

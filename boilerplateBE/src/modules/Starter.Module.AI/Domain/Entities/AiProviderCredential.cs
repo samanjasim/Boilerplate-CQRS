@@ -26,6 +26,8 @@ public sealed class AiProviderCredential : AggregateRoot, ITenantEntity
         string keyPrefix,
         Guid? createdByUserId) : base(Guid.NewGuid())
     {
+        Validate(tenantId, displayName, encryptedSecret, keyPrefix);
+
         TenantId = tenantId;
         Provider = provider;
         DisplayName = displayName.Trim();
@@ -43,6 +45,21 @@ public sealed class AiProviderCredential : AggregateRoot, ITenantEntity
         string keyPrefix,
         Guid? createdByUserId) =>
         new(tenantId, provider, displayName, encryptedSecret, keyPrefix, createdByUserId);
+
+    private static void Validate(Guid tenantId, string displayName, string encryptedSecret, string keyPrefix)
+    {
+        if (tenantId == Guid.Empty)
+            throw new ArgumentException("Tenant id must not be empty.", nameof(tenantId));
+
+        if (string.IsNullOrWhiteSpace(displayName))
+            throw new ArgumentException("Display name must not be blank.", nameof(displayName));
+
+        if (string.IsNullOrWhiteSpace(encryptedSecret))
+            throw new ArgumentException("Encrypted secret must not be blank.", nameof(encryptedSecret));
+
+        if (string.IsNullOrWhiteSpace(keyPrefix))
+            throw new ArgumentException("Key prefix must not be blank.", nameof(keyPrefix));
+    }
 
     public void Revoke()
     {

@@ -48,7 +48,7 @@ public sealed class AiDbContext : DbContext, IModuleDbContext
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
 
-        // Tenant query filters — 10 entities are tenant-scoped
+        // Tenant query filters for tenant-scoped AI entities.
         modelBuilder.Entity<AiAssistant>().HasQueryFilter(e =>
             CurrentTenantId == null || e.TenantId == CurrentTenantId);
         modelBuilder.Entity<AiConversation>().HasQueryFilter(e =>
