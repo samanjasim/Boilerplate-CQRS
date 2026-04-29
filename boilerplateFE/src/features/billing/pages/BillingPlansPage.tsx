@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { PageHeader, EmptyState, ConfirmDialog } from '@/components/common';
 import { useAllPlans, useDeactivatePlan, useResyncPlan } from '../api';
-import { CreatePlanDialog } from '../components/CreatePlanDialog';
-import { EditPlanDialog } from '../components/EditPlanDialog';
+import { PlanFormDialog } from '../components/PlanFormDialog';
 import { usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
 import { getFeatureHighlights } from '../utils/features';
@@ -92,10 +91,11 @@ export default function BillingPlansPage() {
       )}
 
       {/* Dialogs */}
-      <CreatePlanDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <PlanFormDialog mode="create" open={createOpen} onOpenChange={setCreateOpen} />
 
       {editPlan && (
-        <EditPlanDialog
+        <PlanFormDialog
+          mode="edit"
           open={!!editPlan}
           onOpenChange={(open) => { if (!open) setEditPlan(null); }}
           plan={editPlan}
