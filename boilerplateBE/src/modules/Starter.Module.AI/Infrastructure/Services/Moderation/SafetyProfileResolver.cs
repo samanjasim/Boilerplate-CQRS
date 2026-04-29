@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Starter.Abstractions.Ai;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Services.Moderation;
+using Starter.Module.AI.Application.Services.Settings;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Persistence;
@@ -19,7 +20,8 @@ namespace Starter.Module.AI.Infrastructure.Services.Moderation;
 /// </summary>
 internal sealed class SafetyProfileResolver(
     AiDbContext db,
-    ICacheService cache) : ISafetyProfileResolver
+    ICacheService cache,
+    IAiTenantSettingsResolver tenantSettings) : ISafetyProfileResolver
 {
     private static readonly TimeSpan Ttl = TimeSpan.FromSeconds(60);
 
@@ -30,7 +32,10 @@ internal sealed class SafetyProfileResolver(
         ModerationProvider provider,
         CancellationToken ct)
     {
-        var preset = assistant.SafetyPresetOverride ?? personaPreset ?? SafetyPreset.Standard;
+        var tenantDefault = tenantId is { } tid
+            ? (await tenantSettings.GetOrDefaultAsync(tid, ct)).DefaultSafetyPreset
+            : SafetyPreset.Standard;
+        var preset = assistant.SafetyPresetOverride ?? personaPreset ?? tenantDefault;
         var key = $"safety:profile:{tenantId?.ToString() ?? "platform"}:{preset}:{provider}";
 
         var cached = await cache.GetAsync<CachedProfile>(key, ct);

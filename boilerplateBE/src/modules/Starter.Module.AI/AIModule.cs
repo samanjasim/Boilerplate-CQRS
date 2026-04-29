@@ -152,6 +152,7 @@ public sealed class AIModule : IModule
         services.AddScoped<IAiTenantSettingsResolver, AiTenantSettingsResolver>();
         services.AddScoped<IAiProviderCredentialResolver, AiProviderCredentialResolver>();
         services.AddScoped<IAiModelDefaultResolver, AiModelDefaultResolver>();
+        services.AddScoped<IAiBrandPromptResolver, AiBrandPromptResolver>();
         services.AddSingleton<IAiSecretProtector, AiSecretProtector>();
 
         services.AddSingleton<TokenCounter>();

@@ -43,6 +43,7 @@ internal sealed class ChatExecutionService(
     IPersonaContextAccessor personaContextAccessor,
     IAiProviderCredentialResolver providerCredentialResolver,
     IAiModelDefaultResolver modelDefaults,
+    IAiBrandPromptResolver brandPromptResolver,
     ILogger<ChatExecutionService> logger) : IChatExecutionService
 {
     private const string AiTokensMetric = "ai_tokens";
@@ -68,7 +69,7 @@ internal sealed class ChatExecutionService(
         var state = stateResult.Value;
         var retrieved = await RetrieveContextSafelyAsync(
             state.Assistant, userMessage, state.ProviderMessages, ct);
-        var effectiveSystemPrompt = ResolveSystemPrompt(state.Assistant, retrieved, state.Persona);
+        var effectiveSystemPrompt = await ResolveEffectiveSystemPromptAsync(state.Assistant, retrieved, state.Persona, ct);
 
         var modelResult = await modelDefaults.ResolveAsync(
             state.Assistant.TenantId,
@@ -337,7 +338,7 @@ internal sealed class ChatExecutionService(
 
         var retrieved = await RetrieveContextSafelyAsync(
             state.Assistant, userMessage, state.ProviderMessages, ct);
-        var effectiveSystemPrompt = ResolveSystemPrompt(state.Assistant, retrieved, state.Persona);
+        var effectiveSystemPrompt = await ResolveEffectiveSystemPromptAsync(state.Assistant, retrieved, state.Persona, ct);
 
         var modelResult = await modelDefaults.ResolveAsync(
             state.Assistant.TenantId,
@@ -1180,6 +1181,19 @@ internal sealed class ChatExecutionService(
         if (string.IsNullOrEmpty(clause)) return basePrompt;
 
         return clause + "\n\n" + basePrompt;
+    }
+
+    private async Task<string> ResolveEffectiveSystemPromptAsync(
+        AiAssistant assistant,
+        RetrievedContext retrieved,
+        PersonaContext? persona,
+        CancellationToken ct)
+    {
+        var baseSystemPrompt = ResolveSystemPrompt(assistant, retrieved, persona);
+        var brandClause = await brandPromptResolver.ResolveClauseAsync(assistant.TenantId, ct);
+        return string.IsNullOrWhiteSpace(brandClause)
+            ? baseSystemPrompt
+            : brandClause + "\n\n" + baseSystemPrompt;
     }
 
     /// <summary>
