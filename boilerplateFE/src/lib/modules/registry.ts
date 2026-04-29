@@ -10,8 +10,8 @@ import type {
   WebModule,
   WebModuleContext,
 } from './web-module';
-import { registerCapability } from '@/lib/extensions/capabilities';
-import { registerSlot, type SlotEntry } from '@/lib/extensions/slots';
+import { clearCapabilityRegistry, registerCapability } from '@/lib/extensions/capabilities';
+import { clearSlotRegistry, registerSlot, type SlotEntry } from '@/lib/extensions/slots';
 import type { SlotId } from '@/lib/extensions/slot-map';
 
 const registeredModuleIds = new Set<string>();
@@ -26,10 +26,15 @@ function ensureUnique(map: Map<string, unknown>, id: string, kind: string): void
 }
 
 export function registerWebModules(modules: WebModule[]): void {
+  // Clear every registry the context writes into so re-registration
+  // (HMR, tests, future dynamic toggles) cannot leak stale routes,
+  // nav, slots, or capabilities from a previous module set.
   registeredModuleIds.clear();
   routeContributions.clear();
   navGroupContributions.clear();
   navItemContributions.clear();
+  clearSlotRegistry();
+  clearCapabilityRegistry();
 
   for (const mod of modules) {
     if (registeredModuleIds.has(mod.id)) {
@@ -81,12 +86,12 @@ export function getModuleNavGroups(ctx: ModuleNavContext): ModuleNavGroup[] {
       const body = contribution.build(ctx);
       if (!body || body.items.length === 0) return undefined;
       return {
+        ...body,
         id: contribution.id,
         ...(contribution.order === undefined ? {} : { order: contribution.order }),
-        ...body,
       };
     })
-    .filter((group): group is ModuleNavGroup => Boolean(group && group.items.length > 0))
+    .filter((group): group is ModuleNavGroup => group !== undefined)
     .sort((a, b) => (a.order ?? 100) - (b.order ?? 100));
 }
 

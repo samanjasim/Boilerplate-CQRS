@@ -58,8 +58,9 @@ export default defineConfig([
     },
   },
   {
-    // Allowlist: the modules themselves (their own internal imports), the
-    // bootstrap config that wires them up, and the app entry point.
+    // Allowlist: the modules themselves (their own internal imports) and the
+    // generated bootstrap config that wires them up. main.tsx is not on this
+    // list — it must reach optional modules only via @/config/modules.config.
     files: [
       'src/features/billing/**',
       'src/features/webhooks/**',
@@ -69,7 +70,6 @@ export default defineConfig([
       'src/features/communication/**',
       'src/features/workflow/**',
       'src/config/modules.config.ts',
-      'src/app/main.tsx',
     ],
     rules: {
       'no-restricted-imports': 'off',
