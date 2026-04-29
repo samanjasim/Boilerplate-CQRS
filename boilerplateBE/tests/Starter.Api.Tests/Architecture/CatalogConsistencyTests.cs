@@ -217,11 +217,221 @@ public class CatalogConsistencyTests
             "generated modules.config.dart imports selected mobile modules from catalog metadata.");
     }
 
+    [Fact]
+    public void Every_module_declares_a_valid_semver_version()
+    {
+        // Tier 2.5 schema v2 (spec 2026-04-29 Theme 1): every module declares a semver version
+        // mirroring IModule.Version. Tier 3 will use this for package compatibility checks.
+        using var doc = JsonDocument.Parse(File.ReadAllText(CatalogPath));
+        var problems = new List<string>();
+
+        foreach (var module in ModuleEntries(doc))
+        {
+            var version = ReadOptionalString(module.Value, "version");
+            if (version is null)
+            {
+                problems.Add($"'{module.Name}' is missing required 'version' (Tier 2.5 schema v2)");
+                continue;
+            }
+
+            if (!IsSimpleSemver(version))
+                problems.Add($"'{module.Name}.version' = '{version}' is not MAJOR.MINOR.PATCH semver");
+        }
+
+        problems.Should().BeEmpty(
+            "modules.catalog.json schema v2 requires every module to declare a semver version. " +
+            "See spec 2026-04-29-modularity-tier-2-5-hardening.md §2 Theme 1.");
+    }
+
+    [Fact]
+    public void supportedPlatforms_matches_declared_path_fields()
+    {
+        // Tier 2.5 schema v2: supportedPlatforms is the explicit declaration. Drift between it
+        // and the path-bearing fields (backendModule/frontendFeature/mobileModule) means generated
+        // apps either skip a module the catalog claims to ship, or import a module that doesn't
+        // exist on the target platform.
+        using var doc = JsonDocument.Parse(File.ReadAllText(CatalogPath));
+        var allowed = new HashSet<string>(StringComparer.Ordinal) { "backend", "web", "mobile" };
+        var problems = new List<string>();
+
+        foreach (var module in ModuleEntries(doc))
+        {
+            var platforms = ReadStringArray(module.Value, "supportedPlatforms");
+            if (platforms is null)
+            {
+                problems.Add($"'{module.Name}' is missing required 'supportedPlatforms' (Tier 2.5 schema v2)");
+                continue;
+            }
+
+            if (platforms.Count == 0)
+            {
+                problems.Add($"'{module.Name}.supportedPlatforms' must contain at least one platform");
+                continue;
+            }
+
+            foreach (var p in platforms)
+            {
+                if (!allowed.Contains(p))
+                    problems.Add($"'{module.Name}.supportedPlatforms' contains unknown platform '{p}'");
+            }
+
+            var hasBackend = ReadOptionalString(module.Value, "backendModule") is not null;
+            var hasWeb = ReadOptionalString(module.Value, "frontendFeature") is not null;
+            var hasMobile = ReadOptionalString(module.Value, "mobileModule") is not null;
+
+            if (hasBackend && !platforms.Contains("backend"))
+                problems.Add($"'{module.Name}' declares backendModule but 'backend' is not in supportedPlatforms");
+            if (hasWeb && !platforms.Contains("web"))
+                problems.Add($"'{module.Name}' declares frontendFeature but 'web' is not in supportedPlatforms");
+            if (hasMobile && !platforms.Contains("mobile"))
+                problems.Add($"'{module.Name}' declares mobileModule but 'mobile' is not in supportedPlatforms");
+
+            if (platforms.Contains("backend") && !hasBackend)
+                problems.Add($"'{module.Name}' lists 'backend' in supportedPlatforms but has no backendModule");
+            if (platforms.Contains("web") && !hasWeb)
+                problems.Add($"'{module.Name}' lists 'web' in supportedPlatforms but has no frontendFeature");
+            if (platforms.Contains("mobile") && !hasMobile)
+                problems.Add($"'{module.Name}' lists 'mobile' in supportedPlatforms but has no mobileModule");
+        }
+
+        problems.Should().BeEmpty(
+            "supportedPlatforms must reflect what the module actually ships, in both directions. " +
+            "Drift here causes generated apps to import modules that don't exist on the target platform.");
+    }
+
+    [Fact]
+    public void Catalog_dependencies_are_platform_compatible()
+    {
+        // A module that supports a platform cannot depend on a module that does not.
+        // Otherwise generation succeeds but the platform build fails on missing imports.
+        using var doc = JsonDocument.Parse(File.ReadAllText(CatalogPath));
+        var modulePlatforms = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+        foreach (var module in ModuleEntries(doc))
+        {
+            modulePlatforms[module.Name] = ReadStringArray(module.Value, "supportedPlatforms") ?? Array.Empty<string>();
+        }
+
+        var problems = new List<string>();
+        foreach (var module in ModuleEntries(doc))
+        {
+            if (!module.Value.TryGetProperty("dependencies", out var deps) || deps.ValueKind != JsonValueKind.Array)
+                continue;
+
+            var consumerPlatforms = modulePlatforms[module.Name];
+            foreach (var dep in deps.EnumerateArray())
+            {
+                var depId = dep.GetString();
+                if (string.IsNullOrEmpty(depId)) continue;
+                if (!modulePlatforms.TryGetValue(depId, out var providerPlatforms)) continue; // covered by Every_dependency_entry_resolves_to_a_known_module_id
+
+                foreach (var platform in consumerPlatforms)
+                {
+                    if (!providerPlatforms.Contains(platform))
+                    {
+                        problems.Add(
+                            $"'{module.Name}' supports '{platform}' and depends on '{depId}', " +
+                            $"but '{depId}' does not support '{platform}' (supports: {string.Join(",", providerPlatforms)}).");
+                    }
+                }
+            }
+        }
+
+        problems.Should().BeEmpty(
+            "A module that supports a platform cannot depend on a module that does not — " +
+            "the consumer's platform build would fail on missing imports.");
+    }
+
+    [Fact]
+    public void coreCompat_when_present_is_a_non_empty_string()
+    {
+        // Tier 3 will add a real semver-range parser. Tier 2.5 only validates the field's shape
+        // so authors don't introduce typos before the enforcer exists. Field is intentionally
+        // unpopulated today; this test guards the day someone adds it.
+        using var doc = JsonDocument.Parse(File.ReadAllText(CatalogPath));
+        var problems = new List<string>();
+
+        foreach (var module in ModuleEntries(doc))
+        {
+            if (!module.Value.TryGetProperty("coreCompat", out var prop)) continue;
+            if (prop.ValueKind == JsonValueKind.Null) continue;
+
+            if (prop.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(prop.GetString()))
+                problems.Add($"'{module.Name}.coreCompat' must be a non-empty string when present");
+        }
+
+        problems.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void packageId_keys_match_supportedPlatforms()
+    {
+        // Tier 3 generators emit packageId values per platform. The shape is validated now so
+        // the field cannot rot in catalog before the generators land: only platforms the module
+        // actually supports may declare a package id.
+        using var doc = JsonDocument.Parse(File.ReadAllText(CatalogPath));
+        var allowedKeys = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            { "nuget", "backend" },
+            { "npm", "web" },
+            { "pub", "mobile" },
+        };
+        var problems = new List<string>();
+
+        foreach (var module in ModuleEntries(doc))
+        {
+            if (!module.Value.TryGetProperty("packageId", out var prop)) continue;
+            if (prop.ValueKind == JsonValueKind.Null) continue;
+            if (prop.ValueKind != JsonValueKind.Object)
+            {
+                problems.Add($"'{module.Name}.packageId' must be an object when present");
+                continue;
+            }
+
+            var platforms = ReadStringArray(module.Value, "supportedPlatforms") ?? Array.Empty<string>();
+            foreach (var key in prop.EnumerateObject())
+            {
+                if (!allowedKeys.TryGetValue(key.Name, out var requiredPlatform))
+                {
+                    problems.Add($"'{module.Name}.packageId' has unknown key '{key.Name}'; allowed: {string.Join(",", allowedKeys.Keys)}");
+                    continue;
+                }
+                if (!platforms.Contains(requiredPlatform))
+                {
+                    problems.Add(
+                        $"'{module.Name}.packageId.{key.Name}' is set but supportedPlatforms does not include '{requiredPlatform}'");
+                }
+                if (key.Value.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(key.Value.GetString()))
+                {
+                    problems.Add($"'{module.Name}.packageId.{key.Name}' must be a non-empty string");
+                }
+            }
+        }
+
+        problems.Should().BeEmpty();
+    }
+
     private static bool IsLowerCamelCase(string id)
     {
         if (string.IsNullOrEmpty(id)) return false;
         if (!char.IsLower(id[0])) return false;
         return id.All(c => char.IsLetterOrDigit(c));
+    }
+
+    private static bool IsSimpleSemver(string value)
+    {
+        var parts = value.Split('.');
+        if (parts.Length != 3) return false;
+        return parts.All(p => p.Length > 0 && p.All(char.IsDigit));
+    }
+
+    private static IReadOnlyList<string>? ReadStringArray(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var prop)) return null;
+        if (prop.ValueKind != JsonValueKind.Array) return null;
+        return prop.EnumerateArray()
+            .Where(e => e.ValueKind == JsonValueKind.String)
+            .Select(e => e.GetString()!)
+            .ToList();
     }
 
     private static IEnumerable<JsonProperty> ModuleEntries(JsonDocument doc) =>
