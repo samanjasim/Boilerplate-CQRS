@@ -100,6 +100,11 @@ export function useChangePlan() {
       queryClient.invalidateQueries({ queryKey: queryKeys.billing.subscription.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.billing.usage.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.billing.payments.all });
+      // A tenant changing their own plan also shifts the platform-admin
+      // status distribution and list — invalidate both so anyone viewing
+      // /billing/subscriptions sees the change immediately.
+      queryClient.invalidateQueries({ queryKey: queryKeys.billing.subscriptions.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.billing.subscriptions.statusCounts() });
       queryClient.invalidateQueries({ queryKey: ['featureFlags'] });
       toast.success(i18n.t('billing.planChanged'));
     },
@@ -113,10 +118,14 @@ export function useCancelSubscription() {
     onSuccess: async () => {
       // Cancel downgrades the tenant to the free plan, which resets usage quotas
       // and may void pending payments, so invalidate all three related caches.
+      // Also invalidate the platform-admin views — cancellation moves the
+      // subscription out of Active and into Canceled, shifting the status hero.
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.billing.subscription.all }),
         queryClient.invalidateQueries({ queryKey: queryKeys.billing.usage.all }),
         queryClient.invalidateQueries({ queryKey: queryKeys.billing.payments.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.billing.subscriptions.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.billing.subscriptions.statusCounts() }),
         queryClient.invalidateQueries({ queryKey: ['featureFlags'] }),
       ]);
       toast.success(i18n.t('billing.subscriptionCanceled'));
