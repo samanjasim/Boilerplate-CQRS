@@ -25,11 +25,15 @@ public sealed class RerankerTests
         var listwise = new ListwiseReranker(
             factory,
             cache,
+            new FakeAiModelDefaultResolver(),
+            new FakeAiProviderCredentialResolver(),
             opts,
             NullLogger<ListwiseReranker>.Instance);
         var pointwise = new PointwiseReranker(
             factory,
             cache,
+            new FakeAiModelDefaultResolver(),
+            new FakeAiProviderCredentialResolver(),
             opts,
             NullLogger<PointwiseReranker>.Instance);
         var selector = new RerankStrategySelector(settings);

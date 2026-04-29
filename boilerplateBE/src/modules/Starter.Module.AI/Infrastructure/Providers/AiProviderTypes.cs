@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Starter.Module.AI.Domain.Enums;
 
 namespace Starter.Module.AI.Infrastructure.Providers;
 
@@ -9,7 +10,10 @@ internal sealed record AiChatOptions(
     double Temperature = 0.7,
     int MaxTokens = 4096,
     string? SystemPrompt = null,
-    IReadOnlyList<AiToolDefinitionDto>? Tools = null);
+    IReadOnlyList<AiToolDefinitionDto>? Tools = null,
+    string? ApiKey = null,
+    ProviderCredentialSource ProviderCredentialSource = ProviderCredentialSource.Platform,
+    Guid? ProviderCredentialId = null);
 
 internal sealed record AiChatCompletion(
     string? Content,
@@ -17,6 +21,12 @@ internal sealed record AiChatCompletion(
     int InputTokens,
     int OutputTokens,
     string FinishReason);
+
+internal sealed record AiEmbeddingOptions(
+    string? Model = null,
+    string? ApiKey = null,
+    ProviderCredentialSource ProviderCredentialSource = ProviderCredentialSource.Platform,
+    Guid? ProviderCredentialId = null);
 
 /// <summary>
 /// A single frame from a streaming chat response. Any field may be null — providers

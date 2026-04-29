@@ -20,6 +20,8 @@ public sealed class QueryRewriterTests
         return new QueryRewriter(
             factory,
             cache,
+            new FakeAiModelDefaultResolver(),
+            new FakeAiProviderCredentialResolver(),
             Options.Create(settings ?? new AiRagSettings { EnableQueryExpansion = true }),
             NullLogger<QueryRewriter>.Instance);
     }

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Moq;
 using Starter.Abstractions.Ai;
 using Starter.Application.Common.Interfaces;
+using Starter.Module.AI.Application.Services.Settings;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Persistence;
@@ -38,11 +39,22 @@ public sealed class SafetyProfileResolverTests
         return a;
     }
 
+    private static SafetyProfileResolver Resolver(
+        AiDbContext db,
+        ICacheService cache,
+        SafetyPreset tenantDefault = SafetyPreset.Standard)
+    {
+        return new SafetyProfileResolver(
+            db,
+            cache,
+            new StaticTenantSettingsResolver(tenantDefault));
+    }
+
     [Fact]
     public async Task Override_Preset_Wins_Over_Persona()
     {
         var (db, cache) = Make();
-        var resolver = new SafetyProfileResolver(db, cache.Object);
+        var resolver = Resolver(db, cache.Object);
 
         var a = Assistant(SafetyPreset.ChildSafe);
         var resolved = await resolver.ResolveAsync(
@@ -85,7 +97,7 @@ public sealed class SafetyProfileResolverTests
 
         await db.SaveChangesAsync();
 
-        var resolver = new SafetyProfileResolver(db, cache.Object);
+        var resolver = Resolver(db, cache.Object);
         var assistant = AiAssistant.Create(tenantId, "x", null, "x", Guid.NewGuid());
 
         var resolved = await resolver.ResolveAsync(
@@ -99,7 +111,7 @@ public sealed class SafetyProfileResolverTests
     public async Task Falls_Back_To_Hard_Coded_When_No_Rows()
     {
         var (db, cache) = Make();
-        var resolver = new SafetyProfileResolver(db, cache.Object);
+        var resolver = Resolver(db, cache.Object);
         var assistant = AiAssistant.Create(Guid.NewGuid(), "x", null, "x", Guid.NewGuid());
 
         var resolved = await resolver.ResolveAsync(
@@ -111,5 +123,54 @@ public sealed class SafetyProfileResolverTests
         // Canonical OpenAI wire-format key — slashes, not hyphens — must match seed + moderator.
         resolved.BlockedCategories.Should().Contain("sexual/minors");
         resolved.FailureMode.Should().Be(ModerationFailureMode.FailClosed);
+    }
+
+    [Fact]
+    public async Task SafetyResolver_Uses_Tenant_Default_When_Assistant_And_Persona_Missing()
+    {
+        var (db, cache) = Make();
+        var tenantId = Guid.NewGuid();
+        var resolver = Resolver(db, cache.Object, SafetyPreset.ProfessionalModerated);
+        var assistant = Assistant(tenantId: tenantId);
+
+        var resolved = await resolver.ResolveAsync(
+            tenantId,
+            assistant,
+            personaPreset: null,
+            provider: ModerationProvider.OpenAi,
+            ct: default);
+
+        resolved.Preset.Should().Be(SafetyPreset.ProfessionalModerated);
+    }
+
+    [Fact]
+    public async Task SafetyResolver_Assistant_Override_Wins_Over_Tenant_Default()
+    {
+        var (db, cache) = Make();
+        var tenantId = Guid.NewGuid();
+        var resolver = Resolver(db, cache.Object, SafetyPreset.ProfessionalModerated);
+        var assistant = Assistant(SafetyPreset.ChildSafe, tenantId);
+
+        var resolved = await resolver.ResolveAsync(
+            tenantId,
+            assistant,
+            personaPreset: null,
+            provider: ModerationProvider.OpenAi,
+            ct: default);
+
+        resolved.Preset.Should().Be(SafetyPreset.ChildSafe);
+    }
+
+    private sealed class StaticTenantSettingsResolver(SafetyPreset defaultPreset) : IAiTenantSettingsResolver
+    {
+        public Task<AiTenantSettings> GetOrDefaultAsync(Guid tenantId, CancellationToken ct = default)
+        {
+            var settings = AiTenantSettings.CreateDefault(tenantId);
+            settings.UpdatePolicy(ProviderCredentialPolicy.PlatformOnly, defaultPreset);
+            return Task.FromResult(settings);
+        }
+
+        public Task<ProviderCredentialPolicy> ResolveEffectivePolicyAsync(Guid tenantId, CancellationToken ct = default) =>
+            Task.FromResult(ProviderCredentialPolicy.PlatformOnly);
     }
 }

@@ -34,7 +34,7 @@ internal sealed class RedisCostCapAccountant(
 
     public async Task<ClaimResult> TryClaimAsync(
         Guid tenantId, Guid assistantId, decimal estimatedUsd,
-        CapWindow window, decimal capUsd, CancellationToken ct = default)
+        CapWindow window, decimal capUsd, CostCapBucket bucket = CostCapBucket.Total, CancellationToken ct = default)
     {
         if (estimatedUsd < 0)
             throw new ArgumentOutOfRangeException(nameof(estimatedUsd));
@@ -42,7 +42,7 @@ internal sealed class RedisCostCapAccountant(
             throw new ArgumentOutOfRangeException(nameof(capUsd));
 
         var db = multiplexer.GetDatabase();
-        var key = WindowKey(tenantId, assistantId, window);
+        var key = WindowKey(tenantId, assistantId, window, bucket);
         var ttl = WindowTtl(window);
 
         try
@@ -76,11 +76,11 @@ internal sealed class RedisCostCapAccountant(
 
     public async Task RollbackClaimAsync(
         Guid tenantId, Guid assistantId, decimal estimatedUsd,
-        CapWindow window, CancellationToken ct = default)
+        CapWindow window, CostCapBucket bucket = CostCapBucket.Total, CancellationToken ct = default)
     {
         if (estimatedUsd <= 0) return;
         var db = multiplexer.GetDatabase();
-        var key = WindowKey(tenantId, assistantId, window);
+        var key = WindowKey(tenantId, assistantId, window, bucket);
         try
         {
             await db.StringIncrementAsync(key, (double)(-estimatedUsd));
@@ -95,11 +95,11 @@ internal sealed class RedisCostCapAccountant(
 
     public async Task RecordActualAsync(
         Guid tenantId, Guid assistantId, decimal deltaUsd,
-        CapWindow window, CancellationToken ct = default)
+        CapWindow window, CostCapBucket bucket = CostCapBucket.Total, CancellationToken ct = default)
     {
         if (deltaUsd == 0m) return;
         var db = multiplexer.GetDatabase();
-        var key = WindowKey(tenantId, assistantId, window);
+        var key = WindowKey(tenantId, assistantId, window, bucket);
         try
         {
             await db.StringIncrementAsync(key, (double)deltaUsd);
@@ -114,9 +114,13 @@ internal sealed class RedisCostCapAccountant(
 
     public async Task<decimal> GetCurrentAsync(
         Guid tenantId, Guid assistantId, CapWindow window, CancellationToken ct = default)
+        => await GetCurrentAsync(tenantId, assistantId, window, CostCapBucket.Total, ct);
+
+    public async Task<decimal> GetCurrentAsync(
+        Guid tenantId, Guid assistantId, CapWindow window, CostCapBucket bucket, CancellationToken ct = default)
     {
         var db = multiplexer.GetDatabase();
-        var key = WindowKey(tenantId, assistantId, window);
+        var key = WindowKey(tenantId, assistantId, window, bucket);
         try
         {
             var value = await db.StringGetAsync(key);
@@ -141,7 +145,7 @@ internal sealed class RedisCostCapAccountant(
     private static decimal ParseDecimal(string value, CultureInfo culture) =>
         decimal.Parse(value, NS.Float | NS.AllowThousands, culture);
 
-    private static string WindowKey(Guid tenantId, Guid assistantId, CapWindow window)
+    private static string WindowKey(Guid tenantId, Guid assistantId, CapWindow window, CostCapBucket costBucket)
     {
         var now = DateTimeOffset.UtcNow;
         var bucket = window switch
@@ -150,7 +154,8 @@ internal sealed class RedisCostCapAccountant(
             CapWindow.Monthly => now.ToString("yyyy-MM", CultureInfo.InvariantCulture),
             _ => throw new ArgumentOutOfRangeException(nameof(window))
         };
-        return $"ai:cost:{tenantId}:{assistantId}:{window.ToString().ToLowerInvariant()}:{bucket}";
+        var bucketName = costBucket == CostCapBucket.PlatformCredit ? "platform-cost" : "cost";
+        return $"ai:{bucketName}:{tenantId}:{assistantId}:{window.ToString().ToLowerInvariant()}:{bucket}";
     }
 
     private static TimeSpan WindowTtl(CapWindow window) => window switch

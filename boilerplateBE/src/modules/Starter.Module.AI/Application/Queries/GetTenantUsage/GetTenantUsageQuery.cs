@@ -12,6 +12,8 @@ public sealed record TenantUsageDto(
     long TotalOutputTokensMonthly,
     decimal TotalEstimatedCostUsdMonthly,
     decimal TotalEstimatedCostUsdDaily,
+    decimal TotalPlatformEstimatedCostUsdMonthly,
+    decimal TotalPlatformEstimatedCostUsdDaily,
     int RunCountMonthly,
     int AgentCount,
     EffectiveCaps PlanCeilings);

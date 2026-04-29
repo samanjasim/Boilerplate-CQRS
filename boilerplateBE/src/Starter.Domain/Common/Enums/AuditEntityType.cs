@@ -9,5 +9,6 @@ public enum AuditEntityType
     File = 5,
     ApiKey = 6,
     ResourceGrant = 7,
-    AiAssistant = 8
+    AiAssistant = 8,
+    AiProviderCredential = 9
 }

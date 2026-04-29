@@ -21,12 +21,14 @@ using Starter.Module.AI.Application.Services.Costs;
 using Starter.Module.AI.Application.Services.Pricing;
 using Starter.Module.AI.Application.Services.Retrieval;
 using Starter.Module.AI.Application.Services.Runtime;
+using Starter.Module.AI.Application.Services.Settings;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Runtime;
+using Starter.Shared.Results;
 using Xunit;
 
 namespace Starter.Api.Tests.Ai.Retrieval;
@@ -49,6 +51,24 @@ public sealed class ChatExecutionRagInjectionTests
         var savedMessage = await fx.LoadAssistantMessageAsync(reply.Value!.AssistantMessage.Id);
         savedMessage.Citations.Should().BeEmpty();
         fx.RetrievalCallCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task ChatExecution_Brand_Profile_Precedes_Assistant_Prompt()
+    {
+        var fx = new ChatExecutionTestFixture
+        {
+            BrandClause = "Tenant AI brand profile:\n- Name: Forma"
+        };
+        var assistant = fx.SeedAssistantWithRagScope(AiRagScope.None);
+        fx.FakeProvider.ScriptedResponse = "plain reply";
+
+        var reply = await fx.RunOneTurnAsync(assistant, userMessage: "hello");
+
+        reply.IsSuccess.Should().BeTrue();
+        fx.FakeProvider.LastSystemPrompt.Should().NotBeNull();
+        fx.FakeProvider.LastSystemPrompt!.IndexOf("Tenant AI brand profile:", StringComparison.Ordinal)
+            .Should().BeLessThan(fx.FakeProvider.LastSystemPrompt.IndexOf(assistant.SystemPrompt, StringComparison.Ordinal));
     }
 
     [Fact]
@@ -193,12 +213,18 @@ internal sealed class ChatExecutionTestFixture
     public Guid TenantId { get; } = Guid.NewGuid();
     public Guid UserId { get; } = Guid.NewGuid();
     public int RetrievalCallCount => _retrieval.CallCount;
+    public string? BrandClause
+    {
+        get => _brandPrompt.Clause;
+        set => _brandPrompt.Clause = value;
+    }
 
     /// <summary>Exposes the underlying <see cref="IChatExecutionService"/> for tests that
     /// need to call streaming overloads directly (e.g. the streaming cancellation regression).</summary>
     public IChatExecutionService Service => _chat;
 
     private readonly FakeRetrieval _retrieval = new();
+    private readonly StubBrandPromptResolver _brandPrompt = new();
     private readonly IChatExecutionService _chat;
 
     public ChatExecutionTestFixture(
@@ -229,9 +255,33 @@ internal sealed class ChatExecutionTestFixture
         services.AddSingleton<IAiToolRegistry, StubAiToolRegistry>();
         services.AddSingleton<IRagRetrievalService>(_retrieval);
         services.AddSingleton<ISender, NullSender>();
+        services.AddSingleton<IAiBrandPromptResolver>(_brandPrompt);
 
         services.AddSingleton<IAiProviderFactory>(new ScriptedProviderFactory(FakeProvider));
         services.AddSingleton<IResourceAccessService>(new StubResourceAccessService());
+        services.AddSingleton<IAiModelDefaultResolver>(
+            Mock.Of<IAiModelDefaultResolver>(r =>
+                r.ResolveAsync(
+                    It.IsAny<Guid?>(),
+                    It.IsAny<AiAgentClass>(),
+                    It.IsAny<AiProviderType?>(),
+                    It.IsAny<string?>(),
+                    It.IsAny<double?>(),
+                    It.IsAny<int?>(),
+                    It.IsAny<CancellationToken>())
+                == Task.FromResult(Result.Success(new ResolvedModelDefault(
+                    AiProviderType.Anthropic,
+                    "claude-sonnet-4",
+                    0.7,
+                    4096)))));
+        services.AddSingleton<IAiProviderCredentialResolver>(
+            Mock.Of<IAiProviderCredentialResolver>(r =>
+                r.ResolveAsync(It.IsAny<Guid?>(), It.IsAny<AiProviderType>(), It.IsAny<CancellationToken>())
+                == Task.FromResult(Result.Success(new ResolvedProviderCredential(
+                    AiProviderType.Anthropic,
+                    "test-provider-key",
+                    ProviderCredentialSource.Platform,
+                    ProviderCredentialId: null)))));
 
         // Agent runtime factory (Task 10 — ChatExecutionService.ExecuteAsync now delegates here)
         services.AddScoped<IAgentToolDispatcher, AgentToolDispatcher>();
@@ -473,10 +523,13 @@ internal sealed class ScriptedAiProvider : IAiProvider
         await Task.CompletedTask;
     }
 
-    public Task<float[]> EmbedAsync(string text, CancellationToken ct = default) =>
+    public Task<float[]> EmbedAsync(string text, CancellationToken ct = default, AiEmbeddingOptions? options = null) =>
         throw new NotSupportedException();
 
-    public Task<float[][]> EmbedBatchAsync(IReadOnlyList<string> texts, CancellationToken ct = default) =>
+    public Task<float[][]> EmbedBatchAsync(
+        IReadOnlyList<string> texts,
+        CancellationToken ct = default,
+        AiEmbeddingOptions? options = null) =>
         throw new NotSupportedException();
 }
 
@@ -590,6 +643,14 @@ internal sealed class StubAiToolRegistry : IAiToolRegistry
         Task.FromResult(new ToolResolutionResult(
             ProviderTools: [],
             DefinitionsByName: new Dictionary<string, IAiToolDefinition>()));
+}
+
+internal sealed class StubBrandPromptResolver : IAiBrandPromptResolver
+{
+    public string? Clause { get; set; }
+
+    public Task<string?> ResolveClauseAsync(Guid? tenantId, CancellationToken ct = default) =>
+        Task.FromResult(Clause);
 }
 
 internal sealed class RecordingLogger<T> : ILogger<T>

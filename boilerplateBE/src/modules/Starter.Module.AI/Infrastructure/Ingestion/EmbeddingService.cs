@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Services.Ingestion;
+using Starter.Module.AI.Application.Services.Settings;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
@@ -15,7 +16,9 @@ internal sealed class EmbeddingService(
     AiDbContext context,
     ICurrentUserService currentUser,
     IOptions<AiRagSettings> ragOptions,
-    TokenCounter tokenCounter) : IEmbeddingService
+    TokenCounter tokenCounter,
+    IAiModelDefaultResolver modelDefaults,
+    IAiProviderCredentialResolver providerCredentials) : IEmbeddingService
 {
     private int _vectorSize = -1;
     public int VectorSize => _vectorSize > 0
@@ -30,8 +33,30 @@ internal sealed class EmbeddingService(
     {
         if (texts.Count == 0) return Array.Empty<float[]>();
 
-        var provider = providerFactory.CreateForEmbeddings();
-        var providerType = providerFactory.GetEmbeddingProviderType();
+        var tenantId = attribution?.TenantId ?? currentUser.TenantId;
+        var modelResult = await modelDefaults.ResolveAsync(
+            tenantId,
+            AiAgentClass.Embedding,
+            explicitProvider: null,
+            explicitModel: null,
+            explicitTemperature: null,
+            explicitMaxTokens: null,
+            ct);
+        if (modelResult.IsFailure)
+            throw new InvalidOperationException(modelResult.Error.Description);
+
+        var modelConfig = modelResult.Value;
+        var credentialResult = await providerCredentials.ResolveAsync(tenantId, modelConfig.Provider, ct);
+        if (credentialResult.IsFailure)
+            throw new InvalidOperationException(credentialResult.Error.Description);
+
+        var credential = credentialResult.Value;
+        var provider = providerFactory.Create(modelConfig.Provider);
+        var embeddingOptions = new AiEmbeddingOptions(
+            Model: modelConfig.Model,
+            ApiKey: credential.Secret,
+            ProviderCredentialSource: credential.Source,
+            ProviderCredentialId: credential.ProviderCredentialId);
         var batchSize = ragOptions.Value.EmbedBatchSize;
         var all = new List<float[]>(texts.Count);
         var totalTokens = 0;
@@ -40,7 +65,7 @@ internal sealed class EmbeddingService(
         {
             ct.ThrowIfCancellationRequested();
             var batch = texts.Skip(offset).Take(batchSize).ToList();
-            var vectors = await EmbedBatchWithRetryAsync(provider, batch, ct);
+            var vectors = await EmbedBatchWithRetryAsync(provider, batch, embeddingOptions, ct);
             all.AddRange(vectors);
             totalTokens += batch.Sum(tokenCounter.Count);
         }
@@ -56,12 +81,14 @@ internal sealed class EmbeddingService(
             var log = AiUsageLog.Create(
                 tenantId: logTenant,
                 userId: uid,
-                provider: providerType,
-                model: "embedding",
+                provider: modelConfig.Provider,
+                model: modelConfig.Model,
                 inputTokens: totalTokens,
                 outputTokens: 0,
                 estimatedCost: 0m,
-                requestType: requestType);
+                requestType: requestType,
+                providerCredentialSource: credential.Source,
+                providerCredentialId: credential.ProviderCredentialId);
             context.AiUsageLogs.Add(log);
             await context.SaveChangesAsync(ct);
         }
@@ -70,14 +97,17 @@ internal sealed class EmbeddingService(
     }
 
     private static async Task<float[][]> EmbedBatchWithRetryAsync(
-        IAiProvider provider, IReadOnlyList<string> batch, CancellationToken ct)
+        IAiProvider provider,
+        IReadOnlyList<string> batch,
+        AiEmbeddingOptions options,
+        CancellationToken ct)
     {
         var delays = new[] { TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(800) };
         for (var attempt = 0; ; attempt++)
         {
             try
             {
-                return await provider.EmbedBatchAsync(batch, ct);
+                return await provider.EmbedBatchAsync(batch, ct, options);
             }
             catch (Exception ex) when (attempt < delays.Length && IsTransient(ex))
             {

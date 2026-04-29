@@ -132,10 +132,13 @@ internal sealed class FakeAiProvider : IAiProvider
         }
     }
 
-    public Task<float[]> EmbedAsync(string text, CancellationToken ct = default)
+    public Task<float[]> EmbedAsync(string text, CancellationToken ct = default, AiEmbeddingOptions? options = null)
         => Task.FromResult(Array.Empty<float>());
 
-    public Task<float[][]> EmbedBatchAsync(IReadOnlyList<string> texts, CancellationToken ct = default)
+    public Task<float[][]> EmbedBatchAsync(
+        IReadOnlyList<string> texts,
+        CancellationToken ct = default,
+        AiEmbeddingOptions? options = null)
         => Task.FromResult(texts.Select(_ => Array.Empty<float>()).ToArray());
 }
 

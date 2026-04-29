@@ -37,9 +37,11 @@ using Starter.Module.AI.Application.Services.Approvals;
 using Starter.Module.AI.Application.Services.Moderation;
 using Starter.Module.AI.Application.Services.Personas;
 using Starter.Module.AI.Application.Services.Runtime;
+using Starter.Module.AI.Application.Services.Settings;
 using Starter.Module.AI.Infrastructure.Runtime;
 using Starter.Module.AI.Infrastructure.Services.Moderation;
 using Starter.Module.AI.Infrastructure.Services.Personas;
+using Starter.Module.AI.Infrastructure.Services.Settings;
 using Starter.Module.AI.Infrastructure.Settings;
 using Starter.Module.AI.Infrastructure.Persistence.Seed;
 
@@ -146,6 +148,12 @@ public sealed class AIModule : IModule
         services.AddScoped<CurrentAgentRunContextAccessor>();
         services.AddScoped<ICurrentAgentRunContextAccessor>(sp =>
             sp.GetRequiredService<CurrentAgentRunContextAccessor>());
+        services.AddScoped<IAiEntitlementResolver, AiEntitlementResolver>();
+        services.AddScoped<IAiTenantSettingsResolver, AiTenantSettingsResolver>();
+        services.AddScoped<IAiProviderCredentialResolver, AiProviderCredentialResolver>();
+        services.AddScoped<IAiModelDefaultResolver, AiModelDefaultResolver>();
+        services.AddScoped<IAiBrandPromptResolver, AiBrandPromptResolver>();
+        services.AddSingleton<IAiSecretProtector, AiSecretProtector>();
 
         services.AddSingleton<TokenCounter>();
 
@@ -175,6 +183,8 @@ public sealed class AIModule : IModule
             sp.GetRequiredService<Infrastructure.Ingestion.EmbeddingService>(),
             sp.GetRequiredService<Starter.Application.Common.Interfaces.ICacheService>(),
             sp.GetRequiredService<Infrastructure.Providers.IAiProviderFactory>(),
+            sp.GetRequiredService<IAiModelDefaultResolver>(),
+            sp.GetRequiredService<ICurrentUserService>(),
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<Infrastructure.Settings.AiRagSettings>>()));
         services.AddScoped<Infrastructure.Retrieval.PostgresKeywordSearchService>();
         services.AddScoped<IKeywordSearchService>(sp => new CircuitBreakingKeywordSearch(
@@ -279,7 +289,8 @@ public sealed class AIModule : IModule
             AiPermissions.SafetyProfilesManage,
             AiPermissions.AgentsApproveAction,
             AiPermissions.AgentsViewApprovals,
-            AiPermissions.ModerationView
+            AiPermissions.ModerationView,
+            AiPermissions.ManageSettings
         ]);
 
         yield return ("User", [

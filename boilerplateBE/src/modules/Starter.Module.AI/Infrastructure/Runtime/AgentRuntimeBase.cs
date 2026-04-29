@@ -138,7 +138,10 @@ internal abstract class AgentRuntimeBase(
             Temperature: ctx.ModelConfig.Temperature,
             MaxTokens: ctx.ModelConfig.MaxTokens,
             SystemPrompt: ctx.SystemPrompt,
-            Tools: ctx.Tools.ProviderTools.Count == 0 ? null : ctx.Tools.ProviderTools);
+            Tools: ctx.Tools.ProviderTools.Count == 0 ? null : ctx.Tools.ProviderTools,
+            ApiKey: ctx.ProviderApiKey,
+            ProviderCredentialSource: ctx.ProviderCredentialSource,
+            ProviderCredentialId: ctx.ProviderCredentialId);
 
         var messages = new List<AiChatMessage>(ctx.Messages);
         var steps = new List<AgentStepEvent>();
@@ -281,7 +284,10 @@ internal abstract class AgentRuntimeBase(
             Temperature: ctx.ModelConfig.Temperature,
             MaxTokens: ctx.ModelConfig.MaxTokens,
             SystemPrompt: ctx.SystemPrompt,
-            Tools: ctx.Tools.ProviderTools.Count == 0 ? null : ctx.Tools.ProviderTools);
+            Tools: ctx.Tools.ProviderTools.Count == 0 ? null : ctx.Tools.ProviderTools,
+            ApiKey: ctx.ProviderApiKey,
+            ProviderCredentialSource: ctx.ProviderCredentialSource,
+            ProviderCredentialId: ctx.ProviderCredentialId);
 
         var messages = new List<AiChatMessage>(ctx.Messages);
         var steps = new List<AgentStepEvent>();

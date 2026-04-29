@@ -4,6 +4,7 @@ using Starter.Module.AI.Application.Services.Costs;
 using Starter.Module.AI.Application.Services.Pricing;
 using Starter.Module.AI.Application.Services.Runtime;
 using Starter.Module.AI.Domain.Errors;
+using Starter.Module.AI.Domain.Enums;
 using Starter.Shared.Results;
 
 namespace Starter.Module.AI.Infrastructure.Runtime;
@@ -83,28 +84,43 @@ internal sealed class CostCapEnforcingAgentRuntime(
             return await inner.RunAsync(ctx, sink, ct);
         }
 
-        // Monthly claim
-        var monthly = await accountant.TryClaimAsync(tenantId, assistantId, estimated, CapWindow.Monthly, effective.MonthlyUsd, ct);
-        if (!monthly.Granted)
-        {
-            return CostCapExceededResult("monthly",
-                AiAgentErrors.CostCapExceeded("monthly", monthly.CapUsd, monthly.CurrentUsd));
-        }
+        var claimed = new List<(CapWindow Window, CostCapBucket Bucket)>();
 
-        // Daily claim
-        var daily = await accountant.TryClaimAsync(tenantId, assistantId, estimated, CapWindow.Daily, effective.DailyUsd, ct);
-        if (!daily.Granted)
+        var monthly = await ClaimAsync(CapWindow.Monthly, effective.MonthlyUsd, CostCapBucket.Total, "monthly");
+        if (monthly is not null)
+            return monthly;
+
+        var daily = await ClaimAsync(CapWindow.Daily, effective.DailyUsd, CostCapBucket.Total, "daily");
+        if (daily is not null)
+            return daily;
+
+        if (ctx.ProviderCredentialSource == ProviderCredentialSource.Platform)
         {
-            await accountant.RollbackClaimAsync(tenantId, assistantId, estimated, CapWindow.Monthly, ct);
-            return CostCapExceededResult("daily",
-                AiAgentErrors.CostCapExceeded("daily", daily.CapUsd, daily.CurrentUsd));
+            var platformMonthly = await ClaimAsync(
+                CapWindow.Monthly,
+                effective.PlatformMonthlyUsd,
+                CostCapBucket.PlatformCredit,
+                "platform monthly");
+            if (platformMonthly is not null)
+                return platformMonthly;
+
+            var platformDaily = await ClaimAsync(
+                CapWindow.Daily,
+                effective.PlatformDailyUsd,
+                CostCapBucket.PlatformCredit,
+                "platform daily");
+            if (platformDaily is not null)
+                return platformDaily;
         }
 
         // Rate limit
         if (!await rateLimiter.TryAcquireAsync(assistantId, effective.Rpm, ct))
         {
-            await accountant.RollbackClaimAsync(tenantId, assistantId, estimated, CapWindow.Monthly, ct);
-            await accountant.RollbackClaimAsync(tenantId, assistantId, estimated, CapWindow.Daily, ct);
+            foreach (var claim in claimed)
+            {
+                await accountant.RollbackClaimAsync(tenantId, assistantId, estimated, claim.Window, claim.Bucket, ct);
+            }
+
             return RateLimitExceededResult(effective.Rpm);
         }
 
@@ -121,8 +137,10 @@ internal sealed class CostCapEnforcingAgentRuntime(
             var delta = actual - estimated;
             if (delta != 0m)
             {
-                await accountant.RecordActualAsync(tenantId, assistantId, delta, CapWindow.Monthly, ct);
-                await accountant.RecordActualAsync(tenantId, assistantId, delta, CapWindow.Daily, ct);
+                foreach (var claim in claimed)
+                {
+                    await accountant.RecordActualAsync(tenantId, assistantId, delta, claim.Window, claim.Bucket, ct);
+                }
             }
         }
         catch (Exception ex)
@@ -133,6 +151,27 @@ internal sealed class CostCapEnforcingAgentRuntime(
         }
 
         return result;
+
+        async Task<AgentRunResult?> ClaimAsync(
+            CapWindow window,
+            decimal capUsd,
+            CostCapBucket bucket,
+            string tier)
+        {
+            var claim = await accountant.TryClaimAsync(tenantId, assistantId, estimated, window, capUsd, bucket, ct);
+            if (claim.Granted)
+            {
+                claimed.Add((window, bucket));
+                return null;
+            }
+
+            foreach (var previous in claimed)
+            {
+                await accountant.RollbackClaimAsync(tenantId, assistantId, estimated, previous.Window, previous.Bucket, ct);
+            }
+
+            return CostCapExceededResult(tier, AiAgentErrors.CostCapExceeded(tier, claim.CapUsd, claim.CurrentUsd));
+        }
     }
 
     private static int EstimateInputTokens(AgentRunContext ctx)

@@ -18,6 +18,7 @@
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
     <PackageReference Include="Polly" />
+    <PackageReference Include="BCrypt.Net-Next" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Starter.Abstractions.Web\Starter.Abstractions.Web.csproj" />

@@ -13,6 +13,8 @@ public class QuestionClassifierTests
 {
     private static QuestionClassifier Build(FakeAiProvider provider, FakeCacheService cache) =>
         new(new FakeAiProviderFactory(provider), cache,
+            new FakeAiModelDefaultResolver(),
+            new FakeAiProviderCredentialResolver(),
             Options.Create(new AiRagSettings()), NullLogger<QuestionClassifier>.Instance);
 
     [Fact]

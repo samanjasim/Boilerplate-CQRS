@@ -16,10 +16,12 @@ internal sealed class AnthropicAiProvider(
 {
     private const string DefaultModel = "claude-sonnet-4-20250514";
 
-    private AnthropicClient CreateClient()
+    private AnthropicClient CreateClient(string? resolvedApiKey = null)
     {
-        var apiKey = configuration["AI:Providers:Anthropic:ApiKey"]
-            ?? throw new InvalidOperationException("Anthropic API key is not configured (AI:Providers:Anthropic:ApiKey).");
+        var apiKey = !string.IsNullOrWhiteSpace(resolvedApiKey)
+            ? resolvedApiKey
+            : configuration["AI:Providers:Anthropic:ApiKey"]
+              ?? throw new InvalidOperationException("Anthropic API key is not configured (AI:Providers:Anthropic:ApiKey).");
         // Use a pooled HttpClient so socket/DNS caches are shared and a single provider
         // instance does not spin up a new connection pool per call.
         var httpClient = httpClientFactory.CreateClient(nameof(AnthropicAiProvider));
@@ -44,7 +46,7 @@ internal sealed class AnthropicAiProvider(
         AiChatOptions options,
         CancellationToken ct = default)
     {
-        using var client = CreateClient();
+        using var client = CreateClient(options.ApiKey);
         var parameters = BuildParameters(messages, options, stream: false);
 
         logger.LogDebug("Sending Anthropic chat request. Model={Model}, Messages={Count}", parameters.Model, parameters.Messages.Count);
@@ -65,7 +67,7 @@ internal sealed class AnthropicAiProvider(
         AiChatOptions options,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
-        using var client = CreateClient();
+        using var client = CreateClient(options.ApiKey);
         var parameters = BuildParameters(messages, options, stream: true);
 
         logger.LogDebug("Starting Anthropic streaming request. Model={Model}", parameters.Model);
@@ -128,10 +130,16 @@ internal sealed class AnthropicAiProvider(
         }
     }
 
-    public Task<float[]> EmbedAsync(string text, CancellationToken ct = default)
+    public Task<float[]> EmbedAsync(
+        string text,
+        CancellationToken ct = default,
+        AiEmbeddingOptions? options = null)
         => throw new NotSupportedException("Anthropic does not provide an embeddings API. Use OpenAI or Ollama for embeddings.");
 
-    public Task<float[][]> EmbedBatchAsync(IReadOnlyList<string> texts, CancellationToken ct = default)
+    public Task<float[][]> EmbedBatchAsync(
+        IReadOnlyList<string> texts,
+        CancellationToken ct = default,
+        AiEmbeddingOptions? options = null)
         => throw new NotSupportedException("Anthropic does not provide an embeddings API. Use OpenAI or Ollama for embeddings.");
 
     // ── Helpers ──────────────────────────────────────────────────────────────

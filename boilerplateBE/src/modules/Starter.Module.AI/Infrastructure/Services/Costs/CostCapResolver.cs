@@ -31,6 +31,8 @@ internal sealed class CostCapResolver(
         // ICurrentUserService scope that returns the trigger's tenant id.
         var planMonthly = await featureFlags.GetValueAsync<decimal>("ai.cost.tenant_monthly_usd", ct);
         var planDaily = await featureFlags.GetValueAsync<decimal>("ai.cost.tenant_daily_usd", ct);
+        var planPlatformMonthly = await featureFlags.GetValueAsync<decimal>("ai.cost.platform_monthly_usd", ct);
+        var planPlatformDaily = await featureFlags.GetValueAsync<decimal>("ai.cost.platform_daily_usd", ct);
         var planRpm = await featureFlags.GetValueAsync<int>("ai.agents.requests_per_minute_default", ct);
 
         var assistant = await db.AiAssistants
@@ -44,18 +46,51 @@ internal sealed class CostCapResolver(
             })
             .FirstOrDefaultAsync(ct);
 
-        var monthly = MinNonNull(planMonthly, assistant?.MonthlyCostCapUsd);
-        var daily = MinNonNull(planDaily, assistant?.DailyCostCapUsd);
-        var rpm = MinNonNull(planRpm, assistant?.RequestsPerMinute);
+        var tenant = await db.AiTenantSettings
+            .AsNoTracking()
+            .Where(s => s.TenantId == tenantId)
+            .Select(s => new
+            {
+                s.MonthlyCostCapUsd,
+                s.DailyCostCapUsd,
+                s.PlatformMonthlyCostCapUsd,
+                s.PlatformDailyCostCapUsd,
+                s.RequestsPerMinute
+            })
+            .FirstOrDefaultAsync(ct);
 
-        return new EffectiveCaps(monthly, daily, rpm);
+        var monthly = MinNonNull(planMonthly, tenant?.MonthlyCostCapUsd, assistant?.MonthlyCostCapUsd);
+        var daily = MinNonNull(planDaily, tenant?.DailyCostCapUsd, assistant?.DailyCostCapUsd);
+        var rpm = MinNonNull(planRpm, tenant?.RequestsPerMinute, assistant?.RequestsPerMinute);
+        var platformMonthly = MinNonNull(planPlatformMonthly, tenant?.PlatformMonthlyCostCapUsd, assistant?.MonthlyCostCapUsd);
+        var platformDaily = MinNonNull(planPlatformDaily, tenant?.PlatformDailyCostCapUsd, assistant?.DailyCostCapUsd);
+
+        return new EffectiveCaps(monthly, daily, rpm, platformMonthly, platformDaily);
     }
 
-    private static decimal MinNonNull(decimal plan, decimal? agent) =>
-        agent is null ? plan : Math.Min(plan, agent.Value);
+    private static decimal MinNonNull(decimal requiredPlan, params decimal?[] values)
+    {
+        var result = requiredPlan;
+        foreach (var value in values)
+        {
+            if (value.HasValue)
+                result = Math.Min(result, value.Value);
+        }
 
-    private static int MinNonNull(int plan, int? agent) =>
-        agent is null ? plan : Math.Min(plan, agent.Value);
+        return result;
+    }
+
+    private static int MinNonNull(int requiredPlan, params int?[] values)
+    {
+        var result = requiredPlan;
+        foreach (var value in values)
+        {
+            if (value.HasValue)
+                result = Math.Min(result, value.Value);
+        }
+
+        return result;
+    }
 
     private static string CacheKey(Guid tenantId, Guid assistantId) =>
         $"ai:cap:{tenantId}:{assistantId}";

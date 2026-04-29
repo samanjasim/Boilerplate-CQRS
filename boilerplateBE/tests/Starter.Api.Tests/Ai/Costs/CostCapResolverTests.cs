@@ -34,6 +34,15 @@ public sealed class CostCapResolverTests
         return (db, ff, cache);
     }
 
+    private static void SetupPlan(Mock<IFeatureFlagService> ff)
+    {
+        ff.Setup(f => f.GetValueAsync<decimal>("ai.cost.tenant_monthly_usd", default)).ReturnsAsync(20m);
+        ff.Setup(f => f.GetValueAsync<decimal>("ai.cost.tenant_daily_usd", default)).ReturnsAsync(2m);
+        ff.Setup(f => f.GetValueAsync<decimal>("ai.cost.platform_monthly_usd", default)).ReturnsAsync(10m);
+        ff.Setup(f => f.GetValueAsync<decimal>("ai.cost.platform_daily_usd", default)).ReturnsAsync(1m);
+        ff.Setup(f => f.GetValueAsync<int>("ai.agents.requests_per_minute_default", default)).ReturnsAsync(60);
+    }
+
     [Fact]
     public async Task Resolve_Returns_Plan_Caps_When_No_Per_Agent_Override()
     {
@@ -42,9 +51,7 @@ public sealed class CostCapResolverTests
         db.AiAssistants.Add(assistant);
         await db.SaveChangesAsync();
 
-        ff.Setup(f => f.GetValueAsync<decimal>("ai.cost.tenant_monthly_usd", default)).ReturnsAsync(20m);
-        ff.Setup(f => f.GetValueAsync<decimal>("ai.cost.tenant_daily_usd", default)).ReturnsAsync(2m);
-        ff.Setup(f => f.GetValueAsync<int>("ai.agents.requests_per_minute_default", default)).ReturnsAsync(60);
+        SetupPlan(ff);
 
         var sut = new CostCapResolver(db, ff.Object, cache.Object);
         var caps = await sut.ResolveAsync(assistant.TenantId!.Value, assistant.Id);
@@ -52,6 +59,8 @@ public sealed class CostCapResolverTests
         caps.MonthlyUsd.Should().Be(20m);
         caps.DailyUsd.Should().Be(2m);
         caps.Rpm.Should().Be(60);
+        caps.PlatformMonthlyUsd.Should().Be(10m);
+        caps.PlatformDailyUsd.Should().Be(1m);
     }
 
     [Fact]
@@ -63,9 +72,7 @@ public sealed class CostCapResolverTests
         db.AiAssistants.Add(assistant);
         await db.SaveChangesAsync();
 
-        ff.Setup(f => f.GetValueAsync<decimal>("ai.cost.tenant_monthly_usd", default)).ReturnsAsync(20m);
-        ff.Setup(f => f.GetValueAsync<decimal>("ai.cost.tenant_daily_usd", default)).ReturnsAsync(2m);
-        ff.Setup(f => f.GetValueAsync<int>("ai.agents.requests_per_minute_default", default)).ReturnsAsync(60);
+        SetupPlan(ff);
 
         var sut = new CostCapResolver(db, ff.Object, cache.Object);
         var caps = await sut.ResolveAsync(assistant.TenantId!.Value, assistant.Id);
@@ -73,6 +80,8 @@ public sealed class CostCapResolverTests
         caps.MonthlyUsd.Should().Be(5m);   // per-agent wins (lower)
         caps.DailyUsd.Should().Be(2m);     // plan wins (per-agent null)
         caps.Rpm.Should().Be(30);          // per-agent wins
+        caps.PlatformMonthlyUsd.Should().Be(5m);
+        caps.PlatformDailyUsd.Should().Be(1m);
     }
 
     [Fact]
@@ -84,9 +93,7 @@ public sealed class CostCapResolverTests
         db.AiAssistants.Add(assistant);
         await db.SaveChangesAsync();
 
-        ff.Setup(f => f.GetValueAsync<decimal>("ai.cost.tenant_monthly_usd", default)).ReturnsAsync(20m);
-        ff.Setup(f => f.GetValueAsync<decimal>("ai.cost.tenant_daily_usd", default)).ReturnsAsync(2m);
-        ff.Setup(f => f.GetValueAsync<int>("ai.agents.requests_per_minute_default", default)).ReturnsAsync(60);
+        SetupPlan(ff);
 
         var sut = new CostCapResolver(db, ff.Object, cache.Object);
         var caps = await sut.ResolveAsync(assistant.TenantId!.Value, assistant.Id);
@@ -95,6 +102,61 @@ public sealed class CostCapResolverTests
         caps.MonthlyUsd.Should().Be(20m);
         caps.DailyUsd.Should().Be(2m);
         caps.Rpm.Should().Be(60);
+    }
+
+    [Fact]
+    public async Task Resolve_Includes_Tenant_Self_Limits_Below_Plan()
+    {
+        var (db, ff, cache) = NewSetup();
+        var tenantId = Guid.NewGuid();
+        var assistant = AiAssistant.Create(tenantId, "Tutor", null, "prompt", Guid.NewGuid());
+        var settings = AiTenantSettings.CreateDefault(tenantId);
+        settings.UpdateCostSelfLimits(
+            monthlyCostCapUsd: 12m,
+            dailyCostCapUsd: 1.5m,
+            platformMonthlyCostCapUsd: 8m,
+            platformDailyCostCapUsd: 0.75m,
+            requestsPerMinute: 40);
+        db.AiAssistants.Add(assistant);
+        db.AiTenantSettings.Add(settings);
+        await db.SaveChangesAsync();
+        SetupPlan(ff);
+
+        var sut = new CostCapResolver(db, ff.Object, cache.Object);
+        var caps = await sut.ResolveAsync(tenantId, assistant.Id);
+
+        caps.MonthlyUsd.Should().Be(12m);
+        caps.DailyUsd.Should().Be(1.5m);
+        caps.Rpm.Should().Be(40);
+        caps.PlatformMonthlyUsd.Should().Be(8m);
+        caps.PlatformDailyUsd.Should().Be(0.75m);
+    }
+
+    [Fact]
+    public async Task Resolve_Platform_Credit_Caps_Are_Separate_From_Total_Caps()
+    {
+        var (db, ff, cache) = NewSetup();
+        var tenantId = Guid.NewGuid();
+        var assistant = AiAssistant.Create(tenantId, "Tutor", null, "prompt", Guid.NewGuid());
+        var settings = AiTenantSettings.CreateDefault(tenantId);
+        settings.UpdateCostSelfLimits(
+            monthlyCostCapUsd: 12m,
+            dailyCostCapUsd: 1.5m,
+            platformMonthlyCostCapUsd: 4m,
+            platformDailyCostCapUsd: 0.25m,
+            requestsPerMinute: null);
+        db.AiAssistants.Add(assistant);
+        db.AiTenantSettings.Add(settings);
+        await db.SaveChangesAsync();
+        SetupPlan(ff);
+
+        var sut = new CostCapResolver(db, ff.Object, cache.Object);
+        var caps = await sut.ResolveAsync(tenantId, assistant.Id);
+
+        caps.MonthlyUsd.Should().Be(12m);
+        caps.DailyUsd.Should().Be(1.5m);
+        caps.PlatformMonthlyUsd.Should().Be(4m);
+        caps.PlatformDailyUsd.Should().Be(0.25m);
     }
 
     [Fact]

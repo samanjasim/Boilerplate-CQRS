@@ -37,13 +37,18 @@ public sealed class AiDbContext : DbContext, IModuleDbContext
     public DbSet<AiSafetyPresetProfile> AiSafetyPresetProfiles => Set<AiSafetyPresetProfile>();
     public DbSet<AiModerationEvent> AiModerationEvents => Set<AiModerationEvent>();
     public DbSet<AiPendingApproval> AiPendingApprovals => Set<AiPendingApproval>();
+    public DbSet<AiTenantSettings> AiTenantSettings => Set<AiTenantSettings>();
+    public DbSet<AiProviderCredential> AiProviderCredentials => Set<AiProviderCredential>();
+    public DbSet<AiModelDefault> AiModelDefaults => Set<AiModelDefault>();
+    public DbSet<AiPublicWidget> AiPublicWidgets => Set<AiPublicWidget>();
+    public DbSet<AiWidgetCredential> AiWidgetCredentials => Set<AiWidgetCredential>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
 
-        // Tenant query filters — 10 entities are tenant-scoped
+        // Tenant query filters for tenant-scoped AI entities.
         modelBuilder.Entity<AiAssistant>().HasQueryFilter(e =>
             CurrentTenantId == null || e.TenantId == CurrentTenantId);
         modelBuilder.Entity<AiConversation>().HasQueryFilter(e =>
@@ -65,6 +70,16 @@ public sealed class AiDbContext : DbContext, IModuleDbContext
         modelBuilder.Entity<AiModerationEvent>().HasQueryFilter(e =>
             CurrentTenantId == null || e.TenantId == CurrentTenantId);
         modelBuilder.Entity<AiPendingApproval>().HasQueryFilter(e =>
+            CurrentTenantId == null || e.TenantId == CurrentTenantId);
+        modelBuilder.Entity<AiTenantSettings>().HasQueryFilter(e =>
+            CurrentTenantId == null || e.TenantId == CurrentTenantId);
+        modelBuilder.Entity<AiProviderCredential>().HasQueryFilter(e =>
+            CurrentTenantId == null || e.TenantId == CurrentTenantId);
+        modelBuilder.Entity<AiModelDefault>().HasQueryFilter(e =>
+            CurrentTenantId == null || e.TenantId == CurrentTenantId);
+        modelBuilder.Entity<AiPublicWidget>().HasQueryFilter(e =>
+            CurrentTenantId == null || e.TenantId == CurrentTenantId);
+        modelBuilder.Entity<AiWidgetCredential>().HasQueryFilter(e =>
             CurrentTenantId == null || e.TenantId == CurrentTenantId);
     }
 }

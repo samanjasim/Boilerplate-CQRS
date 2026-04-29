@@ -4,6 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 using Starter.Module.AI.Application.Services.Costs;
+using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Persistence;
 
 namespace Starter.Module.AI.Infrastructure.Background;
@@ -84,9 +85,27 @@ internal sealed class AiCostReconciliationJob(
 
         foreach (var t in monthlyTotals)
         {
-            var key = $"ai:cost:{t.TenantId!.Value}:{t.AssistantId!.Value}:monthly:{DateTimeOffset.UtcNow:yyyy-MM}";
-            await redis.StringSetAsync(key, t.Cost.ToString(System.Globalization.CultureInfo.InvariantCulture));
-            await redis.KeyExpireAsync(key, TimeSpan.FromDays(35));
+            await SetCounterAsync(redis, t.TenantId!.Value, t.AssistantId!.Value, CapWindow.Monthly, CostCapBucket.Total, t.Cost, TimeSpan.FromDays(35));
+        }
+
+        var monthlyPlatformTotals = await db.AiUsageLogs
+            .AsNoTracking()
+            .Where(l => l.AiAssistantId != null
+                && l.TenantId != null
+                && l.CreatedAt >= monthStart
+                && l.ProviderCredentialSource == ProviderCredentialSource.Platform)
+            .GroupBy(l => new { l.TenantId, l.AiAssistantId })
+            .Select(g => new
+            {
+                g.Key.TenantId,
+                AssistantId = g.Key.AiAssistantId,
+                Cost = g.Sum(x => x.EstimatedCost)
+            })
+            .ToListAsync(ct);
+
+        foreach (var t in monthlyPlatformTotals)
+        {
+            await SetCounterAsync(redis, t.TenantId!.Value, t.AssistantId!.Value, CapWindow.Monthly, CostCapBucket.PlatformCredit, t.Cost, TimeSpan.FromDays(35));
         }
 
         // Daily truth per (TenantId, AssistantId)
@@ -104,13 +123,58 @@ internal sealed class AiCostReconciliationJob(
 
         foreach (var t in dailyTotals)
         {
-            var key = $"ai:cost:{t.TenantId!.Value}:{t.AssistantId!.Value}:daily:{DateTimeOffset.UtcNow:yyyy-MM-dd}";
-            await redis.StringSetAsync(key, t.Cost.ToString(System.Globalization.CultureInfo.InvariantCulture));
-            await redis.KeyExpireAsync(key, TimeSpan.FromHours(36));
+            await SetCounterAsync(redis, t.TenantId!.Value, t.AssistantId!.Value, CapWindow.Daily, CostCapBucket.Total, t.Cost, TimeSpan.FromHours(36));
+        }
+
+        var dailyPlatformTotals = await db.AiUsageLogs
+            .AsNoTracking()
+            .Where(l => l.AiAssistantId != null
+                && l.TenantId != null
+                && l.CreatedAt >= dayStart
+                && l.ProviderCredentialSource == ProviderCredentialSource.Platform)
+            .GroupBy(l => new { l.TenantId, l.AiAssistantId })
+            .Select(g => new
+            {
+                g.Key.TenantId,
+                AssistantId = g.Key.AiAssistantId,
+                Cost = g.Sum(x => x.EstimatedCost)
+            })
+            .ToListAsync(ct);
+
+        foreach (var t in dailyPlatformTotals)
+        {
+            await SetCounterAsync(redis, t.TenantId!.Value, t.AssistantId!.Value, CapWindow.Daily, CostCapBucket.PlatformCredit, t.Cost, TimeSpan.FromHours(36));
         }
 
         logger.LogInformation(
-            "AiCostReconciliationJob updated {MonthlyCount} monthly + {DailyCount} daily counters from AiUsageLog truth.",
-            monthlyTotals.Count, dailyTotals.Count);
+            "AiCostReconciliationJob updated {MonthlyCount} monthly + {DailyCount} daily + {MonthlyPlatformCount} platform monthly + {DailyPlatformCount} platform daily counters from AiUsageLog truth.",
+            monthlyTotals.Count, dailyTotals.Count, monthlyPlatformTotals.Count, dailyPlatformTotals.Count);
+    }
+
+    private static async Task SetCounterAsync(
+        IDatabase redis,
+        Guid tenantId,
+        Guid assistantId,
+        CapWindow window,
+        CostCapBucket bucket,
+        decimal cost,
+        TimeSpan ttl)
+    {
+        var key = WindowKey(tenantId, assistantId, window, bucket);
+        await redis.StringSetAsync(key, cost.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        await redis.KeyExpireAsync(key, ttl);
+    }
+
+    private static string WindowKey(Guid tenantId, Guid assistantId, CapWindow window, CostCapBucket bucket)
+    {
+        var bucketName = bucket == CostCapBucket.PlatformCredit ? "platform-cost" : "cost";
+        var windowValue = window switch
+        {
+            CapWindow.Monthly => $"{DateTimeOffset.UtcNow:yyyy-MM}",
+            CapWindow.Daily => $"{DateTimeOffset.UtcNow:yyyy-MM-dd}",
+            _ => throw new ArgumentOutOfRangeException(nameof(window))
+        };
+
+        return $"ai:{bucketName}:{tenantId}:{assistantId}:{window.ToString().ToLowerInvariant()}:{windowValue}";
     }
 }

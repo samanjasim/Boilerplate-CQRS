@@ -18,9 +18,11 @@ internal sealed class OpenAiProvider(
     private const string DefaultChatModel = "gpt-4o";
     private const string DefaultEmbeddingModel = "text-embedding-3-small";
 
-    private string GetApiKey()
-        => configuration["AI:Providers:OpenAI:ApiKey"]
-           ?? throw new InvalidOperationException("OpenAI API key is not configured (AI:Providers:OpenAI:ApiKey).");
+    private string GetApiKey(string? resolvedApiKey = null)
+        => !string.IsNullOrWhiteSpace(resolvedApiKey)
+            ? resolvedApiKey
+            : configuration["AI:Providers:OpenAI:ApiKey"]
+              ?? throw new InvalidOperationException("OpenAI API key is not configured (AI:Providers:OpenAI:ApiKey).");
 
     // Route the OpenAI SDK's pipeline through a pooled HttpClient so socket/DNS caches
     // are shared instead of a fresh connection pool per ChatClient/EmbeddingClient instance.
@@ -42,15 +44,25 @@ internal sealed class OpenAiProvider(
         return configuration["AI:Providers:OpenAI:DefaultModel"] ?? DefaultChatModel;
     }
 
-    private string ResolveEmbeddingModel()
-        => configuration["AI:Providers:OpenAI:EmbeddingModel"] ?? DefaultEmbeddingModel;
+    private string ResolveEmbeddingModel(string? model = null)
+    {
+        if (!string.IsNullOrWhiteSpace(model))
+        {
+            if (model.StartsWith("OpenAI:", StringComparison.OrdinalIgnoreCase))
+                model = model["OpenAI:".Length..];
+
+            return model;
+        }
+
+        return configuration["AI:Providers:OpenAI:EmbeddingModel"] ?? DefaultEmbeddingModel;
+    }
 
     public async Task<AiChatCompletion> ChatAsync(
         IReadOnlyList<AiChatMessage> messages,
         AiChatOptions options,
         CancellationToken ct = default)
     {
-        var apiKey = GetApiKey();
+        var apiKey = GetApiKey(options.ApiKey);
         var model = ResolveChatModel(options.Model);
         var client = new ChatClient(model, new ApiKeyCredential(apiKey), BuildClientOptions());
 
@@ -76,7 +88,7 @@ internal sealed class OpenAiProvider(
         AiChatOptions options,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
-        var apiKey = GetApiKey();
+        var apiKey = GetApiKey(options.ApiKey);
         var model = ResolveChatModel(options.Model);
         var client = new ChatClient(model, new ApiKeyCredential(apiKey), BuildClientOptions());
 
@@ -144,20 +156,26 @@ internal sealed class OpenAiProvider(
         }
     }
 
-    public async Task<float[]> EmbedAsync(string text, CancellationToken ct = default)
+    public async Task<float[]> EmbedAsync(
+        string text,
+        CancellationToken ct = default,
+        AiEmbeddingOptions? options = null)
     {
-        var apiKey = GetApiKey();
-        var embeddingModel = ResolveEmbeddingModel();
+        var apiKey = GetApiKey(options?.ApiKey);
+        var embeddingModel = ResolveEmbeddingModel(options?.Model);
         var client = new EmbeddingClient(embeddingModel, new ApiKeyCredential(apiKey), BuildClientOptions());
 
         var result = await client.GenerateEmbeddingAsync(text, cancellationToken: ct);
         return result.Value.ToFloats().ToArray();
     }
 
-    public async Task<float[][]> EmbedBatchAsync(IReadOnlyList<string> texts, CancellationToken ct = default)
+    public async Task<float[][]> EmbedBatchAsync(
+        IReadOnlyList<string> texts,
+        CancellationToken ct = default,
+        AiEmbeddingOptions? options = null)
     {
-        var apiKey = GetApiKey();
-        var embeddingModel = ResolveEmbeddingModel();
+        var apiKey = GetApiKey(options?.ApiKey);
+        var embeddingModel = ResolveEmbeddingModel(options?.Model);
         var client = new EmbeddingClient(embeddingModel, new ApiKeyCredential(apiKey), BuildClientOptions());
 
         var result = await client.GenerateEmbeddingsAsync(texts, cancellationToken: ct);

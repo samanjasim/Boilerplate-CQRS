@@ -203,7 +203,7 @@ Plan 4 is complete when 4b-9 ships.
 | 5c | Agent Templates. Module-registered `(prompt + tools + KB + persona targets + safety preset)` bundles. `[AiTool]` attribute on MediatR commands — DI auto-discovery, tool catalog grouped by module. Install flow, fork-into-custom-agent, customisation-after-install. | M |
 | 5d | Agent Identity + Safety + Content Moderation. Service-account creation, role assignment, cost caps, rate limits, `[DangerousAction]` human-approval pause. Input/output moderation pipeline with three presets: `Standard`, `ChildSafe`, `ProfessionalModerated`. Configurable per agent; inherited from persona default. | L |
 | 5e | Bundled Platform Agents. `Platform Insights Agent` + `Support Copilot` as before. Adds: `Teacher Tutor` starter template (Student persona, ChildSafe) and `Brand Content Agent` starter template (Editor persona, Standard). | S |
-| **5f** | **Admin AI Settings backend.** Per-tenant AI config API + data model: provider key management (platform-default fallback), model selection per agent class, tenant-level cost caps, default safety preset, brand/persona config (tone, name, avatar), per-widget API keys (origin-pinned, public quota bucket). No UI — surfaces in Plan 7b. | M |
+| **5f** | **Admin AI Settings backend.** Per-tenant AI config API + data model: AI-owned provider credential policy (`PlatformOnly` default, `TenantKeysAllowed`, `TenantKeysRequired`), BYOK provider key management with platform-default fallback only when policy allows, model selection per agent class, tenant self-limits under subscription feature-flag ceilings, platform-credit accounting, default safety preset, tenant brand profile (tone, name, avatar), and `AiPublicWidget` / `AiWidgetCredential` records for origin-pinned publishable widget keys. No UI — surfaces in Plan 7b. | M |
 | 5g | **Google Gemini provider adapter.** `GoogleGeminiAgentRuntime` implementing `IAiAgentRuntime`. Text + tool-call parity with OpenAI and Anthropic. Gemini embeddings endpoint. Uses the 5a adapter seam — caller code unchanged. Credentials surfaced through 5f's provider-key management. | S |
 
 ---
@@ -227,7 +227,7 @@ Plan 4 is complete when 4b-9 ships.
 | 8c | Automation primitive. Domain events → automations, cron triggers, outcome-summary emission, webhook extensions. | M |
 | 8d | Activity Views. Admin run-trace dashboard (trace + tokens + degradations) + end-user outcome inbox. Both backed by the same run store. | M |
 | 8e | Embedded AI admin UI. Per-slot enable/disable/reorder, prompt/tool editor for insights and actions, automation trigger editor, tenant-level builder. | L |
-| **8f** | **End-customer API Foundation.** Public-scoped API endpoints (separate route prefix, no `[Authorize]`), anonymous persona resolution, per-widget API key authentication, origin pinning, public rate-limit tier, public quota bucket. Backend only — no portal UI or widget. | M |
+| **8f** | **End-customer API Foundation.** Public-scoped API endpoints (separate route prefix, no `[Authorize]`), anonymous persona resolution, per-widget API key authentication, origin pinning, public rate-limit tier, public quota bucket. Must consume Plan 5f's `AiPublicWidget` and `AiWidgetCredential` contract rather than introducing a second widget-key system. Backend only — no portal UI or widget. | M |
 
 ---
 

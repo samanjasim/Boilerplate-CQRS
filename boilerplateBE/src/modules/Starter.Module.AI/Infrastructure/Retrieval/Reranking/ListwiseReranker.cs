@@ -2,9 +2,12 @@ using System.Diagnostics;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Starter.Abstractions.Ai;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Services.Retrieval;
+using Starter.Module.AI.Application.Services.Settings;
 using Starter.Module.AI.Domain.Entities;
+using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Observability;
 using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Retrieval.Json;
@@ -16,17 +19,23 @@ internal sealed class ListwiseReranker
 {
     private readonly IAiProviderFactory _factory;
     private readonly ICacheService _cache;
+    private readonly IAiModelDefaultResolver _modelDefaults;
+    private readonly IAiProviderCredentialResolver _providerCredentials;
     private readonly AiRagSettings _settings;
     private readonly ILogger<ListwiseReranker> _logger;
 
     public ListwiseReranker(
         IAiProviderFactory factory,
         ICacheService cache,
+        IAiModelDefaultResolver modelDefaults,
+        IAiProviderCredentialResolver providerCredentials,
         IOptions<AiRagSettings> settings,
         ILogger<ListwiseReranker> logger)
     {
         _factory = factory;
         _cache = cache;
+        _modelDefaults = modelDefaults;
+        _providerCredentials = providerCredentials;
         _settings = settings.Value;
         _logger = logger;
     }
@@ -42,7 +51,14 @@ internal sealed class ListwiseReranker
         if (candidates.Count == 0)
             return new RerankResult(candidates, RerankStrategy.Listwise, RerankStrategy.Listwise, 0, 0, 0, 0, 0, 0, 0.0);
 
-        var key = BuildCacheKey(tenantId, query, candidates);
+        var providerState = await ResolveRagHelperProviderAsync(tenantId, _settings.RerankerModel, 0.0, 128, null, ct);
+        if (providerState is null)
+        {
+            EmitReordered(candidates, candidates);
+            return Fallback(candidates, sw);
+        }
+
+        var key = BuildCacheKey(tenantId, providerState.Value.ProviderType.ToString(), providerState.Value.Options.Model, query, candidates);
         var cached = await _cache.GetAsync<List<int>>(key, ct);
         AiRagMetrics.CacheRequests.Add(
             1,
@@ -56,9 +72,11 @@ internal sealed class ListwiseReranker
         {
             try
             {
-                var provider = _factory.CreateDefault();
-                var (messages, opts) = BuildPrompt(query, candidates, candidateChunks);
-                var completion = await provider.ChatAsync(messages, opts, ct);
+                var (messages, systemPrompt) = BuildPrompt(query, candidates, candidateChunks);
+                var completion = await providerState.Value.Provider.ChatAsync(
+                    messages,
+                    providerState.Value.Options with { SystemPrompt = systemPrompt },
+                    ct);
                 tokensIn = completion.InputTokens;
                 tokensOut = completion.OutputTokens;
                 if (completion.Content is null || !JsonArrayExtractor.TryExtractInts(completion.Content, out var parsed))
@@ -95,6 +113,49 @@ internal sealed class ListwiseReranker
             UnusedRatio: 0.0);
     }
 
+    private async Task<(AiProviderType ProviderType, IAiProvider Provider, AiChatOptions Options)?> ResolveRagHelperProviderAsync(
+        Guid tenantId,
+        string? overrideModel,
+        double temperature,
+        int maxTokens,
+        string? systemPrompt,
+        CancellationToken ct)
+    {
+        var modelResult = await _modelDefaults.ResolveAsync(
+            tenantId,
+            AiAgentClass.RagHelper,
+            explicitProvider: null,
+            explicitModel: overrideModel,
+            explicitTemperature: temperature,
+            explicitMaxTokens: maxTokens,
+            ct);
+        if (modelResult.IsFailure)
+        {
+            _logger.LogWarning("RAG helper model resolution failed: {Error}", modelResult.Error.Description);
+            return null;
+        }
+
+        var credentialResult = await _providerCredentials.ResolveAsync(tenantId, modelResult.Value.Provider, ct);
+        if (credentialResult.IsFailure)
+        {
+            _logger.LogWarning("RAG helper provider credential resolution failed: {Error}", credentialResult.Error.Description);
+            return null;
+        }
+
+        var credential = credentialResult.Value;
+        var provider = _factory.Create(modelResult.Value.Provider);
+        var options = new AiChatOptions(
+            Model: modelResult.Value.Model,
+            Temperature: modelResult.Value.Temperature,
+            MaxTokens: modelResult.Value.MaxTokens,
+            SystemPrompt: systemPrompt,
+            ApiKey: credential.Secret,
+            ProviderCredentialSource: credential.Source,
+            ProviderCredentialId: credential.ProviderCredentialId);
+
+        return (modelResult.Value.Provider, provider, options);
+    }
+
     private static void EmitReordered(
         IReadOnlyList<HybridHit> input,
         IReadOnlyList<HybridHit> output)
@@ -104,7 +165,7 @@ internal sealed class ListwiseReranker
             1, new KeyValuePair<string, object?>("rag.changed", changed));
     }
 
-    private (List<AiChatMessage> messages, AiChatOptions opts) BuildPrompt(
+    private (List<AiChatMessage> messages, string systemPrompt) BuildPrompt(
         string query, IReadOnlyList<HybridHit> candidates, IReadOnlyList<AiDocumentChunk> chunks)
     {
         var system =
@@ -125,14 +186,7 @@ internal sealed class ListwiseReranker
             sb.AppendLine($"[{i}] (page {c.PageNumber ?? 0}) {excerpt}");
         }
 
-        var model = _settings.RerankerModel ?? _factory.GetDefaultChatModelId();
-        var opts = new AiChatOptions(
-            Model: model,
-            Temperature: 0.0,
-            MaxTokens: 128,
-            SystemPrompt: system);
-
-        return (new List<AiChatMessage> { new("user", sb.ToString()) }, opts);
+        return (new List<AiChatMessage> { new("user", sb.ToString()) }, system);
     }
 
     private static IReadOnlyList<HybridHit> ApplyIndices(
@@ -156,10 +210,8 @@ internal sealed class ListwiseReranker
     private static RerankResult Fallback(IReadOnlyList<HybridHit> candidates, Stopwatch sw) =>
         new(candidates, RerankStrategy.Listwise, RerankStrategy.FallbackRrf, candidates.Count, 0, 0, sw.ElapsedMilliseconds, 0, 0, 0.0);
 
-    private string BuildCacheKey(Guid tenantId, string query, IReadOnlyList<HybridHit> candidates)
+    private string BuildCacheKey(Guid tenantId, string provider, string model, string query, IReadOnlyList<HybridHit> candidates)
     {
-        var provider = _factory.GetDefaultProviderType().ToString();
-        var model = _settings.RerankerModel ?? _factory.GetDefaultChatModelId();
         return RagCacheKeys.ListwiseRerank(tenantId, provider, model, query, candidates);
     }
 }

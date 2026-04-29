@@ -1,10 +1,12 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Moq;
 using Starter.Api.Tests.Ai.Fakes;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Services.Ingestion;
 using Starter.Module.AI.Application.Services.Retrieval;
+using Starter.Module.AI.Application.Services.Settings;
 using Starter.Module.AI.Domain.Entities;
 using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
@@ -14,6 +16,7 @@ using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Retrieval.Classification;
 using Starter.Module.AI.Infrastructure.Retrieval.QueryRewriting;
 using Starter.Module.AI.Infrastructure.Settings;
+using Starter.Shared.Results;
 using Xunit;
 
 namespace Starter.Api.Tests.Ai.Observability;
@@ -31,7 +34,24 @@ public class CacheMetricsTests
         var providerFactory = new StubProviderFactory("model-X");
         var settings = Options.Create(new AiRagSettings { EmbeddingCacheTtlSeconds = 60 });
 
-        var sut = new CachingEmbeddingService(inner, cache, providerFactory, settings);
+        var modelDefaults = new Mock<IAiModelDefaultResolver>();
+        modelDefaults.Setup(x => x.ResolveAsync(
+                It.IsAny<Guid?>(),
+                AiAgentClass.Embedding,
+                It.IsAny<AiProviderType?>(),
+                It.IsAny<string?>(),
+                It.IsAny<double?>(),
+                It.IsAny<int?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success(new ResolvedModelDefault(AiProviderType.OpenAI, "model-X", 0.7, 4096)));
+
+        var sut = new CachingEmbeddingService(
+            inner,
+            cache,
+            providerFactory,
+            modelDefaults.Object,
+            Mock.Of<ICurrentUserService>(),
+            settings);
 
         await sut.EmbedAsync(new[] { "hello" }, CancellationToken.None); // miss
         await sut.EmbedAsync(new[] { "hello" }, CancellationToken.None); // hit
@@ -63,6 +83,8 @@ public class CacheMetricsTests
         var sut = new QueryRewriter(
             factory,
             cache,
+            new FakeAiModelDefaultResolver(),
+            new FakeAiProviderCredentialResolver(),
             settings,
             NullLogger<QueryRewriter>.Instance);
 
@@ -101,6 +123,8 @@ public class CacheMetricsTests
         var sut = new QuestionClassifier(
             factory,
             cache,
+            new FakeAiModelDefaultResolver(),
+            new FakeAiProviderCredentialResolver(),
             settings,
             NullLogger<QuestionClassifier>.Instance);
 
@@ -134,7 +158,10 @@ public class CacheMetricsTests
         var settings = Options.Create(new AiRagSettings { RerankCacheTtlSeconds = 60 });
 
         var sut = new Starter.Module.AI.Infrastructure.Retrieval.Reranking.ListwiseReranker(
-            factory, cache, settings,
+            factory, cache,
+            new FakeAiModelDefaultResolver(),
+            new FakeAiProviderCredentialResolver(),
+            settings,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<Starter.Module.AI.Infrastructure.Retrieval.Reranking.ListwiseReranker>.Instance);
 
         var (candidates, chunks) = BuildRerankInputs(count: 3);
@@ -171,7 +198,10 @@ public class CacheMetricsTests
         });
 
         var sut = new Starter.Module.AI.Infrastructure.Retrieval.Reranking.PointwiseReranker(
-            factory, cache, settings,
+            factory, cache,
+            new FakeAiModelDefaultResolver(),
+            new FakeAiProviderCredentialResolver(),
+            settings,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<Starter.Module.AI.Infrastructure.Retrieval.Reranking.PointwiseReranker>.Instance);
 
         var (candidates, chunks) = BuildRerankInputs(count: 3);
@@ -200,7 +230,10 @@ public class CacheMetricsTests
         var settings = Microsoft.Extensions.Options.Options.Create(new AiRagSettings { RerankCacheTtlSeconds = 60 });
 
         var sut = new Starter.Module.AI.Infrastructure.Retrieval.Reranking.ListwiseReranker(
-            factory, cache, settings,
+            factory, cache,
+            new FakeAiModelDefaultResolver(),
+            new FakeAiProviderCredentialResolver(),
+            settings,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<Starter.Module.AI.Infrastructure.Retrieval.Reranking.ListwiseReranker>.Instance);
 
         var (candidates, chunks) = BuildRerankInputs(count: 3);
@@ -224,7 +257,10 @@ public class CacheMetricsTests
         var settings = Microsoft.Extensions.Options.Options.Create(new AiRagSettings { RerankCacheTtlSeconds = 60 });
 
         var sut = new Starter.Module.AI.Infrastructure.Retrieval.Reranking.ListwiseReranker(
-            factory, cache, settings,
+            factory, cache,
+            new FakeAiModelDefaultResolver(),
+            new FakeAiProviderCredentialResolver(),
+            settings,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<Starter.Module.AI.Infrastructure.Retrieval.Reranking.ListwiseReranker>.Instance);
 
         var (candidates, chunks) = BuildRerankInputs(count: 3);
@@ -257,7 +293,10 @@ public class CacheMetricsTests
         });
 
         var sut = new Starter.Module.AI.Infrastructure.Retrieval.Reranking.PointwiseReranker(
-            factory, cache, settings,
+            factory, cache,
+            new FakeAiModelDefaultResolver(),
+            new FakeAiProviderCredentialResolver(),
+            settings,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<Starter.Module.AI.Infrastructure.Retrieval.Reranking.PointwiseReranker>.Instance);
 
         var (candidates, chunks) = BuildRerankInputs(count: 3);
