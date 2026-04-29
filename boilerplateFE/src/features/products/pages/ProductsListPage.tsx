@@ -13,6 +13,7 @@ import { useAuthStore, selectUser } from '@/stores';
 import { useTenants } from '@/features/tenants/api';
 import { useProducts } from '../api';
 import { useFileUrl } from '@/features/files/api';
+import { ProductStatusHero } from '../components/ProductStatusHero';
 import type { Product } from '@/types';
 
 interface ProductFilters {
@@ -32,6 +33,7 @@ export default function ProductsListPage() {
 
   const { data: tenantsData } = useTenants(isPlatformAdmin ? { pageSize: 100 } : undefined);
   const tenants = tenantsData?.data ?? [];
+  const selectedTenantId = isPlatformAdmin ? ((list.filters.tenantId as string) || undefined) : undefined;
 
   const canCreate = hasPermission(PERMISSIONS.Products.Create);
 
@@ -49,6 +51,8 @@ export default function ProductsListPage() {
           ) : undefined
         }
       />
+
+      <ProductStatusHero tenantId={selectedTenantId} />
 
       <ListToolbar
         search={{
@@ -130,8 +134,10 @@ export default function ProductsListPage() {
                   </Link>
                 </TableCell>
                 {isPlatformAdmin && (
-                  <TableCell className="text-muted-foreground">
-                    {product.tenantName ?? '—'}
+                  <TableCell>
+                    <span className="inline-flex rounded-full border border-[var(--border-strong)] bg-[var(--active-bg)] px-2.5 py-1 text-xs font-medium text-[var(--tinted-fg)]">
+                      {product.tenantName ?? t('common.none', 'None')}
+                    </span>
                   </TableCell>
                 )}
                 <TableCell className="text-muted-foreground">{product.slug}</TableCell>
@@ -140,7 +146,7 @@ export default function ProductsListPage() {
                 </TableCell>
                 <TableCell>
                   <Badge variant={STATUS_BADGE_VARIANT[product.status] ?? 'secondary'}>
-                    {product.status}
+                    {t(`products.status.${product.status.toLowerCase()}`, product.status)}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
