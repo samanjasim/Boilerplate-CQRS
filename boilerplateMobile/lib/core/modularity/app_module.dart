@@ -16,7 +16,7 @@ import 'package:get_it/get_it.dart';
 /// pipeline. Only strippable optional modules use `AppModule`.
 abstract class AppModule {
   /// Unique identifier, e.g. `billing`. Must match the key in
-  /// `scripts/modules.json`.
+  /// `modules.catalog.json`.
   String get name;
 
   /// Human-readable label for debugging and logs.

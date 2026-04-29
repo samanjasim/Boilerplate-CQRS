@@ -14,7 +14,7 @@ import 'package:boilerplate_mobile/modules/billing/billing_module.dart';
 /// 1. Create `lib/modules/{name}/{name}_module.dart` implementing `AppModule`
 /// 2. Import it between the MODULE IMPORTS markers above
 /// 3. Add `{Name}Module()` between the MODULE INSTANCES markers below
-/// 4. Add a `mobileModule` / `mobileFolder` entry to `scripts/modules.json`
+/// 4. Add a `mobileModule` / `mobileFolder` entry to `modules.catalog.json`
 List<AppModule> activeModules() => <AppModule>[
       // MODULE INSTANCES — rename.ps1 strips lines between these markers
       BillingModule(),
