@@ -137,6 +137,25 @@ export interface WorkflowInstanceSummary {
   canResubmit: boolean;
 }
 
+export interface InboxStatusCounts {
+  overdue: number;
+  dueToday: number;
+  upcoming: number;
+}
+
+export interface InstanceStatusCounts {
+  active: number;
+  awaiting: number;
+  completed: number;
+  cancelled: number;
+}
+
+export interface WorkflowInstanceStatusCountsParams {
+  startedByUserId?: string;
+  entityType?: string;
+  state?: string;
+}
+
 // Form field types
 export interface FormFieldDefinition {
   name: string;

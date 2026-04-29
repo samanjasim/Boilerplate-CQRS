@@ -1,7 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query/keys';
 import { workflowApi } from './workflow.api';
-import type { StartWorkflowRequest, ExecuteTaskRequest, UpdateDefinitionRequest, CreateDelegationRequest, BatchExecuteTasksRequest } from '@/types/workflow.types';
+import type {
+  StartWorkflowRequest,
+  ExecuteTaskRequest,
+  UpdateDefinitionRequest,
+  CreateDelegationRequest,
+  BatchExecuteTasksRequest,
+  WorkflowInstanceStatusCountsParams,
+} from '@/types/workflow.types';
 import { toast } from 'sonner';
 import i18n from '@/i18n';
 
@@ -65,6 +72,14 @@ export function useWorkflowInstances(params: { entityType?: string; state?: stri
   });
 }
 
+export function useInstanceStatusCounts(params?: WorkflowInstanceStatusCountsParams) {
+  return useQuery({
+    queryKey: queryKeys.workflow.instances.statusCounts(params as Record<string, unknown> | undefined),
+    queryFn: () => workflowApi.getInstanceStatusCounts(params),
+    staleTime: 30_000,
+  });
+}
+
 export function usePendingTasks(params?: { page?: number; pageSize?: number }) {
   return useQuery({
     queryKey: queryKeys.workflow.tasks.list(params as Record<string, unknown> | undefined),
@@ -80,6 +95,14 @@ export function usePendingTaskCount(enabled = true) {
   });
 }
 
+export function useInboxStatusCounts() {
+  return useQuery({
+    queryKey: queryKeys.workflow.tasks.statusCounts(),
+    queryFn: () => workflowApi.getInboxStatusCounts(),
+    staleTime: 30_000,
+  });
+}
+
 // ── Mutations ──────────────────────────────────────────────────────────────
 
 export function useStartWorkflow() {
@@ -88,6 +111,7 @@ export function useStartWorkflow() {
     mutationFn: (data: StartWorkflowRequest) => workflowApi.startWorkflow(data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.workflow.instances.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.workflow.tasks.statusCounts() });
       queryClient.invalidateQueries({
         queryKey: queryKeys.workflow.instances.status(variables.entityType, variables.entityId),
       });
@@ -103,6 +127,7 @@ export function useExecuteTask() {
       workflowApi.executeTask(taskId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.workflow.tasks.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.workflow.tasks.statusCounts() });
       queryClient.invalidateQueries({ queryKey: queryKeys.workflow.instances.all });
       toast.success(i18n.t('workflow.taskExecuted', 'Task completed'));
     },
@@ -115,6 +140,7 @@ export function useBatchExecuteTasks() {
     mutationFn: (data: BatchExecuteTasksRequest) => workflowApi.batchExecuteTasks(data),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.workflow.tasks.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.workflow.tasks.statusCounts() });
       queryClient.invalidateQueries({ queryKey: queryKeys.workflow.instances.all });
 
       const summary = {
@@ -138,6 +164,7 @@ export function useCancelWorkflow() {
       workflowApi.cancelWorkflow(instanceId, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.workflow.instances.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.workflow.tasks.statusCounts() });
       toast.success(i18n.t('workflow.workflowCancelled', 'Workflow cancelled'));
     },
   });
@@ -151,6 +178,7 @@ export function useTransitionWorkflow() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.workflow.instances.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.workflow.tasks.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.workflow.tasks.statusCounts() });
       toast.success(i18n.t('workflow.resubmitSuccess', 'Workflow resubmitted'));
     },
   });

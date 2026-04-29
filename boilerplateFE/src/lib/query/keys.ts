@@ -211,6 +211,8 @@ export const queryKeys = {
     instances: {
       all: ['workflow', 'instances'] as const,
       list: (params?: Record<string, unknown>) => ['workflow', 'instances', 'list', params] as const,
+      statusCounts: (params?: Record<string, unknown>) =>
+        ['workflow', 'instances', 'status-counts', params ?? {}] as const,
       byId: (instanceId: string | undefined) => ['workflow', 'instances', 'byId', instanceId] as const,
       status: (entityType: string, entityId: string) =>
         ['workflow', 'instances', 'status', entityType, entityId] as const,
@@ -220,6 +222,7 @@ export const queryKeys = {
       all: ['workflow', 'tasks'] as const,
       list: (params?: Record<string, unknown>) => ['workflow', 'tasks', 'list', params] as const,
       count: () => ['workflow', 'tasks', 'count'] as const,
+      statusCounts: () => ['workflow', 'tasks', 'status-counts'] as const,
     },
     delegations: {
       all: ['workflow', 'delegations'] as const,
