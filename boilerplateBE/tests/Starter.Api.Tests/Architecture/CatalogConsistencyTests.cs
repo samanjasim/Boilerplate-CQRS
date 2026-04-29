@@ -218,6 +218,56 @@ public class CatalogConsistencyTests
     }
 
     [Fact]
+    public void Module_test_folders_are_declared_in_catalog()
+    {
+        // Every module-scoped folder under tests/Starter.Api.Tests/ must be
+        // declared by some module's `testsFolder` field. Otherwise rename.ps1
+        // doesn't know to delete the orphan when that module is excluded,
+        // and the generated -Modules None / -Modules <subset> app fails to
+        // compile because the orphan tests reference the now-deleted module
+        // namespaces. Caught by the CI killer-test matrix; this test surfaces
+        // it during normal source-repo CI so we never have to debug it as a
+        // post-merge regression again.
+        using var doc = JsonDocument.Parse(File.ReadAllText(CatalogPath));
+
+        // Folders that are core (always shipped) — they don't need a testsFolder
+        // in the catalog because they're never stripped.
+        var coreFolders = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "Access",
+            "Architecture",
+            "Capabilities",
+            "Files",
+            "MassTransit",
+            "bin",
+            "obj",
+        };
+
+        var declaredTestFolders = ModuleEntries(doc)
+            .Select(m => ReadOptionalString(m.Value, "testsFolder"))
+            .Where(v => v is not null)
+            .Select(v => v!)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var repoRoot = GetRepoRoot();
+        var testsRoot = Path.Combine(repoRoot, "boilerplateBE", "tests", "Starter.Api.Tests");
+        if (!Directory.Exists(testsRoot)) return; // nothing to validate
+
+        var problems = new List<string>();
+        foreach (var dir in Directory.EnumerateDirectories(testsRoot))
+        {
+            var name = Path.GetFileName(dir);
+            if (coreFolders.Contains(name)) continue;
+            if (declaredTestFolders.Contains(name)) continue;
+            problems.Add(
+                $"tests/Starter.Api.Tests/{name}/ exists but no module declares testsFolder='{name}' in modules.catalog.json. " +
+                "rename.ps1 will leave this folder orphaned when its module is excluded, breaking the generated app's build.");
+        }
+
+        problems.Should().BeEmpty();
+    }
+
+    [Fact]
     public void Every_module_declares_a_valid_semver_version()
     {
         // Tier 2.5 schema v2 (spec 2026-04-29 Theme 1): every module declares a semver version
