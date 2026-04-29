@@ -36,3 +36,13 @@ public sealed record AiTenantSettingsDto(
     Guid? AvatarFileId,
     string? BrandInstructions,
     AiEntitlementsDto Entitlements);
+
+public sealed record AiProviderCredentialDto(
+    Guid Id,
+    AiProviderType Provider,
+    string DisplayName,
+    string MaskedKey,
+    ProviderCredentialStatus Status,
+    DateTimeOffset? LastValidatedAt,
+    DateTimeOffset? LastUsedAt,
+    DateTime CreatedAt);
