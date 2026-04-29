@@ -13,6 +13,7 @@
     "status": "الحالة",
     "active": "نشط",
     "inactive": "غير نشط",
+    "suspended": "مُعلَّق",
     "enabled": "مُفعّل",
     "disabled": "مُعطّل",
     "value": "القيمة",

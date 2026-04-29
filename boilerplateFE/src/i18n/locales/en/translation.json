@@ -13,6 +13,7 @@
     "status": "Status",
     "active": "Active",
     "inactive": "Inactive",
+    "suspended": "Suspended",
     "enabled": "Enabled",
     "disabled": "Disabled",
     "value": "Value",
