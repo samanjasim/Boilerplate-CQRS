@@ -4,7 +4,7 @@
 
 **Goal:** Bring the 5 billing pages onto J4 Spectrum: hero treatment for tenant-side `BillingPage` and platform-side `SubscriptionsPage` + `SubscriptionDetailPage`; J4 polish (no new hero) for `BillingPlansPage` and `PricingPage`.
 
-**Architecture:** One shared presentational `<BillingHero>` (plan card + usage stat strip) consumed by both tenant-scoped pages. One small BE endpoint (`/billing/subscriptions/status-counts`) reusing the Phase 3 Reports-status-counts pattern, exposed from the existing module controller. Polish work uses `<Card variant="glass">`, `gradient-text`, `tabular-nums`, and the shared `MetricCard` primitive added in Phase 3.
+**Architecture:** One shared presentational `<BillingHero>` (plan card + usage stat strip) consumed by both tenant-scoped pages. The shared `MetricCard` primitive gets a tiny optional children slot so usage progress bars stay inside the same reusable card vocabulary instead of inventing a one-off metric surface. One small BE endpoint (`/billing/subscriptions/status-counts`) reuses the Phase 3 Reports-status-counts pattern, exposed from the existing module controller. Polish work uses `<Card variant="glass">`, `gradient-text`, `tabular-nums`, existing J4 utilities, and the shared table/card primitives instead of duplicate wrappers.
 
 **Tech Stack:** React 19, TypeScript, Tailwind 4, shadcn/ui, TanStack Query, react-i18next, .NET 10 (one new module endpoint).
 
@@ -18,7 +18,7 @@
 
 2. **`isPopular` flag on `SubscriptionPlan`** — does NOT exist in `boilerplateFE/src/types/billing.types.ts`. Heuristic: select the plan with the highest `subscriberCount` among `isPublic && !isFree && isActive` plans; ties broken by lowest `displayOrder`. Pure FE — no schema change.
 
-3. **`InlinePlanSelector` reuse** — 80 LOC, uses shadcn `<Select>` which already follows the design system. Composes cleanly inside `<Card variant="glass">` table; visual verification only, no token sweep needed.
+3. **`InlinePlanSelector` reuse** — 80 LOC, uses shadcn `<Select>` which already follows the design system. Composes cleanly inside the shared glass `<Table>`; visual verification only, no token sweep needed.
 
 ---
 
@@ -32,16 +32,17 @@
 - `boilerplateFE/src/features/billing/utils/popular-plan.test.ts`
 
 **Modified (FE):**
+- `boilerplateFE/src/components/common/MetricCard.tsx` — add optional `children` slot for inline progress bars; no visual changes for existing callers.
 - `boilerplateFE/src/features/billing/pages/BillingPage.tsx` — replace plan card + UsageBar grid with `<BillingHero>`; keep "Cancel Subscription" button + history table.
-- `boilerplateFE/src/features/billing/pages/SubscriptionDetailPage.tsx` — replace plan card + UsageBar grid with `<BillingHero>`; keep change-plan dialog.
-- `boilerplateFE/src/features/billing/pages/SubscriptionsPage.tsx` — add `<SubscriptionStatusHero>` above search row; wrap table in `surface-glass` container.
+- `boilerplateFE/src/features/billing/pages/SubscriptionDetailPage.tsx` — replace plan card + UsageBar grid with `<BillingHero>`; load tenant name via the existing tenants query for breadcrumb/eyebrow; keep change-plan dialog.
+- `boilerplateFE/src/features/billing/pages/SubscriptionsPage.tsx` — add `<SubscriptionStatusHero>` above search row; keep the shared `<Table>` as the glass surface owner.
 - `boilerplateFE/src/features/billing/pages/BillingPlansPage.tsx` — `Card variant="glass"`, `gradient-text` price, `tabular-nums` subscriber count, copper feature checkmarks.
 - `boilerplateFE/src/features/billing/pages/PricingPage.tsx` — segmented toggle, popular-plan halo + scale, `gradient-text` price, copper feature checkmarks.
 - `boilerplateFE/src/features/billing/api/billing.api.ts` — add `getSubscriptionStatusCounts()`.
 - `boilerplateFE/src/features/billing/api/billing.queries.ts` — add `useSubscriptionStatusCounts()`.
 - `boilerplateFE/src/types/billing.types.ts` — add `SubscriptionStatusCounts` interface.
 - `boilerplateFE/src/config/api.config.ts` — add `BILLING.SUBSCRIPTION_STATUS_COUNTS` route.
-- `boilerplateFE/src/lib/query/keys.ts` — add `queryKeys.billing.subscriptionStatusCounts()`.
+- `boilerplateFE/src/lib/query/keys.ts` — add `queryKeys.billing.subscriptions.statusCounts()`.
 - `boilerplateFE/src/i18n/locales/{en,ar,ku}/translation.json` — new keys per task.
 
 **New (BE):**
@@ -225,6 +226,7 @@ pathway the existing GetAllSubscriptionsQueryHandler uses."
 The two pages render the same hero from different data sources. Build the component once; consume from both.
 
 **Files:**
+- Modify: `boilerplateFE/src/components/common/MetricCard.tsx`
 - Create: `boilerplateFE/src/features/billing/components/BillingHero.tsx`
 - Modify: `boilerplateFE/src/features/billing/pages/BillingPage.tsx`
 - Modify: `boilerplateFE/src/features/billing/pages/SubscriptionDetailPage.tsx`
@@ -289,7 +291,76 @@ node -e "JSON.parse(require('fs').readFileSync('boilerplateFE/src/i18n/locales/k
 
 Expected: no output = valid JSON.
 
-- [ ] **Step 2: Create the `BillingHero` component**
+- [ ] **Step 2: Add an optional children slot to `MetricCard`**
+
+Edit `boilerplateFE/src/components/common/MetricCard.tsx` so billing progress bars can live inside the shared metric surface. This is backwards-compatible: existing callers render exactly as before because `children` is optional.
+
+```tsx
+import type { ReactNode } from 'react';
+
+export interface MetricCardProps {
+  label: string;
+  /** Primary value rendered with `tabular-nums`. */
+  value: ReactNode;
+  /** Trailing fragment shown after the value (e.g., `/ 100`, `of 24 GB`). */
+  secondary?: ReactNode;
+  /** Subtle line under the label (e.g., `in flight`, `ready to download`). */
+  eyebrow?: string;
+  /** Apply `gradient-text` to the primary value. */
+  emphasis?: boolean;
+  /** Tailwind override hook for tinted cards (Active, Failed). */
+  tone?: 'default' | 'active' | 'destructive';
+  /** Optional inline glyph next to the value (e.g., spinner). */
+  glyph?: ReactNode;
+  /** Optional content rendered below the metric value, e.g. a progress bar. */
+  children?: ReactNode;
+  className?: string;
+}
+```
+
+Add `children` to the function destructuring and render it after the value row:
+
+```tsx
+export function MetricCard({
+  label,
+  value,
+  secondary,
+  eyebrow,
+  emphasis,
+  tone = 'default',
+  glyph,
+  children,
+  className,
+}: MetricCardProps) {
+  return (
+    <Card variant="elevated" className={cn(TONE_CLASSES[tone], className)}>
+      <CardContent className="pt-5">
+        <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
+        {eyebrow && (
+          <div className="mt-0.5 text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70">
+            {eyebrow}
+          </div>
+        )}
+        <div className="mt-2 flex items-baseline gap-2">
+          <span
+            className={cn(
+              'text-2xl font-semibold tabular-nums',
+              emphasis && 'gradient-text'
+            )}
+          >
+            {value}
+          </span>
+          {glyph && <span className="text-muted-foreground">{glyph}</span>}
+          {secondary && <span className="text-sm text-muted-foreground">{secondary}</span>}
+        </div>
+        {children}
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+- [ ] **Step 3: Create the `BillingHero` component**
 
 Create `boilerplateFE/src/features/billing/components/BillingHero.tsx`:
 
@@ -311,7 +382,7 @@ export interface BillingHeroProps {
   /** Optional overline rendered above the plan name (e.g., tenant name on the
    *  platform-admin detail page). */
   eyebrow?: string;
-  /** Slot for a single trailing action button (e.g., "Change plan"). */
+  /** Slot for trailing actions (e.g., "Change plan" plus optional Cancel). */
   action?: ReactNode;
   isLoading?: boolean;
 }
@@ -446,41 +517,7 @@ export function BillingHero({ subscription, usage, eyebrow, action, isLoading }:
 }
 ```
 
-Note: `MetricCard` doesn't currently accept children. The `ProgressMetric` wrapper above shows it as if it does — if `MetricCard` is strictly props-only, replace `ProgressMetric` with a small inline composition that renders `MetricCard` followed by a sibling progress bar inside a wrapping `<div>`. Read the current `MetricCard` source before this step:
-
-```bash
-grep -n "children" boilerplateFE/src/components/common/MetricCard.tsx
-```
-
-If no `children` prop, change `ProgressMetric` to:
-
-```tsx
-function ProgressMetric({ label, current, max, format }: UsageRow) {
-  const pct = max > 0 ? Math.min(100, Math.round((current / max) * 100)) : 0;
-  const fmt = format ?? ((n: number) => String(n));
-  return (
-    <div>
-      <MetricCard
-        label={label}
-        value={
-          <span className="tabular-nums">
-            {fmt(current)} <span className="text-sm text-muted-foreground">/ {fmt(max)}</span>
-          </span>
-        }
-        eyebrow={`${pct}%`}
-      />
-      <div className="mt-1 h-1.5 rounded-full bg-muted overflow-hidden">
-        <div
-          className={cn('h-full rounded-full transition-all', progressClass(pct))}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-```
-
-- [ ] **Step 3: Wire into BillingPage**
+- [ ] **Step 4: Wire into BillingPage**
 
 Edit `boilerplateFE/src/features/billing/pages/BillingPage.tsx`. Replace **lines 42–142** (plan card block + usage bars block) with:
 
@@ -488,11 +525,20 @@ Edit `boilerplateFE/src/features/billing/pages/BillingPage.tsx`. Replace **lines
 <BillingHero
   subscription={subscription}
   usage={usage}
-  isLoading={isLoadingSubscription || isLoadingUsage}
+  isLoading={subLoading || usageLoading}
   action={
-    <Button onClick={() => setPlanModalOpen(true)} disabled={!subscription}>
-      {t('billing.changePlan')}
-    </Button>
+    hasPermission(PERMISSIONS.Billing.Manage) && subscription ? (
+      <div className="flex flex-wrap items-center gap-2">
+        <Button onClick={() => setPlanModalOpen(true)}>
+          {t('billing.changePlan')}
+        </Button>
+        {subscription.planSlug !== 'free' && subscription.status !== 'Canceled' && (
+          <Button variant="outline" onClick={() => setCancelOpen(true)}>
+            {t('billing.cancelSubscription')}
+          </Button>
+        )}
+      </div>
+    ) : null
   }
 />
 ```
@@ -503,11 +549,9 @@ Add the import at the top:
 import { BillingHero } from '../components/BillingHero';
 ```
 
-The "Cancel Subscription" button stays where it is in the page footer (or wherever it currently lives — keep its existing position). The payment history table block stays unchanged.
+Remove the old standalone current-plan section and the old usage section. The payment history table block stays unchanged; the shared `Table` component already provides the `surface-glass` container.
 
-If the existing destructuring uses different field names (e.g., `isLoading: isLoadingSubscription`), adapt — the goal is one boolean for the hero skeleton.
-
-- [ ] **Step 4: Wire into SubscriptionDetailPage**
+- [ ] **Step 5: Wire into SubscriptionDetailPage**
 
 Edit `boilerplateFE/src/features/billing/pages/SubscriptionDetailPage.tsx`. Replace **lines 76–165** (plan card block + usage block) with:
 
@@ -515,27 +559,44 @@ Edit `boilerplateFE/src/features/billing/pages/SubscriptionDetailPage.tsx`. Repl
 <BillingHero
   subscription={subscription}
   usage={usage}
-  isLoading={isLoadingSubscription || isLoadingUsage}
-  eyebrow={tenant?.name}
+  isLoading={subLoading || usageLoading}
+  eyebrow={tenant?.name ?? subscription?.tenantId}
   action={
-    <Button onClick={() => setChangePlanOpen(true)} disabled={!subscription}>
+    <Button
+      onClick={() => {
+        if (subscription) setSelectedPlanId(subscription.subscriptionPlanId);
+        setPlanModalOpen(true);
+      }}
+      disabled={!subscription}
+    >
       {t('billing.changePlan')}
     </Button>
   }
 />
 ```
 
-Add the import:
+Add the imports:
 
 ```tsx
 import { BillingHero } from '../components/BillingHero';
+import { useTenant } from '@/features/tenants/api';
 ```
 
-Where `tenant?.name` comes from existing tenant lookup (or `subscription?.tenantName` if the subscription DTO carries it — check the actual page; the type carries `tenantName` on `SubscriptionSummary` but `TenantSubscription` may not — fall back to whatever the page already loads).
+Load the tenant explicitly near the existing subscription query. `TenantSubscriptionDto` does not carry `tenantName`, and the current page incorrectly uses `planName` as the breadcrumb label.
+
+```tsx
+const { data: tenant } = useTenant(tenantId ?? '');
+
+const headerTitle = tenant
+  ? t('billing.tenantSubscription', { tenantName: tenant.name })
+  : t('billing.subscriptionDetail');
+```
+
+Update breadcrumbs to use `tenant?.name ?? subscription?.tenantId ?? t('common.loading')`. The tenant lookup is only for a better label; do not block the billing hero on it, because the page's real data dependency is still `useTenantSubscription(tenantId)`.
 
 The change-plan dialog (lines 215–255) stays unchanged. The payment history table stays unchanged.
 
-- [ ] **Step 5: Lint + build**
+- [ ] **Step 6: Lint + build**
 
 ```bash
 cd boilerplateFE && npm run lint && npm run build
@@ -543,10 +604,11 @@ cd boilerplateFE && npm run lint && npm run build
 
 Expected: both pass. If `BillingHero` exports surface a TS error about the optional `lockedMonthlyPrice`/`lockedAnnualPrice` being numbers vs strings, narrow types in the component or update the `TenantSubscription` interface to match the BE DTO exactly.
 
-- [ ] **Step 6: Sync to test app + visual check**
+- [ ] **Step 7: Sync to test app + visual check**
 
 ```bash
 cp boilerplateFE/src/features/billing/components/BillingHero.tsx _testJ4visual/_testJ4visual-FE/src/features/billing/components/
+cp boilerplateFE/src/components/common/MetricCard.tsx _testJ4visual/_testJ4visual-FE/src/components/common/
 cp boilerplateFE/src/features/billing/pages/BillingPage.tsx _testJ4visual/_testJ4visual-FE/src/features/billing/pages/
 cp boilerplateFE/src/features/billing/pages/SubscriptionDetailPage.tsx _testJ4visual/_testJ4visual-FE/src/features/billing/pages/
 cp boilerplateFE/src/i18n/locales/en/translation.json _testJ4visual/_testJ4visual-FE/src/i18n/locales/en/
@@ -565,10 +627,11 @@ Then `http://localhost:3100/billing/subscriptions/<some-tenant-id>` as super-adm
 
 Switch to AR — hero mirrors, gradient-text figures stay Latin digits, progress bars fill start → end (logical, not right-to-left).
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add boilerplateFE/src/features/billing/components/BillingHero.tsx \
+git add boilerplateFE/src/components/common/MetricCard.tsx \
+        boilerplateFE/src/features/billing/components/BillingHero.tsx \
         boilerplateFE/src/features/billing/pages/BillingPage.tsx \
         boilerplateFE/src/features/billing/pages/SubscriptionDetailPage.tsx \
         boilerplateFE/src/i18n/locales/
@@ -622,17 +685,15 @@ Edit `boilerplateFE/src/config/api.config.ts`. Find the `BILLING:` block (or whe
 SUBSCRIPTION_STATUS_COUNTS: '/Billing/subscriptions/status-counts',
 ```
 
-If the existing constant is named `SUBSCRIPTIONS` or similar, name the new one consistently (e.g., `SUBSCRIPTIONS_STATUS_COUNTS`).
-
 - [ ] **Step 3: Add the API method**
 
 Edit `boilerplateFE/src/features/billing/api/billing.api.ts`. Inside the existing `billingApi` export, add:
 
 ```ts
-getSubscriptionStatusCounts: async (): Promise<ApiResponse<SubscriptionStatusCounts>> => {
-  const r = await apiClient.get(API_ENDPOINTS.BILLING.SUBSCRIPTION_STATUS_COUNTS);
-  return r.data;
-},
+getSubscriptionStatusCounts: () =>
+  apiClient
+    .get<{ data: SubscriptionStatusCounts }>(API_ENDPOINTS.BILLING.SUBSCRIPTION_STATUS_COUNTS)
+    .then(r => r.data),
 ```
 
 Add the import: `import type { SubscriptionStatusCounts } from '@/types/billing.types';` if not already present.
@@ -642,10 +703,14 @@ Add the import: `import type { SubscriptionStatusCounts } from '@/types/billing.
 Edit `boilerplateFE/src/lib/query/keys.ts`. Inside the `queryKeys.billing` object, add:
 
 ```ts
-subscriptionStatusCounts: () => [...queryKeys.billing.all, 'subscriptionStatusCounts'] as const,
+subscriptions: {
+  all: ['billing', 'subscriptions'] as const,
+  list: (params?: Record<string, unknown>) => ['billing', 'subscriptions', 'list', params] as const,
+  statusCounts: () => ['billing', 'subscriptions', 'status-counts'] as const,
+},
 ```
 
-(Match the factory style of the existing keys.)
+The `subscriptions` object already exists; add only `statusCounts`. Keep it under `subscriptions` so all platform subscription queries share one namespace.
 
 - [ ] **Step 5: Add the React Query hook**
 
@@ -654,12 +719,18 @@ Edit `boilerplateFE/src/features/billing/api/billing.queries.ts`. Add:
 ```ts
 export function useSubscriptionStatusCounts() {
   return useQuery({
-    queryKey: queryKeys.billing.subscriptionStatusCounts(),
+    queryKey: queryKeys.billing.subscriptions.statusCounts(),
     queryFn: () => billingApi.getSubscriptionStatusCounts(),
     select: (r) => r.data,
     staleTime: 30_000,
   });
 }
+```
+
+Also invalidate the counts after platform subscription mutations that can change the aggregate status distribution. In `useChangeTenantPlan`, add:
+
+```ts
+queryClient.invalidateQueries({ queryKey: queryKeys.billing.subscriptions.statusCounts() });
 ```
 
 - [ ] **Step 6: Add translation keys**
@@ -696,7 +767,7 @@ KU:
   "activeEyebrow": "بەشداربوون",
   "trialing": "تاقیکردنەوە",
   "trialingEyebrow": "لە ماوەی تاقیکردنەوە",
-  "pastDue": "پێویستی بە بەخت",
+  "pastDue": "دواکەوتوو",
   "pastDueEyebrow": "پێویستی بە سەرنج هەیە"
 }
 ```
@@ -771,25 +842,9 @@ In JSX, immediately after `<PageHeader ... />` and **before** the search row (li
 <SubscriptionStatusHero />
 ```
 
-Wrap the existing table in a glass surface — find the table block (lines 80–150), and wrap it:
+Keep the existing direct `<Table>` rendering. The shared `Table` component already wraps itself in `rounded-2xl surface-glass` and `CLAUDE.md` explicitly forbids adding an extra Card wrapper around tables. Preserve the existing `relative transition-opacity` parent so `isFetching` dimming still works.
 
-```tsx
-<Card variant="glass">
-  <CardContent className="p-0">
-    <Table>
-      {/* existing TableHeader + TableBody */}
-    </Table>
-  </CardContent>
-</Card>
-```
-
-Add the imports if not present:
-
-```tsx
-import { Card, CardContent } from '@/components/ui/card';
-```
-
-The `<Pagination>` controls (if any) stay outside the card.
+The `<Pagination>` controls stay outside the table.
 
 - [ ] **Step 9: Lint + build**
 
@@ -820,6 +875,7 @@ Open `http://localhost:3100/billing/subscriptions` as super-admin. Verify:
 - 2 or 3 metric cards above the search row depending on whether any subscription is past-due in the seed.
 - Active card uses tinted treatment; Past-due card (when present) uses red tint.
 - Search row + table + pagination still functional.
+- There is no nested Card around the table; the shared `<Table>` remains the single glass surface.
 - Switch to AR — hero mirrors, eyebrow text right-aligned, gradient digit treatment intact.
 
 - [ ] **Step 11: Commit**
@@ -979,11 +1035,11 @@ import { pickPopularPlan } from './popular-plan';
 import type { SubscriptionPlan } from '@/types';
 
 const make = (over: Partial<SubscriptionPlan>): SubscriptionPlan => ({
-  id: over.id ?? crypto.randomUUID(),
+  id: over.id ?? 'plan',
   name: over.name ?? 'Plan',
   slug: over.slug ?? 'plan',
   description: '',
-  translations: {},
+  translations: null,
   monthlyPrice: 10,
   annualPrice: 100,
   currency: 'USD',
@@ -1091,7 +1147,7 @@ Expected: 6 tests PASS.
 
 - [ ] **Step 5: Add translation keys**
 
-EN — find/add a `pricing` block:
+EN — add only missing keys under the existing `billing` block. Keep PricingPage copy in the billing namespace because the current page already uses `billing.pricingTitle`, `billing.monthly`, `billing.annual`, `billing.savePercent`, `billing.getStarted`, and `billing.upgrade`.
 
 ```json
 "pricing": {
@@ -1107,7 +1163,7 @@ EN — find/add a `pricing` block:
 }
 ```
 
-(Many of these keys may already exist under `billing.pricingTitle` etc. — reuse existing ones where possible; only add what's missing.)
+Existing flat keys can stay in place for current call sites; new PricingPage-only copy goes under `billing.pricing.*`.
 
 AR:
 ```json
@@ -1148,7 +1204,8 @@ Create `boilerplateFE/src/features/billing/components/PricingIntervalToggle.tsx`
 ```tsx
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
-import type { BillingInterval } from '@/types';
+
+type BillingInterval = 'Monthly' | 'Annual';
 
 export interface PricingIntervalToggleProps {
   value: BillingInterval;
@@ -1179,18 +1236,18 @@ export function PricingIntervalToggle({ value, onChange }: PricingIntervalToggle
 
   return (
     <div className="inline-flex items-center gap-1 rounded-[12px] border border-border/40 bg-foreground/5 p-1">
-      {segment('Monthly', t('pricing.toggleMonthly'))}
-      {segment('Annual', t('pricing.toggleAnnual'), t('pricing.saveBadge'))}
+      {segment('Monthly', t('billing.pricing.toggleMonthly'))}
+      {segment('Annual', t('billing.pricing.toggleAnnual'), t('billing.pricing.saveBadge'))}
     </div>
   );
 }
 ```
 
-If `BillingInterval` isn't exported from `@/types`, define it locally as `'Monthly' | 'Annual'` or extract from `TenantSubscription`.
+Keep `BillingInterval` local to this component; no shared type export is needed for a two-value UI control.
 
 - [ ] **Step 7: Update PricingPage**
 
-Edit `boilerplateFE/src/features/billing/pages/PricingPage.tsx`. Three changes:
+Edit `boilerplateFE/src/features/billing/pages/PricingPage.tsx`. Five changes:
 
 a) **Replace the existing interval toggle** (lines 75–104) with:
 
@@ -1212,7 +1269,35 @@ import { pickPopularPlan } from '../utils/popular-plan';
 const popularPlan = useMemo(() => pickPopularPlan(plans), [plans]);
 ```
 
-c) **Update `PricingCard`** (lines 151–228) to accept `isPopular` and apply the visual treatment:
+Update the React import:
+
+```tsx
+import { useMemo, useState } from 'react';
+```
+
+Add the shared card import because the current page uses plain `<div>` cards:
+
+```tsx
+import { Card, CardContent } from '@/components/ui/card';
+```
+
+Define the interval type once near the top of the file and use it for state + props:
+
+```tsx
+type BillingInterval = 'Monthly' | 'Annual';
+
+const [interval, setInterval] = useState<BillingInterval>('Monthly');
+```
+
+c) **Remove bespoke blur blobs and token-sweep the top CTAs**
+
+Delete the two absolute `blur-3xl` decorative divs near the top of the page. The existing `.gradient-hero` utility is already theme-driven via `--gradient-from` / `--gradient-to`; extra one-off blur blobs are not part of the shared J4 vocabulary.
+
+In the nav/action area:
+- Keep the sign-in button as `variant="outline"` with the existing translucent treatment if it remains legible.
+- Change the primary register/get-started CTA to use the shared Button default styling or explicit `btn-primary-gradient glow-primary-md`; avoid `bg-white text-foreground` for primary CTAs.
+
+d) **Update `PricingCard`** (lines 151–228) to accept `isPopular` and apply the visual treatment:
 
 ```tsx
 interface PricingCardProps {
@@ -1220,10 +1305,12 @@ interface PricingCardProps {
   interval: BillingInterval;
   isCurrent: boolean;
   isPopular: boolean;
-  // ... whatever else exists
+  price: number;
+  features: string[];
+  isLoggedIn: boolean;
 }
 
-function PricingCard({ plan, interval, isCurrent, isPopular, /* ... */ }: PricingCardProps) {
+function PricingCard({ plan, interval, isCurrent, isPopular, price, features, isLoggedIn }: PricingCardProps) {
   return (
     <div
       className={cn(
@@ -1234,25 +1321,31 @@ function PricingCard({ plan, interval, isCurrent, isPopular, /* ... */ }: Pricin
       {isPopular && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
           <span className="rounded-full bg-primary px-3 py-0.5 text-[10px] uppercase tracking-[0.12em] font-semibold text-primary-foreground">
-            {t('pricing.popular')}
+            {t('billing.pricing.popular')}
           </span>
         </div>
       )}
       <Card variant="glass" className={cn(isPopular && 'glow-primary-md border-primary/30')}>
-        {/* ... existing CardContent with the changes below ... */}
+        <CardContent className="p-6">
+          {/* keep existing card content, applying the token changes below */}
+        </CardContent>
       </Card>
     </div>
   );
 }
 ```
 
-Inside the existing card content:
+Inside the card content:
 - Wrap the price figure with `tabular-nums gradient-text`.
 - Replace plain bullet markers in the feature list with `<Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />` (matching the BillingPlansPage treatment from Task 4).
-- Trial-days badge becomes outline pill: `border border-primary/40 text-primary bg-primary/5 rounded-full px-2 py-0.5 text-xs`.
-- CTA button uses `btn-primary-gradient` for the popular plan, `default` variant for other paid plans, `outline` for the free tier, `ghost` (disabled) for the current plan.
+- Trial-days badge becomes outline pill: `border border-primary/40 text-primary bg-primary/5 rounded-full px-2 py-0.5 text-xs`, with text from `t('billing.pricing.trialDays', { count: plan.trialDays })`.
+- CTA button uses the shared Button variants: default (`btn-primary-gradient` already comes from the component) for the popular/paid plan, `outline` for the free tier, `ghost` (disabled) for the current plan.
 
 In the parent map, pass `isPopular={plan.id === popularPlan?.id}`.
+
+e) **Sweep raw white-on-gradient card styling**
+
+Replace plan-card `bg-white/10`, `text-white`, `hover:bg-white/15`, and `backdrop-blur-sm` styling with shared `Card variant="glass"` plus semantic text tokens (`text-foreground`, `text-muted-foreground`, `text-primary`). The PricingPage shell may keep `.gradient-hero`; card internals should use theme-aware surface/card tokens.
 
 - [ ] **Step 8: Lint + build**
 
@@ -1260,7 +1353,7 @@ In the parent map, pass `isPopular={plan.id === popularPlan?.id}`.
 npm run lint && npm run build
 ```
 
-Expected: both pass. If `BillingInterval` type isn't exported from `@/types`, the toggle will surface a TS error — define it inline in the component or export from `billing.types.ts` (add `export type BillingInterval = 'Monthly' | 'Annual';`).
+Expected: both pass.
 
 - [ ] **Step 9: Sync + visual check**
 
@@ -1280,6 +1373,8 @@ Open `http://localhost:3100/pricing` (no login required — public route). Verif
 - Feature lists show copper checkmarks.
 - Price figures are gradient-text and tabular-nums.
 - Trial-days appears as an outline pill if any plan has `trialDays > 0`.
+- The top primary CTA uses the shared gradient button treatment, not a bespoke white button.
+- No decorative `blur-3xl` blobs remain.
 - Switch to AR — toggle direction flips, popular pill stays centered, halo and scale unchanged.
 
 - [ ] **Step 10: Commit**
@@ -1366,7 +1461,7 @@ PR title: `feat(fe): Phase 4 redesign — Billing cluster (5 pages)`. Body follo
   - Permission matrix verification → Task 6. ✅
   - Phase 1/2/3 regression check → Task 6. ✅
 
-- **Placeholders:** scanned. The only "if X then Y" branches are explicit conditional logic with both branches resolved (e.g., `MetricCard` children-or-not in Task 2 step 2 has both forms shown). No TBD / TODO / "fill in details".
+- **Placeholders:** scanned. Conditional notes now point to concrete existing code paths, and the shared component contract is updated before use. No TBD / TODO / "fill in details".
 
 - **Type consistency:** `SubscriptionStatusCounts` (FE) ↔ `SubscriptionStatusCountsDto` (BE) — same fields, same names. `BillingHero` props match what `BillingPage` and `SubscriptionDetailPage` actually load. `pickPopularPlan` signature matches the call site in `PricingPage`.
 
