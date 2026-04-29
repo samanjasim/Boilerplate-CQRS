@@ -502,12 +502,24 @@
     "title": "Notifications",
     "all": "All",
     "unread": "Unread",
+    "groups": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "earlierThisWeek": "Earlier this week",
+      "earlierThisMonth": "Earlier this month",
+      "older": "Older"
+    },
+    "filter": {
+      "all": "All ({{count}})",
+      "unread": "Unread ({{count}})"
+    },
     "new": "New",
     "markAllRead": "Mark all as read",
     "allMarkedRead": "All notifications marked as read",
     "noNotifications": "No notifications",
     "viewAll": "View all notifications",
     "preferences": "Notification Preferences",
+    "preferencesLink": "Notification preferences",
     "preferencesDesc": "Choose how you want to receive notifications for each event type.",
     "preferencesSaved": "Notification preferences saved",
     "notificationType": "Notification Type",
@@ -576,13 +588,12 @@
       "shared": "Shared with Me",
       "public": "Public"
     },
-    "storageSummary": {
-      "trigger": "Storage",
-      "title": "Storage Summary",
-      "total": "Total Storage",
-      "byCategory": "By Category",
-      "topUploaders": "Top Uploaders",
-      "allTenants": "Show all tenants (platform-wide)"
+    "storageHero": {
+      "total": "Total storage",
+      "ofQuota": "of {{quota}}",
+      "byCategory": "By category",
+      "allTenants": "All tenants",
+      "other": "Other"
     }
   },
   "reports": {
@@ -616,6 +627,14 @@
     "files": "Files",
     "csv": "CSV",
     "pdf": "PDF",
+    "hero": {
+      "active": "Active",
+      "activeEyebrow": "in flight",
+      "completed": "Completed",
+      "completedEyebrow": "ready to download",
+      "failed": "Failed",
+      "failedEyebrow": "failed"
+    },
     "reportReady": "Your report is ready to download",
     "reportFailed": "Report generation failed",
     "viewReports": "View Reports",

@@ -479,12 +479,24 @@
     "title": "ئاگاداریەکان",
     "all": "هەمووی",
     "unread": "نەخوێندراوەکان",
+    "groups": {
+      "today": "ئەمڕۆ",
+      "yesterday": "دوێنێ",
+      "earlierThisWeek": "پێشتر لەم هەفتەیەدا",
+      "earlierThisMonth": "پێشتر لەم مانگەدا",
+      "older": "کۆنتر"
+    },
+    "filter": {
+      "all": "هەموو ({{count}})",
+      "unread": "نەخوێندراوەکان ({{count}})"
+    },
     "new": "نوێ",
     "markAllRead": "هەمووی وەک خوێندراو نیشانە بکە",
     "allMarkedRead": "هەموو ئاگاداریەکان وەک خوێندراو نیشانەکران",
     "noNotifications": "هیچ ئاگاداریەک نییە",
     "viewAll": "بینینی هەموو ئاگاداریەکان",
     "preferences": "ئارەزووەکانی ئاگاداری",
+    "preferencesLink": "ڕێکخستنی ئاگادارییەکان",
     "preferencesDesc": "هەڵبژێرە چۆن دەتەوێت ئاگاداری بۆ هەر جۆرە ڕووداوێک وەربگریت.",
     "preferencesSaved": "ئارەزووەکانی ئاگاداری پاشەکەوتکرا",
     "notificationType": "جۆری ئاگاداری",
@@ -546,7 +558,20 @@
     "permanent": "هەمیشەیی",
     "uploading": "بارکردن...",
     "uploadComplete": "بارکردن تەواو بوو",
-    "invalidFileType": "جۆری فایل نادروستە"
+    "invalidFileType": "جۆری فایل نادروستە",
+    "views": {
+      "all": "هەموو",
+      "mine": "فایلەکانم",
+      "shared": "هاوبەشکراوە لەگەڵم",
+      "public": "گشتی"
+    },
+    "storageHero": {
+      "total": "کۆی بیرگە",
+      "ofQuota": "لە {{quota}}",
+      "byCategory": "بە پێی پۆل",
+      "allTenants": "هەموو خاوەنکارەکان",
+      "other": "ئەوانی تر"
+    }
   },
   "reports": {
     "title": "ڕاپۆرتەکان",
@@ -579,6 +604,14 @@
     "files": "فایلەکان",
     "csv": "CSV",
     "pdf": "PDF",
+    "hero": {
+      "active": "چالاک",
+      "activeEyebrow": "لە جێبەجێکردندا",
+      "completed": "تەواوبوو",
+      "completedEyebrow": "ئامادەیە بۆ داگرتن",
+      "failed": "شکستی هێنا",
+      "failedEyebrow": "شکستی هێنا"
+    },
     "reportReady": "ڕاپۆرتەکەت ئامادەیە بۆ داگرتن",
     "reportFailed": "دروستکردنی ڕاپۆرت سەرنەکەوت",
     "viewReports": "بینینی ڕاپۆرتەکان",

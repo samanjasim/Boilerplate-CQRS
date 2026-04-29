@@ -1,10 +1,10 @@
 # Phase 3 — Data cluster redesign — implementation plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** Use `superpowers:executing-plans` to implement this plan task-by-task. Only use `superpowers:subagent-driven-development` if the user explicitly asks for parallel/subagent work. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Bring Files / Reports / Notifications onto the J4 Spectrum visual language with two patterns — hero-strip (Files, Reports) and grouped-list (Notifications) — without changing existing behaviour.
 
-**Architecture:** One pure-utility task (date grouping) tested before use. One small BE endpoint for Reports status counts. Three FE hero-strip / list-redesign tasks. Carry-along decomposition of the 852-LOC `FilesPage.tsx`. Subagent-driven cadence with review per page.
+**Architecture:** One compact metric-card primitive for data/status hero cards, leaving the existing dashboard `StatCard` intact. One pure date-grouping utility. One small BE endpoint for Reports status counts. Three FE hero-strip / list-redesign tasks. Carry-along decomposition of the 852-LOC `FilesPage.tsx`. Review per page.
 
 **Tech Stack:** React 19, TypeScript, Tailwind 4, shadcn/ui, TanStack Query, react-i18next, .NET 10 (Reports BE endpoint).
 
@@ -15,32 +15,34 @@
 ## File structure
 
 **New (FE):**
-- `boilerplateFE/src/components/common/StatCard.tsx` — extracted from `FeatureFlagStatStrip.tsx`, reused by Files + Reports heroes.
+- `boilerplateFE/src/components/common/MetricCard.tsx` — compact metric tile extracted from `FeatureFlagStatStrip.tsx`, reused by data/admin hero strips. The existing dashboard `StatCard.tsx` remains unchanged.
 - `boilerplateFE/src/features/files/components/StorageHeroStrip.tsx` — replaces `StorageSummaryPanel.tsx`.
 - `boilerplateFE/src/features/files/components/FileUploadDialog.tsx` — extracted from `FilesPage.tsx`.
 - `boilerplateFE/src/features/files/components/FileEditDialog.tsx` — extracted from `FilesPage.tsx` (rename + edit dialog inside detail modal).
 - `boilerplateFE/src/features/files/components/FileRowActions.tsx` — per-row dropdown menu + its dialog state.
 - `boilerplateFE/src/features/files/components/FilesGridView.tsx` — grid layout.
 - `boilerplateFE/src/features/files/components/FilesTableView.tsx` — table layout.
+- `boilerplateFE/src/features/files/utils/file-display.ts` — shared file display helpers (`FILE_CATEGORIES`, `isImageType`, file icon mapping) used by grid/table/detail.
 - `boilerplateFE/src/features/reports/components/ReportStatusHeroStrip.tsx` — Active / Completed / Failed cards.
 - `boilerplateFE/src/features/reports/api/reports.api.ts` — extend with `getStatusCounts()`.
 - `boilerplateFE/src/features/notifications/utils/groupByDate.ts` — pure grouping utility (Today / Yesterday / This week / This month / Older).
-- `boilerplateFE/src/features/notifications/utils/groupByDate.test.ts` — vitest tests for the grouping function.
 
 **Modified (FE):**
 - `boilerplateFE/src/features/files/pages/FilesPage.tsx` — composition only after extracts; target < 250 LOC.
 - `boilerplateFE/src/features/reports/pages/ReportsPage.tsx` — insert `<ReportStatusHeroStrip />` above filter row.
 - `boilerplateFE/src/features/notifications/pages/NotificationsPage.tsx` — segmented filter + grouped rendering + preferences link.
-- `boilerplateFE/src/features/feature-flags/components/FeatureFlagStatStrip.tsx` — re-import `StatCard` from common.
+- `boilerplateFE/src/components/common/index.ts` — export `MetricCard`.
+- `boilerplateFE/src/features/feature-flags/components/FeatureFlagStatStrip.tsx` — re-import `MetricCard` from common.
 - `boilerplateFE/src/features/reports/api/reports.queries.ts` — add `useReportStatusCounts()`.
 - `boilerplateFE/src/types/report.types.ts` — add `ReportStatusCounts` interface.
 - `boilerplateFE/src/config/api.config.ts` — add `REPORTS.STATUS_COUNTS` route.
+- `boilerplateFE/src/lib/query/keys.ts` — add `queryKeys.reports.statusCounts()`.
 - `boilerplateFE/src/i18n/locales/{en,ar,ku}/translation.json` — new keys per task.
 
 **New (BE):**
 - `boilerplateBE/src/Starter.Application/Features/Reports/Queries/GetReportStatusCounts/GetReportStatusCountsQuery.cs`
 - `boilerplateBE/src/Starter.Application/Features/Reports/Queries/GetReportStatusCounts/GetReportStatusCountsQueryHandler.cs`
-- `boilerplateBE/src/Starter.Abstractions/DTOs/Reports/ReportStatusCountsDto.cs`
+- `boilerplateBE/src/Starter.Application/Features/Reports/DTOs/ReportStatusCountsDto.cs`
 
 **Modified (BE):**
 - `boilerplateBE/src/Starter.Api/Controllers/ReportsController.cs` — add `GET /status-counts` action.
@@ -58,10 +60,10 @@ The plan reads top-to-bottom and ships in three review checkpoints: **(A) Report
 
 ---
 
-### Task 0: Branch + shared `StatCard` extraction
+### Task 0: Branch + shared `MetricCard` extraction
 
 **Files:**
-- Create: `boilerplateFE/src/components/common/StatCard.tsx`
+- Create: `boilerplateFE/src/components/common/MetricCard.tsx`
 - Modify: `boilerplateFE/src/components/common/index.ts`
 - Modify: `boilerplateFE/src/features/feature-flags/components/FeatureFlagStatStrip.tsx`
 
@@ -74,16 +76,16 @@ git rev-parse --abbrev-ref HEAD
 
 Expected: clean working tree, on `fe/redesign-phase-3-views`. If not on the branch, `git checkout fe/redesign-phase-3-views`.
 
-- [ ] **Step 2: Create the shared `StatCard` component**
+- [ ] **Step 2: Create the shared `MetricCard` component**
 
-Create `boilerplateFE/src/components/common/StatCard.tsx` with:
+Create `boilerplateFE/src/components/common/MetricCard.tsx` with:
 
 ```tsx
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import type { ReactNode } from 'react';
 
-export interface StatCardProps {
+export interface MetricCardProps {
   label: string;
   /** Primary value rendered with `tabular-nums`. */
   value: ReactNode;
@@ -100,13 +102,13 @@ export interface StatCardProps {
   className?: string;
 }
 
-const TONE_CLASSES: Record<NonNullable<StatCardProps['tone']>, string> = {
+const TONE_CLASSES: Record<NonNullable<MetricCardProps['tone']>, string> = {
   default: '',
-  active: 'bg-[var(--active-bg)]/40',
-  destructive: 'bg-destructive/10',
+  active: 'border-primary/20 bg-[var(--active-bg)]/40',
+  destructive: 'border-destructive/30 bg-destructive/10',
 };
 
-export function StatCard({
+export function MetricCard({
   label,
   value,
   secondary,
@@ -115,7 +117,7 @@ export function StatCard({
   tone = 'default',
   glyph,
   className,
-}: StatCardProps) {
+}: MetricCardProps) {
   return (
     <Card variant="elevated" className={cn(TONE_CLASSES[tone], className)}>
       <CardContent className="pt-5">
@@ -143,25 +145,26 @@ export function StatCard({
 Read `boilerplateFE/src/components/common/index.ts` first to confirm format. Add a line:
 
 ```ts
-export * from './StatCard';
+export * from './MetricCard';
 ```
 
 (If the barrel uses named exports instead of `export *`, follow the existing pattern.)
 
-- [ ] **Step 4: Migrate `FeatureFlagStatStrip` to import the shared `StatCard`**
+- [ ] **Step 4: Migrate `FeatureFlagStatStrip` to import the shared `MetricCard`**
 
-Read `boilerplateFE/src/features/feature-flags/components/FeatureFlagStatStrip.tsx` (lines 20–39 currently define a local `StatCard`). Delete the local definition and replace its consumers with the imported one:
+Read `boilerplateFE/src/features/feature-flags/components/FeatureFlagStatStrip.tsx` (lines 20–39 currently define a local compact `StatCard`). Delete the local definition and replace its consumers with the imported shared component:
 
 ```tsx
 // At the top:
-import { StatCard } from '@/components/common';
+import { MetricCard } from '@/components/common';
 
 // Delete the local StatCard function (lines ~20–39 currently).
 
-// JSX usages in lines ~51–68 stay the same shape since props are compatible.
+// Rename each JSX usage:
+<MetricCard ... />
 ```
 
-The local `StatCard` accepted `{ label, value, secondary, emphasis }` — exactly the shared version's API plus the new optional fields. No call-site changes needed.
+The local compact `StatCard` accepted `{ label, value, secondary, emphasis }` — exactly the shared `MetricCard` API plus optional fields. Only the component name changes. Do not touch `boilerplateFE/src/components/common/StatCard.tsx`; that file already exists with a different dashboard-card API and is used by Dashboard / Users / Tenants / Roles.
 
 - [ ] **Step 5: Lint + build**
 
@@ -177,15 +180,16 @@ Expected: both pass.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add boilerplateFE/src/components/common/StatCard.tsx \
+git add boilerplateFE/src/components/common/MetricCard.tsx \
         boilerplateFE/src/components/common/index.ts \
         boilerplateFE/src/features/feature-flags/components/FeatureFlagStatStrip.tsx
-git commit -m "refactor(fe): extract StatCard to @/components/common
+git commit -m "refactor(fe): extract MetricCard to @/components/common
 
-Phase 3 needs the same stat-card primitive on Files and Reports heroes.
-Lifted the local one out of FeatureFlagStatStrip and added the optional
-fields (eyebrow, tone, glyph) the new heroes will use. FeatureFlags
-keeps its existing visuals — props are a superset of the old local one."
+Phase 3 needs the same compact metric-card primitive on data/admin
+heroes. Lifted the local one out of FeatureFlagStatStrip and added the
+optional fields (eyebrow, tone, glyph) the new heroes will use.
+FeatureFlags keeps its existing visuals. The existing dashboard StatCard
+component is intentionally unchanged."
 ```
 
 ---
@@ -195,7 +199,7 @@ keeps its existing visuals — props are a superset of the old local one."
 ### Task 1: Reports — BE status-counts endpoint
 
 **Files:**
-- Create: `boilerplateBE/src/Starter.Abstractions/DTOs/Reports/ReportStatusCountsDto.cs`
+- Create: `boilerplateBE/src/Starter.Application/Features/Reports/DTOs/ReportStatusCountsDto.cs`
 - Create: `boilerplateBE/src/Starter.Application/Features/Reports/Queries/GetReportStatusCounts/GetReportStatusCountsQuery.cs`
 - Create: `boilerplateBE/src/Starter.Application/Features/Reports/Queries/GetReportStatusCounts/GetReportStatusCountsQueryHandler.cs`
 - Modify: `boilerplateBE/src/Starter.Api/Controllers/ReportsController.cs`
@@ -210,10 +214,10 @@ Find the `GetReportsQueryHandler` and read it. Note: namespace, the `IApplicatio
 
 - [ ] **Step 2: Create the DTO**
 
-Create `boilerplateBE/src/Starter.Abstractions/DTOs/Reports/ReportStatusCountsDto.cs`:
+Create `boilerplateBE/src/Starter.Application/Features/Reports/DTOs/ReportStatusCountsDto.cs`:
 
 ```csharp
-namespace Starter.Abstractions.DTOs.Reports;
+namespace Starter.Application.Features.Reports.DTOs;
 
 public sealed record ReportStatusCountsDto(
     int Pending,
@@ -231,15 +235,15 @@ Create `boilerplateBE/src/Starter.Application/Features/Reports/Queries/GetReport
 
 ```csharp
 using MediatR;
-using Starter.Abstractions.DTOs.Reports;
-using Starter.Domain.Common;
+using Starter.Application.Features.Reports.DTOs;
+using Starter.Shared.Results;
 
 namespace Starter.Application.Features.Reports.Queries.GetReportStatusCounts;
 
 public sealed record GetReportStatusCountsQuery() : IRequest<Result<ReportStatusCountsDto>>;
 ```
 
-If `Result<T>` lives in a different namespace in this solution (`Starter.Domain.Common` vs `Starter.Abstractions.Common` etc.), match the existing list query's `using` block.
+This matches the existing Reports list query's `Result<T>` namespace and DTO placement.
 
 - [ ] **Step 4: Create the handler**
 
@@ -248,33 +252,56 @@ Create `boilerplateBE/src/Starter.Application/Features/Reports/Queries/GetReport
 ```csharp
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Starter.Abstractions.DTOs.Reports;
-using Starter.Application.Common.Persistence;
+using Starter.Application.Common.Interfaces;
+using Starter.Application.Features.Reports.DTOs;
 using Starter.Domain.Common;
-using Starter.Domain.Reports.Enums;
+using Starter.Domain.Common.Enums;
+using Starter.Domain.Identity.Errors;
+using Starter.Shared.Results;
 
 namespace Starter.Application.Features.Reports.Queries.GetReportStatusCounts;
 
-internal sealed class GetReportStatusCountsQueryHandler(IApplicationDbContext context)
+internal sealed class GetReportStatusCountsQueryHandler(
+    IApplicationDbContext context,
+    ICurrentUserService currentUserService)
     : IRequestHandler<GetReportStatusCountsQuery, Result<ReportStatusCountsDto>>
 {
     public async Task<Result<ReportStatusCountsDto>> Handle(
         GetReportStatusCountsQuery request,
         CancellationToken cancellationToken)
     {
-        // Tenant filter is applied automatically via ApplicationDbContext global filters.
-        var counts = await context.ReportRequests
+        if (currentUserService.UserId is null)
+        {
+            return Result.Failure<ReportStatusCountsDto>(UserErrors.Unauthorized());
+        }
+
+        var query = context.Set<ReportRequest>().AsNoTracking().AsQueryable();
+
+        // Match GetReportsQueryHandler's tenant/user scoping so the hero count
+        // and the table describe the same data surface.
+        if (currentUserService.TenantId is not null)
+        {
+            var userId = currentUserService.UserId.Value;
+            var tenantId = currentUserService.TenantId.Value;
+
+            query = query.Where(r =>
+                r.RequestedBy == userId ||
+                r.TenantId == tenantId);
+        }
+
+        var counts = await query
             .GroupBy(r => r.Status)
             .Select(g => new { Status = g.Key, Count = g.Count() })
             .ToListAsync(cancellationToken);
 
-        var dict = counts.ToDictionary(x => x.Status, x => x.Count);
+        int CountFor(ReportStatus status) =>
+            counts.FirstOrDefault(x => x.Status == status)?.Count ?? 0;
 
         var dto = new ReportStatusCountsDto(
-            Pending: dict.GetValueOrDefault(ReportStatus.Pending),
-            Processing: dict.GetValueOrDefault(ReportStatus.Processing),
-            Completed: dict.GetValueOrDefault(ReportStatus.Completed),
-            Failed: dict.GetValueOrDefault(ReportStatus.Failed)
+            Pending: CountFor(ReportStatus.Pending),
+            Processing: CountFor(ReportStatus.Processing),
+            Completed: CountFor(ReportStatus.Completed),
+            Failed: CountFor(ReportStatus.Failed)
         );
 
         return Result.Success(dto);
@@ -282,20 +309,25 @@ internal sealed class GetReportStatusCountsQueryHandler(IApplicationDbContext co
 }
 ```
 
-If `ReportStatus` is a string enum (check `Domain/Reports/Enums/ReportStatus.cs`), the `GetValueOrDefault` calls work the same; if `Status` is a string column instead of an enum, swap to dictionary keys of `"Pending"` etc.
+This solution currently uses `Starter.Domain.Common.Enums.ReportStatus`, `context.Set<ReportRequest>()`, and `ICurrentUserService` in the existing list handler; keep this endpoint aligned with that pattern.
 
 - [ ] **Step 5: Add controller action**
 
 Read `boilerplateBE/src/Starter.Api/Controllers/ReportsController.cs` first to see the policy used on the list action. Add a new action mirroring the list action's authorization and `HandleResult` pattern:
 
 ```csharp
+using Starter.Application.Features.Reports.Queries.GetReportStatusCounts;
+
 // After the existing list action.
 
 [HttpGet("status-counts")]
 [Authorize(Policy = Permissions.System.ExportData)] // match the list action's policy
+[ProducesResponseType(StatusCodes.Status200OK)]
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+[ProducesResponseType(StatusCodes.Status403Forbidden)]
 public async Task<IActionResult> GetStatusCounts(CancellationToken ct)
 {
-    var result = await Sender.Send(new GetReportStatusCountsQuery(), ct);
+    var result = await Mediator.Send(new GetReportStatusCountsQuery(), ct);
     return HandleResult(result);
 }
 ```
@@ -313,14 +345,14 @@ Expected: build clean. Fix any using/namespace issues that surface.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add boilerplateBE/src/Starter.Abstractions/DTOs/Reports/ReportStatusCountsDto.cs \
+git add boilerplateBE/src/Starter.Application/Features/Reports/DTOs/ReportStatusCountsDto.cs \
         boilerplateBE/src/Starter.Application/Features/Reports/Queries/GetReportStatusCounts/ \
         boilerplateBE/src/Starter.Api/Controllers/ReportsController.cs
 git commit -m "feat(be/reports): add GET /reports/status-counts
 
 Returns per-status totals (pending, processing, completed, failed)
-scoped via the existing tenant query filter. Backs the Phase 3 Reports
-status-hero strip — the existing list query response only carries
+scoped with the same current-user/tenant rules as the list query. Backs
+the Phase 3 Reports status-hero strip — the existing list response only carries
 pagination, no aggregates."
 ```
 
@@ -333,6 +365,7 @@ pagination, no aggregates."
 - Modify: `boilerplateFE/src/config/api.config.ts`
 - Modify: `boilerplateFE/src/features/reports/api/reports.api.ts`
 - Modify: `boilerplateFE/src/features/reports/api/reports.queries.ts`
+- Modify: `boilerplateFE/src/lib/query/keys.ts`
 - Create: `boilerplateFE/src/features/reports/components/ReportStatusHeroStrip.tsx`
 - Modify: `boilerplateFE/src/features/reports/pages/ReportsPage.tsx`
 - Modify: `boilerplateFE/src/i18n/locales/{en,ar,ku}/translation.json`
@@ -370,35 +403,41 @@ Read `boilerplateFE/src/features/reports/api/reports.api.ts` to see the existing
 
 ```ts
 // Inside the existing `reportsApi` object/export:
-getStatusCounts: async (): Promise<ApiResponse<ReportStatusCounts>> => {
-  const r = await apiClient.get(API_ENDPOINTS.REPORTS.STATUS_COUNTS);
-  return r.data;
+getStatusCounts: async (): Promise<ReportStatusCounts> => {
+  const response = await apiClient.get<ApiResponse<ReportStatusCounts>>(
+    API_ENDPOINTS.REPORTS.STATUS_COUNTS
+  );
+  return response.data.data;
 },
 ```
 
-Add the import: `import type { ReportStatusCounts } from '@/types/report.types';` at the top if not already present.
+Add the imports: `import type { ApiResponse } from '@/types';` and `import type { ReportStatusCounts } from '@/types/report.types';` if not already present. Keep this method unwrapped, matching the way page hooks consume `reportsApi.getReports()`.
 
-- [ ] **Step 4: Add the React Query hook**
+- [ ] **Step 4: Add the query key + React Query hook**
 
-Read `boilerplateFE/src/features/reports/api/reports.queries.ts` to see the existing `useReports` hook + `queryKeys` shape. Add:
+Read `boilerplateFE/src/lib/query/keys.ts` and extend the Reports key factory:
 
 ```ts
-import { reportsApi } from './reports.api';
-import type { ReportStatusCounts } from '@/types/report.types';
+statusCounts: () => [...queryKeys.reports.all, 'status-counts'] as const,
+```
 
-// Extend queryKeys with:
-//   statusCounts: () => [...queryKeys.reports.all, 'statusCounts'] as const,
-// (Match the pattern of the existing keys factory.)
+Then read `boilerplateFE/src/features/reports/api/reports.queries.ts` to see the existing `useReports` hook. Add:
 
+```ts
 export function useReportStatusCounts() {
   return useQuery({
     queryKey: queryKeys.reports.statusCounts(),
-    queryFn: () => reportsApi.getStatusCounts(),
-    select: (r) => r.data, // unwrap ApiResponse<T>.data
+    queryFn: reportsApi.getStatusCounts,
     staleTime: 30_000,     // counts don't change often
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      return data && (data.pending > 0 || data.processing > 0) ? 5000 : false;
+    },
   });
 }
 ```
+
+The polling keeps the "Active" card fresh while a report is pending/processing and goes quiet when there is no active work.
 
 - [ ] **Step 5: Add translation keys to all three locales**
 
@@ -456,7 +495,7 @@ Create `boilerplateFE/src/features/reports/components/ReportStatusHeroStrip.tsx`
 
 ```tsx
 import { useTranslation } from 'react-i18next';
-import { StatCard } from '@/components/common';
+import { MetricCard } from '@/components/common';
 import { Spinner } from '@/components/ui/spinner';
 import { useReportStatusCounts } from '../api/reports.queries';
 
@@ -468,8 +507,8 @@ export function ReportStatusHeroStrip() {
     // Render layout skeleton so the page doesn't reflow when counts arrive.
     return (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-6">
-        <StatCard label={t('reports.hero.active')} eyebrow={t('reports.hero.activeEyebrow')} value="—" tone="active" />
-        <StatCard label={t('reports.hero.completed')} eyebrow={t('reports.hero.completedEyebrow')} value="—" />
+        <MetricCard label={t('reports.hero.active')} eyebrow={t('reports.hero.activeEyebrow')} value="—" tone="active" />
+        <MetricCard label={t('reports.hero.completed')} eyebrow={t('reports.hero.completedEyebrow')} value="—" />
       </div>
     );
   }
@@ -480,7 +519,7 @@ export function ReportStatusHeroStrip() {
 
   return (
     <div className={`grid gap-4 sm:grid-cols-2 ${showFailed ? 'lg:grid-cols-3' : ''} mb-6`}>
-      <StatCard
+      <MetricCard
         label={t('reports.hero.active')}
         eyebrow={t('reports.hero.activeEyebrow')}
         value={active}
@@ -488,13 +527,13 @@ export function ReportStatusHeroStrip() {
         tone="active"
         glyph={isProcessing ? <Spinner size="sm" className="h-4 w-4" /> : undefined}
       />
-      <StatCard
+      <MetricCard
         label={t('reports.hero.completed')}
         eyebrow={t('reports.hero.completedEyebrow')}
         value={data.completed}
       />
       {showFailed && (
-        <StatCard
+        <MetricCard
           label={t('reports.hero.failed')}
           eyebrow={t('reports.hero.failedEyebrow')}
           value={data.failed}
@@ -531,20 +570,10 @@ Expected: both pass.
 - [ ] **Step 9: Sync to test app + manual visual check**
 
 ```bash
-cp boilerplateFE/src/features/reports/components/ReportStatusHeroStrip.tsx _testJ4visual/_testJ4visual-FE/src/features/reports/components/
-cp boilerplateFE/src/features/reports/api/reports.api.ts _testJ4visual/_testJ4visual-FE/src/features/reports/api/
-cp boilerplateFE/src/features/reports/api/reports.queries.ts _testJ4visual/_testJ4visual-FE/src/features/reports/api/
-cp boilerplateFE/src/features/reports/pages/ReportsPage.tsx _testJ4visual/_testJ4visual-FE/src/features/reports/pages/
-cp boilerplateFE/src/types/report.types.ts _testJ4visual/_testJ4visual-FE/src/types/
-cp boilerplateFE/src/config/api.config.ts _testJ4visual/_testJ4visual-FE/src/config/
-cp boilerplateFE/src/i18n/locales/en/translation.json _testJ4visual/_testJ4visual-FE/src/i18n/locales/en/
-cp boilerplateFE/src/i18n/locales/ar/translation.json _testJ4visual/_testJ4visual-FE/src/i18n/locales/ar/
-cp boilerplateFE/src/i18n/locales/ku/translation.json _testJ4visual/_testJ4visual-FE/src/i18n/locales/ku/
-cp boilerplateFE/src/components/common/StatCard.tsx _testJ4visual/_testJ4visual-FE/src/components/common/
-cp boilerplateFE/src/components/common/index.ts _testJ4visual/_testJ4visual-FE/src/components/common/
+rsync -a boilerplateFE/src/ _testJ4visual/_testJ4visual-FE/src/
 ```
 
-Note: the BE endpoint requires regenerating the test app to see real counts. Until then, the hero will fail the request and render the skeleton — that's expected and acceptable for the visual check at this stage. (Or seed a few report requests via `POST /api/v1/reports` to exercise the hero with real data.)
+Note: the FE harness sync above does not add the BE endpoint to `_testJ4visual`. To see real counts there, copy/regenerate the matching BE files with the `_testJ4visual` namespaces and restart the test backend. Until then, the hero should handle the failed request without breaking the page; verify the skeleton/no-data state, then verify live counts after the backend is synced.
 
 Open `http://localhost:3100/reports` in the browser. Verify:
 - Hero strip renders above the filter row.
@@ -557,6 +586,7 @@ Open `http://localhost:3100/reports` in the browser. Verify:
 ```bash
 git add boilerplateFE/src/types/report.types.ts \
         boilerplateFE/src/config/api.config.ts \
+        boilerplateFE/src/lib/query/keys.ts \
         boilerplateFE/src/features/reports/ \
         boilerplateFE/src/i18n/locales/
 git commit -m "feat(fe/phase3): Reports status hero strip
@@ -578,7 +608,8 @@ and action buttons unchanged."
 This task is purely structural — preserve existing behaviour 1:1, no visual changes. Done first so Task 4 (the hero) can target a smaller, cleaner file.
 
 **Files:**
-- Create: 5 new components under `boilerplateFE/src/features/files/components/`
+- Create: focused components under `boilerplateFE/src/features/files/components/`
+- Create: `boilerplateFE/src/features/files/utils/file-display.ts`
 - Modify: `boilerplateFE/src/features/files/pages/FilesPage.tsx`
 
 - [ ] **Step 1: Re-read the current page to understand boundaries**
@@ -593,8 +624,22 @@ Expected: 852 LOC. Read it end-to-end. Per the explorer survey:
 - Row dropdown actions: lines 514–554 (state: `shareFile`, `transferFile`, `deleteFile`).
 - Grid view: lines 404–460.
 - Table view: lines 462–562.
+- Shared display helpers: `CATEGORIES`, `getFileIcon`, `isImageType`, and any category label mapping currently living in the page.
 
-- [ ] **Step 2: Extract `FileUploadDialog`**
+- [ ] **Step 2: Extract shared file display helpers**
+
+Create `boilerplateFE/src/features/files/utils/file-display.ts` and move the existing file display constants/helpers into it without changing behavior:
+
+```ts
+// Move these from FilesPage.tsx as-is, adjusting imports/types only:
+export const FILE_CATEGORIES = [...];
+export function isImageType(contentType?: string | null): boolean { ... }
+export function getFileIcon(file: FileMetadata): LucideIcon { ... }
+```
+
+Use this utility from `FilesGridView`, `FilesTableView`, and the detail modal. This keeps grid/table/detail category labels, icons, and image checks unified instead of duplicating display decisions in each extracted component.
+
+- [ ] **Step 3: Extract `FileUploadDialog`**
 
 Create `boilerplateFE/src/features/files/components/FileUploadDialog.tsx`. Lift the upload-dialog JSX, the upload state, and the upload mutation call into the new component. Prop interface:
 
@@ -611,34 +656,41 @@ The dialog should manage its own form state internally (the page doesn't need to
 
 In `FilesPage.tsx`, replace the inline dialog block with `<FileUploadDialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen} />` and remove the upload form state declarations.
 
-- [ ] **Step 3: Extract `FileEditDialog`**
+- [ ] **Step 4: Extract `FileEditDialog`**
 
-Create `boilerplateFE/src/features/files/components/FileEditDialog.tsx`. Lift the edit form JSX (rename / description / tags / category) and the `isEditing` state.
+Create `boilerplateFE/src/features/files/components/FileEditDialog.tsx`. Lift the edit form JSX (rename / description / tags / category) and its form state.
 
 ```tsx
 export interface FileEditDialogProps {
   file: FileMetadata | null;
-  onClose: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSaved?: (file: FileMetadata) => void;
 }
 ```
 
-Treat `file === null` as closed. The dialog calls `useUpdateFile()` internally and closes on success.
+The dialog calls `useUpdateFile()` internally, closes on success, and calls `onSaved` so the page can update/close the detail modal consistently. Keep the edit dialog controlled by `open` instead of hiding state inside the detail modal.
 
-- [ ] **Step 4: Extract `FileRowActions`**
+- [ ] **Step 5: Extract `FileRowActions`**
 
 Create `boilerplateFE/src/features/files/components/FileRowActions.tsx`. Lift the dropdown menu + the trio of action dialogs that hang off it (delete confirm, share dialog, ownership transfer dialog). Prop interface:
 
 ```tsx
 export interface FileRowActionsProps {
   file: FileMetadata;
+  onDeleted?: (fileId: string) => void;
+  onDownload?: (file: FileMetadata) => void | Promise<void>;
+  onCopyUrl?: (file: FileMetadata) => void | Promise<void>;
+  onEdit?: (file: FileMetadata) => void;
+  trigger?: 'icon' | 'inline';
 }
 ```
 
 Permissions logic (`canDelete`, `isOwner`, `fileCanShare`) moves inside the component and uses `usePermissions()` + `useAuthStore` directly. Each dialog state is component-local (`shareOpen`, `transferOpen`, `deleteConfirm`).
 
-In `FilesPage.tsx`, the `<TableCell>` for actions becomes simply `<FileRowActions file={f} />`. The page-level `shareFile`, `transferFile`, `deleteFile` state declarations + their dialogs are removed.
+In `FilesPage.tsx`, the `<TableCell>` for actions becomes `<FileRowActions file={f} onDeleted={handleDeletedFile} onEdit={openEditDialog} ... />`. The page-level `shareFile`, `transferFile`, `deleteFile` state declarations + their dialogs are removed. Grid cards also use this component in their top/right action area, with click propagation stopped, so grid and table expose the same action set.
 
-- [ ] **Step 5: Extract `FilesGridView` and `FilesTableView`**
+- [ ] **Step 6: Extract `FilesGridView` and `FilesTableView`**
 
 Create `boilerplateFE/src/features/files/components/FilesGridView.tsx` and `FilesTableView.tsx`. Each accepts:
 
@@ -647,20 +699,22 @@ export interface FilesViewProps {
   files: FileMetadata[];
   isLoading: boolean;
   onSelect: (file: FileMetadata) => void; // for opening detail modal
+  onDeleted?: (fileId: string) => void;
+  onEdit?: (file: FileMetadata) => void;
 }
 ```
 
-Move the inline JSX. Each view uses `<FileRowActions>` for the per-row action menu.
+Move the inline JSX. Each view imports the shared helpers from `../utils/file-display` and uses `<FileRowActions>` for the per-row/per-card action menu.
 
-- [ ] **Step 6: Verify FilesPage shrinks**
+- [ ] **Step 7: Verify FilesPage shrinks**
 
 ```bash
 wc -l boilerplateFE/src/features/files/pages/FilesPage.tsx
 ```
 
-Expected: under 250 LOC. The page should now be: imports + state for filters/pagination + query call + `<PageHeader>` + filter chips + view toggle + `{viewMode === 'grid' ? <FilesGridView ... /> : <FilesTableView ... />}` + `<Pagination>` + `<FileUploadDialog>` + `<FileEditDialog file={detailFile && isEditing ? detailFile : null} ... />` + the file detail modal (still page-level since it shows extra info beyond editing).
+Expected: under 250 LOC. The page should now be: imports + state for filters/pagination + query call + `<PageHeader>` + filter chips + view toggle + `{viewMode === 'grid' ? <FilesGridView ... /> : <FilesTableView ... />}` + `<Pagination>` + `<FileUploadDialog>` + `<FileEditDialog file={editingFile} open={editOpen} ... />` + the file detail modal (still page-level since it shows extra info beyond editing).
 
-- [ ] **Step 7: Lint + build**
+- [ ] **Step 8: Lint + build**
 
 ```bash
 npm run lint && npm run build
@@ -668,10 +722,10 @@ npm run lint && npm run build
 
 Expected: both pass with no behaviour changes.
 
-- [ ] **Step 8: Sync + smoke test**
+- [ ] **Step 9: Sync + smoke test**
 
 ```bash
-cp -r boilerplateFE/src/features/files/ _testJ4visual/_testJ4visual-FE/src/features/files/
+rsync -a boilerplateFE/src/ _testJ4visual/_testJ4visual-FE/src/
 ```
 
 Open `http://localhost:3100/files`. Walk through:
@@ -682,7 +736,7 @@ Open `http://localhost:3100/files`. Walk through:
 
 If any flow breaks, the extraction missed a piece of state. Fix and re-test.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 10: Commit**
 
 ```bash
 git add boilerplateFE/src/features/files/
@@ -752,7 +806,7 @@ Create `boilerplateFE/src/features/files/components/StorageHeroStrip.tsx`:
 ```tsx
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { HardDrive } from 'lucide-react';
+import { MetricCard } from '@/components/common';
 import { Card, CardContent } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import { useAuthStore } from '@/stores/auth.store';
@@ -803,86 +857,81 @@ export function StorageHeroStrip() {
       : null;
 
   return (
-    <Card variant="glass" className="mb-6">
-      <CardContent className="py-5">
-        <div className="grid gap-6 md:grid-cols-12 items-start">
-          {/* Total */}
-          <div className="md:col-span-4">
-            <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-              <HardDrive className="h-3.5 w-3.5" />
-              {t('files.storageHero.total')}
-            </div>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-3xl font-semibold tabular-nums gradient-text">
-                {isLoading || !data ? '—' : formatFileSize(data.totalBytes)}
-              </span>
-              {showQuota && quotaBytes && (
-                <span className="text-sm text-muted-foreground">
-                  {t('files.storageHero.ofQuota', { quota: formatFileSize(quotaBytes) })}
-                </span>
+    <div className="mb-6 grid gap-4 lg:grid-cols-[minmax(220px,0.75fr)_minmax(0,1.5fr)]">
+      <div className="space-y-3">
+        <MetricCard
+          label={t('files.storageHero.total')}
+          value={isLoading || !data ? '—' : formatFileSize(data.totalBytes)}
+          secondary={
+            showQuota && quotaBytes
+              ? t('files.storageHero.ofQuota', { quota: formatFileSize(quotaBytes) })
+              : undefined
+          }
+          emphasis={!isLoading && !!data}
+        />
+        {usagePct != null && (
+          <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+            <div
+              className={cn(
+                'h-full rounded-full transition-all',
+                usagePct > 90 ? 'bg-destructive' : 'bg-primary'
+              )}
+              style={{ width: `${usagePct}%` }}
+            />
+          </div>
+        )}
+      </div>
+
+      <Card variant="glass">
+        <CardContent className="py-5">
+          <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_auto] items-start">
+            <div className="space-y-2">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                {t('files.storageHero.byCategory')}
+              </div>
+              {isLoading || !data ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Spinner size="sm" /> …
+                </div>
+              ) : (
+                <ul className="space-y-1.5">
+                  {bars.map(c => (
+                    <li key={c.category} className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">{c.category}</span>
+                        <span className="text-muted-foreground tabular-nums">
+                          {formatFileSize(c.bytes)} · {c.fileCount}
+                        </span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-primary transition-all"
+                          style={{ width: `${(c.bytes / maxBarBytes) * 100}%` }}
+                        />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
-            {usagePct != null && (
-              <div className="mt-3 h-1.5 rounded-full bg-muted overflow-hidden">
-                <div
-                  className={cn(
-                    'h-full rounded-full transition-all',
-                    usagePct > 90 ? 'bg-destructive' : 'bg-primary'
-                  )}
-                  style={{ width: `${usagePct}%` }}
-                />
+
+            {isPlatformAdmin && (
+              <div className="md:justify-self-end">
+                <label className="inline-flex items-center gap-2 text-xs cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={allTenants}
+                    onChange={e => setAllTenants(e.target.checked)}
+                    className="h-3.5 w-3.5"
+                  />
+                  {t('files.storageHero.allTenants')}
+                </label>
               </div>
             )}
           </div>
-
-          {/* By category */}
-          <div className="md:col-span-7 space-y-2">
-            <div className="text-xs uppercase tracking-wide text-muted-foreground">
-              {t('files.storageHero.byCategory')}
-            </div>
-            {isLoading || !data ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Spinner size="sm" /> …
-              </div>
-            ) : (
-              <ul className="space-y-1.5">
-                {bars.map(c => (
-                  <li key={c.category} className="space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">{c.category}</span>
-                      <span className="text-muted-foreground tabular-nums">
-                        {formatFileSize(c.bytes)} · {c.fileCount}
-                      </span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all"
-                        style={{ width: `${(c.bytes / maxBarBytes) * 100}%` }}
-                      />
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {/* Cross-tenant toggle (super-admin only) */}
-          {isPlatformAdmin && (
-            <div className="md:col-span-1 md:justify-self-end">
-              <label className="inline-flex items-center gap-2 text-xs cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={allTenants}
-                  onChange={e => setAllTenants(e.target.checked)}
-                  className="h-3.5 w-3.5"
-                />
-                {t('files.storageHero.allTenants')}
-              </label>
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 ```
@@ -909,7 +958,7 @@ import { StorageHeroStrip } from '../components/StorageHeroStrip';
 npm run lint && npm run build
 ```
 
-Expected: build will fail because `StorageSummaryPanel` is no longer referenced but still exists. That's OK — fixed in the next step.
+Expected: both pass. An unreferenced `StorageSummaryPanel.tsx` file does not fail the build; delete it in the next step before final QA to remove dead code.
 
 - [ ] **Step 5: Delete the old panel + dead translation keys**
 
@@ -919,7 +968,7 @@ rm boilerplateFE/src/features/files/components/StorageSummaryPanel.tsx
 
 Search for any other consumer:
 ```bash
-grep -rn "StorageSummaryPanel" boilerplateFE/src/
+rg "StorageSummaryPanel" boilerplateFE/src/
 ```
 Expected: no results. If a consumer turns up, replace it with `<StorageHeroStrip />` (or remove if it was page-internal).
 
@@ -936,10 +985,7 @@ Expected: both pass.
 - [ ] **Step 7: Sync + visual verification**
 
 ```bash
-cp -r boilerplateFE/src/features/files/ _testJ4visual/_testJ4visual-FE/src/features/files/
-cp boilerplateFE/src/i18n/locales/en/translation.json _testJ4visual/_testJ4visual-FE/src/i18n/locales/en/
-cp boilerplateFE/src/i18n/locales/ar/translation.json _testJ4visual/_testJ4visual-FE/src/i18n/locales/ar/
-cp boilerplateFE/src/i18n/locales/ku/translation.json _testJ4visual/_testJ4visual-FE/src/i18n/locales/ku/
+rsync -a boilerplateFE/src/ _testJ4visual/_testJ4visual-FE/src/
 rm -f _testJ4visual/_testJ4visual-FE/src/features/files/components/StorageSummaryPanel.tsx
 ```
 
@@ -974,93 +1020,14 @@ inline; the obsolete files.storageSummary.* keys are removed."
 
 ## Checkpoint C — Notifications
 
-### Task 5: Notifications — Date-grouping utility (TDD)
+### Task 5: Notifications — Date-grouping utility
 
-The grouping logic is pure and date-bound — easy to unit-test, hard to verify visually without contrived data. TDD it.
+The grouping logic is pure and date-bound. This repo does not currently include a FE unit-test runner (`package.json` has no Vitest/Jest script), so do not add a new test dependency in this phase. Keep the function small, deterministic, and verify it through build/lint plus the fixture matrix below during code review/manual QA.
 
 **Files:**
 - Create: `boilerplateFE/src/features/notifications/utils/groupByDate.ts`
-- Create: `boilerplateFE/src/features/notifications/utils/groupByDate.test.ts`
 
-- [ ] **Step 1: Write the failing test**
-
-Create `boilerplateFE/src/features/notifications/utils/groupByDate.test.ts`:
-
-```ts
-import { describe, expect, it } from 'vitest';
-import { groupNotificationsByDate, type GroupKey } from './groupByDate';
-import type { Notification } from '@/types';
-
-const now = new Date('2026-04-29T12:00:00Z'); // Wednesday
-
-const make = (id: string, daysAgo: number): Notification => ({
-  id,
-  type: 'system',
-  title: id,
-  message: '',
-  data: null,
-  isRead: false,
-  createdAt: new Date(now.getTime() - daysAgo * 86400000).toISOString(),
-});
-
-describe('groupNotificationsByDate', () => {
-  it('returns groups in order today / yesterday / earlierThisWeek / earlierThisMonth / older', () => {
-    const items = [
-      make('today',          0),
-      make('yesterday',      1),
-      make('earlierWeek',    2), // Monday — same ISO week
-      make('earlierMonth',   10), // earlier in April
-      make('older',          120), // 4 months ago
-    ];
-
-    const groups = groupNotificationsByDate(items, now);
-
-    expect(groups.map(g => g.key)).toEqual([
-      'today',
-      'yesterday',
-      'earlierThisWeek',
-      'earlierThisMonth',
-      'older',
-    ] satisfies GroupKey[]);
-  });
-
-  it('skips empty groups', () => {
-    const items = [make('only', 0), make('also-today', 0), make('older', 60)];
-    const groups = groupNotificationsByDate(items, now);
-    expect(groups.map(g => g.key)).toEqual(['today', 'older']);
-  });
-
-  it('preserves input order within a group', () => {
-    const items = [make('a', 0), make('b', 0), make('c', 0)];
-    const groups = groupNotificationsByDate(items, now);
-    expect(groups[0].items.map(i => i.id)).toEqual(['a', 'b', 'c']);
-  });
-
-  it('treats today by calendar day, not 24h window', () => {
-    const earlyToday = {
-      ...make('early', 0),
-      createdAt: new Date('2026-04-29T00:30:00Z').toISOString(),
-    };
-    const yesterdayLate = {
-      ...make('lateYesterday', 0),
-      createdAt: new Date('2026-04-28T23:30:00Z').toISOString(),
-    };
-    const groups = groupNotificationsByDate([earlyToday, yesterdayLate], now);
-    expect(groups.find(g => g.key === 'today')?.items.map(i => i.id)).toEqual(['early']);
-    expect(groups.find(g => g.key === 'yesterday')?.items.map(i => i.id)).toEqual(['lateYesterday']);
-  });
-});
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-```bash
-cd boilerplateFE && npx vitest run src/features/notifications/utils/groupByDate.test.ts
-```
-
-Expected: FAIL with "Cannot find module './groupByDate'".
-
-- [ ] **Step 3: Implement the utility**
+- [ ] **Step 1: Implement the utility**
 
 Create `boilerplateFE/src/features/notifications/utils/groupByDate.ts`:
 
@@ -1130,15 +1097,27 @@ export function groupNotificationsByDate(
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Step 2: Review deterministic boundary cases**
+
+Use `now = new Date('2026-04-29T12:00:00Z')` (Wednesday) and inspect the logic against this matrix:
+
+- `2026-04-29T00:30:00Z` → `today`
+- `2026-04-28T23:30:00Z` → `yesterday`
+- `2026-04-27T12:00:00Z` → `earlierThisWeek`
+- `2026-04-19T12:00:00Z` → `earlierThisMonth`
+- `2026-01-01T12:00:00Z` → `older`
+
+Confirm empty groups are skipped and input order is preserved within each returned group. Keep grouping page-local; pagination semantics do not change.
+
+- [ ] **Step 3: Lint + build**
 
 ```bash
-npx vitest run src/features/notifications/utils/groupByDate.test.ts
+npm run lint && npm run build
 ```
 
-Expected: 4 tests PASS.
+Expected: both pass. Do not run `npx vitest` unless a test runner is intentionally added in a separate tooling task.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
 git add boilerplateFE/src/features/notifications/utils/
@@ -1247,14 +1226,20 @@ export default function NotificationsPage() {
     pageSize,
     isRead: isReadParam,
   });
-  const { data: unreadCountData } = useUnreadCount();
+  const { data: allNotificationsMeta } = useNotifications(
+    { pageNumber: 1, pageSize: 1 },
+    { refetchInterval: false }
+  );
+  const { data: totalUnread = 0 } = useUnreadCount();
   const { mutate: markRead } = useMarkRead();
   const { mutate: markAllRead } = useMarkAllRead();
 
   const notifications = data?.data ?? [];
   const pagination = data?.pagination;
-  const totalAll = pagination?.totalCount ?? 0;
-  const totalUnread = unreadCountData?.data?.count ?? 0;
+  const totalAll =
+    filter === 'all'
+      ? pagination?.totalCount ?? 0
+      : allNotificationsMeta?.pagination?.totalCount ?? 0;
 
   // Group rows on the current page only — pagination unchanged.
   const groups = useMemo(() => groupNotificationsByDate(notifications), [notifications]);
@@ -1379,15 +1364,12 @@ export default function NotificationsPage() {
 npm run lint && npm run build
 ```
 
-Expected: both pass. If `useUnreadCount` returns a different shape than assumed (`data.count` vs `data.data.count`), adjust the `unreadCountData?.data?.count` line — read the hook in `boilerplateFE/src/features/notifications/api/notifications.queries.ts` to confirm.
+Expected: both pass. `useUnreadCount()` already returns a number because `notificationsApi.getUnreadCount()` unwraps `ApiResponse<number>`; do not treat it like `{ data: { count } }`.
 
 - [ ] **Step 4: Sync + visual check**
 
 ```bash
-cp -r boilerplateFE/src/features/notifications/ _testJ4visual/_testJ4visual-FE/src/features/notifications/
-cp boilerplateFE/src/i18n/locales/en/translation.json _testJ4visual/_testJ4visual-FE/src/i18n/locales/en/
-cp boilerplateFE/src/i18n/locales/ar/translation.json _testJ4visual/_testJ4visual-FE/src/i18n/locales/ar/
-cp boilerplateFE/src/i18n/locales/ku/translation.json _testJ4visual/_testJ4visual-FE/src/i18n/locales/ku/
+rsync -a boilerplateFE/src/ _testJ4visual/_testJ4visual-FE/src/
 ```
 
 Open `http://localhost:3100/notifications`. Verify:
@@ -1486,8 +1468,8 @@ PR title: `feat(fe): Phase 3 redesign — Data cluster (Files / Reports / Notifi
   - All translations EN + AR + KU inline → Tasks 2 / 4 / 6. ✅
   - Verification routine → Task 7. ✅
 
-- **Placeholders:** scanned — all code blocks complete; no TBD/TODO; the only "if X then else" branches are explicit conditional logic (e.g., `useUnreadCount` shape adjust note in Task 6 step 3) with clear resolution paths.
+- **Placeholders:** scanned — all code blocks complete; no TBD/TODO; conditional branches are implementation choices with concrete resolution paths.
 
-- **Type consistency:** `ReportStatusCounts` (FE type) ↔ `ReportStatusCountsDto` (BE record) — same fields, same names. `StatCard` props (Task 0) match call-sites in Tasks 2 + 4.
+- **Type consistency:** `ReportStatusCounts` (FE type) ↔ `ReportStatusCountsDto` (BE record) — same fields, same names. `MetricCard` props (Task 0) match call-sites in Tasks 2 + 4, while the pre-existing dashboard `StatCard` API is untouched.
 
 - **Open question from spec resolved:** Reports counts come from a new endpoint, decided based on the explorer's read of `GetReportsQueryHandler` showing no per-status totals in the paginated envelope.

@@ -479,12 +479,24 @@
     "title": "الإشعارات",
     "all": "الكل",
     "unread": "غير مقروءة",
+    "groups": {
+      "today": "اليوم",
+      "yesterday": "أمس",
+      "earlierThisWeek": "في وقت سابق من هذا الأسبوع",
+      "earlierThisMonth": "في وقت سابق من هذا الشهر",
+      "older": "أقدم"
+    },
+    "filter": {
+      "all": "الكل ({{count}})",
+      "unread": "غير مقروء ({{count}})"
+    },
     "new": "جديد",
     "markAllRead": "تعليم الكل كمقروء",
     "allMarkedRead": "تم تعليم جميع الإشعارات كمقروءة",
     "noNotifications": "لا توجد إشعارات",
     "viewAll": "عرض جميع الإشعارات",
     "preferences": "تفضيلات الإشعارات",
+    "preferencesLink": "تفضيلات الإشعارات",
     "preferencesDesc": "اختر كيف تريد تلقي الإشعارات لكل نوع حدث.",
     "preferencesSaved": "تم حفظ تفضيلات الإشعارات",
     "notificationType": "نوع الإشعار",
@@ -553,13 +565,12 @@
       "shared": "مشاركة معي",
       "public": "عام"
     },
-    "storageSummary": {
-      "trigger": "التخزين",
-      "title": "ملخص التخزين",
-      "total": "إجمالي التخزين",
+    "storageHero": {
+      "total": "المساحة الإجمالية",
+      "ofQuota": "من {{quota}}",
       "byCategory": "حسب الفئة",
-      "topUploaders": "أكثر الرافعين",
-      "allTenants": "عرض جميع المستأجرين"
+      "allTenants": "جميع المستأجرين",
+      "other": "أخرى"
     }
   },
   "reports": {
@@ -593,6 +604,14 @@
     "files": "الملفات",
     "csv": "CSV",
     "pdf": "PDF",
+    "hero": {
+      "active": "نشط",
+      "activeEyebrow": "قيد المعالجة",
+      "completed": "مكتمل",
+      "completedEyebrow": "جاهز للتنزيل",
+      "failed": "فشل",
+      "failedEyebrow": "فشل"
+    },
     "reportReady": "تقريرك جاهز للتنزيل",
     "reportFailed": "فشل إنشاء التقرير",
     "viewReports": "عرض التقارير",
