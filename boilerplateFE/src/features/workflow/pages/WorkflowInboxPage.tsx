@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Inbox, Users, X, Plus } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Spinner } from '@/components/ui/spinner';
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table, TableBody, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { PageHeader, EmptyState, Pagination } from '@/components/common';
 import { getPersistedPageSize } from '@/components/common/pagination-utils';
@@ -19,6 +18,8 @@ import { NewRequestDialog } from '../components/NewRequestDialog';
 import { BulkActionBar } from '../components/BulkActionBar';
 import { BulkConfirmDialog } from '../components/BulkConfirmDialog';
 import { BulkResultDialog } from '../components/BulkResultDialog';
+import { InboxStatusHero } from '../components/InboxStatusHero';
+import { InboxTaskRow } from '../components/InboxTaskRow';
 import { formatDate } from '@/utils/format';
 import type { PendingTaskSummary, BatchExecuteResult } from '@/types/workflow.types';
 
@@ -167,6 +168,8 @@ export default function WorkflowInboxPage() {
         }
       />
 
+      <InboxStatusHero />
+
       {/* Active delegation banner */}
       {hasDelegation && (
         <div className="flex items-center justify-between rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
@@ -203,7 +206,7 @@ export default function WorkflowInboxPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-10">
+                <TableHead className="w-[40px]">
                   <Checkbox
                     aria-label={t('workflow.inbox.selectAll')}
                     checked={allSelected}
@@ -212,78 +215,22 @@ export default function WorkflowInboxPage() {
                   />
                 </TableHead>
                 <TableHead>{t('workflow.inbox.request')}</TableHead>
-                <TableHead>{t('workflow.inbox.workflowName')}</TableHead>
-                <TableHead>{t('workflow.inbox.step')}</TableHead>
-                <TableHead>{t('workflow.inbox.assignedDate')}</TableHead>
-                <TableHead>{t('workflow.inbox.dueDate')}</TableHead>
-                <TableHead>{t('workflow.inbox.actions')}</TableHead>
+                <TableHead className="w-[180px]">{t('workflow.inbox.sla.header')}</TableHead>
+                <TableHead className="w-[160px]">{t('workflow.inbox.raised')}</TableHead>
+                <TableHead className="w-[100px]" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {tasks.map((task) => {
-                const disabled = requiresForm(task);
-                return (
-                <TableRow key={task.taskId}>
-                  <TableCell>
-                    <Checkbox
-                      aria-label={t('workflow.inbox.select')}
-                      checked={selectedIds.has(task.taskId)}
-                      disabled={disabled}
-                      title={disabled ? t('workflow.inbox.requiresForm') : undefined}
-                      onCheckedChange={() => toggleOne(task.taskId)}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Badge variant="secondary" className="shrink-0">
-                          {task.entityType}
-                        </Badge>
-                        <span className="text-sm text-foreground truncate max-w-[200px]">
-                          {task.entityDisplayName ?? task.entityId.substring(0, 8) + '...'}
-                        </span>
-                      </div>
-                      {(task.isOverdue || task.isDelegated) && (
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {task.isOverdue && (
-                            <Badge variant="destructive">
-                              {t('workflow.sla.overdueHours', { hours: task.hoursOverdue ?? 0 })}
-                            </Badge>
-                          )}
-                          {task.isDelegated && (
-                            <Badge variant="secondary">
-                              {t('workflow.delegation.badgeFrom', { name: task.delegatedFromDisplayName })}
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-foreground">{task.definitionName}</TableCell>
-                  <TableCell className="text-foreground">{task.stepName}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {formatDate(task.createdAt)}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {task.dueDate ? formatDate(task.dueDate) : '—'}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" onClick={() => setSelectedTask(task)}>
-                        {t('workflow.inbox.approve')}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setSelectedTask(task)}
-                      >
-                        {t('workflow.inbox.reject')}
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-                );
-              })}
+              {tasks.map((task) => (
+                <InboxTaskRow
+                  key={task.taskId}
+                  task={task}
+                  selected={selectedIds.has(task.taskId)}
+                  bulkEligible={!requiresForm(task)}
+                  onToggleSelect={toggleOne}
+                  onAct={setSelectedTask}
+                />
+              ))}
             </TableBody>
           </Table>
 
