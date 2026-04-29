@@ -124,3 +124,11 @@ export interface SubscriptionSummary {
   latestPaymentStatus: 'Pending' | 'Completed' | 'Failed' | 'Refunded' | null;
   createdAt: string;
 }
+
+export interface SubscriptionStatusCounts {
+  trialing: number;
+  active: number;
+  pastDue: number;
+  canceled: number;
+  expired: number;
+}

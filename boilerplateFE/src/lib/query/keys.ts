@@ -126,6 +126,7 @@ export const queryKeys = {
     subscriptions: {
       all: ['billing', 'subscriptions'] as const,
       list: (params?: Record<string, unknown>) => ['billing', 'subscriptions', 'list', params] as const,
+      statusCounts: () => ['billing', 'subscriptions', 'status-counts'] as const,
     },
     usage: {
       all: ['billing', 'usage'] as const,

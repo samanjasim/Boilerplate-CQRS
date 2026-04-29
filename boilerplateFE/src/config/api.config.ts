@@ -141,6 +141,7 @@ export const API_ENDPOINTS = {
     TENANT_SUBSCRIPTION: (tenantId: string) => `/Billing/tenants/${tenantId}/subscription`,
     TENANT_CHANGE_PLAN: (tenantId: string) => `/Billing/tenants/${tenantId}/change-plan`,
     SUBSCRIPTIONS: '/Billing/subscriptions',
+    SUBSCRIPTION_STATUS_COUNTS: '/Billing/subscriptions/status-counts',
     TENANT_USAGE: (tenantId: string) => `/Billing/tenants/${tenantId}/usage`,
     TENANT_PAYMENTS: (tenantId: string) => `/Billing/tenants/${tenantId}/payments`,
     PLAN_OPTIONS: '/Billing/plan-options',

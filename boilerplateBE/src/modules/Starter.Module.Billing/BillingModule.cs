@@ -3,7 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Starter.Abstractions.Capabilities;
+using Starter.Application.Common.Interfaces;
+using Starter.Domain.Tenants.Entities;
 using Starter.Module.Billing.Domain.Entities;
+using Starter.Module.Billing.Domain.Enums;
 using Starter.Abstractions.Modularity;
 using Starter.Module.Billing.Constants;
 using Starter.Module.Billing.Infrastructure.Persistence;
@@ -81,7 +84,13 @@ public sealed class BillingModule : IModule
         var context = scope.ServiceProvider.GetRequiredService<BillingDbContext>();
 
         if (await context.SubscriptionPlans.AnyAsync(cancellationToken))
+        {
+            // Plans already seeded — still try the demo-subscription seed in case
+            // it wasn't run on a previous boot (e.g. the seed shipped after plans
+            // were already created). Idempotent per tenant.
+            await SeedDemoSubscriptionsAsync(scope.ServiceProvider, context, cancellationToken);
             return;
+        }
 
         var freeFeatures = JsonSerializer.Serialize(new[]
         {
@@ -251,5 +260,157 @@ public sealed class BillingModule : IModule
         }
 
         await context.SaveChangesAsync(cancellationToken);
+
+        // Demo tenants seeded by core's DataSeeder skip the normal RegisterTenantCommand
+        // path, so they never get a subscription via TenantRegisteredEvent. Provision them
+        // directly here with a variety of plan / interval / status / payment combinations
+        // so the SubscriptionsPage hero, payment column, and SubscriptionDetailPage all
+        // render meaningful demo data on first boot.
+        await SeedDemoSubscriptionsAsync(scope.ServiceProvider, context, cancellationToken);
+    }
+
+    /// <summary>
+    /// Provisions one subscription per demo tenant (acme / globex / initech)
+    /// with deliberately varied combinations:
+    ///   acme    — Pro plan, monthly Active, 1 Completed + 1 Pending payment
+    ///   globex  — Basic plan, monthly Trialing (14 days), no payments yet
+    ///   initech — Enterprise plan, annual Active, 1 Failed payment (latest)
+    /// Idempotent per tenant: if a subscription already exists, the tenant block
+    /// is skipped. Safe to call repeatedly.
+    /// </summary>
+    private static async Task SeedDemoSubscriptionsAsync(
+        IServiceProvider scopedServices,
+        BillingDbContext context,
+        CancellationToken ct)
+    {
+        var appContext = scopedServices.GetRequiredService<IApplicationDbContext>();
+        var usageTracker = scopedServices.GetRequiredService<IUsageTracker>();
+
+        var demoSlugs = new[] { "acme", "globex", "initech" };
+        var tenants = await appContext.Set<Tenant>()
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(t => t.Slug != null && demoSlugs.Contains(t.Slug))
+            .ToDictionaryAsync(t => t.Slug!, t => t.Id, ct);
+
+        if (tenants.Count == 0) return;
+
+        var plansBySlug = await context.SubscriptionPlans
+            .IgnoreQueryFilters()
+            .Where(p => new[] { "basic", "pro", "enterprise" }.Contains(p.Slug))
+            .ToDictionaryAsync(p => p.Slug, ct);
+
+        if (!plansBySlug.ContainsKey("basic") ||
+            !plansBySlug.ContainsKey("pro") ||
+            !plansBySlug.ContainsKey("enterprise"))
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+
+        // ─── Acme: Pro plan, monthly Active, completed + pending payments ────
+        if (tenants.TryGetValue("acme", out var acmeId) &&
+            !await context.TenantSubscriptions.IgnoreQueryFilters().AnyAsync(s => s.TenantId == acmeId, ct))
+        {
+            var pro = plansBySlug["pro"];
+            var periodStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            var periodEnd = periodStart.AddMonths(1);
+
+            var subscription = TenantSubscription.Create(
+                acmeId,
+                pro.Id,
+                lockedMonthlyPrice: pro.MonthlyPrice,
+                lockedAnnualPrice: pro.AnnualPrice,
+                pro.Currency,
+                BillingInterval.Monthly,
+                currentPeriodStart: periodStart,
+                currentPeriodEnd: periodEnd,
+                trialEndAt: null,
+                autoRenew: true);
+            context.TenantSubscriptions.Add(subscription);
+
+            // Last month — Completed
+            var lastPeriodStart = periodStart.AddMonths(-1);
+            context.PaymentRecords.Add(PaymentRecord.Create(
+                acmeId, subscription.Id, pro.MonthlyPrice, pro.Currency,
+                PaymentStatus.Completed,
+                externalPaymentId: $"demo-acme-{lastPeriodStart:yyyyMM}",
+                invoiceUrl: null,
+                description: $"Pro plan — {lastPeriodStart:MMM yyyy}",
+                periodStart: lastPeriodStart,
+                periodEnd: periodStart));
+
+            // Current period — Pending
+            context.PaymentRecords.Add(PaymentRecord.Create(
+                acmeId, subscription.Id, pro.MonthlyPrice, pro.Currency,
+                PaymentStatus.Pending,
+                externalPaymentId: $"demo-acme-{periodStart:yyyyMM}",
+                invoiceUrl: null,
+                description: $"Pro plan — {periodStart:MMM yyyy}",
+                periodStart: periodStart,
+                periodEnd: periodEnd));
+
+            await usageTracker.SetAsync(acmeId, "users", 3, ct);
+        }
+
+        // ─── Globex: Basic plan, monthly Trialing, no payments yet ───────────
+        if (tenants.TryGetValue("globex", out var globexId) &&
+            !await context.TenantSubscriptions.IgnoreQueryFilters().AnyAsync(s => s.TenantId == globexId, ct))
+        {
+            var basic = plansBySlug["basic"];
+            var trialStart = now;
+            var trialEnd = now.AddDays(14);
+            var subscription = TenantSubscription.Create(
+                globexId,
+                basic.Id,
+                lockedMonthlyPrice: basic.MonthlyPrice,
+                lockedAnnualPrice: basic.AnnualPrice,
+                basic.Currency,
+                BillingInterval.Monthly,
+                currentPeriodStart: trialStart,
+                currentPeriodEnd: trialEnd,
+                trialEndAt: trialEnd,
+                autoRenew: true);
+            context.TenantSubscriptions.Add(subscription);
+
+            await usageTracker.SetAsync(globexId, "users", 3, ct);
+        }
+
+        // ─── Initech: Enterprise plan, annual Active, latest payment Failed ──
+        if (tenants.TryGetValue("initech", out var initechId) &&
+            !await context.TenantSubscriptions.IgnoreQueryFilters().AnyAsync(s => s.TenantId == initechId, ct))
+        {
+            var ent = plansBySlug["enterprise"];
+            var periodStart = new DateTime(now.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var periodEnd = periodStart.AddYears(1);
+
+            var subscription = TenantSubscription.Create(
+                initechId,
+                ent.Id,
+                lockedMonthlyPrice: ent.MonthlyPrice,
+                lockedAnnualPrice: ent.AnnualPrice,
+                ent.Currency,
+                BillingInterval.Annual,
+                currentPeriodStart: periodStart,
+                currentPeriodEnd: periodEnd,
+                trialEndAt: null,
+                autoRenew: true);
+            context.TenantSubscriptions.Add(subscription);
+
+            // Latest attempt — Failed (drives the "needs attention" payment-status pill).
+            context.PaymentRecords.Add(PaymentRecord.Create(
+                initechId, subscription.Id, ent.AnnualPrice, ent.Currency,
+                PaymentStatus.Failed,
+                externalPaymentId: $"demo-initech-{periodStart:yyyy}",
+                invoiceUrl: null,
+                description: $"Enterprise plan — {periodStart:yyyy} (annual)",
+                periodStart: periodStart,
+                periodEnd: periodEnd));
+
+            await usageTracker.SetAsync(initechId, "users", 3, ct);
+        }
+
+        await context.SaveChangesAsync(ct);
     }
 }

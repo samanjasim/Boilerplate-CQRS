@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { CreditCard, Receipt, BarChart3 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { CreditCard, Receipt } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -11,11 +10,11 @@ import {
 } from '@/components/ui/table';
 import { PageHeader, EmptyState } from '@/components/common';
 import { useTenantSubscription, useTenantUsage, useTenantPayments, useChangeTenantPlan, usePlans } from '../api';
-import { UsageBar } from '../components/UsageBar';
+import { BillingHero } from '../components/BillingHero';
+import { useTenant } from '@/features/tenants/api';
 import { ROUTES } from '@/config';
-import { STATUS_BADGE_VARIANT } from '@/constants';
-import { formatDate, formatFileSize } from '@/utils/format';
-import { PAYMENT_STATUS_VARIANT, PAYMENT_STATUS_LABEL, SUBSCRIPTION_STATUS, BILLING_INTERVAL } from '../constants/status';
+import { formatDate } from '@/utils/format';
+import { PAYMENT_STATUS_VARIANT, PAYMENT_STATUS_LABEL } from '../constants/status';
 import type { SubscriptionPlan, PaymentRecord } from '@/types';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -31,6 +30,7 @@ export default function SubscriptionDetailPage() {
   const [planModalOpen, setPlanModalOpen] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
 
+  const { data: tenant } = useTenant(tenantId ?? '');
   const { data: subscription, isLoading: subLoading } = useTenantSubscription(tenantId ?? '');
 
   const { data: usage, isLoading: usageLoading } = useTenantUsage(tenantId ?? '');
@@ -59,8 +59,8 @@ export default function SubscriptionDetailPage() {
     }
   };
 
-  const headerTitle = subscription
-    ? t('billing.tenantSubscription', { tenantName: subscription.planName ?? '' })
+  const headerTitle = tenant
+    ? t('billing.tenantSubscription', { tenantName: tenant.name })
     : t('billing.subscriptionDetail');
 
   return (
@@ -69,100 +69,35 @@ export default function SubscriptionDetailPage() {
         title={headerTitle}
         breadcrumbs={[
           { to: ROUTES.SUBSCRIPTIONS.LIST, label: t('billing.subscriptions') },
-          { label: subscription?.planName ?? t('common.loading') },
+          { label: tenant?.name ?? subscription?.tenantId ?? t('common.loading') },
         ]}
       />
 
-      {/* Current Plan */}
-      <section className="space-y-3">
-        <h2 className="text-base font-semibold text-foreground">{t('billing.currentPlan')}</h2>
-        {subLoading ? (
-          <div className="flex justify-center py-8">
-            <Spinner size="lg" />
-          </div>
-        ) : !subscription ? (
-          <EmptyState
-            icon={CreditCard}
-            title={t('billing.currentPlan')}
-            description={t('billing.subtitle')}
-          />
-        ) : (
-          <Card>
-            <CardContent className="py-5">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-bold text-foreground">{subscription.planName}</h3>
-                    <Badge variant={STATUS_BADGE_VARIANT[SUBSCRIPTION_STATUS[subscription.status] ?? subscription.status] ?? 'secondary'}>
-                      {SUBSCRIPTION_STATUS[subscription.status] ?? subscription.status}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {BILLING_INTERVAL[subscription.billingInterval] ?? subscription.billingInterval}
-                    {' · '}
-                    {subscription.currency}{' '}
-                    {(BILLING_INTERVAL[subscription.billingInterval] === 'Monthly'
-                      ? subscription.lockedMonthlyPrice
-                      : subscription.lockedAnnualPrice
-                    )?.toFixed(2)}
-                    {BILLING_INTERVAL[subscription.billingInterval] === 'Monthly' ? t('billing.perMonth') : t('billing.perYear')}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDate(subscription.currentPeriodStart)} – {formatDate(subscription.currentPeriodEnd)}
-                  </p>
-                </div>
-
-                <Button onClick={() => { setSelectedPlanId(subscription.subscriptionPlanId); setPlanModalOpen(true); }}>
-                  {t('billing.changePlan')}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </section>
-
-      {/* Usage */}
-      <section className="space-y-3">
-        <h2 className="text-base font-semibold text-foreground">{t('billing.usage')}</h2>
-        {usageLoading ? (
-          <div className="flex justify-center py-8">
-            <Spinner size="lg" />
-          </div>
-        ) : !usage ? (
-          <EmptyState icon={BarChart3} title={t('billing.usage')} />
-        ) : (
-          <Card>
-            <CardContent className="py-5 grid gap-5 sm:grid-cols-2">
-              <UsageBar
-                label={t('billing.usersUsage')}
-                current={usage.users}
-                max={usage.maxUsers}
-              />
-              <UsageBar
-                label={t('billing.storageUsage')}
-                current={usage.storageBytes}
-                max={usage.maxStorageBytes}
-                formatValue={formatFileSize}
-              />
-              <UsageBar
-                label={t('billing.apiKeysUsage')}
-                current={usage.apiKeys}
-                max={usage.maxApiKeys}
-              />
-              <UsageBar
-                label={t('billing.usage') + ' — Reports'}
-                current={usage.reportsActive}
-                max={usage.maxReports}
-              />
-              <UsageBar
-                label={t('billing.webhooksUsage')}
-                current={usage.webhooks}
-                max={usage.maxWebhooks}
-              />
-            </CardContent>
-          </Card>
-        )}
-      </section>
+      {!subLoading && !subscription ? (
+        <EmptyState
+          icon={CreditCard}
+          title={t('billing.currentPlan')}
+          description={t('billing.subtitle')}
+        />
+      ) : (
+        <BillingHero
+          subscription={subscription}
+          usage={usage}
+          isLoading={subLoading || usageLoading}
+          eyebrow={tenant?.name ?? subscription?.tenantId}
+          action={
+            <Button
+              onClick={() => {
+                if (subscription) setSelectedPlanId(subscription.subscriptionPlanId);
+                setPlanModalOpen(true);
+              }}
+              disabled={!subscription}
+            >
+              {t('billing.changePlan')}
+            </Button>
+          }
+        />
+      )}
 
       {/* Payment History */}
       <section className="space-y-3">

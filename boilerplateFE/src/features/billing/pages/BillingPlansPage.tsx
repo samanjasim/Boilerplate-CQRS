@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, CreditCard, Pencil, RefreshCw, Trash2 } from 'lucide-react';
+import { Check, Plus, CreditCard, Pencil, RefreshCw, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { PageHeader, EmptyState, ConfirmDialog } from '@/components/common';
 import { useAllPlans, useDeactivatePlan, useResyncPlan } from '../api';
-import { CreatePlanDialog } from '../components/CreatePlanDialog';
-import { EditPlanDialog } from '../components/EditPlanDialog';
+import { PlanFormDialog } from '../components/PlanFormDialog';
 import { usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
 import { getFeatureHighlights } from '../utils/features';
@@ -57,7 +56,7 @@ export default function BillingPlansPage() {
         subtitle={t('billing.plansSubtitle')}
         actions={
           hasPermission(PERMISSIONS.Billing.ManagePlans) ? (
-            <Button onClick={() => setCreateOpen(true)}>
+            <Button onClick={() => setCreateOpen(true)} className="btn-primary-gradient">
               <Plus className="mr-2 h-4 w-4" />
               {t('billing.createPlan')}
             </Button>
@@ -92,10 +91,11 @@ export default function BillingPlansPage() {
       )}
 
       {/* Dialogs */}
-      <CreatePlanDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <PlanFormDialog mode="create" open={createOpen} onOpenChange={setCreateOpen} />
 
       {editPlan && (
-        <EditPlanDialog
+        <PlanFormDialog
+          mode="edit"
           open={!!editPlan}
           onOpenChange={(open) => { if (!open) setEditPlan(null); }}
           plan={editPlan}
@@ -147,7 +147,7 @@ function PlanCard({ plan, canManage, onEdit, onDeactivate, onResync }: PlanCardP
   const features = getFeatureHighlights(plan.features);
 
   return (
-    <Card className="flex flex-col">
+    <Card variant="glass" className="flex flex-col">
       <CardContent className="py-5 flex flex-col gap-3 flex-1">
         {/* Header */}
         <div className="flex items-start justify-between gap-2">
@@ -163,30 +163,46 @@ function PlanCard({ plan, canManage, onEdit, onDeactivate, onResync }: PlanCardP
         </div>
 
         {/* Prices */}
-        <div className="flex items-center gap-3 text-sm">
-          <span className="text-foreground font-medium">
-            {plan.isFree ? (
-              <Badge variant="outline">{t('billing.freeLabel')}</Badge>
-            ) : (
-              <>
-                {plan.currency} {plan.monthlyPrice.toFixed(2)}{t('billing.perMonth')}
-                <span className="mx-1 text-muted-foreground">·</span>
-                {plan.currency} {plan.annualPrice.toFixed(2)}{t('billing.perYear')}
-              </>
-            )}
-          </span>
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
+          {plan.isFree ? (
+            <span className="text-2xl font-semibold tabular-nums gradient-text">
+              {t('billing.freeLabel')}
+            </span>
+          ) : (
+            <>
+              <span>
+                <span className="text-2xl font-semibold tabular-nums gradient-text">
+                  {plan.currency} {plan.monthlyPrice.toFixed(2)}
+                </span>
+                <span className="text-muted-foreground">{t('billing.perMonth')}</span>
+              </span>
+              <span className="text-muted-foreground">·</span>
+              <span>
+                <span className="text-2xl font-semibold tabular-nums gradient-text">
+                  {plan.currency} {plan.annualPrice.toFixed(2)}
+                </span>
+                <span className="text-muted-foreground">{t('billing.perYear')}</span>
+              </span>
+            </>
+          )}
         </div>
 
         {/* Subscribers */}
-        <p className="text-xs text-muted-foreground">
-          {t('billing.subscribers')}: <span className="font-medium text-foreground">{plan.subscriberCount}</span>
-        </p>
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70">
+            {t('billing.subscribers')}
+          </div>
+          <div className="text-sm font-medium tabular-nums text-foreground">{plan.subscriberCount}</div>
+        </div>
 
         {/* Feature highlights */}
         {features.length > 0 && (
           <ul className="space-y-0.5 flex-1">
             {features.map((f, i) => (
-              <li key={i} className="text-xs text-muted-foreground">• {f}</li>
+              <li key={i} className="flex items-start gap-2 text-xs">
+                <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                <span className="text-muted-foreground">{f}</span>
+              </li>
             ))}
           </ul>
         )}
