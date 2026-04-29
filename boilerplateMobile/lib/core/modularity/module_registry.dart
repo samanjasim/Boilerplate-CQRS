@@ -33,9 +33,13 @@ class ModuleRegistry {
   /// Sorts by dependencies, validates that all declared dependencies
   /// are present, and calls `registerDependencies` on each module.
   void init(List<AppModule> modules, GetIt sl) {
+    // Validate + sort first so a thrown StateError does not leave the
+    // registry empty after a partial init.
+    final sorted = _topologicalSort(modules);
+
     _modules
       ..clear()
-      ..addAll(_topologicalSort(modules));
+      ..addAll(sorted);
 
     for (final module in _modules) {
       module.registerDependencies(sl);
