@@ -116,7 +116,7 @@ export default function WorkflowDefinitionDesignerPage() {
         breadcrumbs={[
           { to: '/workflows/definitions', label: t('workflow.definitions.title') },
           { to: ROUTES.WORKFLOWS.getDefinitionDetail(id!), label: def?.name ?? t('common.loading') },
-          { label: t('workflow.definitions.designer.title', 'Designer') },
+          { label: t('workflow.designer.title') },
         ]}
       />
       {readOnly && (
