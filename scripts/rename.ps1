@@ -753,6 +753,18 @@ if ($null -ne $modulesConfig) {
             if (Test-Path $feFolderPath) {
                 Remove-Item $feFolderPath -Recurse -Force -ErrorAction SilentlyContinue
             }
+
+            # Temporary Task 4 compatibility: core routes still contain guarded
+            # lazy imports for optional feature pages. Rewrite only those dead
+            # dynamic imports so generated source-mode apps compile until Task 5
+            # moves optional routes into module contributions.
+            $routesTsxPath = Join-Path (Join-Path (Join-Path $TargetFE "src") "routes") "routes.tsx"
+            if (Test-Path $routesTsxPath) {
+                $routesContent = Get-Content $routesTsxPath -Raw
+                $featureEscaped = [regex]::Escape($frontendFeature)
+                $routesContent = $routesContent -replace "import\('@/features/$featureEscaped/[^']+'\)", "import('@/routes/NotFoundPage')"
+                Set-Content -Path $routesTsxPath -Value $routesContent -NoNewline
+            }
         }
 
         # 5. Delete module-owned test folder under tests/{Name}.Api.Tests/
