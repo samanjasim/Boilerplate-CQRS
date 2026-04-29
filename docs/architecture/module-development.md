@@ -395,7 +395,7 @@ Follow this checklist when adding a new domain module (e-commerce, CRM, POS, LMS
 
 ### Module manifest
 
-Add an entry to `scripts/modules.json`. The `rename.ps1` script reads this file when generating a fresh app — entries with `required: false` are honored by the `-Modules` parameter (`All`/`None`/comma-separated names).
+Add an entry to `modules.catalog.json`. The `rename.ps1` script reads this root catalog when generating a fresh app — entries with `required: false` are honored by the `-Modules` parameter (`All`/`None`/comma-separated names).
 
 ```json
 "myModule": {
@@ -408,7 +408,7 @@ Add an entry to `scripts/modules.json`. The `rename.ps1` script reads this file 
 }
 ```
 
-After Phase 0 of the modularity refactor only optional modules live in `modules.json`. The 6 core features (Files, Notifications, FeatureFlags, ApiKeys, AuditLogs, Reports) ship with every build and are not in this file.
+Only optional modules live in `modules.catalog.json`. Core features such as Files, Notifications, FeatureFlags, ApiKeys, AuditLogs, and Reports ship with every build and are not in this catalog.
 
 ### First-run checklist
 

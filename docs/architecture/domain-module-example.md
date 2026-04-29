@@ -84,7 +84,7 @@ Minimum viable feature set for D2:
 - `Products.View`, `Products.Create`, `Products.Update`, `Products.Delete` — module-owned constants in `Starter.Module.Products.Constants.ProductPermissions`
 - Default role mappings: `SuperAdmin` + `Admin` → all four; `User` → `View` only
 
-**Module manifest** (`scripts/modules.json`):
+**Module catalog** (`modules.catalog.json`):
 - Add a new entry: `products` with `backendModule: "Starter.Module.Products"`, `frontendFeature: "products"`, `configKey: "products"`, `required: false`
 
 **Frontend bootstrap** (`boilerplateFE/src/config/modules.config.ts`):
@@ -109,7 +109,7 @@ D2 succeeds if and only if **every one of these is true** at the end:
 1. **Zero files modified outside `src/modules/Starter.Module.Products/` and `src/features/products/`**, with exactly four allowed exceptions:
    - `boilerplateBE/Starter.sln` — one new `Project` entry for the module
    - `boilerplateBE/src/Starter.Api/Starter.Api.csproj` — one new `<ProjectReference>`
-   - `scripts/modules.json` — one new entry
+   - `modules.catalog.json` — one new entry
    - `boilerplateFE/src/config/modules.config.ts` — one new import + one `activeModules` flag + one `enabledModules` entry
    - `boilerplateFE/src/lib/extensions/slot-map.ts` — one new slot id (IF you add the `dashboard-cards` slot; if you reuse only existing slots, this is not needed)
 
@@ -218,7 +218,7 @@ Read these first in the D2 session to orient:
 
 **Scaffolder**:
 - `scripts/rename.ps1` — read the `-Modules` parameter handling (~line 216 onward) to understand what it does when a module is excluded. Your new module must match that pattern so `-Modules None` strips it cleanly.
-- `scripts/modules.json` — current 3-module manifest; add your 4th entry matching the schema.
+- `modules.catalog.json` — root module catalog; add your entry matching the schema.
 
 **Architecture rules**:
 - `boilerplateBE/tests/Starter.Api.Tests/Architecture/AbstractionsPurityTests.cs` — you'll be running this periodically during D2. It should stay green throughout.

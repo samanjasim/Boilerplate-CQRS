@@ -84,7 +84,7 @@ lib/
 1. Create `lib/modules/{name}/` with `domain/`, `data/`, `presentation/` subdirs
 2. Create `{name}_module.dart` implementing `AppModule`
 3. Add import + instance in `modules.config.dart` between the markers
-4. Add `mobileModule` / `mobileFolder` to `scripts/modules.json`
+4. Add `mobileModule` / `mobileFolder` to `modules.catalog.json`
 
 ## Key Files
 
@@ -117,7 +117,7 @@ When disabled:
 | API endpoints | Feature datasources (`auth_remote_datasource.dart`, etc.) | Manual — match controller routes |
 | API response envelope | `lib/core/network/api_response.dart` | Matches `ApiResponse<T>` / `PaginatedResponse<T>` from BE |
 | Theme colors | `lib/app/theme/app_colors.dart` | Manual — mirror FE active preset |
-| Module list | `lib/app/modules.config.dart` + `scripts/modules.json` | rename.ps1 syncs BE + FE + Mobile together |
+| Module list | `lib/app/modules.config.dart` + `modules.catalog.json` | rename.ps1 syncs BE + FE + Mobile together |
 
 ## Dev URLs
 
