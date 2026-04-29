@@ -45,6 +45,21 @@ public class ModuleLoaderTests
             .Where(e => e.Message.Contains("A") && e.Message.Contains("B"));
     }
 
+    [Fact]
+    public void ResolveOrder_throws_helpful_error_when_two_modules_share_a_name()
+    {
+        var modules = new List<IModule>
+        {
+            new FakeModule("DuplicateName"),
+            new FakeModule("DuplicateName"),
+        };
+
+        var act = () => ModuleLoader.ResolveOrder(modules);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*duplicate Name*'DuplicateName'*");
+    }
+
     private sealed class FakeModule : IModule
     {
         public FakeModule(string name, params string[] dependencies)
