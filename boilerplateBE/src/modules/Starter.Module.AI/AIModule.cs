@@ -149,6 +149,7 @@ public sealed class AIModule : IModule
         services.AddScoped<ICurrentAgentRunContextAccessor>(sp =>
             sp.GetRequiredService<CurrentAgentRunContextAccessor>());
         services.AddScoped<IAiEntitlementResolver, AiEntitlementResolver>();
+        services.AddScoped<IAiTenantSettingsResolver, AiTenantSettingsResolver>();
 
         services.AddSingleton<TokenCounter>();
 
