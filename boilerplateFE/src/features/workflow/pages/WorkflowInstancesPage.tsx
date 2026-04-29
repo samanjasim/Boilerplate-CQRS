@@ -15,6 +15,7 @@ import {
 import { PageHeader, EmptyState, Pagination } from '@/components/common';
 import { getPersistedPageSize } from '@/components/common/pagination-utils';
 import { useWorkflowInstances, useWorkflowDefinitions, useTransitionWorkflow } from '../api';
+import { InstancesStatusHero } from '../components/InstancesStatusHero';
 import { NewRequestDialog } from '../components/NewRequestDialog';
 import { usePermissions } from '@/hooks';
 import { useAuthStore, selectUser } from '@/stores';
@@ -77,6 +78,11 @@ export default function WorkflowInstancesPage() {
         }
       />
 
+      <InstancesStatusHero
+        startedByUserId={startedByUserId}
+        entityType={entityTypeFilter || undefined}
+      />
+
       {/* Filters */}
       <div className="flex flex-wrap items-end gap-4">
         <div className="space-y-1.5">
@@ -90,7 +96,7 @@ export default function WorkflowInstancesPage() {
             <SelectContent>
               {STATUS_FILTERS.map((s) => (
                 <SelectItem key={s} value={s}>
-                  {s === 'All' ? t('common.all', 'All') : t(`workflow.status.${s.toLowerCase()}`)}
+                  {s === 'All' ? t('common.all') : t(`workflow.status.${s.toLowerCase()}`)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -109,7 +115,7 @@ export default function WorkflowInstancesPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="_all">{t('common.all', 'All Types')}</SelectItem>
+              <SelectItem value="_all">{t('common.all')}</SelectItem>
               {entityTypes.map((et) => (
                 <SelectItem key={et} value={et}>{et}</SelectItem>
               ))}
@@ -157,7 +163,12 @@ export default function WorkflowInstancesPage() {
               {instances.map((instance) => (
                 <TableRow key={instance.instanceId}>
                   <TableCell className="text-foreground font-medium">
-                    {instance.definitionName}
+                    <Badge
+                      variant="outline"
+                      className="border-[var(--active-border)] text-[var(--tinted-fg)]"
+                    >
+                      {instance.definitionName}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     <span className="text-sm text-foreground">
@@ -172,7 +183,7 @@ export default function WorkflowInstancesPage() {
                       {instance.currentState && <Badge variant="outline">{instance.currentState}</Badge>}
                       {instance.status && (
                         <Badge variant={STATUS_BADGE_VARIANT[instance.status] ?? 'outline'}>
-                          {t(`workflow.status.${instance.status.toLowerCase()}`, { defaultValue: instance.status })}
+                          {t(`workflow.status.${instance.status.toLowerCase()}`)}
                         </Badge>
                       )}
                     </div>
