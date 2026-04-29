@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { useCreatePlan, useUpdatePlan } from '../api';
 import { PlanCardPreview } from './PlanCardPreview';
 import { PlanFeaturesEditor } from './PlanFeaturesEditor';
+import { PlanTranslationsEditor } from './PlanTranslationsEditor';
 import type { PlanFeatureEntry, SubscriptionPlan } from '@/types';
 
 const CURRENCIES = ['USD', 'IQD', 'EUR', 'GBP'] as const;
@@ -384,35 +385,35 @@ export function PlanFormDialog(props: PlanFormDialogProps) {
               </div>
 
               {/* Advanced (collapsible) ------------------------------------- */}
-              <div className="space-y-2">
+              <div className="rounded-xl border border-border/60 bg-foreground/[0.02]">
                 <button
                   type="button"
                   onClick={() => setShowAdvanced((v) => !v)}
-                  className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground hover:text-foreground motion-safe:transition-colors"
+                  className={cn(
+                    'flex w-full items-center justify-between gap-2 px-4 py-3 text-left',
+                    'text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground',
+                    'hover:text-foreground motion-safe:transition-colors',
+                    'rounded-xl',
+                  )}
                   aria-expanded={showAdvanced}
                 >
+                  <span className="flex items-center gap-1.5">
+                    <span className="inline-block h-1 w-1 rounded-full bg-primary/70" />
+                    {t('billing.planForm.advancedSection')}
+                  </span>
                   <ChevronDown
                     className={cn(
                       'h-3.5 w-3.5 motion-safe:transition-transform',
                       showAdvanced && 'rotate-180',
                     )}
                   />
-                  {t('billing.planForm.advancedSection')}
                 </button>
                 {showAdvanced && (
-                  <div className="space-y-1.5 pt-1">
-                    <Label htmlFor="pf-translations">{t('billing.translations')}</Label>
-                    <Textarea
-                      id="pf-translations"
-                      rows={4}
-                      placeholder='{"en": {"name": "..."}, "ar": {"name": "..."}}'
+                  <div className="border-t border-border/40 px-4 pt-3 pb-4">
+                    <PlanTranslationsEditor
                       value={form.translations}
-                      onChange={(e) => handleChange('translations', e.target.value)}
-                      className="font-mono text-xs"
+                      onChange={(next) => handleChange('translations', next)}
                     />
-                    <p className="text-[10px] text-muted-foreground/70">
-                      {t('billing.planForm.translationsHint')}
-                    </p>
                   </div>
                 )}
               </div>
@@ -434,6 +435,7 @@ export function PlanFormDialog(props: PlanFormDialogProps) {
             <PlanCardPreview
               name={form.name}
               description={form.description}
+              translations={form.translations}
               monthlyPrice={form.monthlyPrice}
               annualPrice={form.annualPrice}
               currency={form.currency}

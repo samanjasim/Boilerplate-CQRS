@@ -1044,7 +1044,18 @@
       "displayOrderHint": "Lower numbers appear first on the pricing page.",
       "isFreeHint": "Free plans skip pricing fields and trial.",
       "isPublicHint": "Show this plan on the public pricing page.",
-      "translationsHint": "JSON map of locale → name overrides. Optional."
+      "translationsHint": "JSON map of locale → name overrides. Optional.",
+      "previewLocaleFallback": "Showing the default — add a {{locale}} override below to localize.",
+      "translations": {
+        "hint": "Override the plan name and description per language. Empty fields fall back to the defaults above.",
+        "namePlaceholder": "Name in {{locale}}",
+        "descriptionPlaceholder": "Description (optional)",
+        "editRaw": "Edit JSON",
+        "exitRaw": "Use form",
+        "applyRaw": "Apply",
+        "clearAll": "Clear all",
+        "invalidJson": "Not valid JSON. Fix the syntax or use the form view."
+      }
     },
     "subscriptions": "Subscriptions",
     "subscriptionsSubtitle": "Manage all tenant subscriptions",
