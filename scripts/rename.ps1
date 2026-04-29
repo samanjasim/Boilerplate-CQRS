@@ -154,7 +154,17 @@ function Resolve-ModuleSelection {
         exit 1
     }
 
-    $included = @($included | Sort-Object -Unique)
+    # Dedupe but preserve catalog enumeration order so generated `enabledModules`
+    # arrays are stable regardless of the order ids were typed on the CLI.
+    $seen = @{}
+    $orderedIncluded = @()
+    foreach ($id in $AllOptional) {
+        if (($included -contains $id) -and -not $seen.ContainsKey($id)) {
+            $orderedIncluded += $id
+            $seen[$id] = $true
+        }
+    }
+    $included = $orderedIncluded
     $excluded = @($AllOptional | Where-Object { $_ -notin $included })
 
     return @{
@@ -748,22 +758,13 @@ if ($null -ne $modulesConfig) {
         }
 
         if (-not [string]::IsNullOrWhiteSpace($frontendFeature)) {
-            # 4. Delete frontend feature folder
+            # Delete frontend feature folder. Optional routes/nav/slot wiring
+            # lives entirely inside the feature folder and is excluded from
+            # the generated app via Write-WebModulesConfig — no surgical
+            # rewrites against core source files needed.
             $feFolderPath = Join-Path (Join-Path (Join-Path $TargetFE "src") "features") $frontendFeature
             if (Test-Path $feFolderPath) {
                 Remove-Item $feFolderPath -Recurse -Force -ErrorAction SilentlyContinue
-            }
-
-            # Temporary Task 4 compatibility: core routes still contain guarded
-            # lazy imports for optional feature pages. Rewrite only those dead
-            # dynamic imports so generated source-mode apps compile until Task 5
-            # moves optional routes into module contributions.
-            $routesTsxPath = Join-Path (Join-Path (Join-Path $TargetFE "src") "routes") "routes.tsx"
-            if (Test-Path $routesTsxPath) {
-                $routesContent = Get-Content $routesTsxPath -Raw
-                $featureEscaped = [regex]::Escape($frontendFeature)
-                $routesContent = $routesContent -replace "import\('@/features/$featureEscaped/[^']+'\)", "import('@/routes/NotFoundPage')"
-                Set-Content -Path $routesTsxPath -Value $routesContent -NoNewline
             }
         }
 
