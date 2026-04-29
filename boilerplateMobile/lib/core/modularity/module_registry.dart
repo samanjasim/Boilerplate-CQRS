@@ -59,11 +59,7 @@ class ModuleRegistry {
   }
 
   /// Build all widgets contributed to a named [slotId], sorted by order.
-  List<Widget> buildSlot(
-    String slotId,
-    BuildContext context, {
-    Object? args,
-  }) {
+  List<Widget> buildSlot(String slotId, BuildContext context, {Object? args}) {
     final contributions = <SlotContribution>[];
     for (final module in _modules) {
       final contribution = module.getSlotContributions()[slotId];
@@ -72,9 +68,7 @@ class ModuleRegistry {
       }
     }
     contributions.sort((a, b) => a.order.compareTo(b.order));
-    return contributions
-        .map((c) => c.builder(context, args: args))
-        .toList();
+    return contributions.map((c) => c.builder(context, args: args)).toList();
   }
 
   /// Topological sort with dependency validation.
@@ -84,6 +78,12 @@ class ModuleRegistry {
   List<AppModule> _topologicalSort(List<AppModule> modules) {
     final byName = <String, AppModule>{};
     for (final m in modules) {
+      if (byName.containsKey(m.name)) {
+        throw StateError(
+          'Duplicate module id "${m.name}" detected. Module ids must match '
+          'modules.catalog.json and be unique in activeModules().',
+        );
+      }
       byName[m.name] = m;
     }
 
