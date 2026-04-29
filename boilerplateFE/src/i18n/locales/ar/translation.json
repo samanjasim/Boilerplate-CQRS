@@ -1640,7 +1640,10 @@
         "definitionLink": "عرض التعريف",
         "tenantId": "المستأجر"
       },
-      "pendingActionTitle": "إجراء مطلوب"
+      "pendingActionTitle": "إجراء مطلوب",
+      "tabOverview": "نظرة عامة",
+      "tabAnalytics": "التحليلات",
+      "viewRawJson": "عرض JSON الخام"
     },
     "resubmitSuccess": "تم إعادة إرسال سير العمل",
     "delegation": {
@@ -1659,15 +1662,21 @@
       "cancelled": "تم إلغاء التفويض"
     },
     "sla": {
+      "title": "اتفاقية مستوى الخدمة",
       "overdue": "متأخر",
       "overdueHours": "متأخر بـ {{hours}} ساعة",
+      "reminderAfterHours": "تذكير بعد {{hours}} ساعة",
+      "escalateAfterHours": "تصعيد بعد {{hours}} ساعة",
       "reminderSent": "تم إرسال التذكير"
     },
     "parallel": {
+      "title": "متوازي",
+      "assigneeCount": "{{mode}} - {{count}} مسؤول",
       "progress": "{{completed}} من {{total}} تمت الموافقة",
       "waiting": "بانتظار {{remaining}} إضافية"
     },
     "forms": {
+      "fields": "حقول النموذج",
       "required": "مطلوب",
       "submittedData": "البيانات المرسلة",
       "selectPlaceholder": "اختر..."

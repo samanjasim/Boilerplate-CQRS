@@ -1683,7 +1683,10 @@
         "definitionLink": "View definition",
         "tenantId": "Tenant"
       },
-      "pendingActionTitle": "Action required"
+      "pendingActionTitle": "Action required",
+      "tabOverview": "Overview",
+      "tabAnalytics": "Analytics",
+      "viewRawJson": "View raw JSON"
     },
     "resubmitSuccess": "Workflow resubmitted",
     "delegation": {
@@ -1702,15 +1705,21 @@
       "cancelled": "Delegation cancelled"
     },
     "sla": {
+      "title": "SLA",
       "overdue": "Overdue",
       "overdueHours": "Overdue by {{hours}}h",
+      "reminderAfterHours": "Reminder after {{hours}}h",
+      "escalateAfterHours": "Escalate after {{hours}}h",
       "reminderSent": "Reminder sent"
     },
     "parallel": {
+      "title": "Parallel",
+      "assigneeCount": "{{mode}} - {{count}} assignee(s)",
       "progress": "{{completed}} of {{total}} approved",
       "waiting": "Waiting for {{remaining}} more"
     },
     "forms": {
+      "fields": "Form Fields",
       "required": "Required",
       "submittedData": "Submitted Data",
       "selectPlaceholder": "Select..."

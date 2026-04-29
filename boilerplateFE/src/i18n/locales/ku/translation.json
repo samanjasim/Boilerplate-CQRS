@@ -1544,7 +1544,10 @@
         "definitionLink": "بینینی پێناسە",
         "tenantId": "بەکارهێنەر"
       },
-      "pendingActionTitle": "کرداری پێویست"
+      "pendingActionTitle": "کرداری پێویست",
+      "tabOverview": "پوختە",
+      "tabAnalytics": "شیکاری",
+      "viewRawJson": "بینینی JSONی خاو"
     },
     "resubmitSuccess": "ڕێڕەوی کار دووبارە نێردرایەوە",
     "delegation": {
@@ -1563,15 +1566,21 @@
       "cancelled": "وەکاڵەتەکە هەڵوەشێنرایەوە"
     },
     "sla": {
+      "title": "SLA",
       "overdue": "دواکەوتوو",
       "overdueHours": "{{hours}} کاتژمێر دواکەوتوو",
+      "reminderAfterHours": "بیرهێنانەوە دوای {{hours}} کاتژمێر",
+      "escalateAfterHours": "بەرزکردنەوە دوای {{hours}} کاتژمێر",
       "reminderSent": "بیرهێنەرەوە نێردرا"
     },
     "parallel": {
+      "title": "هاوتەریب",
+      "assigneeCount": "{{mode}} - {{count}} پێسپێردراو",
       "progress": "{{completed}} لە {{total}} پەسەندکراو",
       "waiting": "چاوەڕوانی {{remaining}} ی تر"
     },
     "forms": {
+      "fields": "خانەکانی فۆرم",
       "required": "پێویستە",
       "submittedData": "داتای نێردراو",
       "selectPlaceholder": "هەڵبژێرە..."
