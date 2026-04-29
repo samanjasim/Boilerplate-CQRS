@@ -37,6 +37,9 @@
     "phone": "مۆبایل",
     "phoneNumber": "ژمارەی مۆبایل",
     "saving": "پاشەکەوتکردن...",
+    "saveChanges": "پاشەکەوتکردنی گۆڕانکارییەکان",
+    "uploading": "بارکردن...",
+    "none": "هیچ",
     "confirm": "دڵنیاکردنەوە",
     "previous": "پێشوو",
     "next": "دواتر",
@@ -203,7 +206,8 @@
     "recentUsers": "بەکارهێنەرانی نوێ",
     "viewAll": "بینینی هەمووی",
     "noRecentActivity": "هیچ چالاکییەکی دواییە نییە",
-    "noRecentUsers": "هیچ بەکارهێنەرێکی نوێ نییە"
+    "noRecentUsers": "هیچ بەکارهێنەرێکی نوێ نییە",
+    "activeProducts": "بەرهەمە چالاکەکان"
   },
   "profile": {
     "title": "پرۆفایلەکەم",
@@ -1041,6 +1045,76 @@
     "planFeatures": "تایبەتمەندییەکانی پلان",
     "displayLabels": "ناونیشانەکانی پیشاندان",
     "noFeatureOptions": "هیچ هەڵبژاردەی تایبەتمەندی بەردەست نییە."
+  },
+  "products": {
+    "title": "بەرهەمەکان",
+    "subtitle": "بەڕێوەبردنی کاتەلۆگی بەرهەمەکانت",
+    "create": "دروستکردنی بەرهەم",
+    "createTitle": "دروستکردنی بەرهەم",
+    "createSubtitle": "بەرهەمێکی نوێ زیاد بکە بۆ کاتەلۆگەکەت",
+    "allStatuses": "هەموو دۆخەکان",
+    "allTenants": "هەموو کرێچییەکان",
+    "name": "ناو",
+    "slug": "ناسێنەر",
+    "price": "نرخ",
+    "currency": "دراو",
+    "description": "وەسف",
+    "details": "وردەکاری بەرهەم",
+    "pricing": "نرخدانان",
+    "image": "وێنەی بەرهەم",
+    "tenant": "کرێچی",
+    "selectTenant": "کرێچییەک بۆ ئەم بەرهەمە هەڵبژێرە",
+    "chooseTenant": "کرێچییەک هەڵبژێرە...",
+    "assignedTenant": "کرێچیی دیاریکراو",
+    "selectCurrency": "دراو هەڵبژێرە",
+    "generateSlug": "دروستکردن",
+    "publish": "بڵاوکردنەوە",
+    "archive": "ئەرشیفکردن",
+    "archiveTitle": "ئەرشیفکردنی بەرهەم",
+    "archiveDescription": "دڵنیایت لە ئەرشیفکردنی ئەم بەرهەمە؟ ئەم کردارە دەتوانرێت بگەڕێندرێتەوە.",
+    "uploadImage": "بارکردنی وێنە",
+    "changeImage": "گۆڕینی وێنە",
+    "imageUploaded": "وێنە بارکرا",
+    "created": "بەرهەم دروستکرا",
+    "updated": "بەرهەم نوێکرایەوە",
+    "published": "بەرهەم بڵاوکرایەوە",
+    "archived": "بەرهەم ئەرشیفکرا",
+    "noImage": "هێشتا هیچ وێنەیەک بارنەکراوە",
+    "uploadHint": "دەتوانیت دوای دروستکردنی بەرهەم وێنە زیاد بکەیت",
+    "empty": {
+      "title": "هیچ بەرهەمێک نەدۆزرایەوە",
+      "description": "یەکەم بەرهەمت دروست بکە بۆ دەستپێکردن.",
+      "tenantDescription": "ئەم کرێچییە هێشتا هیچ بەرهەمێکی نییە."
+    },
+    "status": {
+      "label": "دۆخ",
+      "draft": "ڕەشنووس",
+      "active": "چالاک",
+      "archived": "ئەرشیفکراو"
+    },
+    "hero": {
+      "drafts": "ڕەشنووسەکان",
+      "draftsEyebrow": "پێویستی بە بڵاوکردنەوە هەیە",
+      "active": "چالاک",
+      "activeEyebrow": "لە کاتەلۆگدا",
+      "archived": "ئەرشیفکراو",
+      "archivedEyebrow": "کشانەوە"
+    },
+    "detail": {
+      "reassignTenant": "دووبارە دیاریکردنی کرێچی...",
+      "reassignTitle": "گواستنەوەی بەرهەم بۆ کرێچییەکی تر",
+      "reassignDescription": "{{productName}} دەگوازرێتەوە بۆ {{newTenant}} و دەستبەجێ بۆ {{oldTenant}} نادیار دەبێت. ئەمە دەتوانرێت بگەڕێندرێتەوە.",
+      "reassignConfirm": "گواستنەوەی بەرهەم",
+      "reassignCancel": "هەڵوەشاندنەوە",
+      "saveFooter": "گۆڕانکاریی پاشەکەوتنەکراو"
+    },
+    "validation": {
+      "nameRequired": "ناو پێویستە",
+      "slugRequired": "ناسێنەر پێویستە",
+      "slugInvalid": "ناسێنەر دەبێت بە پیتی بچووکی لاتینی یان ژمارە و هێڵی نێوانیان بێت، و بە پیت یان ژمارە دەست پێبکات و کۆتایی پێبێت",
+      "priceNonNegative": "نرخ نابێت نەرێنی بێت",
+      "currencyRequired": "دراو پێویستە"
+    }
   },
   "onboarding": {
     "profileTitle": "ڕێکخستنی ڕێکخراوەکەت",

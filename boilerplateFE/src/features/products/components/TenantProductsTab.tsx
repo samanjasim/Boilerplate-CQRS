@@ -6,6 +6,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { EmptyState, Pagination } from '@/components/common';
 import { getPersistedPageSize } from '@/components/common/pagination-utils';
+import { STATUS_BADGE_VARIANT } from '@/constants';
 import { useProducts } from '../api';
 import type { Product } from '@/types';
 
@@ -35,21 +36,20 @@ export function TenantProductsTab({ tenantId }: TenantProductsTabProps) {
     return (
       <EmptyState
         icon={Package}
-        title={t('products.empty.title', 'No products found')}
-        description={t('products.empty.tenantDescription', 'This tenant has no products yet.')}
+        title={t('products.empty.title')}
+        description={t('products.empty.tenantDescription')}
       />
     );
   }
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold">{t('products.title', 'Products')}</h3>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>{t('products.name', 'Name')}</TableHead>
-            <TableHead>{t('products.price', 'Price')}</TableHead>
-            <TableHead>{t('products.status.label', 'Status')}</TableHead>
+            <TableHead>{t('products.name')}</TableHead>
+            <TableHead>{t('products.price')}</TableHead>
+            <TableHead>{t('products.status.label')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -60,12 +60,8 @@ export function TenantProductsTab({ tenantId }: TenantProductsTabProps) {
                 {product.price.toFixed(2)} {product.currency}
               </TableCell>
               <TableCell>
-                <Badge
-                  variant={
-                    product.status === 'Active' ? 'default' : product.status === 'Draft' ? 'secondary' : 'outline'
-                  }
-                >
-                  {product.status}
+                <Badge variant={STATUS_BADGE_VARIANT[product.status] ?? 'secondary'}>
+                  {t(`products.status.${product.status.toLowerCase()}`, product.status)}
                 </Badge>
               </TableCell>
             </TableRow>

@@ -148,6 +148,7 @@ export const API_ENDPOINTS = {
   },
   PRODUCTS: {
     LIST: '/Products',
+    STATUS_COUNTS: '/Products/status-counts',
     DETAIL: (id: string) => `/Products/${id}`,
     PUBLISH: (id: string) => `/Products/${id}/publish`,
     ARCHIVE: (id: string) => `/Products/${id}/archive`,

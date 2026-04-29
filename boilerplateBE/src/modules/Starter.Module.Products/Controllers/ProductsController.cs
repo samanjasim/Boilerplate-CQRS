@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Starter.Module.Products.Application.Commands.CreateProduct;
 using Starter.Module.Products.Application.DTOs;
+using Starter.Module.Products.Application.Queries.GetProductStatusCounts;
 using Starter.Module.Products.Application.Queries.GetProducts;
 using Starter.Module.Products.Constants;
 using Starter.Shared.Models;
@@ -35,6 +36,17 @@ public sealed class ProductsController(ISender mediator) : Starter.Abstractions.
     {
         var result = await Mediator.Send(new GetProductsQuery(pageNumber, pageSize, searchTerm, status, tenantId), ct);
         return HandlePagedResult(result);
+    }
+
+    [HttpGet("status-counts")]
+    [Authorize(Policy = ProductPermissions.View)]
+    [ProducesResponseType(typeof(ApiResponse<ProductStatusCountsDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetStatusCounts(
+        [FromQuery] Guid? tenantId = null,
+        CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(new GetProductStatusCountsQuery(tenantId), ct);
+        return HandleResult(result);
     }
 
     [HttpGet("{id:guid}")]

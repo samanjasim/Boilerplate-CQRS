@@ -37,6 +37,9 @@
     "phone": "الهاتف",
     "phoneNumber": "رقم الهاتف",
     "saving": "جاري الحفظ...",
+    "saveChanges": "حفظ التغييرات",
+    "uploading": "جاري الرفع...",
+    "none": "لا يوجد",
     "confirm": "تأكيد",
     "previous": "السابق",
     "next": "التالي",
@@ -203,7 +206,8 @@
     "recentUsers": "المستخدمون الجدد",
     "viewAll": "عرض الكل",
     "noRecentActivity": "لا يوجد نشاط حديث",
-    "noRecentUsers": "لا يوجد مستخدمون جدد"
+    "noRecentUsers": "لا يوجد مستخدمون جدد",
+    "activeProducts": "المنتجات النشطة"
   },
   "profile": {
     "title": "ملفي الشخصي",
@@ -1041,6 +1045,76 @@
     "planFeatures": "ميزات الخطة",
     "displayLabels": "تسميات العرض",
     "noFeatureOptions": "لا تتوفر خيارات ميزات."
+  },
+  "products": {
+    "title": "المنتجات",
+    "subtitle": "إدارة كتالوج المنتجات",
+    "create": "إنشاء منتج",
+    "createTitle": "إنشاء منتج",
+    "createSubtitle": "أضف منتجاً جديداً إلى الكتالوج",
+    "allStatuses": "كل الحالات",
+    "allTenants": "كل المستأجرين",
+    "name": "الاسم",
+    "slug": "المعرّف",
+    "price": "السعر",
+    "currency": "العملة",
+    "description": "الوصف",
+    "details": "تفاصيل المنتج",
+    "pricing": "التسعير",
+    "image": "صورة المنتج",
+    "tenant": "المستأجر",
+    "selectTenant": "اختر مستأجراً لهذا المنتج",
+    "chooseTenant": "اختر مستأجراً...",
+    "assignedTenant": "المستأجر المعيّن",
+    "selectCurrency": "اختر العملة",
+    "generateSlug": "توليد",
+    "publish": "نشر",
+    "archive": "أرشفة",
+    "archiveTitle": "أرشفة المنتج",
+    "archiveDescription": "هل أنت متأكد من أرشفة هذا المنتج؟ يمكن التراجع عن هذا الإجراء.",
+    "uploadImage": "رفع صورة",
+    "changeImage": "تغيير الصورة",
+    "imageUploaded": "تم رفع الصورة",
+    "created": "تم إنشاء المنتج",
+    "updated": "تم تحديث المنتج",
+    "published": "تم نشر المنتج",
+    "archived": "تمت أرشفة المنتج",
+    "noImage": "لم يتم رفع صورة بعد",
+    "uploadHint": "يمكنك إضافة صورة بعد إنشاء المنتج",
+    "empty": {
+      "title": "لم يتم العثور على منتجات",
+      "description": "أنشئ أول منتج للبدء.",
+      "tenantDescription": "لا يملك هذا المستأجر أي منتجات بعد."
+    },
+    "status": {
+      "label": "الحالة",
+      "draft": "مسودة",
+      "active": "نشط",
+      "archived": "مؤرشف"
+    },
+    "hero": {
+      "drafts": "المسودات",
+      "draftsEyebrow": "تحتاج إلى نشر",
+      "active": "نشط",
+      "activeEyebrow": "في الكتالوج",
+      "archived": "مؤرشف",
+      "archivedEyebrow": "متقاعد"
+    },
+    "detail": {
+      "reassignTenant": "إعادة تعيين المستأجر...",
+      "reassignTitle": "نقل المنتج إلى مستأجر آخر",
+      "reassignDescription": "سينتقل {{productName}} إلى {{newTenant}} وسيصبح غير مرئي لـ {{oldTenant}} فوراً. يمكن عكس ذلك.",
+      "reassignConfirm": "نقل المنتج",
+      "reassignCancel": "إلغاء",
+      "saveFooter": "تغييرات غير محفوظة"
+    },
+    "validation": {
+      "nameRequired": "الاسم مطلوب",
+      "slugRequired": "المعرّف مطلوب",
+      "slugInvalid": "يجب أن يكون المعرّف أحرفاً لاتينية صغيرة أو أرقاماً مع شرطات، وأن يبدأ وينتهي بحرف أو رقم",
+      "priceNonNegative": "يجب ألا يكون السعر سالباً",
+      "currencyRequired": "العملة مطلوبة"
+    }
   },
   "onboarding": {
     "profileTitle": "أعدّ مؤسستك",

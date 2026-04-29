@@ -22,6 +22,15 @@ export function useProduct(id: string) {
   });
 }
 
+export function useProductStatusCounts(params?: Record<string, unknown>) {
+  return useQuery({
+    queryKey: queryKeys.products.statusCounts(params),
+    queryFn: () => productsApi.getStatusCounts(params),
+    select: (r) => r.data,
+    staleTime: 30_000,
+  });
+}
+
 // ── Mutations ──────────────────────────────────────────────────────────────
 
 export function useCreateProduct() {
@@ -30,6 +39,7 @@ export function useCreateProduct() {
     mutationFn: (data: CreateProductData) => productsApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.products.statusCounts() });
       toast.success(i18n.t('products.created'));
     },
   });
@@ -41,6 +51,7 @@ export function useUpdateProduct() {
     mutationFn: (data: UpdateProductData) => productsApi.update(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.products.statusCounts() });
       toast.success(i18n.t('products.updated'));
     },
   });
@@ -52,6 +63,7 @@ export function usePublishProduct() {
     mutationFn: (id: string) => productsApi.publish(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.products.statusCounts() });
       toast.success(i18n.t('products.published', 'Product published'));
     },
   });
@@ -63,6 +75,7 @@ export function useArchiveProduct() {
     mutationFn: (id: string) => productsApi.archive(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.products.statusCounts() });
       toast.success(i18n.t('products.archived'));
     },
   });
@@ -74,6 +87,7 @@ export function useUploadProductImage() {
     mutationFn: ({ id, file }: { id: string; file: File }) => productsApi.uploadImage(id, file),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.products.statusCounts() });
       toast.success(i18n.t('products.imageUploaded'));
     },
   });

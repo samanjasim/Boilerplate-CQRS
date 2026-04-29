@@ -18,19 +18,13 @@ import { useCreateProduct } from '../api';
 
 const CURRENCIES = ['IQD', 'USD'] as const;
 
-const schema = z.object({
-  name: z.string().min(1, 'Name is required').max(200),
-  slug: z
-    .string()
-    .min(1, 'Slug is required')
-    .max(200)
-    .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/, 'Slug must be lowercase alphanumeric with hyphens, starting and ending with a letter or number'),
-  description: z.string().max(2000).optional(),
-  price: z.number().min(0, 'Price must be non-negative'),
-  currency: z.string().min(1, 'Currency is required').max(3),
-});
-
-type FormValues = z.infer<typeof schema>;
+interface FormValues {
+  name: string;
+  slug: string;
+  description?: string;
+  price: number;
+  currency: string;
+}
 
 export default function ProductCreatePage() {
   const { t } = useTranslation();
@@ -42,6 +36,17 @@ export default function ProductCreatePage() {
   const [selectedTenantId, setSelectedTenantId] = useState<string>('');
   const { data: tenantsData } = useTenants(isPlatformAdmin ? { pageSize: 100 } : undefined);
   const tenants = tenantsData?.data ?? [];
+  const schema = z.object({
+    name: z.string().min(1, t('products.validation.nameRequired')).max(200),
+    slug: z
+      .string()
+      .min(1, t('products.validation.slugRequired'))
+      .max(200)
+      .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/, t('products.validation.slugInvalid')),
+    description: z.string().max(2000).optional(),
+    price: z.number().min(0, t('products.validation.priceNonNegative')),
+    currency: z.string().min(1, t('products.validation.currencyRequired')).max(3),
+  });
 
   const {
     register,
@@ -81,26 +86,26 @@ export default function ProductCreatePage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={t('products.createTitle', 'Create Product')}
-        subtitle={t('products.createSubtitle', 'Add a new product to your catalog')}
+        title={t('products.createTitle')}
+        subtitle={t('products.createSubtitle')}
         breadcrumbs={[
-          { to: ROUTES.PRODUCTS.LIST, label: t('products.title', 'Products') },
-          { label: t('products.create.title', 'Create') },
+          { to: ROUTES.PRODUCTS.LIST, label: t('products.title') },
+          { label: t('common.create') },
         ]}
       />
 
       <form onSubmit={handleSubmit(onSubmit)} className="max-w-2xl space-y-6">
         {isPlatformAdmin && (
-          <Card>
+          <Card variant="glass">
             <CardHeader>
-              <CardTitle>{t('products.tenant', 'Tenant')}</CardTitle>
+              <CardTitle>{t('products.tenant')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <Label>{t('products.selectTenant', 'Select a tenant for this product')}</Label>
+                <Label>{t('products.selectTenant')}</Label>
                 <Select value={selectedTenantId} onValueChange={setSelectedTenantId}>
                   <SelectTrigger>
-                    <SelectValue placeholder={t('products.chooseTenant', 'Choose a tenant...')} />
+                    <SelectValue placeholder={t('products.chooseTenant')} />
                   </SelectTrigger>
                   <SelectContent>
                     {tenants.map((tenant: { id: string; name: string }) => (
@@ -115,30 +120,30 @@ export default function ProductCreatePage() {
           </Card>
         )}
 
-        <Card>
+        <Card variant="glass">
           <CardHeader>
-            <CardTitle>{t('products.details', 'Product Details')}</CardTitle>
+            <CardTitle>{t('products.details')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">{t('products.name', 'Name')}</Label>
+              <Label htmlFor="name">{t('products.name')}</Label>
               <Input id="name" {...register('name')} />
               {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="slug">{t('products.slug', 'Slug')}</Label>
+              <Label htmlFor="slug">{t('products.slug')}</Label>
               <div className="flex gap-2">
                 <Input id="slug" {...register('slug')} className="flex-1" />
                 <Button type="button" variant="outline" onClick={generateSlug}>
-                  {t('products.generateSlug', 'Generate')}
+                  {t('products.generateSlug')}
                 </Button>
               </div>
               {errors.slug && <p className="text-sm text-destructive">{errors.slug.message}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">{t('products.description', 'Description')}</Label>
+              <Label htmlFor="description">{t('products.description')}</Label>
               <Textarea id="description" {...register('description')} rows={3} />
               {errors.description && (
                 <p className="text-sm text-destructive">{errors.description.message}</p>
@@ -147,23 +152,23 @@ export default function ProductCreatePage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card variant="glass">
           <CardHeader>
-            <CardTitle>{t('products.pricing', 'Pricing')}</CardTitle>
+            <CardTitle>{t('products.pricing')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="price">{t('products.price', 'Price')}</Label>
+                <Label htmlFor="price">{t('products.price')}</Label>
                 <Input id="price" type="number" step="0.01" min="0" {...register('price', { valueAsNumber: true })} />
                 {errors.price && <p className="text-sm text-destructive">{errors.price.message}</p>}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="currency">{t('products.currency', 'Currency')}</Label>
+                <Label htmlFor="currency">{t('products.currency')}</Label>
                 <Select value={watch('currency')} onValueChange={(v) => setValue('currency', v, { shouldValidate: true })}>
                   <SelectTrigger>
-                    <SelectValue placeholder={t('products.selectCurrency', 'Select currency')} />
+                    <SelectValue placeholder={t('products.selectCurrency')} />
                   </SelectTrigger>
                   <SelectContent>
                     {CURRENCIES.map((c) => (
@@ -181,12 +186,16 @@ export default function ProductCreatePage() {
 
         <div className="flex justify-end gap-3">
           <Button type="button" variant="outline" onClick={() => navigate(ROUTES.PRODUCTS.LIST)}>
-            {t('common.cancel', 'Cancel')}
+            {t('common.cancel')}
           </Button>
           <Button type="submit" disabled={isSubmitting || createProduct.isPending}>
-            {t('products.create', 'Create Product')}
+            {t('products.create')}
           </Button>
         </div>
+
+        <p className="text-xs text-muted-foreground">
+          {t('products.uploadHint')}
+        </p>
       </form>
     </div>
   );
