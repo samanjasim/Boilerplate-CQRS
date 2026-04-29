@@ -51,11 +51,17 @@ jobs:
           dotnet build --no-restore -c Release
 
       - name: Run generated app's architecture tests
+        # CatalogConsistencyTests is excluded: the catalog is a template-time
+        # artifact (lives only at the boilerplate repo root). Generated apps
+        # don't ship it, so those tests would fail with FileNotFound. The other
+        # architecture tests (ModuleIsolation, ModuleNameUniqueness,
+        # ModulePermission, etc.) validate the *generated* app's structure and
+        # are exactly what the killer test should gate on.
         working-directory: ${{ runner.temp }}/killerSmoke/killerSmoke-BE
         run: |
           dotnet test tests/killerSmoke.Api.Tests/killerSmoke.Api.Tests.csproj \
             --no-build -c Release \
-            --filter "FullyQualifiedName~Architecture"
+            --filter "FullyQualifiedName~Architecture&FullyQualifiedName!~CatalogConsistencyTests"
 
   frontend-killer:
     name: Frontend (modules=${{ matrix.label }})
@@ -123,10 +129,14 @@ jobs:
             -IncludeMobile:$true
 
       - name: pub get + analyze generated mobile app
+        # --no-fatal-infos / --no-fatal-warnings: the boilerplate's analyzer
+        # config surfaces dozens of style hints (cascade_invocations,
+        # prefer_const_constructors, etc.). Those should not block CI on
+        # module-isolation regressions. Only real analyzer ERRORS fail this gate.
         working-directory: ${{ runner.temp }}/killerSmoke/killerSmoke-Mobile
         run: |
           flutter pub get
-          flutter analyze
+          flutter analyze --no-fatal-infos --no-fatal-warnings
 
   negative-test:
     name: Negative — missing dependency must fail rename.ps1
