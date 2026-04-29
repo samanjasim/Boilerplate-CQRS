@@ -6,6 +6,12 @@ public enum CapWindow
     Monthly
 }
 
+public enum CostCapBucket
+{
+    Total = 0,
+    PlatformCredit = 1
+}
+
 /// <summary>
 /// Result of an atomic cap-claim attempt. `Granted=false` means the claim was refused
 /// because it would exceed the cap; `CurrentUsd` and `CapUsd` carry the values
@@ -23,11 +29,11 @@ public interface ICostCapAccountant
 {
     Task<ClaimResult> TryClaimAsync(
         Guid tenantId, Guid assistantId, decimal estimatedUsd,
-        CapWindow window, decimal capUsd, CancellationToken ct = default);
+        CapWindow window, decimal capUsd, CostCapBucket bucket = CostCapBucket.Total, CancellationToken ct = default);
 
     Task RollbackClaimAsync(
         Guid tenantId, Guid assistantId, decimal estimatedUsd,
-        CapWindow window, CancellationToken ct = default);
+        CapWindow window, CostCapBucket bucket = CostCapBucket.Total, CancellationToken ct = default);
 
     /// <summary>
     /// Reconciles a previously-claimed estimate against the actual consumption.
@@ -35,8 +41,11 @@ public interface ICostCapAccountant
     /// </summary>
     Task RecordActualAsync(
         Guid tenantId, Guid assistantId, decimal deltaUsd,
-        CapWindow window, CancellationToken ct = default);
+        CapWindow window, CostCapBucket bucket = CostCapBucket.Total, CancellationToken ct = default);
 
     Task<decimal> GetCurrentAsync(
         Guid tenantId, Guid assistantId, CapWindow window, CancellationToken ct = default);
+
+    Task<decimal> GetCurrentAsync(
+        Guid tenantId, Guid assistantId, CapWindow window, CostCapBucket bucket, CancellationToken ct = default);
 }

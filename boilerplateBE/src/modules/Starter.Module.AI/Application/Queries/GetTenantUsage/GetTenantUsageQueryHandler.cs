@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Services.Costs;
+using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Persistence;
 using Starter.Shared.Results;
 
@@ -33,6 +34,7 @@ internal sealed class GetTenantUsageQueryHandler(
                 Input = g.Sum(x => (long)x.InputTokens),
                 Output = g.Sum(x => (long)x.OutputTokens),
                 Cost = g.Sum(x => x.EstimatedCost),
+                PlatformCost = g.Sum(x => x.ProviderCredentialSource == ProviderCredentialSource.Platform ? x.EstimatedCost : 0m),
                 Count = g.Count()
             })
             .FirstOrDefaultAsync(ct);
@@ -42,12 +44,21 @@ internal sealed class GetTenantUsageQueryHandler(
             .Where(l => l.TenantId == tenantId && l.CreatedAt >= dayStart)
             .SumAsync(l => l.EstimatedCost, ct);
 
+        var dailyPlatformCost = await db.AiUsageLogs
+            .AsNoTracking()
+            .Where(l => l.TenantId == tenantId
+                && l.CreatedAt >= dayStart
+                && l.ProviderCredentialSource == ProviderCredentialSource.Platform)
+            .SumAsync(l => l.EstimatedCost, ct);
+
         var agentCount = await db.AiAssistants
             .AsNoTracking()
             .CountAsync(a => a.TenantId == tenantId, ct);
 
         var planMonthly = await featureFlags.GetValueAsync<decimal>("ai.cost.tenant_monthly_usd", ct);
         var planDaily = await featureFlags.GetValueAsync<decimal>("ai.cost.tenant_daily_usd", ct);
+        var planPlatformMonthly = await featureFlags.GetValueAsync<decimal>("ai.cost.platform_monthly_usd", ct);
+        var planPlatformDaily = await featureFlags.GetValueAsync<decimal>("ai.cost.platform_daily_usd", ct);
         var planRpm = await featureFlags.GetValueAsync<int>("ai.agents.requests_per_minute_default", ct);
 
         return Result.Success(new TenantUsageDto(
@@ -56,8 +67,10 @@ internal sealed class GetTenantUsageQueryHandler(
             TotalOutputTokensMonthly: monthly?.Output ?? 0,
             TotalEstimatedCostUsdMonthly: monthly?.Cost ?? 0m,
             TotalEstimatedCostUsdDaily: dailyCost,
+            TotalPlatformEstimatedCostUsdMonthly: monthly?.PlatformCost ?? 0m,
+            TotalPlatformEstimatedCostUsdDaily: dailyPlatformCost,
             RunCountMonthly: monthly?.Count ?? 0,
             AgentCount: agentCount,
-            PlanCeilings: new EffectiveCaps(planMonthly, planDaily, planRpm)));
+            PlanCeilings: new EffectiveCaps(planMonthly, planDaily, planRpm, planPlatformMonthly, planPlatformDaily)));
     }
 }
