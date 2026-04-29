@@ -1754,6 +1754,7 @@
       "unsavedWarningBody": "Your edits to this definition will be lost.",
       "discard": "Discard",
       "stay": "Stay",
+      "validationErrors": "أخطاء التحقق",
       "emptySelection": "Click a state to edit, drag between states to connect, press Delete to remove.",
       "stateType": {
         "initial": "حالة بدء",

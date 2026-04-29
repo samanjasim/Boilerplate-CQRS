@@ -24,7 +24,7 @@ export function DesignerToolbar({ onSave, onAutoLayout, onAddState, saving, read
         {!readOnly && (
           <Button size="sm" variant="outline" onClick={onAddState}>
             <Plus className="h-4 w-4 ltr:mr-1.5 rtl:ml-1.5" />
-            {t('workflow.designer.state.addState')}
+            {t('workflow.designer.addState')}
           </Button>
         )}
         {!readOnly && (

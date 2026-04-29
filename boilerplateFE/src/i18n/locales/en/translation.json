@@ -1797,6 +1797,7 @@
       "unsavedWarningBody": "Your edits to this definition will be lost.",
       "discard": "Discard",
       "stay": "Stay",
+      "validationErrors": "Validation errors",
       "emptySelection": "Click a state to edit, drag between states to connect, press Delete to remove.",
       "stateType": {
         "initial": "Initial state",

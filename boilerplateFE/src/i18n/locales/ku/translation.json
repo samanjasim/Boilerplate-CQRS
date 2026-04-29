@@ -1658,6 +1658,7 @@
       "unsavedWarningBody": "Your edits to this definition will be lost.",
       "discard": "Discard",
       "stay": "Stay",
+      "validationErrors": "هەڵەکانی پشتڕاستکردنەوە",
       "emptySelection": "Click a state to edit, drag between states to connect, press Delete to remove.",
       "stateType": {
         "initial": "دۆخی سەرەتا",
