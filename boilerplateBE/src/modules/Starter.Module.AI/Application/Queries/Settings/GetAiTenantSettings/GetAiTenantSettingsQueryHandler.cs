@@ -1,8 +1,8 @@
 using MediatR;
 using Starter.Application.Common.Interfaces;
+using Starter.Module.AI.Application.Commands.Settings.UpsertAiTenantSettings;
 using Starter.Module.AI.Application.DTOs;
 using Starter.Module.AI.Application.Services.Settings;
-using Starter.Module.AI.Domain.Entities;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Shared.Results;
 
@@ -26,30 +26,6 @@ internal sealed class GetAiTenantSettingsQueryHandler(
             ? settings.RequestedProviderCredentialPolicy
             : ProviderCredentialPolicy.PlatformOnly;
 
-        return Result.Success(ToDto(settings, tenantId.Value, effectivePolicy, resolvedEntitlements));
+        return Result.Success(AiTenantSettingsMappings.ToDto(settings, tenantId.Value, effectivePolicy, resolvedEntitlements));
     }
-
-    private static AiTenantSettingsDto ToDto(
-        AiTenantSettings settings,
-        Guid tenantId,
-        ProviderCredentialPolicy effectivePolicy,
-        AiEntitlementsDto entitlements) =>
-        new(
-            tenantId,
-            settings.RequestedProviderCredentialPolicy,
-            effectivePolicy,
-            settings.DefaultSafetyPreset,
-            settings.MonthlyCostCapUsd,
-            settings.DailyCostCapUsd,
-            settings.PlatformMonthlyCostCapUsd,
-            settings.PlatformDailyCostCapUsd,
-            settings.RequestsPerMinute,
-            settings.PublicMonthlyTokenCap,
-            settings.PublicDailyTokenCap,
-            settings.PublicRequestsPerMinute,
-            settings.AssistantDisplayName,
-            settings.Tone,
-            settings.AvatarFileId,
-            settings.BrandInstructions,
-            entitlements);
 }
