@@ -55,3 +55,30 @@ public sealed record AiModelDefaultDto(
     string Model,
     int? MaxTokens,
     double? Temperature);
+
+public sealed record AiPublicWidgetDto(
+    Guid Id,
+    string Name,
+    AiPublicWidgetStatus Status,
+    IReadOnlyList<string> AllowedOrigins,
+    Guid? DefaultAssistantId,
+    string DefaultPersonaSlug,
+    int? MonthlyTokenCap,
+    int? DailyTokenCap,
+    int? RequestsPerMinute,
+    string? MetadataJson,
+    DateTime CreatedAt);
+
+public sealed record AiWidgetCredentialDto(
+    Guid Id,
+    Guid WidgetId,
+    string KeyPrefix,
+    string MaskedKey,
+    AiWidgetCredentialStatus Status,
+    DateTimeOffset? ExpiresAt,
+    DateTimeOffset? LastUsedAt,
+    DateTime CreatedAt);
+
+public sealed record CreateAiWidgetCredentialResponse(
+    AiWidgetCredentialDto Credential,
+    string FullKey);

@@ -39,4 +39,10 @@ public static class AiSettingsErrors
 
     public static Error WidgetNotFound =>
         Error.NotFound("AiSettings.WidgetNotFound", "AI public widget not found.");
+
+    public static Error AssistantNotFound =>
+        Error.NotFound("AiSettings.AssistantNotFound", "AI assistant not found for this tenant.");
+
+    public static Error PersonaNotFound =>
+        Error.NotFound("AiSettings.PersonaNotFound", "AI persona not found for this tenant.");
 }
