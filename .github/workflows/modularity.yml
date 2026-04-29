@@ -51,17 +51,21 @@ jobs:
           dotnet build --no-restore -c Release
 
       - name: Run generated app's architecture tests
-        # CatalogConsistencyTests is excluded: the catalog is a template-time
-        # artifact (lives only at the boilerplate repo root). Generated apps
-        # don't ship it, so those tests would fail with FileNotFound. The other
-        # architecture tests (ModuleIsolation, ModuleNameUniqueness,
+        # CatalogConsistencyTests + PermissionCodegenTests are excluded: both
+        # depend on template-time artifacts (modules.catalog.json, the FE/mobile
+        # source layout discovered by walking up to the catalog). Generated
+        # apps don't ship the catalog and rename their FE/mobile directories,
+        # so those tests would throw TypeInitializationException at class init.
+        # Source-repo CI covers them separately; the modularity workflow's own
+        # permissions-codegen-drift job covers the codegen surface.
+        # The other architecture tests (ModuleIsolation, ModuleNameUniqueness,
         # ModulePermission, etc.) validate the *generated* app's structure and
         # are exactly what the killer test should gate on.
         working-directory: ${{ runner.temp }}/killerSmoke/killerSmoke-BE
         run: |
           dotnet test tests/killerSmoke.Api.Tests/killerSmoke.Api.Tests.csproj \
             --no-build -c Release \
-            --filter "FullyQualifiedName~Architecture&FullyQualifiedName!~CatalogConsistencyTests"
+            --filter "FullyQualifiedName~Architecture&FullyQualifiedName!~CatalogConsistencyTests&FullyQualifiedName!~PermissionCodegenTests"
 
   frontend-killer:
     name: Frontend (modules=${{ matrix.label }})
@@ -137,6 +141,27 @@ jobs:
         run: |
           flutter pub get
           flutter analyze --no-fatal-infos --no-fatal-warnings
+
+  permissions-codegen-drift:
+    # Tier 2.5 Theme 4 — guards the BE → FE/mobile permission codegen.
+    # Regenerates from BE constants and asserts the checked-in
+    # permissions.generated.{ts,dart} files match. Drift means a contributor
+    # edited a BE permission without running `npm run generate:permissions`.
+    name: Permissions codegen drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install root devDependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Verify codegen is up to date
+        run: npm run verify:permissions
 
   negative-test:
     name: Negative — missing dependency must fail rename.ps1

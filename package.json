@@ -1,0 +1,15 @@
+{
+  "name": "boilerplate-cqrs-tooling",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Repo-root tooling for the boilerplate. Hosts code generators that emit cross-platform artifacts (e.g. permission constants from Starter.Shared/Constants/Permissions.cs into FE/mobile mirrors). The boilerplateFE/ and boilerplateMobile/ subprojects keep their own package.json for app-level dependencies.",
+  "scripts": {
+    "generate:permissions": "tsx scripts/generators/permissions.ts",
+    "verify:permissions": "tsx scripts/generators/permissions.ts --check"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}
