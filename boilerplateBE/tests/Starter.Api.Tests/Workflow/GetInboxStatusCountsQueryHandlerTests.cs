@@ -1,7 +1,6 @@
 using Moq;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.Workflow.Application.Queries.GetInboxStatusCounts;
-using Starter.Module.Workflow.Domain.Entities;
 using Starter.Module.Workflow.Infrastructure.Persistence;
 using Xunit;
 
@@ -27,11 +26,11 @@ public sealed class GetInboxStatusCountsQueryHandlerTests : IDisposable
         var otherUserId = Guid.NewGuid();
 
         _db.ApprovalTasks.AddRange(
-            Pending(userId, Now.AddHours(-2).UtcDateTime),
-            Pending(userId, Now.AddHours(3).UtcDateTime),
-            Pending(userId, Now.AddDays(2).UtcDateTime),
-            Pending(userId),
-            Pending(otherUserId, Now.AddHours(-1).UtcDateTime));
+            ApprovalTaskTestFactory.Pending(userId, dueDate: Now.AddHours(-2).UtcDateTime),
+            ApprovalTaskTestFactory.Pending(userId, dueDate: Now.AddHours(3).UtcDateTime),
+            ApprovalTaskTestFactory.Pending(userId, dueDate: Now.AddDays(2).UtcDateTime),
+            ApprovalTaskTestFactory.Pending(userId),
+            ApprovalTaskTestFactory.Pending(otherUserId, dueDate: Now.AddHours(-1).UtcDateTime));
         await _db.SaveChangesAsync();
 
         var sut = new GetInboxStatusCountsQueryHandler(_db, _currentUser.Object, _clock);
@@ -47,15 +46,15 @@ public sealed class GetInboxStatusCountsQueryHandlerTests : IDisposable
     public async Task Handle_IgnoresCompletedAndCancelledTasks()
     {
         var userId = _currentUser.Object.UserId!.Value;
-        var completed = Pending(userId, Now.AddHours(-2).UtcDateTime);
+        var completed = ApprovalTaskTestFactory.Pending(userId, dueDate: Now.AddHours(-2).UtcDateTime);
         completed.Complete("Approve", null, userId);
-        var cancelled = Pending(userId, Now.AddHours(2).UtcDateTime);
+        var cancelled = ApprovalTaskTestFactory.Pending(userId, dueDate: Now.AddHours(2).UtcDateTime);
         cancelled.Cancel();
 
         _db.ApprovalTasks.AddRange(
             completed,
             cancelled,
-            Pending(userId, Now.AddDays(1).UtcDateTime));
+            ApprovalTaskTestFactory.Pending(userId, dueDate: Now.AddDays(1).UtcDateTime));
         await _db.SaveChangesAsync();
 
         var sut = new GetInboxStatusCountsQueryHandler(_db, _currentUser.Object, _clock);
@@ -82,25 +81,6 @@ public sealed class GetInboxStatusCountsQueryHandlerTests : IDisposable
     public void Dispose()
     {
         _db.Dispose();
-    }
-
-    private static ApprovalTask Pending(Guid assigneeUserId, DateTime? dueDate = null)
-    {
-        return ApprovalTask.Create(
-            tenantId: null,
-            instanceId: Guid.NewGuid(),
-            stepName: "Review",
-            assigneeUserId: assigneeUserId,
-            assigneeRole: null,
-            assigneeStrategyJson: null,
-            entityType: "Invoice",
-            entityId: Guid.NewGuid(),
-            definitionName: "InvoiceApproval",
-            availableActionsJson: "[\"Approve\",\"Reject\"]",
-            dueDate: dueDate,
-            definitionDisplayName: "Invoice Approval",
-            entityDisplayName: "Invoice 1",
-            originalAssigneeUserId: assigneeUserId);
     }
 
     private sealed class FakeTimeProvider(DateTimeOffset now) : TimeProvider

@@ -17,6 +17,7 @@ using Starter.Module.Workflow.Application.DTOs;
 using Starter.Module.Workflow.Application.Queries.GetActiveDelegation;
 using Starter.Module.Workflow.Application.Queries.GetDelegations;
 using Starter.Module.Workflow.Application.Queries.GetInboxStatusCounts;
+using Starter.Module.Workflow.Application.Queries.GetInstanceStatusCounts;
 using Starter.Module.Workflow.Application.Queries.GetPendingTaskCount;
 using Starter.Module.Workflow.Application.Queries.GetPendingTasks;
 using Starter.Module.Workflow.Application.Queries.GetWorkflowDefinitionDetail;
@@ -125,6 +126,20 @@ public sealed class WorkflowController(ISender mediator) : BaseApiController(med
     {
         var result = await Mediator.Send(
             new GetWorkflowInstancesQuery(entityType, state, startedByUserId, status, page, pageSize), ct);
+        return HandleResult(result);
+    }
+
+    [HttpGet("instances/status-counts")]
+    [Authorize(Policy = WorkflowPermissions.View)]
+    [ProducesResponseType(typeof(ApiResponse<InstanceStatusCountsDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetInstanceStatusCounts(
+        [FromQuery] Guid? startedByUserId = null,
+        [FromQuery] string? entityType = null,
+        [FromQuery] string? state = null,
+        CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(
+            new GetInstanceStatusCountsQuery(startedByUserId, entityType, state), ct);
         return HandleResult(result);
     }
 
