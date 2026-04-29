@@ -988,6 +988,17 @@
     "resync": "Resync",
     "pricingTitle": "Pricing",
     "pricingSubtitle": "Choose the plan that works for you",
+    "pricing": {
+      "toggleMonthly": "Monthly",
+      "toggleAnnual": "Annual",
+      "saveBadge": "save 20%",
+      "popular": "Most popular",
+      "trialDays_one": "{{count}}-day trial",
+      "trialDays_other": "{{count}}-day trial",
+      "currentPlan": "Current plan",
+      "getStarted": "Get started",
+      "upgrade": "Upgrade"
+    },
     "getStarted": "Get Started",
     "usersUsage": "Users",
     "storageUsage": "Storage",

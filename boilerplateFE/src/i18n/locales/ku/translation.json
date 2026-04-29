@@ -964,6 +964,17 @@
     "resync": "دووبارە هاوکێشکردن",
     "pricingTitle": "نرخەکان",
     "pricingSubtitle": "پلانی گونجاو بۆ خۆت هەڵبژێرە",
+    "pricing": {
+      "toggleMonthly": "مانگانە",
+      "toggleAnnual": "ساڵانە",
+      "saveBadge": "هەڵگرە 20٪",
+      "popular": "زۆرترین بەکارهاتوو",
+      "trialDays_one": "تاقیکردنەوەی {{count}} ڕۆژ",
+      "trialDays_other": "تاقیکردنەوەی {{count}} ڕۆژ",
+      "currentPlan": "پلانی ئێستا",
+      "getStarted": "دەستپێبکە",
+      "upgrade": "بەرزکردنەوە"
+    },
     "getStarted": "دەستپێبکە",
     "usersUsage": "بەکارهێنەرەکان",
     "storageUsage": "ئەنبار",

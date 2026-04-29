@@ -964,6 +964,17 @@
     "resync": "إعادة المزامنة",
     "pricingTitle": "الأسعار",
     "pricingSubtitle": "اختر الخطة المناسبة لك",
+    "pricing": {
+      "toggleMonthly": "شهري",
+      "toggleAnnual": "سنوي",
+      "saveBadge": "وفّر 20٪",
+      "popular": "الأكثر شيوعاً",
+      "trialDays_one": "تجربة {{count}} يوم",
+      "trialDays_other": "تجربة {{count}} يوماً",
+      "currentPlan": "الخطة الحالية",
+      "getStarted": "ابدأ الآن",
+      "upgrade": "ترقية"
+    },
     "getStarted": "ابدأ الآن",
     "usersUsage": "المستخدمون",
     "storageUsage": "التخزين",
