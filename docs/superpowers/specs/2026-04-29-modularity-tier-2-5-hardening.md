@@ -180,6 +180,12 @@ When all six are met, Tier 3 starts on a foundation where the package abstractio
 - **Predecessor plans:**
   - [`2026-04-28-module-system-tier-1-host-cleanup.md`](../plans/2026-04-28-module-system-tier-1-host-cleanup.md)
   - [`2026-04-29-module-system-tier-2-source-composition.md`](../plans/2026-04-29-module-system-tier-2-source-composition.md)
+- **Tier 2.5 implementation plans (this spec):**
+  - [Themes 1+3](../plans/2026-04-29-modularity-tier-2-5-themes-1-and-3.md) — catalog v2 schema + arch test gap closure ✅ shipped (PR #39)
+  - [Theme 2](../plans/2026-04-29-modularity-tier-2-5-theme-2.md) — CI killer-test matrix
+  - [Theme 4](../plans/2026-04-29-modularity-tier-2-5-theme-4.md) — cross-platform permission codegen
+  - [Theme 5](../plans/2026-04-29-modularity-tier-2-5-theme-5.md) — module bootstrap consolidation
+  - [Theme 6](../plans/2026-04-29-modularity-tier-2-5-theme-6.md) — mobile second module + capability contracts
 - **Architecture tests:** `boilerplateBE/tests/Starter.Api.Tests/Architecture/`
 - **Module contract:** `boilerplateBE/src/Starter.Abstractions/Modularity/IModule.cs`
 - **Catalog:** `modules.catalog.json` (repo root)
