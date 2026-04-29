@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { PageHeader, ConfirmDialog } from '@/components/common';
@@ -67,7 +67,6 @@ function ProductDetailForm({ product }: { product: Product }) {
   const archiveProduct = useArchiveProduct();
   const uploadImage = useUploadProductImage();
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
-  const [savedValues, setSavedValues] = useState<FormValues>(() => getDefaultValues(product));
 
   const canEdit = hasPermission(PERMISSIONS.Products.Update);
   const schema = z.object({
@@ -80,18 +79,18 @@ function ProductDetailForm({ product }: { product: Product }) {
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     setValue,
     reset,
     formState: { errors, isDirty, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: savedValues,
+    defaultValues: getDefaultValues(product),
   });
+  const currencyValue = useWatch({ control, name: 'currency' });
 
   useEffect(() => {
     const nextValues = getDefaultValues(product);
-    setSavedValues(nextValues);
     reset(nextValues);
   }, [product, reset]);
 
@@ -100,12 +99,11 @@ function ProductDetailForm({ product }: { product: Product }) {
       id: product.id,
       ...data,
     });
-    setSavedValues(data);
     reset(data);
   }
 
   function handleCancel() {
-    reset(savedValues);
+    reset();
   }
 
   async function handlePublish() {
@@ -197,9 +195,8 @@ function ProductDetailForm({ product }: { product: Product }) {
 
                 <div className="space-y-2">
                   <Label htmlFor="currency">{t('products.currency')}</Label>
-                  {/* eslint-disable-next-line react-hooks/incompatible-library */}
                   <Select
-                    value={watch('currency')}
+                    value={currencyValue}
                     onValueChange={(v) => setValue('currency', v, { shouldValidate: true, shouldDirty: true })}
                     disabled={!canEdit}
                   >

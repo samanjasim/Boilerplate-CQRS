@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,7 +27,7 @@ export function TenantReassignDialog({ isOpen, onClose, product }: TenantReassig
   const { data: tenantsData } = useTenants(isOpen ? { pageSize: 100 } : undefined);
   const updateProduct = useUpdateProduct();
 
-  const tenants = tenantsData?.data ?? [];
+  const tenants = useMemo(() => tenantsData?.data ?? [], [tenantsData?.data]);
   const selectedTenant = useMemo(
     () => tenants.find((tenant: { id: string; name: string }) => tenant.id === selectedTenantId),
     [selectedTenantId, tenants],
@@ -36,9 +36,14 @@ export function TenantReassignDialog({ isOpen, onClose, product }: TenantReassig
   const newTenantName = selectedTenant?.name ?? oldTenantName;
   const hasChanged = !!selectedTenantId && selectedTenantId !== (product.tenantId ?? '');
 
-  useEffect(() => {
-    if (isOpen) setSelectedTenantId(product.tenantId ?? '');
-  }, [isOpen, product.tenantId]);
+  function handleOpenChange(open: boolean) {
+    if (open) {
+      setSelectedTenantId(product.tenantId ?? '');
+      return;
+    }
+
+    onClose();
+  }
 
   async function handleMove() {
     if (!hasChanged) return;
@@ -55,7 +60,7 @@ export function TenantReassignDialog({ isOpen, onClose, product }: TenantReassig
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{t('products.detail.reassignTitle')}</DialogTitle>
