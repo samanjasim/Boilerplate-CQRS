@@ -19,12 +19,12 @@ export function DesignerToolbar({ onSave, onAutoLayout, onAddState, saving, read
   const saveDisabled = readOnly || !isDirty || errors > 0 || saving;
 
   return (
-    <div className="flex items-center justify-between gap-2 border-b border-border bg-card px-4 py-2">
+    <div className="surface-glass flex items-center justify-between gap-2 border-b border-border px-4 py-2">
       <div className="flex items-center gap-2">
         {!readOnly && (
           <Button size="sm" variant="outline" onClick={onAddState}>
             <Plus className="h-4 w-4 ltr:mr-1.5 rtl:ml-1.5" />
-            {t('workflow.designer.state.addState', 'Add State')}
+            {t('workflow.designer.state.addState')}
           </Button>
         )}
         {!readOnly && (

@@ -120,7 +120,7 @@ export default function WorkflowDefinitionDesignerPage() {
         ]}
       />
       {readOnly && (
-        <Card className="m-4">
+        <Card variant="glass" className="m-4">
           <CardContent className="py-4 flex items-center justify-between gap-4">
             <div>
               <h3 className="text-sm font-semibold">{t('workflow.designer.template.readOnlyTitle')}</h3>
