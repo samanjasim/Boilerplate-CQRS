@@ -1,4 +1,5 @@
 import { lazy } from 'react';
+import { Package } from 'lucide-react';
 import { PermissionGuard } from '@/components/guards';
 import { ROUTES } from '@/config';
 import { PERMISSIONS } from '@/constants';
@@ -38,6 +39,18 @@ export const productsModule: WebModule = {
       order: 10,
       permission: 'Products.View',
       component: ProductsDashboardCard,
+    });
+
+    ctx.registerNavGroup({
+      id: 'products',
+      order: 40,
+      build(nav) {
+        const items = nav.hasPermission(PERMISSIONS.Products.View)
+          ? [{ label: nav.t('nav.products', 'Products'), icon: Package, path: ROUTES.PRODUCTS.LIST }]
+          : [];
+
+        return { label: nav.t('nav.groups.products'), items };
+      },
     });
 
     ctx.registerRoute({

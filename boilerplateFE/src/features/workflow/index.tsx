@@ -1,8 +1,10 @@
 import { lazy } from 'react';
+import { ClipboardCheck, GitBranch, History } from 'lucide-react';
 import { PermissionGuard } from '@/components/guards';
 import { ROUTES } from '@/config';
 import { PERMISSIONS } from '@/constants';
 import type { WebModule } from '@/lib/modules';
+import { WorkflowPendingTaskBadge } from './components/WorkflowPendingTaskBadge';
 
 const WorkflowStatusPanel = lazy(() =>
   import('./components/WorkflowStatusPanel').then((m) => ({
@@ -39,6 +41,38 @@ export const workflowModule: WebModule = {
       order: 15,
       permission: 'Workflows.View',
       component: WorkflowDashboardWidget,
+    });
+
+    ctx.registerNavGroup({
+      id: 'workflow',
+      order: 20,
+      build(nav) {
+        const items = [];
+
+        if (nav.hasPermission(PERMISSIONS.Workflows.View)) {
+          items.push({
+            label: nav.t('workflow.sidebar.taskInbox'),
+            icon: ClipboardCheck,
+            path: ROUTES.WORKFLOWS.INBOX,
+            Badge: WorkflowPendingTaskBadge,
+          });
+          items.push({
+            label: nav.t('workflow.sidebar.history'),
+            icon: History,
+            path: ROUTES.WORKFLOWS.INSTANCES,
+          });
+        }
+
+        if (nav.hasPermission(PERMISSIONS.Workflows.ManageDefinitions)) {
+          items.push({
+            label: nav.t('workflow.sidebar.definitions'),
+            icon: GitBranch,
+            path: ROUTES.WORKFLOWS.DEFINITIONS,
+          });
+        }
+
+        return { label: nav.t('nav.groups.workflow'), items };
+      },
     });
 
     ctx.registerRoute({

@@ -1,4 +1,5 @@
 import { lazy } from 'react';
+import { CreditCard, ListChecks, ReceiptText } from 'lucide-react';
 import { PermissionGuard } from '@/components/guards';
 import { ROUTES } from '@/config';
 import { PERMISSIONS } from '@/constants';
@@ -33,6 +34,25 @@ export const billingModule: WebModule = {
       label: () => 'Subscription',
       permission: 'Billing.View',
       component: TenantSubscriptionTab,
+    });
+
+    ctx.registerNavGroup({
+      id: 'billing',
+      order: 50,
+      build(nav) {
+        const items = [];
+        if (nav.hasPermission(PERMISSIONS.Billing.View) && nav.tenantScoped) {
+          items.push({ label: nav.t('nav.billing'), icon: CreditCard, path: ROUTES.BILLING, end: true });
+        }
+        if (nav.hasPermission(PERMISSIONS.Billing.ViewPlans)) {
+          items.push({ label: nav.t('nav.billingPlans'), icon: ReceiptText, path: ROUTES.BILLING_PLANS });
+        }
+        if (nav.hasPermission(PERMISSIONS.Billing.ManageTenantSubscriptions)) {
+          items.push({ label: nav.t('nav.subscriptions'), icon: ListChecks, path: ROUTES.SUBSCRIPTIONS.LIST, end: true });
+        }
+
+        return { label: nav.t('nav.groups.billing'), items };
+      },
     });
 
     ctx.registerRoute({

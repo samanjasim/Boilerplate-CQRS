@@ -1,4 +1,5 @@
 import { lazy } from 'react';
+import { Webhook } from 'lucide-react';
 import { PermissionGuard } from '@/components/guards';
 import { ROUTES } from '@/config';
 import { PERMISSIONS } from '@/constants';
@@ -17,6 +18,34 @@ const WebhookAdminDetailPage = lazy(() => import('./pages/WebhookAdminDetailPage
 export const webhooksModule: WebModule = {
   id: 'webhooks',
   register(ctx): void {
+    ctx.registerNavGroup({
+      id: 'webhooks',
+      order: 60,
+      build(nav) {
+        if (!nav.tenantScoped || !nav.isFeatureEnabled('webhooks.enabled')) return null;
+
+        const items = nav.hasPermission(PERMISSIONS.Webhooks.View)
+          ? [{ label: nav.t('nav.webhooks'), icon: Webhook, path: ROUTES.WEBHOOKS }]
+          : [];
+
+        return { label: nav.t('nav.groups.webhooks'), items };
+      },
+    });
+
+    ctx.registerNavItem('platform', {
+      id: 'webhooks.admin',
+      order: 90,
+      build(nav) {
+        if (!nav.hasPermission(PERMISSIONS.Webhooks.ViewPlatform)) return null;
+        return {
+          label: nav.t('nav.webhooksAdmin'),
+          icon: Webhook,
+          path: ROUTES.WEBHOOKS_ADMIN.LIST,
+          end: true,
+        };
+      },
+    });
+
     ctx.registerRoute({
       id: 'webhooks.tenant',
       region: 'protected',

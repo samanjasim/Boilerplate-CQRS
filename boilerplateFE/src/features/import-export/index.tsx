@@ -1,4 +1,5 @@
 import { lazy } from 'react';
+import { ArrowLeftRight } from 'lucide-react';
 import { PermissionGuard } from '@/components/guards';
 import { ROUTES } from '@/config';
 import { PERMISSIONS } from '@/constants';
@@ -28,6 +29,21 @@ export const importExportModule: WebModule = {
       order: 10,
       permission: 'System.ImportData',
       component: UsersImportButton,
+    });
+
+    ctx.registerNavGroup({
+      id: 'importExport',
+      order: 70,
+      build(nav) {
+        const canExport = nav.hasPermission(PERMISSIONS.System.ExportData) && nav.isFeatureEnabled('exports.enabled');
+        const canImport = nav.hasPermission(PERMISSIONS.System.ImportData) && nav.isFeatureEnabled('imports.enabled');
+        const items =
+          canExport || canImport
+            ? [{ label: nav.t('nav.importExport'), icon: ArrowLeftRight, path: ROUTES.IMPORT_EXPORT }]
+            : [];
+
+        return { label: nav.t('nav.groups.importExport'), items };
+      },
     });
 
     ctx.registerRoute({

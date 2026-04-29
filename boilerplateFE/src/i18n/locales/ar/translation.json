@@ -147,6 +147,15 @@
     "collapse": "طي",
     "taskInbox": "صندوق المهام",
     "workflowDefinitions": "التعريفات",
+    "groups": {
+      "workflow": "سير العمل",
+      "communication": "الاتصالات",
+      "products": "المنتجات",
+      "billing": "الفوترة",
+      "webhooks": "الويب هوكس",
+      "importExport": "الاستيراد / التصدير",
+      "platform": "المنصة"
+    },
     "more": {
       "label": "المزيد",
       "inMore": "في المزيد · {{group}}",

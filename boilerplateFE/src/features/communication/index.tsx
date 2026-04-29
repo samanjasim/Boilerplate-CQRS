@@ -1,4 +1,5 @@
 import { lazy } from 'react';
+import { FileText, Link2, MessageSquare, ScrollText, Zap } from 'lucide-react';
 import { PermissionGuard } from '@/components/guards';
 import { ROUTES } from '@/config';
 import { PERMISSIONS } from '@/constants';
@@ -25,6 +26,27 @@ export const communicationModule: WebModule = {
       order: 40,
       permission: 'Communication.View',
       component: CommunicationDashboardWidget,
+    });
+
+    ctx.registerNavGroup({
+      id: 'communication',
+      order: 30,
+      build(nav) {
+        if (!nav.tenantScoped) return null;
+
+        const items = [];
+        if (nav.hasPermission(PERMISSIONS.Communication.View)) {
+          items.push({ label: nav.t('nav.channels'), icon: MessageSquare, path: ROUTES.COMMUNICATION.CHANNELS });
+          items.push({ label: nav.t('nav.templates'), icon: FileText, path: ROUTES.COMMUNICATION.TEMPLATES });
+          items.push({ label: nav.t('nav.triggerRules'), icon: Zap, path: ROUTES.COMMUNICATION.TRIGGER_RULES });
+          items.push({ label: nav.t('nav.integrations'), icon: Link2, path: ROUTES.COMMUNICATION.INTEGRATIONS });
+        }
+        if (nav.hasPermission(PERMISSIONS.Communication.ViewDeliveryLog)) {
+          items.push({ label: nav.t('nav.deliveryLog'), icon: ScrollText, path: ROUTES.COMMUNICATION.DELIVERY_LOG });
+        }
+
+        return { label: nav.t('nav.groups.communication'), items };
+      },
     });
 
     ctx.registerRoute({

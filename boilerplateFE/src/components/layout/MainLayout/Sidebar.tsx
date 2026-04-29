@@ -169,7 +169,8 @@ export function Sidebar() {
                             )}
                           />
                           {!isCollapsed && <span className="flex-1">{item.label}</span>}
-                          {!isCollapsed && item.badge != null && (
+                          {!isCollapsed && item.Badge && <item.Badge />}
+                          {!isCollapsed && !item.Badge && item.badge != null && (
                             <span className="flex h-5 min-w-5 items-center justify-center rounded-full btn-primary-gradient glow-primary-sm px-1.5 text-[10px] font-bold text-primary-foreground font-mono">
                               {item.badge > 99 ? '99+' : item.badge}
                             </span>
