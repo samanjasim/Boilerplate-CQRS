@@ -46,8 +46,8 @@ Redesign:
 - **Collapse-when-zero rule** (Phase 3 / Phase 4 Billing pattern):
   - Each card with a count of zero collapses out of the row; surviving cards re-flow.
   - When all three are zero (brand-new tenant, no products yet), the hero hides entirely and the page falls through to the existing `<EmptyState>` ("No products found"). No empty-hero rendering.
-- **Counts come from a new BE endpoint** (see §4) — `GET /api/v1/products/status-counts`. Same shape as the existing `useSubscriptionStatusCounts` hook from Phase 4 Billing: a single TanStack Query call alongside the list query, keyed on the same tenant filter so SuperAdmin's tenant-filter selection updates the hero.
-- **Toolbar / table**: keep the current shape (search, status `<Select>`, tenant `<Select>` for SuperAdmin). Wrap the `<Table>` block in a `surface-glass` container — table itself already provides its own header treatment, so the wrapper is purely the rounded glass shell. Status pills go via `STATUS_BADGE_VARIANT`. SuperAdmin's tenant cell becomes a `text-[var(--tinted-fg)]` chip (matching Phase 2 Platform admin treatment).
+- **Counts come from a new BE endpoint** (see §4) — `GET /api/v1/products/status-counts?tenantId={{tenantId}}`. Same shape as the existing `useSubscriptionStatusCounts` hook from Phase 4 Billing: a single TanStack Query call alongside the list query, keyed on the same tenant filter so SuperAdmin's tenant-filter selection updates the hero. `tenantId` is optional and only meaningful for SuperAdmin; tenant users stay scoped by the module DbContext query filter.
+- **Toolbar / table**: keep the current shape (search, status `<Select>`, tenant `<Select>` for SuperAdmin). Ensure the `<Table>` renders inside the shared `surface-glass` rounded shell; the current shared `Table` primitive already owns that wrapper, so do not nest an extra glass container unless visual QA proves it is needed. Status pills go via `STATUS_BADGE_VARIANT`. SuperAdmin's tenant cell becomes a `text-[var(--tinted-fg)]` chip (matching Phase 2 Platform admin treatment).
 - **Pagination + EmptyState** are already shared components — leave them, they're already on-pattern.
 
 ### 3.2 ProductDetailPage *(tenant + platform admin — `/products/:id`, perm `Products.View`)*
@@ -102,7 +102,7 @@ Triggered by the `Reassign tenant…` ghost button on the left panel.
 - Body:
   - Description: `products.detail.reassignDescription` — `{{productName}} will move to {{newTenant}} and become invisible to {{oldTenant}} immediately. This is reversible.` (i18next interpolation; resolved with current and selected tenant names).
   - `<Select>` over the same `useTenants({ pageSize: 100 })` query the existing form uses. Pre-populated with the current `product.tenantId`. Disabled when no change.
-- Actions: `Cancel` (ghost, closes dialog) + `Move product` (primary, fires `useUpdateProduct({ id, tenantId: selectedTenantId, ...currentValues })`, then closes on success).
+- Actions: `Cancel` (ghost, closes dialog) + `Move product` (primary, fires `useUpdateProduct` with the last-saved product fields plus `tenantId: selectedTenantId`, then closes on success). The dialog must not silently persist dirty edits from the right-column form.
 
 The dialog reuses the existing `useUpdateProduct` mutation — no new BE. The reason this is a dialog rather than an inline `<Select>` is restraint: SuperAdmin reassigning a product across tenants is rare and consequential, and the dialog turns it into an explicit decision rather than a casual edit.
 
@@ -178,25 +178,27 @@ No structural change.
 
 One addition, mirrors `GetSubscriptionStatusCountsQuery` (Phase 4 Billing) which itself mirrors `GetReportStatusCountsQuery` (Phase 3):
 
-- **`GET /api/v1/products/status-counts`** → `ProductStatusCountsDto(int Draft, int Active, int Archived)`
+- **`GET /api/v1/products/status-counts?tenantId={{tenantId}}`** → `ProductStatusCountsDto(int Draft, int Active, int Archived)`
   - Lives in `boilerplateBE/src/modules/Starter.Module.Products/`.
   - Query: `Application/Queries/GetProductStatusCounts/GetProductStatusCountsQuery.cs` (sealed record, `IRequest<Result<ProductStatusCountsDto>>`).
-  - Handler: `Application/Queries/GetProductStatusCounts/GetProductStatusCountsQueryHandler.cs` — `GROUP BY Status` over `Products` `DbSet`, projects to the DTO. Reads via the module's existing `IProductsDbContext` (whatever the module already injects for read access).
+  - Handler: `Application/Queries/GetProductStatusCounts/GetProductStatusCountsQueryHandler.cs` — `GROUP BY Status` over `Products` `DbSet`, projects to the DTO. Reads via the module's existing `ProductsDbContext`.
   - DTO: `Application/DTOs/ProductStatusCountsDto.cs` (sealed record `(int Draft, int Active, int Archived)`).
-  - Controller: new `[HttpGet("status-counts")]` action on the existing `ProductsController`, authorized via `[Authorize(Policy = ProductPermissions.View)]` (same policy as the list).
-  - **Tenant filter**: tenant-scoped via the module DbContext's existing global query filter. SuperAdmin (`TenantId == null`) sees the cross-tenant aggregate via the existing platform-admin pathway — same behaviour as `GetSubscriptionStatusCountsQuery`.
+  - Controller: new `[HttpGet("status-counts")]` action on the existing `ProductsController`, authorized via `[Authorize(Policy = ProductPermissions.View)]` (same policy as the list), with optional `[FromQuery] Guid? tenantId = null`.
+  - **Tenant filter**: tenant users are scoped via the module DbContext's existing global query filter and any query-string `tenantId` is redundant. SuperAdmin (`TenantId == null`) sees the cross-tenant aggregate by default; when `tenantId` is supplied, the handler adds `Where(p => p.TenantId == tenantId.Value)` so the hero matches the list's tenant filter.
 
 This is the only BE change.
 
 ## 6. Frontend additions
 
-- **`useProductStatusCounts` hook** — `features/products/api/products.queries.ts`. Mirrors `useSubscriptionStatusCounts` from Phase 4 Billing exactly. Query key includes the tenant filter so SuperAdmin's tenant-filter `<Select>` invalidates correctly.
+- **`useProductStatusCounts` hook** — `features/products/api/products.queries.ts`. Mirrors `useSubscriptionStatusCounts` from Phase 4 Billing, with optional params. Query key includes the tenant filter so SuperAdmin's tenant-filter `<Select>` invalidates correctly.
 - **`TenantReassignDialog` component** — `features/products/components/TenantReassignDialog.tsx`, ~80 LOC. Reuses the existing `useUpdateProduct` mutation and `useTenants` query.
 - **No new routes.** All redesign happens on the existing `/products`, `/products/new`, `/products/:id` routes.
 
 ## 7. Translations
 
 EN + AR + KU together, in the same commit as the component change.
+
+The Products feature currently leans on `t(key, fallback)` for many visible strings. This phase should add real locale entries for both the new copy below and the existing visible product-page copy touched by the redesign (`title`, `subtitle`, form labels, status labels, empty states, archive/publish/upload strings, validation-facing labels where they are rendered). After this PR, the touched product surfaces should not depend on English fallbacks for normal UI text.
 
 Anticipated new keys (canonical EN; AR + KU translated alongside). Final paths and copy may shift slightly during implementation; the rule is "EN + AR + KU together":
 
@@ -251,6 +253,6 @@ Branch: `fe/phase-4-design` (already created off `origin/main`).
 
 ## 10. Open questions for the plan stage
 
-- **Module DbContext for the new query.** Confirm the read-side context name in `Starter.Module.Products` (likely `IProductsDbContext` or similar) at the start of the BE task. The handler injects whatever the module already uses; no new DI registration needed.
+- **Module DbContext for the new query.** Confirmed during plan review: `Starter.Module.Products` uses `ProductsDbContext`. The handler should inject that context directly, matching existing Products query handlers.
 - **Aspect ratio of the left-panel image preview.** Spec says square (1:1) at ~280px on lg+. If existing `Product` images skew strongly to non-square aspect ratios in seed/test data, switch to 16:9 or `aspect-square` with `object-contain`. Verify during the detail-page task and adjust if needed — single-line change.
 - **Save footer animation.** Slide-in / fade-in / instant-toggle on dirty-state? Default to instant-toggle (no animation) for accessibility; revisit if the page feels jarring during user testing.
