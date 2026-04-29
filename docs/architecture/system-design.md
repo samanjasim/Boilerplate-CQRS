@@ -32,7 +32,8 @@ Boilerplate/
 ├── boilerplateBE/         .NET 10 backend (Clean Architecture + CQRS + EF Core)
 ├── boilerplateFE/         React 19 + TypeScript + Vite + Tailwind frontend
 ├── docs/                  Architecture, specs, plans
-└── scripts/               rename.ps1 (project scaffolder), modules.json
+├── modules.catalog.json   module catalog for source composition
+└── scripts/               rename.ps1 (project scaffolder)
 ```
 
 The backend follows a layered Clean Architecture with **6 always-present core features** and **3 truly optional modules** that can be excluded at scaffold time. Modules can be added/removed without touching core code — that's the architectural goal the refactor delivered. The 3 current optional modules (Billing, Webhooks, ImportExport) live under `boilerplateBE/src/modules/`. Domain modules a downstream developer adds (e-commerce, POS, CRM, etc.) follow the same pattern.

@@ -232,12 +232,12 @@ Read these first in the D2 session to orient:
 D2 complete:
 - Starter.Module.Products module added (Domain, Application, Infrastructure, Controllers, frontend feature)
 - Zero files modified outside src/modules/Starter.Module.Products/ and src/features/products/
-  except the 4-5 expected bootstrap files (sln, csproj, modules.json, modules.config.ts, slot-map.ts)
+  except the 4-5 expected bootstrap files (sln, csproj, modules.catalog.json, modules.config.ts, slot-map.ts)
 - dotnet build: 0/0
 - dotnet test --filter AbstractionsPurityTests: 2/2 pass
 - Killer tests via rename.ps1 (-Modules All, -Modules None, -Modules products): all 3 build + run clean
 - Manual smoke: create/edit/archive/image upload/quota enforcement/tenant seeding all work
-- modules.json: 4 entries (billing, webhooks, importExport, products)
+- modules.catalog.json: 4 entries (billing, webhooks, importExport, products)
 ```
 
 ---
