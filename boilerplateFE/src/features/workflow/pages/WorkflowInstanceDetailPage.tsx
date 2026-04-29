@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { XCircle, Send, Clock, CheckCircle2, AlertCircle, User, Calendar, ShieldOff } from 'lucide-react';
+import { XCircle, Send, AlertCircle, ShieldOff } from 'lucide-react';
 import { AxiosError } from 'axios';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
@@ -12,7 +11,6 @@ import { Slot } from '@/lib/extensions';
 import { usePermissions } from '@/hooks';
 import { useAuthStore, selectUser } from '@/stores';
 import { PERMISSIONS } from '@/constants';
-import { STATUS_BADGE_VARIANT } from '@/constants/status';
 import { ROUTES } from '@/config';
 import { formatDateTime } from '@/utils/format';
 import {
@@ -25,6 +23,7 @@ import {
 } from '../api';
 import { WorkflowStepTimeline } from '../components/WorkflowStepTimeline';
 import { ApprovalDialog } from '../components/ApprovalDialog';
+import { InstanceMetadataRail } from '../components/InstanceMetadataRail';
 import type { WorkflowInstanceSummary, PendingTaskSummary } from '@/types/workflow.types';
 
 export default function WorkflowInstanceDetailPage() {
@@ -52,6 +51,7 @@ export default function WorkflowInstanceDetailPage() {
   // Find pending task for this instance assigned to current user
   const pendingTasks: PendingTaskSummary[] = tasksData?.data ?? [];
   const myTask = pendingTasks.find((task) => task.instanceId === instanceId);
+  const isSuperAdmin = !user?.tenantId;
 
   // Check if the current user can resubmit
   const canResubmit =
@@ -122,8 +122,6 @@ export default function WorkflowInstanceDetailPage() {
   }
 
   const isActive = instance.status === 'Active';
-  const isCompleted = instance.status === 'Completed';
-  const isCancelled = instance.status === 'Cancelled';
 
   function handleCancel() {
     cancelWorkflow({ instanceId: instanceId! });
@@ -134,82 +132,15 @@ export default function WorkflowInstanceDetailPage() {
     transitionWorkflow({ instanceId: instanceId!, trigger: 'Submit' });
   }
 
-  const statusIcon = isCompleted
-    ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-    : isCancelled
-      ? <XCircle className="h-4 w-4 text-destructive" />
-      : <Clock className="h-4 w-4 text-primary" />;
-
   return (
     <div className="space-y-6">
       <PageHeader
         title={instance.definitionName}
         breadcrumbs={[
           { to: ROUTES.WORKFLOWS.INSTANCES, label: t('workflow.instances.title') },
-          { label: instance?.definitionName ?? t('common.loading') },
+          { label: instance.entityDisplayName ?? instance.entityId.slice(0, 8) },
         ]}
-        actions={
-          <div className="flex items-center gap-2">
-            {canResubmit && (
-              <Button
-                variant="default"
-                onClick={handleResubmit}
-                disabled={transitioning}
-              >
-                <Send className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
-                {t('workflow.detail.resubmit')}
-              </Button>
-            )}
-            {canCancel && isActive && (
-              <Button
-                variant="outline"
-                onClick={() => setShowCancelDialog(true)}
-                disabled={cancelling}
-              >
-                <XCircle className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
-                {t('workflow.detail.cancelWorkflow')}
-              </Button>
-            )}
-          </div>
-        }
       />
-
-      {/* Instance summary */}
-      <Card>
-        <CardContent className="py-5">
-          <div className="flex flex-wrap items-center gap-3">
-            {statusIcon}
-            <Badge variant="secondary">{instance.entityType}</Badge>
-            <span className="text-sm text-foreground font-medium">
-              {instance.entityDisplayName ?? instance.entityId.substring(0, 8) + '...'}
-            </span>
-            {instance.currentState && <Badge variant="outline">{instance.currentState}</Badge>}
-            {instance.status && (
-              <Badge variant={STATUS_BADGE_VARIANT[instance.status] ?? 'outline'}>
-                {t(`workflow.status.${instance.status.toLowerCase()}`, { defaultValue: instance.status })}
-              </Badge>
-            )}
-          </div>
-          <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1">
-            <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-              <Calendar className="h-3.5 w-3.5" />
-              {t('workflow.instances.startedAt')}: {formatDateTime(instance.startedAt)}
-            </p>
-            {instance.startedByDisplayName && (
-              <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-                <User className="h-3.5 w-3.5" />
-                {t('workflow.instances.startedBy')}: {instance.startedByDisplayName}
-              </p>
-            )}
-            {instance.completedAt && (
-              <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                {t('workflow.detail.completedAt')}: {formatDateTime(instance.completedAt)}
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Resubmit notice */}
       {canResubmit && (
@@ -230,121 +161,129 @@ export default function WorkflowInstanceDetailPage() {
         </Card>
       )}
 
-      {/* Pending action */}
-      {myTask && (
-        <Card>
-          <CardContent className="py-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">
-                  {t('workflow.detail.pendingAction')}
-                </h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {myTask.stepName}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button size="sm" onClick={() => setSelectedTask(myTask)}>
-                  {t('workflow.inbox.approve')}
-                </Button>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <InstanceMetadataRail
+          instance={instance}
+          myTask={myTask ?? null}
+          isSuperAdmin={isSuperAdmin}
+          onAct={setSelectedTask}
+          className="lg:order-2"
+          actions={
+            <>
+              {canResubmit && (
                 <Button
+                  variant="default"
                   size="sm"
-                  variant="outline"
-                  onClick={() => setSelectedTask(myTask)}
+                  onClick={handleResubmit}
+                  disabled={transitioning}
                 >
-                  {t('workflow.inbox.reject')}
+                  <Send className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+                  {t('workflow.detail.resubmit')}
                 </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Step timeline */}
-      <section className="space-y-3">
-        <h2 className="text-base font-semibold text-foreground">
-          {t('workflow.detail.stepHistory')}
-        </h2>
-        {definition?.states ? (
-          <Card>
-            <CardContent className="py-5">
-              <WorkflowStepTimeline
-                instanceId={instanceId!}
-                currentState={instance.currentState}
-                states={definition.states}
-                instanceStatus={instance.status}
-              />
-            </CardContent>
-          </Card>
-        ) : historyLoading ? (
-          <div className="flex justify-center py-6">
-            <Spinner size="md" />
-          </div>
-        ) : (
-          <Card>
-            <CardContent className="py-5">
-              {history && history.length > 0 ? (
-                <div className="space-y-2">
-                  {history.map(
-                    (record, idx: number) => (
-                      <div key={idx} className="flex items-start gap-3">
-                        <div className="h-2.5 w-2.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm text-foreground">
-                            {record.toState} -- {record.action}
-                          </p>
-                          {record.actorDisplayName && (
-                            <p className="text-xs text-muted-foreground">{record.actorDisplayName}</p>
-                          )}
-                          <p className="text-xs text-muted-foreground">
-                            {formatDateTime(record.timestamp)}
-                          </p>
-                          {record.comment && (
-                            <p className="text-xs text-muted-foreground italic mt-0.5">
-                              &ldquo;{record.comment}&rdquo;
-                            </p>
-                          )}
-                          {record.formData && typeof record.formData === 'object' && Object.keys(record.formData).length > 0 && (
-                            <div className="mt-2 rounded-lg border border-border bg-muted/30 p-2">
-                              <p className="text-xs font-medium text-muted-foreground mb-1">
-                                {t('workflow.forms.submittedData')}
-                              </p>
-                              <div className="space-y-0.5">
-                                {Object.entries(record.formData)
-                                  .filter(([, v]) => v !== null && v !== undefined && v !== '')
-                                  .map(([key, value]) => (
-                                    <div key={key} className="flex items-baseline gap-2 text-xs">
-                                      <span className="text-muted-foreground font-medium shrink-0">{key}:</span>
-                                      <span className="text-foreground">{String(value)}</span>
-                                    </div>
-                                  ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ),
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">{t('workflow.instances.empty')}</p>
               )}
-            </CardContent>
-          </Card>
-        )}
-      </section>
-
-      {/* Comments & Activity — uses WorkflowInstance as the entity type
-           so all approval comments + activity entries appear on this page */}
-      <section className="space-y-3">
-        <h2 className="text-base font-semibold text-foreground">
-          {t('workflow.detail.comments')}
-        </h2>
-        <Slot
-          id="entity-detail-timeline"
-          props={{ entityType: 'WorkflowInstance', entityId: instance.instanceId }}
+              {canCancel && isActive && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowCancelDialog(true)}
+                  disabled={cancelling}
+                >
+                  <XCircle className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+                  {t('workflow.detail.cancelWorkflow')}
+                </Button>
+              )}
+            </>
+          }
         />
-      </section>
+
+        <div className="min-w-0 space-y-6 lg:order-1">
+          {/* Step timeline */}
+          <section className="space-y-3">
+            <h2 className="text-base font-semibold text-foreground">
+              {t('workflow.detail.stepHistory')}
+            </h2>
+            {definition?.states ? (
+              <Card>
+                <CardContent className="py-5">
+                  <WorkflowStepTimeline
+                    instanceId={instanceId!}
+                    currentState={instance.currentState}
+                    states={definition.states}
+                    instanceStatus={instance.status}
+                  />
+                </CardContent>
+              </Card>
+            ) : historyLoading ? (
+              <div className="flex justify-center py-6">
+                <Spinner size="md" />
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="py-5">
+                  {history && history.length > 0 ? (
+                    <div className="space-y-2">
+                      {history.map(
+                        (record, idx: number) => (
+                          <div key={idx} className="flex items-start gap-3">
+                            <div className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-primary" />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm text-foreground">
+                                {record.toState} -- {record.action}
+                              </p>
+                              {record.actorDisplayName && (
+                                <p className="text-xs text-muted-foreground">{record.actorDisplayName}</p>
+                              )}
+                              <p className="text-xs text-muted-foreground">
+                                {formatDateTime(record.timestamp)}
+                              </p>
+                              {record.comment && (
+                                <p className="mt-0.5 text-xs italic text-muted-foreground">
+                                  &ldquo;{record.comment}&rdquo;
+                                </p>
+                              )}
+                              {record.formData && typeof record.formData === 'object' && Object.keys(record.formData).length > 0 && (
+                                <div className="mt-2 rounded-lg border border-border bg-muted/30 p-2">
+                                  <p className="mb-1 text-xs font-medium text-muted-foreground">
+                                    {t('workflow.forms.submittedData')}
+                                  </p>
+                                  <div className="space-y-0.5">
+                                    {Object.entries(record.formData)
+                                      .filter(([, v]) => v !== null && v !== undefined && v !== '')
+                                      .map(([key, value]) => (
+                                        <div key={key} className="flex items-baseline gap-2 text-xs">
+                                          <span className="shrink-0 font-medium text-muted-foreground">{key}:</span>
+                                          <span className="text-foreground">{String(value)}</span>
+                                        </div>
+                                      ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">{t('workflow.instances.empty')}</p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </section>
+
+          {/* Comments & Activity — uses WorkflowInstance as the entity type
+              so all approval comments + activity entries appear on this page */}
+          <section className="space-y-3">
+            <h2 className="text-base font-semibold text-foreground">
+              {t('workflow.detail.comments')}
+            </h2>
+            <Slot
+              id="entity-detail-timeline"
+              props={{ entityType: 'WorkflowInstance', entityId: instance.instanceId }}
+            />
+          </section>
+        </div>
+      </div>
 
       {/* Cancel dialog */}
       <ConfirmDialog

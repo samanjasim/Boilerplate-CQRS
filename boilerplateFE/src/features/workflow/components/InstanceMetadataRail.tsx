@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Calendar, Check, Copy, GitBranch, Layers, User } from 'lucide-react';
@@ -17,6 +17,7 @@ interface InstanceMetadataRailProps {
   myTask: PendingTaskSummary | null;
   isSuperAdmin: boolean;
   onAct: (task: PendingTaskSummary) => void;
+  actions?: ReactNode;
   className?: string;
 }
 
@@ -66,6 +67,7 @@ export function InstanceMetadataRail({
   myTask,
   isSuperAdmin,
   onAct,
+  actions,
   className,
 }: InstanceMetadataRailProps) {
   const { t } = useTranslation();
@@ -98,6 +100,7 @@ export function InstanceMetadataRail({
         status={t(`workflow.status.${instance.status.toLowerCase()}`)}
         statusVariant={statusVariant}
         chips={chips}
+        actions={actions}
       />
 
       {myTask && (
