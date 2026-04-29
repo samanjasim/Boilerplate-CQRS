@@ -135,7 +135,7 @@ export function Sidebar() {
               className={cn(
                 groupIndex > 0 && (
                   isCollapsed
-                    ? 'mx-3 my-2 border-t border-border/40'
+                    ? 'mt-2 border-t border-border/40 pt-2'
                     : 'mt-4'
                 )
               )}
