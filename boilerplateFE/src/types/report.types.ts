@@ -17,3 +17,10 @@ export interface RequestReportData {
   filters?: string;
   forceRefresh?: boolean;
 }
+
+export interface ReportStatusCounts {
+  pending: number;
+  processing: number;
+  completed: number;
+  failed: number;
+}

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Starter.Application.Features.Reports.Commands.DeleteReport;
 using Starter.Application.Features.Reports.Commands.RequestReport;
 using Starter.Application.Features.Reports.Queries.GetReportDownload;
+using Starter.Application.Features.Reports.Queries.GetReportStatusCounts;
 using Starter.Application.Features.Reports.Queries.GetReports;
 using Starter.Shared.Constants;
 
@@ -47,6 +48,20 @@ public sealed class ReportsController(ISender mediator) : BaseApiController(medi
     {
         var result = await Mediator.Send(query);
         return HandlePagedResult(result);
+    }
+
+    /// <summary>
+    /// Get report counts grouped by status.
+    /// </summary>
+    [HttpGet("status-counts")]
+    [Authorize(Policy = Permissions.System.ExportData)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetStatusCounts(CancellationToken cancellationToken)
+    {
+        var result = await Mediator.Send(new GetReportStatusCountsQuery(), cancellationToken);
+        return HandleResult(result);
     }
 
     /// <summary>

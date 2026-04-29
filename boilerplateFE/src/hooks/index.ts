@@ -4,7 +4,6 @@ export * from './useMediaQuery';
 export * from './usePermissions';
 export * from './useTenantBranding';
 export * from './useThemePreset';
-export * from './useBackNavigation';
 export * from './useFeatureFlag';
 export * from './useTimeAgo';
 export * from './useListPage';

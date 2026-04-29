@@ -1,11 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
 import { selectSidebarCollapsed, useUIStore } from '@/stores';
 
 import { useNavGroups, type SidebarNavGroup, type SidebarNavItem } from './useNavGroups';
 
-interface NavOverflow {
+export interface NavOverflow {
   /** Groups that fit within the visible nav area. */
   visibleGroups: SidebarNavGroup[];
   /** Groups that don't fit — surfaced via the More panel. */
@@ -25,14 +25,25 @@ interface NavOverflow {
 }
 
 /**
- * Partitions sidebar nav groups into visible vs overflow based on measured space.
- * Renders all groups inside `navRef` once, measures them, and computes how many
- * fit. Re-runs on viewport resize via ResizeObserver.
- *
- * Collapsed-sidebar short-circuit: items are 40x40 each so overflow is rare —
- * skip the work and treat all groups as visible.
+ * Sidebar (which attaches the measurement refs) and MorePanel (which renders
+ * overflow groups) MUST share one hook instance — a separate instance has no
+ * way to compute the partition. This context distributes the single result.
  */
+export const NavOverflowContext = createContext<NavOverflow | null>(null);
+
 export function useNavOverflow(): NavOverflow {
+  const ctx = useContext(NavOverflowContext);
+  if (!ctx) {
+    throw new Error('useNavOverflow must be used within <NavOverflowProvider>');
+  }
+  return ctx;
+}
+
+/**
+ * Internal — call only from <NavOverflowProvider>. Measures how many groups
+ * fit in the available nav height and partitions them into visible / overflow.
+ */
+export function useNavOverflowImpl(): NavOverflow {
   const groups = useNavGroups();
   const isCollapsed = useUIStore(selectSidebarCollapsed);
   const location = useLocation();
@@ -40,12 +51,15 @@ export function useNavOverflow(): NavOverflow {
   const navRef = useRef<HTMLElement>(null);
   const moreButtonRef = useRef<HTMLElement>(null);
   const [visibleCount, setVisibleCount] = useState<number>(groups.length);
+  // Two-pass measurement: render ALL groups first so the DOM contains every
+  // `data-group-id` element, then measure to compute how many fit. Without this
+  // the second pass only sees the previously-visible subset and can never
+  // increase the count back when space grows.
+  const measurePendingRef = useRef(true);
 
-  // Extracted so both the layout-effect and ResizeObserver paths stay in sync.
   const measureVisibleCount = (nav: HTMLElement): number => {
     const moreButtonHeight = moreButtonRef.current?.offsetHeight ?? 0;
     const available = nav.clientHeight - moreButtonHeight;
-    // Each direct child of <nav> is a group wrapper (`<div data-group-id="...">`).
     const groupEls = Array.from(nav.querySelectorAll<HTMLElement>('[data-group-id]'));
     let accumulated = 0;
     let visible = 0;
@@ -64,39 +78,56 @@ export function useNavOverflow(): NavOverflow {
     return visible;
   };
 
-  // Compute which groups fit. Reads element heights synchronously (useLayoutEffect)
-  // so the next paint reflects the partition without a flash.
+  // Pass 1 — when inputs change, request a fresh measurement and render all groups.
+  // `groups` is a fresh array reference every render, so depend on stable primitives
+  // (length, collapsed flag, path). Composition changes that don't change length —
+  // rare — are still caught by the ResizeObserver when group heights shift.
   useLayoutEffect(() => {
-    if (isCollapsed) {
-      if (visibleCount !== groups.length) setVisibleCount(groups.length);
-      return;
-    }
+    measurePendingRef.current = true;
+    setVisibleCount(groups.length);
+  }, [groups.length, isCollapsed, location.pathname]);
+
+  // Pass 2 — runs after every render. When a measurement is pending AND all
+  // groups are in the DOM, measure synchronously (before paint) so the user
+  // never sees the all-rendered intermediate state.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => {
+    if (!measurePendingRef.current) return;
     const nav = navRef.current;
     if (!nav) return;
+    const groupEls = nav.querySelectorAll('[data-group-id]');
+    if (groupEls.length < groups.length) return;
 
+    measurePendingRef.current = false;
     const visible = measureVisibleCount(nav);
     if (visible !== visibleCount) setVisibleCount(visible);
-    // Intentionally NOT including visibleCount in deps — that would loop. We only
-    // re-run when the inputs that affect layout change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groups, isCollapsed, location.pathname]);
+  });
 
   // Re-measure on viewport / sidebar resize.
   useEffect(() => {
     const nav = navRef.current;
-    if (!nav || isCollapsed) return;
-
+    if (!nav) return;
     const observer = new ResizeObserver(() => {
-      const visible = measureVisibleCount(nav);
-      setVisibleCount((current) => (current === visible ? current : visible));
+      const navEl = navRef.current;
+      if (!navEl) return;
+      const renderedGroupCount = navEl.querySelectorAll('[data-group-id]').length;
+      if (renderedGroupCount === groups.length) {
+        // All groups are in DOM — measure directly. (Avoids a bail-out when
+        // visibleCount already equals groups.length and the viewport shrinks.)
+        const visible = measureVisibleCount(navEl);
+        setVisibleCount((current) => (current === visible ? current : visible));
+      } else {
+        // Sliced — re-render with all groups, then pass-2 measures.
+        measurePendingRef.current = true;
+        setVisibleCount(groups.length);
+      }
     });
-
     observer.observe(nav);
     return () => observer.disconnect();
-  }, [isCollapsed]);
+  }, [groups.length]);
 
-  const visibleGroups = isCollapsed ? groups : groups.slice(0, visibleCount);
-  const overflowGroups = isCollapsed ? [] : groups.slice(visibleCount);
+  const visibleGroups = groups.slice(0, visibleCount);
+  const overflowGroups = groups.slice(visibleCount);
 
   // Find the group + item containing the active route.
   let activeGroup: SidebarNavGroup | undefined;

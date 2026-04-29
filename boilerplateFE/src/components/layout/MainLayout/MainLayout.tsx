@@ -11,6 +11,7 @@ import { selectSidebarCollapsed, selectSidebarOpen, useUIStore } from '@/stores'
 import { CommandPalette } from './CommandPalette';
 import { Header } from './Header';
 import { MorePanel } from './MorePanel';
+import { NavOverflowProvider } from './NavOverflowProvider';
 import { Sidebar } from './Sidebar';
 
 export function MainLayout() {
@@ -68,6 +69,7 @@ export function MainLayout() {
   }
 
   return (
+    <NavOverflowProvider>
     <div
       className="aurora-canvas min-h-screen bg-background overflow-clip"
       data-page-style="dense"
@@ -105,5 +107,6 @@ export function MainLayout() {
         </div>
       </main>
     </div>
+    </NavOverflowProvider>
   );
 }

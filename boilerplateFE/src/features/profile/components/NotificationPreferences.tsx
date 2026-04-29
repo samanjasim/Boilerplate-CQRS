@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bell, Mail, Monitor } from 'lucide-react';
+import { Bell, Check, Mail, Monitor } from 'lucide-react';
 import { isModuleActive } from '@/config/modules.config';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import {
   useNotificationPreferences,
   useUpdateNotificationPreferences,
@@ -21,6 +22,44 @@ const notificationTypeLabels: Record<string, string> = {
   CommentMentioned: 'notifications.types.commentMentioned',
   WorkflowTaskAssigned: 'notifications.types.workflowTaskAssigned',
 };
+
+interface PreferenceCheckButtonProps {
+  checked: boolean;
+  label: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  title?: string;
+}
+
+function PreferenceCheckButton({
+  checked,
+  label,
+  onClick,
+  disabled,
+  title,
+}: PreferenceCheckButtonProps) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      title={title}
+      onClick={onClick}
+      className={cn(
+        'flex h-5 w-5 shrink-0 items-center justify-center rounded-[5px] border transition-colors',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        checked
+          ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+          : 'border-input bg-background text-transparent hover:border-primary/70 hover:bg-muted',
+        disabled && 'cursor-not-allowed border-muted-foreground/25 bg-muted text-transparent opacity-60'
+      )}
+    >
+      <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" />
+    </button>
+  );
+}
 
 export function NotificationPreferences() {
   const { t } = useTranslation();
@@ -87,56 +126,30 @@ export function NotificationPreferences() {
               <div className="flex justify-center">
                 {pref.notificationType === 'CommentMentioned' && !isModuleActive('communication') ? (
                   <div className="relative group">
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={false}
-                      aria-label={`${t(notificationTypeLabels[pref.notificationType] ?? pref.notificationType)} — ${t('notifications.emailRequiresCommunication')}`}
+                    <PreferenceCheckButton
+                      checked={false}
                       disabled
+                      label={`${t(notificationTypeLabels[pref.notificationType] ?? pref.notificationType)} - ${t('notifications.emailRequiresCommunication')}`}
                       title={t('notifications.emailRequiresCommunication')}
-                      className="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border-2 border-transparent bg-input opacity-50 cursor-not-allowed"
-                    >
-                      <span className="pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 translate-x-0" />
-                    </button>
+                    />
                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 text-xs text-popover-foreground bg-popover border rounded-lg shadow-md opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
                       {t('notifications.emailRequiresCommunication')}
                     </div>
                   </div>
                 ) : (
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={pref.emailEnabled}
-                    aria-label={`${t(notificationTypeLabels[pref.notificationType] ?? pref.notificationType)} — Email`}
+                  <PreferenceCheckButton
+                    checked={pref.emailEnabled}
+                    label={`${t(notificationTypeLabels[pref.notificationType] ?? pref.notificationType)} - Email`}
                     onClick={() => togglePref(pref.notificationType, 'emailEnabled')}
-                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                      pref.emailEnabled ? 'bg-primary' : 'bg-input'
-                    }`}
-                  >
-                    <span
-                      className={`pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform ${
-                        pref.emailEnabled ? 'translate-x-4' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
+                  />
                 )}
               </div>
               <div className="flex justify-center">
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={pref.inAppEnabled}
+                <PreferenceCheckButton
+                  checked={pref.inAppEnabled}
+                  label={`${t(notificationTypeLabels[pref.notificationType] ?? pref.notificationType)} - In-app`}
                   onClick={() => togglePref(pref.notificationType, 'inAppEnabled')}
-                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                    pref.inAppEnabled ? 'bg-primary' : 'bg-input'
-                  }`}
-                >
-                  <span
-                    className={`pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform ${
-                      pref.inAppEnabled ? 'translate-x-4' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
+                />
               </div>
             </div>
           ))}
