@@ -91,7 +91,7 @@ export default function ProductCreatePage() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="max-w-2xl space-y-6">
         {isPlatformAdmin && (
-          <Card>
+          <Card variant="glass">
             <CardHeader>
               <CardTitle>{t('products.tenant', 'Tenant')}</CardTitle>
             </CardHeader>
@@ -115,7 +115,7 @@ export default function ProductCreatePage() {
           </Card>
         )}
 
-        <Card>
+        <Card variant="glass">
           <CardHeader>
             <CardTitle>{t('products.details', 'Product Details')}</CardTitle>
           </CardHeader>
@@ -147,7 +147,7 @@ export default function ProductCreatePage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card variant="glass">
           <CardHeader>
             <CardTitle>{t('products.pricing', 'Pricing')}</CardTitle>
           </CardHeader>
@@ -187,6 +187,10 @@ export default function ProductCreatePage() {
             {t('products.create', 'Create Product')}
           </Button>
         </div>
+
+        <p className="text-xs text-muted-foreground">
+          {t('products.uploadHint', 'You can add an image after creating the product')}
+        </p>
       </form>
     </div>
   );
