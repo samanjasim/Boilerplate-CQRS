@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import { registerSlot } from '@/lib/extensions';
+import type { WebModule } from '@/lib/modules';
 
 /**
  * Import/Export module entry point.
@@ -12,10 +12,10 @@ const UsersImportButton = lazy(() =>
   import('./components/UsersImportButton').then((m) => ({ default: m.UsersImportButton })),
 );
 
-export const importExportModule = {
-  name: 'importExport',
-  register(): void {
-    registerSlot('users-list-toolbar', {
+export const importExportModule: WebModule = {
+  id: 'importExport',
+  register(ctx): void {
+    ctx.registerSlot('users-list-toolbar', {
       id: 'importExport.users-import',
       module: 'importExport',
       order: 10,

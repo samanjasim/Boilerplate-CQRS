@@ -1,14 +1,14 @@
 import { lazy } from 'react';
-import { registerSlot } from '@/lib/extensions';
+import type { WebModule } from '@/lib/modules';
 
 const CommunicationDashboardWidget = lazy(() =>
   import('./components/CommunicationDashboardWidget').then((m) => ({ default: m.CommunicationDashboardWidget })),
 );
 
-export const communicationModule = {
-  name: 'communication',
-  register(): void {
-    registerSlot('dashboard-cards', {
+export const communicationModule: WebModule = {
+  id: 'communication',
+  register(ctx): void {
+    ctx.registerSlot('dashboard-cards', {
       id: 'communication.dashboard',
       module: 'communication',
       order: 40,

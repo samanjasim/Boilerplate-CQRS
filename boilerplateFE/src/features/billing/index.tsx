@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import { registerSlot } from '@/lib/extensions';
+import type { WebModule } from '@/lib/modules';
 
 /**
  * Billing module entry point.
@@ -12,10 +12,10 @@ const TenantSubscriptionTab = lazy(() =>
   import('./components/TenantSubscriptionTab').then((m) => ({ default: m.TenantSubscriptionTab })),
 );
 
-export const billingModule = {
-  name: 'billing',
-  register(): void {
-    registerSlot('tenant-detail-tabs', {
+export const billingModule: WebModule = {
+  id: 'billing',
+  register(ctx): void {
+    ctx.registerSlot('tenant-detail-tabs', {
       id: 'billing.tenant-subscription',
       module: 'billing',
       order: 30,

@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import { registerSlot } from '@/lib/extensions';
+import type { WebModule } from '@/lib/modules';
 
 const TenantProductsTab = lazy(() =>
   import('./components/TenantProductsTab').then((m) => ({ default: m.TenantProductsTab })),
@@ -9,10 +9,10 @@ const ProductsDashboardCard = lazy(() =>
   import('./components/ProductsDashboardCard').then((m) => ({ default: m.ProductsDashboardCard })),
 );
 
-export const productsModule = {
-  name: 'products',
-  register(): void {
-    registerSlot('tenant-detail-tabs', {
+export const productsModule: WebModule = {
+  id: 'products',
+  register(ctx): void {
+    ctx.registerSlot('tenant-detail-tabs', {
       id: 'products.tenant-products',
       module: 'products',
       order: 40,
@@ -21,7 +21,7 @@ export const productsModule = {
       component: TenantProductsTab,
     });
 
-    registerSlot('dashboard-cards', {
+    ctx.registerSlot('dashboard-cards', {
       id: 'products.dashboard-card',
       module: 'products',
       order: 10,
