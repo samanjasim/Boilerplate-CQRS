@@ -95,6 +95,41 @@ public class CatalogConsistencyTests
             "rename.ps1 emits activeModules keys from configKey, so keys must be stable and unique.");
     }
 
+    [Theory]
+    [InlineData("backendModule")]
+    [InlineData("frontendFeature")]
+    [InlineData("mobileModule")]
+    [InlineData("mobileFolder")]
+    public void Path_bearing_fields_are_unique_across_modules(string field)
+    {
+        // Two catalog entries pointing at the same project folder, feature folder,
+        // or mobile module class would silently make Write-WebModulesConfig emit
+        // duplicate `import` lines (broken TS) and Write-MobileModulesConfig emit
+        // duplicate Dart imports. Catch the drift in the catalog itself.
+        using var doc = JsonDocument.Parse(File.ReadAllText(CatalogPath));
+        var owners = new Dictionary<string, string>(StringComparer.Ordinal);
+        var problems = new List<string>();
+
+        foreach (var module in ModuleEntries(doc))
+        {
+            var value = ReadOptionalString(module.Value, field);
+            if (value is null) continue;
+
+            if (owners.TryGetValue(value, out var owner))
+            {
+                problems.Add($"'{module.Name}' and '{owner}' both declare {field} '{value}'");
+            }
+            else
+            {
+                owners[value] = module.Name;
+            }
+        }
+
+        problems.Should().BeEmpty(
+            $"catalog {field} values map 1:1 to template artifacts; two modules sharing one " +
+            "would generate duplicate imports.");
+    }
+
     [Fact]
     public void Declared_backend_module_projects_exist()
     {
