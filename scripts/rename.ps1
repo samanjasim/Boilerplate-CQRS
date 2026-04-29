@@ -89,60 +89,98 @@ if (-not (Test-Path $SourceBE)) {
     exit 1
 }
 
-# ── Module selection preflight ──────────────────────────────────────────────
+function Get-CatalogModuleProperties {
+    param([object]$Catalog)
 
-$modulesJsonPath = Join-Path $RepoRoot "modules.catalog.json"
-$excludedModules = @()
-$includedOptional = @()
-$allRequired = @()
-$modulesConfig = $null
+    return @($Catalog.PSObject.Properties | Where-Object { -not $_.Name.StartsWith("_") })
+}
 
-if (Test-Path $modulesJsonPath) {
-    $modulesConfig = Get-Content $modulesJsonPath -Raw | ConvertFrom-Json
-    $allOptional = @()
-    foreach ($prop in $modulesConfig.PSObject.Properties) {
-        # Skip metadata fields (e.g., _comment)
-        if ($prop.Name.StartsWith("_")) { continue }
-        if ($prop.Value.required) {
-            $allRequired += $prop.Name
+function ConvertTo-SnakeCase {
+    param([Parameter(Mandatory = $true)][string]$Value)
+
+    return (($Value -creplace '([A-Z])', '_$1').TrimStart('_').ToLower())
+}
+
+function Get-WebModuleSymbol {
+    param([Parameter(Mandatory = $true)][string]$ConfigKey)
+
+    return "$($ConfigKey)Module"
+}
+
+function Resolve-ModuleSelection {
+    param(
+        [string]$RequestedModules,
+        [string[]]$AllOptional
+    )
+
+    if (-not $RequestedModules -or $RequestedModules -eq "All") {
+        return @{
+            Included = @($AllOptional)
+            Excluded = @()
+        }
+    }
+
+    if ($RequestedModules -eq "None") {
+        return @{
+            Included = @()
+            Excluded = @($AllOptional)
+        }
+    }
+
+    $requested = @($RequestedModules -split "," | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    $validLookup = @{}
+    foreach ($moduleId in $AllOptional) {
+        $validLookup[$moduleId.ToLowerInvariant()] = $moduleId
+    }
+
+    $unknown = @()
+    $included = @()
+    foreach ($moduleId in $requested) {
+        $key = $moduleId.ToLowerInvariant()
+        if (-not $validLookup.ContainsKey($key)) {
+            $unknown += $moduleId
         } else {
-            $allOptional += $prop.Name
+            $included += $validLookup[$key]
         }
     }
 
-    # Determine which optional modules to exclude
-    if (-not $Modules -or $Modules -eq "All") {
-        $excludedModules = @()
-        $includedOptional = $allOptional
-    } elseif ($Modules -eq "None") {
-        $excludedModules = $allOptional
-        $includedOptional = @()
-    } else {
-        $includedList = $Modules -split "," | ForEach-Object { $_.Trim() }
-        # Case-insensitive match
-        $includedOptional = $allOptional | Where-Object {
-            $key = $_
-            $includedList | Where-Object { $_ -ieq $key }
-        }
-        $excludedModules = $allOptional | Where-Object { $_ -notin $includedOptional }
+    if ($unknown.Count -gt 0) {
+        $lines = @()
+        $lines += ""
+        $lines += "ERROR: Unknown module id(s): $($unknown -join ', ')"
+        $lines += "Valid optional module ids: $($AllOptional -join ', ')"
+        $lines += ""
+        Write-Error ($lines -join [Environment]::NewLine)
+        exit 1
     }
 
-    # --- Strict dependency validation (D1) ---------------------------------------
-    # Catalog declares a `dependencies` array per module (module ids it requires).
-    # If the user selects a module without selecting all of its dependencies, fail
-    # loud with a self-healing error. -AutoIncludeDependencies is intentionally NOT
-    # implemented in Tier 1; add it only when a real workflow demands it.
+    $included = @($included | Sort-Object -Unique)
+    $excluded = @($AllOptional | Where-Object { $_ -notin $included })
+
+    return @{
+        Included = $included
+        Excluded = $excluded
+    }
+}
+
+function Assert-ModuleDependencies {
+    param(
+        [object]$Catalog,
+        [string[]]$IncludedOptional
+    )
 
     $selectedSet = @{}
-    foreach ($moduleId in @($includedOptional)) { $selectedSet[$moduleId] = $true }
+    foreach ($moduleId in @($IncludedOptional)) { $selectedSet[$moduleId] = $true }
 
     $missing = @{}
-    foreach ($moduleId in @($includedOptional)) {
-        $entry = $modulesConfig.$moduleId
+    foreach ($moduleId in @($IncludedOptional)) {
+        $entry = $Catalog.$moduleId
         if ($null -eq $entry.dependencies) { continue }
         foreach ($dep in @($entry.dependencies)) {
             if (-not $selectedSet.ContainsKey($dep)) {
-                if (-not $missing.ContainsKey($moduleId)) { $missing[$moduleId] = New-Object System.Collections.ArrayList }
+                if (-not $missing.ContainsKey($moduleId)) {
+                    $missing[$moduleId] = New-Object System.Collections.ArrayList
+                }
                 [void]$missing[$moduleId].Add($dep)
             }
         }
@@ -153,7 +191,7 @@ if (Test-Path $modulesJsonPath) {
         foreach ($mod in $missing.Keys) {
             foreach ($dep in $missing[$mod]) { $allMissing[$dep] = $true }
         }
-        $resolvedSelection = @(@($includedOptional) + @($allMissing.Keys)) | Sort-Object -Unique
+        $resolvedSelection = @(@($IncludedOptional) + @($allMissing.Keys)) | Sort-Object -Unique
         $lines = @()
         $lines += ""
         $lines += "ERROR: One or more selected modules are missing required dependencies."
@@ -169,6 +207,93 @@ if (Test-Path $modulesJsonPath) {
         Write-Error ($lines -join [Environment]::NewLine)
         exit 1
     }
+}
+
+function Assert-SelectedModuleArtifacts {
+    param(
+        [object]$Catalog,
+        [string[]]$IncludedOptional,
+        [string]$SourceBE,
+        [string]$SourceFE,
+        [string]$SourceMobile,
+        [bool]$IncludeMobile
+    )
+
+    $problems = @()
+
+    foreach ($moduleId in @($IncludedOptional)) {
+        $module = $Catalog.$moduleId
+
+        if ($module.backendModule) {
+            $backendPath = Join-Path (Join-Path (Join-Path $SourceBE "src") "modules") $module.backendModule
+            if (-not (Test-Path $backendPath)) {
+                $problems += "[$moduleId/backend] Missing template project folder: $backendPath"
+            }
+        }
+
+        if ($module.frontendFeature) {
+            $featurePath = Join-Path (Join-Path (Join-Path $SourceFE "src") "features") $module.frontendFeature
+            $indexTs = Join-Path $featurePath "index.ts"
+            $indexTsx = Join-Path $featurePath "index.tsx"
+            if (-not (Test-Path $featurePath)) {
+                $problems += "[$moduleId/web] Missing template feature folder: $featurePath"
+            } elseif (-not ((Test-Path $indexTs) -or (Test-Path $indexTsx))) {
+                $problems += "[$moduleId/web] Missing feature entrypoint: $indexTs or $indexTsx"
+            }
+        }
+
+        if ($IncludeMobile -and $module.mobileFolder -and $module.mobileModule) {
+            $moduleFile = "$(ConvertTo-SnakeCase -Value $module.mobileModule).dart"
+            $mobilePath = Join-Path (Join-Path (Join-Path (Join-Path $SourceMobile "lib") "modules") $module.mobileFolder) $moduleFile
+            if (-not (Test-Path $mobilePath)) {
+                $problems += "[$moduleId/mobile] Missing mobile entrypoint: $mobilePath"
+            }
+        }
+    }
+
+    if ($problems.Count -gt 0) {
+        $lines = @()
+        $lines += ""
+        $lines += "ERROR: Selected module artifacts are missing from the template."
+        $lines += $problems
+        $lines += ""
+        Write-Error ($lines -join [Environment]::NewLine)
+        exit 1
+    }
+}
+
+# ── Module selection preflight ──────────────────────────────────────────────
+
+$modulesJsonPath = Join-Path $RepoRoot "modules.catalog.json"
+$excludedModules = @()
+$includedOptional = @()
+$allRequired = @()
+$modulesConfig = $null
+
+if (Test-Path $modulesJsonPath) {
+    $modulesConfig = Get-Content $modulesJsonPath -Raw | ConvertFrom-Json
+    $allOptional = @()
+
+    foreach ($prop in Get-CatalogModuleProperties -Catalog $modulesConfig) {
+        if ($prop.Value.required) {
+            $allRequired += $prop.Name
+        } else {
+            $allOptional += $prop.Name
+        }
+    }
+
+    $selection = Resolve-ModuleSelection -RequestedModules $Modules -AllOptional $allOptional
+    $includedOptional = @($selection.Included)
+    $excludedModules = @($selection.Excluded)
+
+    Assert-ModuleDependencies -Catalog $modulesConfig -IncludedOptional $includedOptional
+    Assert-SelectedModuleArtifacts `
+        -Catalog $modulesConfig `
+        -IncludedOptional $includedOptional `
+        -SourceBE $SourceBE `
+        -SourceFE $SourceFE `
+        -SourceMobile $SourceMobile `
+        -IncludeMobile $IncludeMobile
 }
 
 # ── Lowercase variant ──────────────────────────────────────────────────────
