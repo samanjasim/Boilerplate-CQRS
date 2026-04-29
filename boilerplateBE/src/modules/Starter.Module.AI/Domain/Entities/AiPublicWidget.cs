@@ -155,6 +155,9 @@ public sealed class AiPublicWidget : AggregateRoot, ITenantEntity
             throw new ArgumentException("Origin must not be blank.", nameof(origin));
 
         var trimmed = origin.Trim();
+        if (trimmed.Contains('*'))
+            throw new ArgumentException($"Origin '{origin}' must not include wildcards.", nameof(origin));
+
         if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri))
             throw new ArgumentException($"Invalid origin '{origin}'.", nameof(origin));
 

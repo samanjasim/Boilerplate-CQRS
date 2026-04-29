@@ -209,6 +209,27 @@ public sealed class AiSettingsDomainTests
         act.Should().Throw<ArgumentException>();
     }
 
+    [Theory]
+    [InlineData("https://*.example.com")]
+    [InlineData("https://example.*")]
+    [InlineData("https://*")]
+    public void PublicWidget_Rejects_Wildcard_Allowed_Origins(string origin)
+    {
+        var act = () => AiPublicWidget.Create(
+            tenantId: Guid.NewGuid(),
+            name: "Marketing site",
+            allowedOrigins: new[] { origin },
+            defaultAssistantId: null,
+            defaultPersonaSlug: "anonymous",
+            monthlyTokenCap: 10_000,
+            dailyTokenCap: 1_000,
+            requestsPerMinute: 20,
+            createdByUserId: Guid.NewGuid());
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*wildcard*");
+    }
+
     [Fact]
     public void PublicWidget_Create_Rejects_Invalid_MetadataJson()
     {
