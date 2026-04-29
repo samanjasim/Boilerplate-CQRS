@@ -4,7 +4,7 @@
 
 **Goal:** Bring all 6 workflow pages onto J4 Spectrum tokens with two earned structural changes (command-center inbox with row-level SLA pressure; sticky right-rail instance detail) and chrome polish on the designer with state-type tinting.
 
-**Architecture:** Frontend-heavy redesign with two new BE query handlers (`GetInboxStatusCountsQuery`, `GetInstanceStatusCountsQuery`) for hero counts. No schema changes. Three new FE components (`InboxTaskRow`, `WorkflowStatusHeader`, `InstanceMetadataRail`); reuse `MetricCard`, `DesignerCanvas readOnly`, `JsonView`. All translations land inline (EN + AR + KU).
+**Architecture:** Frontend-heavy redesign with two new BE query handlers (`GetInboxStatusCountsQuery`, `GetInstanceStatusCountsQuery`) for hero counts. No schema changes. Reuse the existing workflow route/API/query layout, `MetricCard`, `DesignerCanvas readOnly`, audit `JsonView`, and the shared table/card/status primitives before creating local components. All touched visible strings must have EN + AR + KU keys with no `defaultValue` fallback in committed UI code.
 
 **Tech Stack:** .NET 10 / EF Core / xUnit (BE); React 19 + TypeScript 5 + Tailwind 4 + TanStack Query + ReactFlow + i18next + shadcn/ui (FE).
 
@@ -18,6 +18,12 @@
 - BE entity is `ApprovalTask` (not `WorkflowTask`); SLA field is `DueDate` (not `SlaDueAt`).
 - `InstanceStatus` enum has `Active`, `Completed`, `Cancelled` only — no `Failed`. Spec's "Failed-or-cancelled" bucket renders as just `Cancelled`.
 - Inbox endpoint authorizes with `WorkflowPermissions.ActOnTask`; instances endpoint with `WorkflowPermissions.View`.
+- Existing workflow test helper is `WorkflowEngineTestFactory.CreateDb()` (not `NewDb()`).
+- Existing FE translations live in `boilerplateFE/src/i18n/locales/{en,ar,ku}/translation.json` under the root `workflow` object; there are no `src/locales/workflow.json` files.
+- `WorkflowInstanceDto` does not exist today; use `WorkflowInstanceSummary` unless the implementation explicitly adds a new FE type.
+- There is no frontend `PERMISSIONS.System.SuperAdmin`; treat SuperAdmin as the existing product pages do (`!user?.tenantId`) or use an existing role signal if one is added later.
+- There is no shared `JsonView` under `components/common`; the current reusable implementation is `boilerplateFE/src/features/audit-logs/components/JsonView.tsx` and accepts `payload`, not `value`.
+- There is no shadcn `collapsible` component in `boilerplateFE/src/components/ui`; use a small local state toggle or add the primitive as its own explicit task before using it.
 
 ---
 
@@ -84,6 +90,7 @@ hardcoding."
 - Create: `boilerplateBE/src/modules/Starter.Module.Workflow/Application/DTOs/InboxStatusCountsDto.cs`
 - Create: `boilerplateBE/src/modules/Starter.Module.Workflow/Application/Queries/GetInboxStatusCounts/GetInboxStatusCountsQuery.cs`
 - Create: `boilerplateBE/src/modules/Starter.Module.Workflow/Application/Queries/GetInboxStatusCounts/GetInboxStatusCountsQueryHandler.cs`
+- Modify: `boilerplateBE/src/modules/Starter.Module.Workflow/WorkflowModule.cs` (only if `TimeProvider` is not already registered globally)
 - Modify: `boilerplateBE/src/modules/Starter.Module.Workflow/Controllers/WorkflowController.cs` (add endpoint)
 - Create: `boilerplateBE/tests/Starter.Api.Tests/Workflow/GetInboxStatusCountsQueryHandlerTests.cs`
 
@@ -131,7 +138,7 @@ public sealed class GetInboxStatusCountsQueryHandlerTests
         var fakeTime = new FakeTimeProvider(fixed_now);
         var userId = Guid.NewGuid();
         var otherUserId = Guid.NewGuid();
-        await using var db = WorkflowEngineTestFactory.NewDb();
+        await using var db = WorkflowEngineTestFactory.CreateDb();
 
         // Three tasks for current user: 1 overdue, 1 due today, 1 upcoming
         db.ApprovalTasks.AddRange(
@@ -163,7 +170,7 @@ public sealed class GetInboxStatusCountsQueryHandlerTests
         var fixed_now = new DateTimeOffset(2026, 5, 1, 10, 0, 0, TimeSpan.Zero);
         var fakeTime = new FakeTimeProvider(fixed_now);
         var userId = Guid.NewGuid();
-        await using var db = WorkflowEngineTestFactory.NewDb();
+        await using var db = WorkflowEngineTestFactory.CreateDb();
 
         db.ApprovalTasks.AddRange(
             ApprovalTaskTestFactory.Completed(userId, dueDate: fixed_now.AddHours(-1).UtcDateTime),
@@ -199,9 +206,11 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.Workflow.Application.DTOs;
+using Starter.Module.Workflow.Constants;
 using Starter.Module.Workflow.Domain.Enums;
 using Starter.Module.Workflow.Infrastructure.Persistence;
 using Starter.Shared.Results;
+using TaskStatus = Starter.Module.Workflow.Domain.Enums.TaskStatus;
 
 namespace Starter.Module.Workflow.Application.Queries.GetInboxStatusCounts;
 
@@ -216,7 +225,7 @@ internal sealed class GetInboxStatusCountsQueryHandler(
         CancellationToken cancellationToken)
     {
         if (currentUser.UserId is null)
-            return Result.Failure<InboxStatusCountsDto>(SharedErrors.Unauthorized);
+            return Result.Failure<InboxStatusCountsDto>(Error.Unauthorized());
 
         var userId = currentUser.UserId.Value;
         var now = time.GetUtcNow();
@@ -249,7 +258,15 @@ internal sealed class GetInboxStatusCountsQueryHandler(
 
 If the actual `WorkflowDbContext` namespace differs, fix the using. The exact `TaskStatus` enum lives at `Starter.Module.Workflow.Domain.Enums.TaskStatus` — verify.
 
-- [ ] **Step 6: Add controller endpoint** — modify `boilerplateBE/src/modules/Starter.Module.Workflow/Controllers/WorkflowController.cs`. Add the using at the top:
+- [ ] **Step 6: Verify or add `TimeProvider` DI registration** — run `rg -n "TimeProvider.System|AddSingleton\\(TimeProvider" boilerplateBE/src`. If no registration exists, add this in `WorkflowModule.ConfigureServices` before scoped workflow services:
+
+```csharp
+services.AddSingleton(TimeProvider.System);
+```
+
+This is required because `GetInboxStatusCountsQueryHandler` constructor-injects `TimeProvider`. Existing workflow event handlers also depend on it, so this is a production-readiness fix, not feature creep.
+
+- [ ] **Step 7: Add controller endpoint** — modify `boilerplateBE/src/modules/Starter.Module.Workflow/Controllers/WorkflowController.cs`. Add the using at the top:
 
 ```csharp
 using Starter.Module.Workflow.Application.Queries.GetInboxStatusCounts;
@@ -268,17 +285,17 @@ public async Task<IActionResult> GetInboxStatusCounts(CancellationToken ct = def
 }
 ```
 
-- [ ] **Step 7: Run tests and verify they pass**
+- [ ] **Step 8: Run tests and verify they pass**
 
 Run: `cd boilerplateBE && dotnet test --filter "FullyQualifiedName~GetInboxStatusCountsQueryHandlerTests"`
 Expected: 2 passing tests.
 
-- [ ] **Step 8: Build full solution to ensure controller change compiles**
+- [ ] **Step 9: Build full solution to ensure controller change compiles**
 
 Run: `cd boilerplateBE && dotnet build`
 Expected: 0 errors.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 10: Commit**
 
 ```bash
 git add boilerplateBE/src/modules/Starter.Module.Workflow boilerplateBE/tests/Starter.Api.Tests/Workflow/GetInboxStatusCountsQueryHandlerTests.cs
@@ -322,13 +339,13 @@ using Starter.Shared.Results;
 namespace Starter.Module.Workflow.Application.Queries.GetInstanceStatusCounts;
 
 public sealed record GetInstanceStatusCountsQuery(
-    bool MyRequestsOnly = false,
-    Guid? DefinitionId = null,
-    string? EntityType = null
+    Guid? StartedByUserId = null,
+    string? EntityType = null,
+    string? State = null
 ) : IRequest<Result<InstanceStatusCountsDto>>;
 ```
 
-Note: `TenantId` is not exposed as a parameter because tenant scoping comes from the `WorkflowDbContext` global query filter; super-admin's tenant filter on the FE is for a different purpose (cross-tenant aggregate views) which we intentionally are not building yet.
+Note: `TenantId` is not exposed as a parameter because tenant scoping comes from the `WorkflowDbContext` global query filter; super-admin's tenant filter on the FE is for a different purpose (cross-tenant aggregate views) which we intentionally are not building yet. Do not include `Status` in this count query: the cards are themselves the status distribution. They should honor entity/user/state filters, but not the currently selected status filter.
 
 - [ ] **Step 3: Write the failing handler test** — `boilerplateBE/tests/Starter.Api.Tests/Workflow/GetInstanceStatusCountsQueryHandlerTests.cs`:
 
@@ -350,7 +367,7 @@ public sealed class GetInstanceStatusCountsQueryHandlerTests
     public async Task Buckets_Active_Awaiting_Completed_Cancelled()
     {
         var userId = Guid.NewGuid();
-        await using var db = WorkflowEngineTestFactory.NewDb();
+        await using var db = WorkflowEngineTestFactory.CreateDb();
 
         // Active without pending task
         var activeNoTask = WorkflowInstanceTestFactory.Create(
@@ -385,11 +402,11 @@ public sealed class GetInstanceStatusCountsQueryHandlerTests
     }
 
     [Fact]
-    public async Task MyRequestsOnly_FiltersToCurrentUserStartedInstances()
+    public async Task StartedByUserId_FiltersToCurrentUserStartedInstances()
     {
         var userId = Guid.NewGuid();
         var otherUserId = Guid.NewGuid();
-        await using var db = WorkflowEngineTestFactory.NewDb();
+        await using var db = WorkflowEngineTestFactory.CreateDb();
 
         db.WorkflowInstances.AddRange(
             WorkflowInstanceTestFactory.Create(startedByUserId: userId, status: InstanceStatus.Active),
@@ -404,7 +421,7 @@ public sealed class GetInstanceStatusCountsQueryHandlerTests
 
         var handler = new GetInstanceStatusCountsQueryHandler(db, currentUser.Object);
         var result = await handler.Handle(
-            new GetInstanceStatusCountsQuery(MyRequestsOnly: true), CancellationToken.None);
+            new GetInstanceStatusCountsQuery(StartedByUserId: userId), CancellationToken.None);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(1, result.Value.Active);
@@ -414,17 +431,15 @@ public sealed class GetInstanceStatusCountsQueryHandlerTests
     }
 
     [Fact]
-    public async Task DefinitionFilter_ScopesCountsToOneDefinition()
+    public async Task EntityTypeFilter_ScopesCountsToOneEntityType()
     {
         var userId = Guid.NewGuid();
-        await using var db = WorkflowEngineTestFactory.NewDb();
+        await using var db = WorkflowEngineTestFactory.CreateDb();
 
-        var defA = Guid.NewGuid();
-        var defB = Guid.NewGuid();
         db.WorkflowInstances.AddRange(
-            WorkflowInstanceTestFactory.Create(definitionId: defA, status: InstanceStatus.Active),
-            WorkflowInstanceTestFactory.Create(definitionId: defA, status: InstanceStatus.Completed),
-            WorkflowInstanceTestFactory.Create(definitionId: defB, status: InstanceStatus.Active)
+            WorkflowInstanceTestFactory.Create(startedByUserId: userId, entityType: "Invoice", status: InstanceStatus.Active),
+            WorkflowInstanceTestFactory.Create(startedByUserId: userId, entityType: "Invoice", status: InstanceStatus.Completed),
+            WorkflowInstanceTestFactory.Create(startedByUserId: userId, entityType: "Product", status: InstanceStatus.Active)
         );
         await db.SaveChangesAsync();
 
@@ -433,7 +448,7 @@ public sealed class GetInstanceStatusCountsQueryHandlerTests
 
         var handler = new GetInstanceStatusCountsQueryHandler(db, currentUser.Object);
         var result = await handler.Handle(
-            new GetInstanceStatusCountsQuery(DefinitionId: defA), CancellationToken.None);
+            new GetInstanceStatusCountsQuery(EntityType: "Invoice"), CancellationToken.None);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(1, result.Value.Active);
@@ -456,9 +471,9 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.Workflow.Application.DTOs;
-using Starter.Module.Workflow.Domain.Enums;
 using Starter.Module.Workflow.Infrastructure.Persistence;
 using Starter.Shared.Results;
+using TaskStatus = Starter.Module.Workflow.Domain.Enums.TaskStatus;
 
 namespace Starter.Module.Workflow.Application.Queries.GetInstanceStatusCounts;
 
@@ -473,14 +488,20 @@ internal sealed class GetInstanceStatusCountsQueryHandler(
     {
         var instances = context.WorkflowInstances.AsNoTracking().AsQueryable();
 
-        if (request.MyRequestsOnly && currentUser.UserId is { } uid)
+        var startedByUserId = request.StartedByUserId;
+        if (!currentUser.HasPermission(WorkflowPermissions.ViewAllTasks))
+        {
+            if (currentUser.UserId is null)
+                return Result.Failure<InstanceStatusCountsDto>(Error.Unauthorized());
+            startedByUserId = currentUser.UserId;
+        }
+
+        if (startedByUserId is { } uid)
             instances = instances.Where(i => i.StartedByUserId == uid);
-
-        if (request.DefinitionId is { } defId)
-            instances = instances.Where(i => i.DefinitionId == defId);
-
         if (!string.IsNullOrEmpty(request.EntityType))
             instances = instances.Where(i => i.EntityType == request.EntityType);
+        if (!string.IsNullOrEmpty(request.State))
+            instances = instances.Where(i => i.CurrentState == request.State);
 
         var statusGroups = await instances
             .GroupBy(i => i.Status)
@@ -524,13 +545,13 @@ Add the endpoint after `GetWorkflowInstances` (search for `[HttpGet("instances")
 [Authorize(Policy = WorkflowPermissions.View)]
 [ProducesResponseType(typeof(ApiResponse<InstanceStatusCountsDto>), StatusCodes.Status200OK)]
 public async Task<IActionResult> GetInstanceStatusCounts(
-    [FromQuery] bool myRequestsOnly = false,
-    [FromQuery] Guid? definitionId = null,
+    [FromQuery] Guid? startedByUserId = null,
     [FromQuery] string? entityType = null,
+    [FromQuery] string? state = null,
     CancellationToken ct = default)
 {
     var result = await Mediator.Send(
-        new GetInstanceStatusCountsQuery(myRequestsOnly, definitionId, entityType), ct);
+        new GetInstanceStatusCountsQuery(startedByUserId, entityType, state), ct);
     return HandleResult(result);
 }
 ```
@@ -552,7 +573,7 @@ git add boilerplateBE/src/modules/Starter.Module.Workflow boilerplateBE/tests/St
 git commit -m "feat(workflow): add instance status counts endpoint
 
 Returns Active/Awaiting/Completed/Cancelled counts honoring the
-existing list-page filters (myRequestsOnly, definitionId, entityType).
+existing list-page scoping filters (startedByUserId, entityType, state).
 Awaiting is derived from Active + has-pending-task to avoid an
 enum split. Used by the redesigned WorkflowInstancesPage hero strip."
 ```
@@ -563,6 +584,7 @@ enum split. Used by the redesigned WorkflowInstancesPage hero strip."
 
 **Files:**
 - Modify: `boilerplateFE/src/config/api.config.ts` (add 2 endpoints)
+- Modify: `boilerplateFE/src/lib/query/keys.ts` (add stable status-count query keys)
 - Modify: `boilerplateFE/src/types/workflow.types.ts` (add 2 types)
 - Modify: `boilerplateFE/src/features/workflow/api/workflow.api.ts` (add 2 methods)
 - Modify: `boilerplateFE/src/features/workflow/api/workflow.queries.ts` (add 2 hooks)
@@ -595,7 +617,30 @@ export interface InstanceStatusCounts {
 }
 ```
 
-- [ ] **Step 3: Add API methods** — modify `boilerplateFE/src/features/workflow/api/workflow.api.ts`. Add the import at the top:
+- [ ] **Step 3: Add stable query keys** — modify `boilerplateFE/src/lib/query/keys.ts` inside the `workflow` namespace:
+
+```ts
+instances: {
+  all: ['workflow', 'instances'] as const,
+  list: (params?: Record<string, unknown>) => ['workflow', 'instances', 'list', params] as const,
+  statusCounts: (params?: Record<string, unknown>) =>
+    ['workflow', 'instances', 'status-counts', params ?? {}] as const,
+  byId: (instanceId: string | undefined) => ['workflow', 'instances', 'byId', instanceId] as const,
+  status: (entityType: string, entityId: string) =>
+    ['workflow', 'instances', 'status', entityType, entityId] as const,
+  history: (instanceId: string) => ['workflow', 'instances', 'history', instanceId] as const,
+},
+tasks: {
+  all: ['workflow', 'tasks'] as const,
+  list: (params?: Record<string, unknown>) => ['workflow', 'tasks', 'list', params] as const,
+  count: () => ['workflow', 'tasks', 'count'] as const,
+  statusCounts: () => ['workflow', 'tasks', 'status-counts'] as const,
+},
+```
+
+Preserve the existing keys and add only `statusCounts`.
+
+- [ ] **Step 4: Add API methods** — modify `boilerplateFE/src/features/workflow/api/workflow.api.ts`. Add the import at the top:
 
 ```ts
 import type {
@@ -610,61 +655,61 @@ Add the methods to the exported object:
 ```ts
 getInboxStatusCounts: () =>
   apiClient
-    .get<{ data: InboxStatusCounts }>(API_ENDPOINTS.WORKFLOW.TASKS_STATUS_COUNTS)
-    .then((r) => r.data),
+    .get<ApiResponse<InboxStatusCounts>>(API_ENDPOINTS.WORKFLOW.TASKS_STATUS_COUNTS)
+    .then((r) => r.data.data),
 
 getInstanceStatusCounts: (params?: {
-  myRequestsOnly?: boolean;
-  definitionId?: string;
+  startedByUserId?: string;
   entityType?: string;
+  state?: string;
 }) =>
   apiClient
-    .get<{ data: InstanceStatusCounts }>(API_ENDPOINTS.WORKFLOW.INSTANCES_STATUS_COUNTS, { params })
-    .then((r) => r.data),
+    .get<ApiResponse<InstanceStatusCounts>>(API_ENDPOINTS.WORKFLOW.INSTANCES_STATUS_COUNTS, { params })
+    .then((r) => r.data.data),
 ```
 
-- [ ] **Step 4: Add query hooks** — modify `boilerplateFE/src/features/workflow/api/workflow.queries.ts`. Add hooks at the bottom (after the existing hooks):
+- [ ] **Step 5: Add query hooks** — modify `boilerplateFE/src/features/workflow/api/workflow.queries.ts`. Add hooks near the other workflow query hooks:
 
 ```ts
 export function useInboxStatusCounts() {
   return useQuery({
-    queryKey: [...queryKeys.workflow.tasks.all, 'status-counts'] as const,
+    queryKey: queryKeys.workflow.tasks.statusCounts(),
     queryFn: () => workflowApi.getInboxStatusCounts(),
-    select: (r) => r.data,
     staleTime: 30_000,
   });
 }
 
 export function useInstanceStatusCounts(params?: {
-  myRequestsOnly?: boolean;
-  definitionId?: string;
+  startedByUserId?: string;
   entityType?: string;
+  state?: string;
 }) {
   return useQuery({
-    queryKey: [...queryKeys.workflow.instances.all, 'status-counts', params] as const,
+    queryKey: queryKeys.workflow.instances.statusCounts(params as Record<string, unknown> | undefined),
     queryFn: () => workflowApi.getInstanceStatusCounts(params),
-    select: (r) => r.data,
     staleTime: 30_000,
   });
 }
 ```
 
-If the `queryKeys.workflow.tasks` / `.instances` namespacing differs (verify with `grep -n "queryKeys" boilerplateFE/src/features/workflow/api/workflow.queries.ts`), align with the existing convention. If keys are flat strings, use:
+- [ ] **Step 6: Invalidate status-count queries from existing mutations** — in `useExecuteTask`, `useBatchExecuteTasks`, `useStartWorkflow`, `useCancelWorkflow`, and `useTransitionWorkflow`, add invalidations for the new keys alongside the existing `tasks.all` / `instances.all` invalidations:
 
 ```ts
-queryKey: ['workflow', 'tasks', 'status-counts'] as const
-queryKey: ['workflow', 'instances', 'status-counts', params] as const
+queryClient.invalidateQueries({ queryKey: queryKeys.workflow.tasks.statusCounts() });
+queryClient.invalidateQueries({ queryKey: queryKeys.workflow.instances.all });
 ```
 
-- [ ] **Step 5: Type-check**
+For instance counts, invalidating `queryKeys.workflow.instances.all` is enough if the status-count key stays under that prefix; for clarity add a comment or explicit invalidation if TanStack matching is narrowed later.
+
+- [ ] **Step 7: Type-check**
 
 Run: `cd boilerplateFE && npm run build`
 Expected: 0 errors.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add boilerplateFE/src/config/api.config.ts boilerplateFE/src/types/workflow.types.ts boilerplateFE/src/features/workflow/api
+git add boilerplateFE/src/config/api.config.ts boilerplateFE/src/lib/query/keys.ts boilerplateFE/src/types/workflow.types.ts boilerplateFE/src/features/workflow/api
 git commit -m "feat(fe/workflow): add status-counts API client and hooks
 
 Wires the two new BE endpoints into the workflow API client +
@@ -677,11 +722,13 @@ Billing precedent for status-count hero strips."
 ## Task 5: FE — i18n keys for the cluster
 
 **Files:**
-- Modify: `boilerplateFE/src/locales/en/workflow.json` (or wherever EN keys live)
-- Modify: `boilerplateFE/src/locales/ar/workflow.json`
-- Modify: `boilerplateFE/src/locales/ku/workflow.json`
+- Modify: `boilerplateFE/src/i18n/locales/en/translation.json`
+- Modify: `boilerplateFE/src/i18n/locales/ar/translation.json`
+- Modify: `boilerplateFE/src/i18n/locales/ku/translation.json`
 
-- [ ] **Step 1: Locate translation files** — `find boilerplateFE/src/locales -name "workflow*.json"` from repo root. Note the actual paths.
+- [ ] **Step 1: Locate the existing `workflow` object** — `rg -n '"workflow": \\{' boilerplateFE/src/i18n/locales/*/translation.json` from repo root. Add keys into the existing nested objects; do not create separate namespace files.
+
+The snippets below are shown as `jsonc` only so existing-key comments can be explanatory. The actual locale files are strict JSON: do not paste comments or trailing commas.
 
 - [ ] **Step 2: Add EN keys** — append into the existing `workflow` namespace:
 
@@ -700,11 +747,14 @@ Billing precedent for status-count hero strips."
         "upcomingEyebrow": "On track"
       },
       "sla": {
+        "header": "SLA",
         "dueIn": "Due in {{relative}}",
         "overdue": "{{relative}} overdue",
         "onTrack": "On track",
         "noSla": "No SLA"
       },
+      "actOn": "Act",
+      "raised": "Raised",
       "priority": {
         "high": "High priority",
         "medium": "Medium priority",
@@ -726,7 +776,7 @@ Billing precedent for status-count hero strips."
     },
     "definitions": {
       // … existing keys …
-      "status": {
+      "statusValue": {
         "active": "Active",
         "inactive": "Inactive"
       }
@@ -771,11 +821,14 @@ Billing precedent for status-count hero strips."
         "upcomingEyebrow": "ضمن الجدول الزمني"
       },
       "sla": {
+        "header": "اتفاقية الخدمة",
         "dueIn": "تستحق خلال {{relative}}",
         "overdue": "متأخرة بـ {{relative}}",
         "onTrack": "ضمن الجدول",
         "noSla": "بدون موعد محدد"
       },
+      "actOn": "إجراء",
+      "raised": "أُنشئ",
       "priority": {
         "high": "أولوية عالية",
         "medium": "أولوية متوسطة",
@@ -795,7 +848,7 @@ Billing precedent for status-count hero strips."
       }
     },
     "definitions": {
-      "status": {
+      "statusValue": {
         "active": "نشطة",
         "inactive": "غير نشطة"
       }
@@ -838,11 +891,14 @@ Billing precedent for status-count hero strips."
         "upcomingEyebrow": "لەسەر ڕێگا"
       },
       "sla": {
+        "header": "SLA",
         "dueIn": "کۆتایی دێت لە {{relative}}",
         "overdue": "{{relative}} دواکەوتووە",
         "onTrack": "لەسەر ڕێگا",
         "noSla": "بێ کات"
       },
+      "actOn": "کردار",
+      "raised": "دروستکراوە",
       "priority": {
         "high": "گرنگیی بەرز",
         "medium": "گرنگیی مامناوەند",
@@ -862,7 +918,7 @@ Billing precedent for status-count hero strips."
       }
     },
     "definitions": {
-      "status": {
+      "statusValue": {
         "active": "چالاک",
         "inactive": "ناچالاک"
       }
@@ -898,7 +954,9 @@ Expected: 0 errors. (If there's an i18n key consistency check script — `npm ru
 - [ ] **Step 6: Commit**
 
 ```bash
-git add boilerplateFE/src/locales
+git add boilerplateFE/src/i18n/locales/en/translation.json \
+        boilerplateFE/src/i18n/locales/ar/translation.json \
+        boilerplateFE/src/i18n/locales/ku/translation.json
 git commit -m "feat(fe/workflow): add Phase 5a translation keys (EN, AR, KU)
 
 ~28 new keys covering inbox status counts, SLA pressure labels,
@@ -1135,7 +1193,7 @@ export function InboxTaskRow({
           checked={selected}
           disabled={!bulkEligible}
           onCheckedChange={() => onToggleSelect(task.taskId)}
-          aria-label={t('common.selectRow', { defaultValue: 'Select row' })}
+          aria-label={t('workflow.inbox.select')}
         />
       </TableCell>
       <TableCell>
@@ -1190,7 +1248,7 @@ export function InboxTaskRow({
       </TableCell>
       <TableCell className="w-[100px] text-end">
         <Button size="sm" onClick={() => onAct(task)}>
-          {t('workflow.inbox.actOn', { defaultValue: 'Act' })}
+          {t('workflow.inbox.actOn')}
         </Button>
       </TableCell>
     </TableRow>
@@ -1279,12 +1337,12 @@ Keep the existing `<TableHeader>` but replace its row with the new column header
       <Checkbox
         checked={allSelected}
         onCheckedChange={toggleAll}
-        aria-label={t('common.selectAll', { defaultValue: 'Select all' })}
+        aria-label={t('workflow.inbox.selectAll')}
       />
     </TableHead>
-    <TableHead>{t('workflow.inbox.request', { defaultValue: 'Request' })}</TableHead>
-    <TableHead className="w-[180px]">{t('workflow.inbox.sla.dueIn', { relative: '' }).trim() || 'SLA'}</TableHead>
-    <TableHead className="w-[160px]">{t('workflow.inbox.raised', { defaultValue: 'Raised' })}</TableHead>
+    <TableHead>{t('workflow.inbox.request')}</TableHead>
+    <TableHead className="w-[180px]">{t('workflow.inbox.sla.header')}</TableHead>
+    <TableHead className="w-[160px]">{t('workflow.inbox.raised')}</TableHead>
     <TableHead className="w-[100px]" />
   </TableRow>
 </TableHeader>
@@ -1340,21 +1398,21 @@ import { cn } from '@/lib/utils';
 import { useInstanceStatusCounts } from '../api/workflow.queries';
 
 interface InstancesStatusHeroProps {
-  myRequestsOnly: boolean;
-  definitionId?: string;
+  startedByUserId?: string;
   entityType?: string;
+  state?: string;
 }
 
 export function InstancesStatusHero({
-  myRequestsOnly,
-  definitionId,
+  startedByUserId,
   entityType,
+  state,
 }: InstancesStatusHeroProps) {
   const { t } = useTranslation();
   const { data, isLoading } = useInstanceStatusCounts({
-    myRequestsOnly,
-    definitionId,
+    startedByUserId,
     entityType,
+    state,
   });
 
   if (isLoading || !data) return null;
@@ -1438,8 +1496,8 @@ git add boilerplateFE/src/features/workflow/components/InstancesStatusHero.tsx
 git commit -m "feat(fe/workflow): add InstancesStatusHero component
 
 Four-card status hero (Active/Awaiting/Completed/Cancelled) with
-collapse-when-zero. Honors the page's existing myRequestsOnly,
-definitionId, and entityType filters by passing them through to
+collapse-when-zero. Honors the page's existing startedByUserId,
+entityType, and state scoping filters by passing them through to
 useInstanceStatusCounts."
 ```
 
@@ -1462,13 +1520,12 @@ import { InstancesStatusHero } from '../components/InstancesStatusHero';
 
 ```tsx
 <InstancesStatusHero
-  myRequestsOnly={myRequestsOnly}
-  definitionId={definitionFilter || undefined}
+  startedByUserId={startedByUserId}
   entityType={entityTypeFilter || undefined}
 />
 ```
 
-(Use the actual filter state variable names from the page; verify via `Read`.)
+Do not pass `statusFilter`; the hero is the status distribution and would become self-filtering. If a future state filter is added, pass it as `state={stateFilter || undefined}`.
 
 - [ ] **Step 4: Tint the definition-name cell** — find the `TableCell` that renders `instance.definitionName`. Wrap with a Badge:
 
@@ -1613,14 +1670,15 @@ import { ROUTES } from '@/config';
 import { STATUS_BADGE_VARIANT } from '@/constants/status';
 import { cn } from '@/lib/utils';
 import { formatDate, formatDateTime } from '@/utils/format';
-import type { PendingTaskSummary, WorkflowInstanceDto } from '@/types/workflow.types';
+import type { PendingTaskSummary, WorkflowInstanceSummary } from '@/types/workflow.types';
 import { WorkflowStatusHeader } from './WorkflowStatusHeader';
 
 interface InstanceMetadataRailProps {
-  instance: WorkflowInstanceDto;
+  instance: WorkflowInstanceSummary;
   myTask: PendingTaskSummary | null;
   isSuperAdmin: boolean;
   onAct: (task: PendingTaskSummary) => void;
+  className?: string;
 }
 
 function CopyableField({ label, value }: { label: string; value: string | null | undefined }) {
@@ -1658,19 +1716,24 @@ export function InstanceMetadataRail({
   myTask,
   isSuperAdmin,
   onAct,
+  className,
 }: InstanceMetadataRailProps) {
   const { t } = useTranslation();
 
   const statusVariant = STATUS_BADGE_VARIANT[instance.status] ?? 'outline';
+  const tenantId =
+    'tenantId' in instance
+      ? (instance as WorkflowInstanceSummary & { tenantId?: string | null }).tenantId
+      : null;
 
   return (
     <div
-      className={cn('space-y-4 lg:sticky')}
+      className={cn('space-y-4 lg:sticky', className)}
       style={{ top: 'calc(var(--shell-header-h, 4rem) + 1.5rem)' }}
     >
       <WorkflowStatusHeader
         title={instance.entityDisplayName ?? instance.entityId.slice(0, 8) + '…'}
-        status={t(`workflow.status.${instance.status.toLowerCase()}`, { defaultValue: instance.status })}
+        status={t(`workflow.status.${instance.status.toLowerCase()}`)}
         statusVariant={statusVariant}
         chips={[
           { icon: <GitBranch className="h-3 w-3" />, label: instance.definitionName, tinted: true },
@@ -1692,10 +1755,7 @@ export function InstanceMetadataRail({
             </div>
             <div className="flex items-center gap-2">
               <Button size="sm" onClick={() => onAct(myTask)} className="flex-1">
-                {t('workflow.inbox.approve')}
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => onAct(myTask)} className="flex-1">
-                {t('workflow.inbox.reject')}
+                {t('workflow.inbox.actOn')}
               </Button>
             </div>
           </CardContent>
@@ -1713,7 +1773,7 @@ export function InstanceMetadataRail({
             value={instance.entityId}
           />
           <Link
-            to={`/workflows/definitions/${instance.definitionId}`}
+            to={ROUTES.WORKFLOWS.getDefinitionDetail(instance.definitionId)}
             className="text-xs text-primary hover:underline inline-block pt-1"
           >
             {t('workflow.detail.metadata.definitionLink')}
@@ -1726,13 +1786,13 @@ export function InstanceMetadataRail({
               <div className="text-xs text-foreground">{formatDateTime(instance.completedAt)}</div>
             </div>
           )}
-          {isSuperAdmin && instance.tenantId && (
+          {isSuperAdmin && tenantId && (
             <div className="pt-2 border-t border-border mt-2">
               <div className="text-[10px] uppercase tracking-wide text-muted-foreground/70">
                 {t('workflow.detail.metadata.tenantId')}
               </div>
               <Badge variant="outline" className="text-[var(--tinted-fg)] border-[var(--active-border)]">
-                {instance.tenantId}
+                {tenantId}
               </Badge>
             </div>
           )}
@@ -1743,12 +1803,12 @@ export function InstanceMetadataRail({
 }
 ```
 
-If `WorkflowInstanceDto` does not exist as a named type, replace the `instance` prop type with the actual type used by the existing detail page. If `tenantId` is not on the DTO today, gate the SuperAdmin block on `instance.tenantId !== undefined` (already done above) — leaving the chip a no-op until the BE exposes it. Note in §11 of the spec.
+The BE/FE summary type does not expose `tenantId` today, so the tenant chip is deliberately defensive and renders only if a future DTO includes it. Do not access `instance.tenantId` directly; TypeScript will fail.
 
 - [ ] **Step 2: Type-check**
 
 Run: `cd boilerplateFE && npm run build`
-Expected: 0 errors. (If `WorkflowInstanceDto` lacks `tenantId`, the `isSuperAdmin && instance.tenantId` short-circuits cleanly — no build error.)
+Expected: 0 errors.
 
 - [ ] **Step 3: Commit**
 
@@ -1782,7 +1842,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { ConfirmDialog, PageHeader } from '@/components/common';
-import { Slot } from '@/components/extensions/Slot';
+import { Slot } from '@/lib/extensions';
 import { ApprovalDialog } from '../components/ApprovalDialog';
 import { InstanceMetadataRail } from '../components/InstanceMetadataRail';
 import { WorkflowStepTimeline } from '../components/WorkflowStepTimeline';
@@ -1793,7 +1853,9 @@ import {
   useCancelWorkflow,
   usePendingTasks,
 } from '../api';
-import { usePermissions, useUser } from '@/hooks';
+import { usePermissions } from '@/hooks';
+import { useAuthStore, selectUser } from '@/stores';
+import { PERMISSIONS } from '@/constants';
 import { formatDateTime } from '@/utils/format';
 import type { PendingTaskSummary } from '@/types/workflow.types';
 ```
@@ -1831,8 +1893,16 @@ return (
       </Card>
     )}
 
-    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6">
-      <div className="min-w-0 space-y-6">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <InstanceMetadataRail
+        instance={instance}
+        myTask={myTask}
+        isSuperAdmin={isSuperAdmin}
+        onAct={setSelectedTask}
+        className="lg:order-2"
+      />
+
+      <div className="min-w-0 space-y-6 lg:order-1">
         <section className="space-y-3">
           <h2 className="text-base font-semibold text-foreground">
             {t('workflow.detail.stepHistory')}
@@ -1872,12 +1942,6 @@ return (
         </section>
       </div>
 
-      <InstanceMetadataRail
-        instance={instance}
-        myTask={myTask}
-        isSuperAdmin={isSuperAdmin}
-        onAct={setSelectedTask}
-      />
     </div>
 
     <ConfirmDialog … />
@@ -1888,14 +1952,15 @@ return (
 
 Preserve the existing fallback-history render (the one that maps over `history` records) — keep it as the second branch of the timeline section. Delete the old standalone status header card and pending action card sections; both are now rendered inside `InstanceMetadataRail`.
 
-- [ ] **Step 4: Determine `isSuperAdmin`** — add near other hook calls:
+- [ ] **Step 4: Determine `isSuperAdmin`** — add near other hook calls, mirroring the product detail page pattern:
 
 ```tsx
 const { hasPermission } = usePermissions();
-const isSuperAdmin = hasPermission(PERMISSIONS.System.SuperAdmin);
+const user = useAuthStore(selectUser);
+const isSuperAdmin = !user?.tenantId;
 ```
 
-(Use the actual permission constant from `boilerplateFE/src/constants/permissions.ts` — verify the SuperAdmin permission name.)
+There is no frontend `PERMISSIONS.System.SuperAdmin` constant today. Keep the existing `hasPermission(PERMISSIONS.Workflows.Cancel)` / `hasPermission(PERMISSIONS.Workflows.ViewAllTasks)` checks for workflow actions.
 
 - [ ] **Step 5: Type-check + lint**
 
@@ -1962,8 +2027,8 @@ Phase 0 onward."
 <TableCell>
   <Badge variant={STATUS_BADGE_VARIANT[def.isActive ? 'Active' : 'Inactive'] ?? 'outline'}>
     {def.isActive
-      ? t('workflow.definitions.status.active')
-      : t('workflow.definitions.status.inactive')}
+      ? t('workflow.definitions.statusValue.active')
+      : t('workflow.definitions.statusValue.inactive')}
   </Badge>
 </TableCell>
 ```
@@ -1991,7 +2056,7 @@ git commit -m "style(fe/workflow): polish definitions list with proper status ba
 Replaces inline isActive ? 'default' : 'secondary' with shared
 STATUS_BADGE_VARIANT lookup, and fixes the abused activate/deactivate
 i18n keys (those are button labels, not status labels) by switching
-to workflow.definitions.status.{active,inactive}."
+to workflow.definitions.statusValue.{active,inactive}."
 ```
 
 ---
@@ -2010,8 +2075,8 @@ to workflow.definitions.status.{active,inactive}."
 <WorkflowStatusHeader
   title={def.displayName ?? def.name}
   status={def.isActive
-    ? t('workflow.definitions.status.active')
-    : t('workflow.definitions.status.inactive')}
+    ? t('workflow.definitions.statusValue.active')
+    : t('workflow.definitions.statusValue.inactive')}
   statusVariant={STATUS_BADGE_VARIANT[def.isActive ? 'Active' : 'Inactive'] ?? 'outline'}
   chips={[
     { icon: <Layers className="h-3 w-3" />, label: def.entityType, tinted: true },
@@ -2028,43 +2093,64 @@ to workflow.definitions.status.{active,inactive}."
 />
 ```
 
-- [ ] **Step 3: Embed read-only DesignerCanvas in the Overview tab** — find the Overview tab content. Replace the bare states/transitions text rendering with:
+- [ ] **Step 3: Embed read-only DesignerCanvas in the Overview tab** — create a tiny local preview component in `WorkflowDefinitionDetailPage.tsx` (or extract to `components/DefinitionCanvasPreview.tsx` if the page gets crowded). `DesignerCanvas` already wraps `ReactFlowProvider`; hydrate the Zustand designer store before rendering it:
 
 ```tsx
-import { DesignerProvider } from '../components/designer/DesignerProvider'; // or whatever provider exists
+import { useEffect } from 'react';
 import { DesignerCanvas } from '../components/designer/DesignerCanvas';
+import { useDesignerStore } from '../components/designer/hooks/useDesignerStore';
+
+function DefinitionCanvasPreview({
+  states,
+  transitions,
+}: {
+  states: WorkflowStateConfig[];
+  transitions: WorkflowTransitionConfig[];
+}) {
+  const load = useDesignerStore((s) => s.load);
+
+  useEffect(() => {
+    load(states ?? [], transitions ?? []);
+  }, [load, states, transitions]);
+
+  return <DesignerCanvas readOnly />;
+}
 
 // inside Overview tab JSX:
 <Card variant="glass">
   <CardContent className="p-0">
     <div className="min-h-[420px] max-h-[60vh]">
-      <DesignerCanvas readOnly />
+      <DefinitionCanvasPreview states={def.states ?? []} transitions={def.transitions ?? []} />
     </div>
   </CardContent>
 </Card>
 ```
 
-The `DesignerCanvas` consumes a Zustand store (`useDesignerStore`); the page must call `load(states, transitions)` on mount so the store is hydrated. Match the pattern used in `WorkflowDefinitionDesignerPage.tsx` Step 1 (`useEffect` that calls `load(...)` once).
+The `DesignerCanvas` consumes a Zustand store (`useDesignerStore`); the page must call `load(states, transitions)` on mount so the store is hydrated. Match the pattern used in `WorkflowDefinitionDesignerPage.tsx` (`useEffect` that calls `load(...)` once).
 
 If `DesignerCanvas`' `readOnly` prop does not currently suppress toolbar/sidepanel rendering, that's fine — the toolbar/sidepanel are siblings on the Designer page, not children of the canvas. Just embed the canvas alone here.
 
-- [ ] **Step 4: Add a collapsible JSON view** below the canvas, using the existing `<JsonView>` component from Phase 2:
+- [ ] **Step 4: Add a local raw-JSON toggle** below the canvas, using the existing audit `<JsonView>` component:
 
 ```tsx
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { JsonView } from '@/components/common/JsonView'; // verify path
+import { JsonView } from '@/features/audit-logs/components/JsonView';
 
-<Collapsible defaultOpen={false}>
-  <CollapsibleTrigger className="text-sm text-muted-foreground hover:text-foreground">
-    {t('workflow.detail.viewRawJson', { defaultValue: 'View raw JSON' })}
-  </CollapsibleTrigger>
-  <CollapsibleContent>
-    <JsonView value={{ states: def.states, transitions: def.transitions }} />
-  </CollapsibleContent>
-</Collapsible>
+const [showRawJson, setShowRawJson] = useState(false);
+
+<div className="space-y-3">
+  <Button
+    type="button"
+    variant="ghost"
+    size="sm"
+    onClick={() => setShowRawJson((v) => !v)}
+  >
+    {t('workflow.detail.viewRawJson')}
+  </Button>
+  {showRawJson && (
+    <JsonView payload={{ states: def.states, transitions: def.transitions }} />
+  )}
+</div>
 ```
-
-(If `Collapsible` is not the shadcn primitive in the project, use a button + state toggle. Verify what's available.)
 
 - [ ] **Step 5: Token sweep on the Analytics tab content** — `<WorkflowAnalyticsTab>` and its children: replace any hardcoded primary shades.
 
@@ -2259,7 +2345,7 @@ npm run lint
 npm run build
 ```
 
-Expected: 0 errors / 0 warnings on both.
+Expected: `npm run lint` reports 0 errors/0 warnings; `npm run build` exits 0. Existing Vite chunk-size warnings may still appear and are not part of this redesign unless new chunks regress sharply.
 
 - [ ] **Step 2: BE final build**
 
@@ -2269,7 +2355,7 @@ dotnet build
 dotnet test --filter "FullyQualifiedName~Workflow"
 ```
 
-Expected: 0 errors; all workflow tests pass (existing + 5 new from Tasks 2 & 3).
+Expected: 0 errors; all workflow tests pass (existing + 5 new from Tasks 2 & 3). Existing NU1902/NU1903 package warnings may still appear and are not part of this redesign unless they change from baseline.
 
 - [ ] **Step 3: Locate or set up the test app per CLAUDE.md "Post-Feature Testing Workflow"**
 
@@ -2317,7 +2403,7 @@ Capture screenshots of each page in EN + AR for the PR description.
 
 **Files:** none (review + push)
 
-- [ ] **Step 1: Run code review** — invoke `superpowers:code-reviewer` skill on the diff vs `origin/main`. Address blocker items inline.
+- [ ] **Step 1: Run code review** — invoke `superpowers:requesting-code-review` on the diff vs `origin/main`. Address blocker items inline.
 
 - [ ] **Step 2: Verify final commit count and shape**:
 
@@ -2397,11 +2483,12 @@ All spec sections are covered.
 
 Pre-flight verifications that the executing agent should perform on Task 1 / 2 / 3 to avoid surprises:
 
-1. **`ApprovalTaskTestFactory`** — does not exist as a shared helper today. Each test that needs it creates it inline. The plan instructs the executor to create it inline in the test file (or as a colocated static class) following the existing test patterns; both work.
-2. **`WorkflowInstanceDto.tenantId`** — verify the FE type. If absent, the SuperAdmin tenant chip in `InstanceMetadataRail` short-circuits to nothing (already handled defensively in Task 12).
-3. **`queryKeys.workflow.tasks`** — verify the namespace exists. Task 4 includes a fallback to flat-string keys if needed.
+1. **`ApprovalTaskTestFactory` / `WorkflowInstanceTestFactory`** — neither exists as a shared helper today. Create them inline in the new test files as private/static helpers, using `ApprovalTask.Create(...)`, `WorkflowInstance.Create(...)`, `.Complete(...)`, and `.Cancel(...)` so tests compile against actual domain APIs.
+2. **`TimeProvider` DI** — no global registration is visible in the current tree. Task 2 explicitly verifies and adds `services.AddSingleton(TimeProvider.System)` if still absent.
+3. **`WorkflowInstanceSummary.tenantId`** — absent today. `InstanceMetadataRail` must use a defensive `'tenantId' in instance` check and render nothing until the DTO grows.
 4. **`Card variant="glass"`** — confirm Card already supports the `glass` variant (added in Phase 2 per CLAUDE.md). If absent, add it as part of Task 11.
 5. **`--shell-header-h`** — Task 1 verifies and adds if absent.
+6. **Raw JSON preview** — use audit `JsonView` with `payload`; do not import nonexistent `components/common/JsonView` or `components/ui/collapsible`.
 
 ---
 
