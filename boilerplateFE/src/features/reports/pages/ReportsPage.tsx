@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/select';
 import { PageHeader, EmptyState, ConfirmDialog, Pagination, getPersistedPageSize } from '@/components/common';
 import { useReports, useDownloadReport, useDeleteReport, useRequestReport } from '../api';
+import { ReportStatusHeroStrip } from '../components/ReportStatusHeroStrip';
 import type { ReportRequest, RequestReportData } from '@/types';
 
 function StatusBadge({ status }: { status: string }) {
@@ -151,6 +152,8 @@ export default function ReportsPage() {
         title={t('reports.title')}
         subtitle={t('reports.subtitle')}
       />
+
+      <ReportStatusHeroStrip />
 
       {/* Filters */}
       <Card>

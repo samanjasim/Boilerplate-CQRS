@@ -21,6 +21,18 @@ export function useReports(params?: Record<string, unknown>, options?: { enabled
   });
 }
 
+export function useReportStatusCounts() {
+  return useQuery({
+    queryKey: queryKeys.reports.statusCounts(),
+    queryFn: reportsApi.getStatusCounts,
+    staleTime: 30_000,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      return data && (data.pending > 0 || data.processing > 0) ? 5000 : false;
+    },
+  });
+}
+
 export function useRequestReport() {
   const queryClient = useQueryClient();
   return useMutation({

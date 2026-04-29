@@ -92,6 +92,7 @@ export const API_ENDPOINTS = {
   },
   REPORTS: {
     LIST: '/Reports',
+    STATUS_COUNTS: '/Reports/status-counts',
     REQUEST: '/Reports',
     DOWNLOAD: (id: string) => `/Reports/${id}/download`,
     DELETE: (id: string) => `/Reports/${id}`,

@@ -2,6 +2,7 @@ import { apiClient } from '@/lib/axios';
 import { API_ENDPOINTS } from '@/config';
 import type {
   ReportRequest,
+  ReportStatusCounts,
   RequestReportData,
   ApiResponse,
   PaginatedResponse,
@@ -24,6 +25,13 @@ export const reportsApi = {
       { params }
     );
     return response.data;
+  },
+
+  getStatusCounts: async (): Promise<ReportStatusCounts> => {
+    const response = await apiClient.get<ApiResponse<ReportStatusCounts>>(
+      API_ENDPOINTS.REPORTS.STATUS_COUNTS
+    );
+    return response.data.data;
   },
 
   getDownloadUrl: async (id: string): Promise<string> => {

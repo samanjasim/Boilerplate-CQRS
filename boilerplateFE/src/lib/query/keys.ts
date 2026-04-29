@@ -71,6 +71,7 @@ export const queryKeys = {
     all: ['reports'] as const,
     lists: () => [...queryKeys.reports.all, 'list'] as const,
     list: <T extends object>(filters?: T) => [...queryKeys.reports.lists(), filters] as const,
+    statusCounts: () => [...queryKeys.reports.all, 'status-counts'] as const,
   },
 
   settings: {

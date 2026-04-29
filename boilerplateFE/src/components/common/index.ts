@@ -9,6 +9,7 @@ export * from './LanguageSwitcher';
 export * from './ListPageState';
 export * from './ListToolbar';
 export * from './LoadingScreen';
+export * from './MetricCard';
 export * from './NotificationBell';
 export * from './OwnershipTransferDialog';
 export * from './PageHeader';
