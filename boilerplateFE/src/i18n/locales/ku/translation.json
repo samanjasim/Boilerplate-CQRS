@@ -921,6 +921,17 @@
   "billing": {
     "title": "پارەدان",
     "subtitle": "بەڕێوەبردنی بەشداریکردن و پارەدانەکانت",
+    "hero": {
+      "yourPlan": "پلانەکەت",
+      "period": "{{start}} – {{end}}",
+      "autoRenewOff": "نوێکردنەوەی خۆکار ناچالاکە",
+      "perMonth": "/ مانگانە",
+      "perYear": "/ ساڵانە",
+      "free": "بەخۆڕایی",
+      "usageUsers": "بەکارهێنەران",
+      "usageStorage": "بیرگە",
+      "usageWebhooks": "وێبهووکەکان"
+    },
     "subscriptionFor": "بەشداریکردن بۆ {{name}}",
     "currentPlan": "پلانی ئێستا",
     "usage": "بەکارهێنان",

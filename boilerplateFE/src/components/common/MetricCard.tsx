@@ -16,6 +16,8 @@ export interface MetricCardProps {
   tone?: 'default' | 'active' | 'destructive';
   /** Optional inline glyph next to the value (e.g., spinner). */
   glyph?: ReactNode;
+  /** Optional content rendered below the metric value, e.g. a progress bar. */
+  children?: ReactNode;
   className?: string;
 }
 
@@ -33,6 +35,7 @@ export function MetricCard({
   emphasis,
   tone = 'default',
   glyph,
+  children,
   className,
 }: MetricCardProps) {
   return (
@@ -56,6 +59,7 @@ export function MetricCard({
           {glyph && <span className="text-muted-foreground">{glyph}</span>}
           {secondary && <span className="text-sm text-muted-foreground">{secondary}</span>}
         </div>
+        {children}
       </CardContent>
     </Card>
   );

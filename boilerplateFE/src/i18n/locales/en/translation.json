@@ -945,6 +945,17 @@
   "billing": {
     "title": "Billing",
     "subtitle": "Manage your subscription and billing",
+    "hero": {
+      "yourPlan": "Your plan",
+      "period": "{{start}} – {{end}}",
+      "autoRenewOff": "Auto-renew off",
+      "perMonth": "/ month",
+      "perYear": "/ year",
+      "free": "Free",
+      "usageUsers": "Users",
+      "usageStorage": "Storage",
+      "usageWebhooks": "Webhooks"
+    },
     "subscriptionFor": "Subscription for {{name}}",
     "currentPlan": "Current Plan",
     "usage": "Usage",

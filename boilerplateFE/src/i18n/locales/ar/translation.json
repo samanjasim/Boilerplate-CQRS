@@ -921,6 +921,17 @@
   "billing": {
     "title": "الفوترة",
     "subtitle": "إدارة اشتراكك والفوترة",
+    "hero": {
+      "yourPlan": "خطتك",
+      "period": "{{start}} – {{end}}",
+      "autoRenewOff": "التجديد التلقائي معطّل",
+      "perMonth": "/ شهرياً",
+      "perYear": "/ سنوياً",
+      "free": "مجاني",
+      "usageUsers": "المستخدمون",
+      "usageStorage": "التخزين",
+      "usageWebhooks": "الويب هوكس"
+    },
     "subscriptionFor": "اشتراك {{name}}",
     "currentPlan": "الخطة الحالية",
     "usage": "الاستخدام",

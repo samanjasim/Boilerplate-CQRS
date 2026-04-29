@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CreditCard, Receipt, BarChart3 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { CreditCard, Receipt } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -10,13 +9,12 @@ import {
 } from '@/components/ui/table';
 import { PageHeader, EmptyState, ConfirmDialog } from '@/components/common';
 import { useSubscription, useUsage, usePayments, useCancelSubscription } from '../api';
-import { UsageBar } from '../components/UsageBar';
+import { BillingHero } from '../components/BillingHero';
 import { PlanSelectorModal } from '../components/PlanSelectorModal';
 import { usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
-import { STATUS_BADGE_VARIANT } from '@/constants';
-import { formatDate, formatFileSize } from '@/utils/format';
-import { PAYMENT_STATUS_VARIANT, PAYMENT_STATUS_LABEL, SUBSCRIPTION_STATUS, BILLING_INTERVAL } from '../constants/status';
+import { formatDate } from '@/utils/format';
+import { PAYMENT_STATUS_VARIANT, PAYMENT_STATUS_LABEL } from '../constants/status';
 
 export default function BillingPage() {
   const { t } = useTranslation();
@@ -38,108 +36,33 @@ export default function BillingPage() {
         subtitle={t('billing.subtitle')}
       />
 
-      {/* Current Plan */}
-      <section className="space-y-3">
-        <h2 className="text-base font-semibold text-foreground">{t('billing.currentPlan')}</h2>
-        {subLoading ? (
-          <div className="flex justify-center py-8">
-            <Spinner size="lg" />
-          </div>
-        ) : !subscription ? (
-          <EmptyState
-            icon={CreditCard}
-            title={t('billing.currentPlan')}
-            description={t('billing.subtitle')}
-          />
-        ) : (
-          <Card>
-            <CardContent className="py-5">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-bold text-foreground">{subscription.planName}</h3>
-                    <Badge variant={STATUS_BADGE_VARIANT[SUBSCRIPTION_STATUS[subscription.status] ?? subscription.status] ?? 'secondary'}>
-                      {SUBSCRIPTION_STATUS[subscription.status] ?? subscription.status}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {BILLING_INTERVAL[subscription.billingInterval] ?? subscription.billingInterval}
-                    {' · '}
-                    {subscription.currency}{' '}
-                    {(BILLING_INTERVAL[subscription.billingInterval] === 'Monthly'
-                      ? subscription.lockedMonthlyPrice
-                      : subscription.lockedAnnualPrice
-                    ).toFixed(2)}
-                    {BILLING_INTERVAL[subscription.billingInterval] === 'Monthly' ? t('billing.perMonth') : t('billing.perYear')}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDate(subscription.currentPeriodStart)} – {formatDate(subscription.currentPeriodEnd)}
-                  </p>
-                </div>
-
-                {hasPermission(PERMISSIONS.Billing.Manage) && (
-                  <div className="flex gap-2">
-                    <Button onClick={() => setPlanModalOpen(true)}>
-                      {t('billing.changePlan')}
-                    </Button>
-                    {/* Cancel only makes sense on a paid, non-canceled plan.
-                        The backend rejects cancel on the free plan with
-                        CannotCancelFreePlan, so hide the button in that case. */}
-                    {subscription.planSlug !== 'free' && subscription.status !== 'Canceled' && (
-                      <Button variant="outline" onClick={() => setCancelOpen(true)}>
-                        {t('billing.cancelSubscription')}
-                      </Button>
-                    )}
-                  </div>
+      {!subLoading && !subscription ? (
+        <EmptyState
+          icon={CreditCard}
+          title={t('billing.currentPlan')}
+          description={t('billing.subtitle')}
+        />
+      ) : (
+        <BillingHero
+          subscription={subscription}
+          usage={usage}
+          isLoading={subLoading || usageLoading}
+          action={
+            hasPermission(PERMISSIONS.Billing.Manage) && subscription ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <Button onClick={() => setPlanModalOpen(true)}>
+                  {t('billing.changePlan')}
+                </Button>
+                {subscription.planSlug !== 'free' && subscription.status !== 'Canceled' && (
+                  <Button variant="outline" onClick={() => setCancelOpen(true)}>
+                    {t('billing.cancelSubscription')}
+                  </Button>
                 )}
               </div>
-            </CardContent>
-          </Card>
-        )}
-      </section>
-
-      {/* Usage */}
-      <section className="space-y-3">
-        <h2 className="text-base font-semibold text-foreground">{t('billing.usage')}</h2>
-        {usageLoading ? (
-          <div className="flex justify-center py-8">
-            <Spinner size="lg" />
-          </div>
-        ) : !usage ? (
-          <EmptyState icon={BarChart3} title={t('billing.usage')} />
-        ) : (
-          <Card>
-            <CardContent className="py-5 grid gap-5 sm:grid-cols-2">
-              <UsageBar
-                label={t('billing.usersUsage')}
-                current={usage.users}
-                max={usage.maxUsers}
-              />
-              <UsageBar
-                label={t('billing.storageUsage')}
-                current={usage.storageBytes}
-                max={usage.maxStorageBytes}
-                formatValue={formatFileSize}
-              />
-              <UsageBar
-                label={t('billing.apiKeysUsage')}
-                current={usage.apiKeys}
-                max={usage.maxApiKeys}
-              />
-              <UsageBar
-                label={t('billing.usage') + ' — Reports'}
-                current={usage.reportsActive}
-                max={usage.maxReports}
-              />
-              <UsageBar
-                label={t('billing.webhooksUsage')}
-                current={usage.webhooks}
-                max={usage.maxWebhooks}
-              />
-            </CardContent>
-          </Card>
-        )}
-      </section>
+            ) : null
+          }
+        />
+      )}
 
       {/* Payment History */}
       <section className="space-y-3">
