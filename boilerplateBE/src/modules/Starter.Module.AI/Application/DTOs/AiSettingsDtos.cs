@@ -46,3 +46,12 @@ public sealed record AiProviderCredentialDto(
     DateTimeOffset? LastValidatedAt,
     DateTimeOffset? LastUsedAt,
     DateTime CreatedAt);
+
+public sealed record AiModelDefaultDto(
+    Guid Id,
+    Guid? TenantId,
+    AiAgentClass AgentClass,
+    AiProviderType Provider,
+    string Model,
+    int? MaxTokens,
+    double? Temperature);

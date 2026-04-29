@@ -220,8 +220,20 @@ public sealed class RagRetrievalServiceTests
         var cache = new FakeCacheService();
         var factory = new FakeAiProviderFactory(provider);
         var opts = Options.Create(settings);
-        var listwise = new ListwiseReranker(factory, cache, opts, NullLogger<ListwiseReranker>.Instance);
-        var pointwise = new PointwiseReranker(factory, cache, opts, NullLogger<PointwiseReranker>.Instance);
+        var listwise = new ListwiseReranker(
+            factory,
+            cache,
+            new FakeAiModelDefaultResolver(),
+            new FakeAiProviderCredentialResolver(),
+            opts,
+            NullLogger<ListwiseReranker>.Instance);
+        var pointwise = new PointwiseReranker(
+            factory,
+            cache,
+            new FakeAiModelDefaultResolver(),
+            new FakeAiProviderCredentialResolver(),
+            opts,
+            NullLogger<PointwiseReranker>.Instance);
         var selector = new RerankStrategySelector(settings);
         var reranker = new Reranker(selector, listwise, pointwise, opts, NullLogger<Reranker>.Instance);
 

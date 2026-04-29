@@ -21,6 +21,8 @@ public sealed class ContextualQueryResolverTests
         return new ContextualQueryResolver(
             factory,
             cache,
+            new FakeAiModelDefaultResolver(),
+            new FakeAiProviderCredentialResolver(),
             Options.Create(settings ?? new AiRagSettings()),
             NullLogger<ContextualQueryResolver>.Instance);
     }

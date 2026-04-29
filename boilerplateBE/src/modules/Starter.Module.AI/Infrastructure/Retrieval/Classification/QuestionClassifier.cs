@@ -1,7 +1,10 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Starter.Abstractions.Ai;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Services.Retrieval;
+using Starter.Module.AI.Application.Services.Settings;
+using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Observability;
 using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Settings;
@@ -12,17 +15,23 @@ internal sealed class QuestionClassifier : IQuestionClassifier
 {
     private readonly IAiProviderFactory _factory;
     private readonly ICacheService _cache;
+    private readonly IAiModelDefaultResolver _modelDefaults;
+    private readonly IAiProviderCredentialResolver _providerCredentials;
     private readonly AiRagSettings _settings;
     private readonly ILogger<QuestionClassifier> _logger;
 
     public QuestionClassifier(
         IAiProviderFactory factory,
         ICacheService cache,
+        IAiModelDefaultResolver modelDefaults,
+        IAiProviderCredentialResolver providerCredentials,
         IOptions<AiRagSettings> settings,
         ILogger<QuestionClassifier> logger)
     {
         _factory = factory;
         _cache = cache;
+        _modelDefaults = modelDefaults;
+        _providerCredentials = providerCredentials;
         _settings = settings.Value;
         _logger = logger;
     }
@@ -40,7 +49,11 @@ internal sealed class QuestionClassifier : IQuestionClassifier
             ? ArabicTextNormalizer.Normalize(query, _settings.ToArabicOptions())
             : query;
 
-        var key = BuildCacheKey(tenantId, normalized);
+        var providerState = await ResolveRagHelperProviderAsync(tenantId, _settings.ClassifierModel, 0.0, 8, null, ct);
+        if (providerState is null)
+            return null;
+
+        var key = BuildCacheKey(tenantId, providerState.Value.ProviderType.ToString(), providerState.Value.Options.Model, normalized);
         var cached = await _cache.GetAsync<string>(key, ct);
         AiRagMetrics.CacheRequests.Add(
             1,
@@ -51,8 +64,7 @@ internal sealed class QuestionClassifier : IQuestionClassifier
 
         try
         {
-            var provider = _factory.CreateDefault();
-            var label = await CallLlmAsync(provider, query, ct);
+            var label = await CallLlmAsync(providerState.Value.Provider, providerState.Value.Options, query, ct);
             await _cache.SetAsync(key, label, TimeSpan.FromSeconds(_settings.QuestionCacheTtlSeconds), ct);
             return ParseLabel(label);
         }
@@ -63,21 +75,58 @@ internal sealed class QuestionClassifier : IQuestionClassifier
         }
     }
 
-    private async Task<string> CallLlmAsync(IAiProvider provider, string query, CancellationToken ct)
+    private async Task<string> CallLlmAsync(IAiProvider provider, AiChatOptions options, string query, CancellationToken ct)
     {
         const string system =
             "Classify the user question into EXACTLY one label: Greeting, Definition, Listing, Reasoning, Other. " +
             "Output ONLY the label word, no punctuation, no explanation.";
 
-        var opts = new AiChatOptions(
-            Model: _settings.ClassifierModel ?? _factory.GetDefaultChatModelId(),
-            Temperature: 0.0,
-            MaxTokens: 8,
-            SystemPrompt: system);
-
         var msgs = new List<AiChatMessage> { new("user", query) };
-        var resp = await provider.ChatAsync(msgs, opts, ct);
+        var resp = await provider.ChatAsync(msgs, options with { SystemPrompt = system }, ct);
         return (resp.Content ?? string.Empty).Trim();
+    }
+
+    private async Task<(AiProviderType ProviderType, IAiProvider Provider, AiChatOptions Options)?> ResolveRagHelperProviderAsync(
+        Guid tenantId,
+        string? overrideModel,
+        double temperature,
+        int maxTokens,
+        string? systemPrompt,
+        CancellationToken ct)
+    {
+        var modelResult = await _modelDefaults.ResolveAsync(
+            tenantId,
+            AiAgentClass.RagHelper,
+            explicitProvider: null,
+            explicitModel: overrideModel,
+            explicitTemperature: temperature,
+            explicitMaxTokens: maxTokens,
+            ct);
+        if (modelResult.IsFailure)
+        {
+            _logger.LogWarning("RAG helper model resolution failed: {Error}", modelResult.Error.Description);
+            return null;
+        }
+
+        var credentialResult = await _providerCredentials.ResolveAsync(tenantId, modelResult.Value.Provider, ct);
+        if (credentialResult.IsFailure)
+        {
+            _logger.LogWarning("RAG helper provider credential resolution failed: {Error}", credentialResult.Error.Description);
+            return null;
+        }
+
+        var credential = credentialResult.Value;
+        var provider = _factory.Create(modelResult.Value.Provider);
+        var options = new AiChatOptions(
+            Model: modelResult.Value.Model,
+            Temperature: modelResult.Value.Temperature,
+            MaxTokens: modelResult.Value.MaxTokens,
+            SystemPrompt: systemPrompt,
+            ApiKey: credential.Secret,
+            ProviderCredentialSource: credential.Source,
+            ProviderCredentialId: credential.ProviderCredentialId);
+
+        return (modelResult.Value.Provider, provider, options);
     }
 
     private static QuestionType ParseLabel(string label) =>
@@ -90,10 +139,8 @@ internal sealed class QuestionClassifier : IQuestionClassifier
             _ => QuestionType.Other
         };
 
-    private string BuildCacheKey(Guid tenantId, string normalized)
+    private string BuildCacheKey(Guid tenantId, string provider, string model, string normalized)
     {
-        var provider = _factory.GetDefaultProviderType().ToString();
-        var model = _settings.ClassifierModel ?? _factory.GetDefaultChatModelId();
         return RagCacheKeys.Classify(tenantId, provider, model, normalized);
     }
 }

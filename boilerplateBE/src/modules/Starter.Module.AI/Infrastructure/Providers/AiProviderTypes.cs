@@ -22,6 +22,12 @@ internal sealed record AiChatCompletion(
     int OutputTokens,
     string FinishReason);
 
+internal sealed record AiEmbeddingOptions(
+    string? Model = null,
+    string? ApiKey = null,
+    ProviderCredentialSource ProviderCredentialSource = ProviderCredentialSource.Platform,
+    Guid? ProviderCredentialId = null);
+
 /// <summary>
 /// A single frame from a streaming chat response. Any field may be null — providers
 /// emit multiple chunks that collectively cover content, tool calls, final usage,

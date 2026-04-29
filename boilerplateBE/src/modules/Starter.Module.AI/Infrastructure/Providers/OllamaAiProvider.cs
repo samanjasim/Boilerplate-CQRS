@@ -39,8 +39,18 @@ internal sealed class OllamaAiProvider(
         return configuration["AI:Providers:Ollama:DefaultModel"] ?? DefaultChatModel;
     }
 
-    private string ResolveEmbeddingModel()
-        => configuration["AI:Providers:Ollama:EmbeddingModel"] ?? DefaultEmbeddingModel;
+    private string ResolveEmbeddingModel(string? model = null)
+    {
+        if (!string.IsNullOrWhiteSpace(model))
+        {
+            if (model.StartsWith("Ollama:", StringComparison.OrdinalIgnoreCase))
+                model = model["Ollama:".Length..];
+
+            return model;
+        }
+
+        return configuration["AI:Providers:Ollama:EmbeddingModel"] ?? DefaultEmbeddingModel;
+    }
 
     public async Task<AiChatCompletion> ChatAsync(
         IReadOnlyList<AiChatMessage> messages,
@@ -134,10 +144,13 @@ internal sealed class OllamaAiProvider(
         }
     }
 
-    public async Task<float[]> EmbedAsync(string text, CancellationToken ct = default)
+    public async Task<float[]> EmbedAsync(
+        string text,
+        CancellationToken ct = default,
+        AiEmbeddingOptions? options = null)
     {
         var baseUrl = GetBaseUrl();
-        var model = ResolveEmbeddingModel();
+        var model = ResolveEmbeddingModel(options?.Model);
         var url = $"{baseUrl}/api/embed";
 
         var request = new OllamaEmbedRequest(model, [text]);
@@ -155,13 +168,16 @@ internal sealed class OllamaAiProvider(
         return result.Embeddings[0];
     }
 
-    public async Task<float[][]> EmbedBatchAsync(IReadOnlyList<string> texts, CancellationToken ct = default)
+    public async Task<float[][]> EmbedBatchAsync(
+        IReadOnlyList<string> texts,
+        CancellationToken ct = default,
+        AiEmbeddingOptions? options = null)
     {
         // Ollama does not support batching natively — process sequentially
         var results = new float[texts.Count][];
         for (var i = 0; i < texts.Count; i++)
         {
-            results[i] = await EmbedAsync(texts[i], ct);
+            results[i] = await EmbedAsync(texts[i], ct, options);
         }
         return results;
     }

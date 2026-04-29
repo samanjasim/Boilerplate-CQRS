@@ -234,6 +234,21 @@ internal sealed class ChatExecutionTestFixture
 
         services.AddSingleton<IAiProviderFactory>(new ScriptedProviderFactory(FakeProvider));
         services.AddSingleton<IResourceAccessService>(new StubResourceAccessService());
+        services.AddSingleton<IAiModelDefaultResolver>(
+            Mock.Of<IAiModelDefaultResolver>(r =>
+                r.ResolveAsync(
+                    It.IsAny<Guid?>(),
+                    It.IsAny<AiAgentClass>(),
+                    It.IsAny<AiProviderType?>(),
+                    It.IsAny<string?>(),
+                    It.IsAny<double?>(),
+                    It.IsAny<int?>(),
+                    It.IsAny<CancellationToken>())
+                == Task.FromResult(Result.Success(new ResolvedModelDefault(
+                    AiProviderType.Anthropic,
+                    "claude-sonnet-4",
+                    0.7,
+                    4096)))));
         services.AddSingleton<IAiProviderCredentialResolver>(
             Mock.Of<IAiProviderCredentialResolver>(r =>
                 r.ResolveAsync(It.IsAny<Guid?>(), It.IsAny<AiProviderType>(), It.IsAny<CancellationToken>())
@@ -483,10 +498,13 @@ internal sealed class ScriptedAiProvider : IAiProvider
         await Task.CompletedTask;
     }
 
-    public Task<float[]> EmbedAsync(string text, CancellationToken ct = default) =>
+    public Task<float[]> EmbedAsync(string text, CancellationToken ct = default, AiEmbeddingOptions? options = null) =>
         throw new NotSupportedException();
 
-    public Task<float[][]> EmbedBatchAsync(IReadOnlyList<string> texts, CancellationToken ct = default) =>
+    public Task<float[][]> EmbedBatchAsync(
+        IReadOnlyList<string> texts,
+        CancellationToken ct = default,
+        AiEmbeddingOptions? options = null) =>
         throw new NotSupportedException();
 }
 

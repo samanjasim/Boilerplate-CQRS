@@ -151,6 +151,7 @@ public sealed class AIModule : IModule
         services.AddScoped<IAiEntitlementResolver, AiEntitlementResolver>();
         services.AddScoped<IAiTenantSettingsResolver, AiTenantSettingsResolver>();
         services.AddScoped<IAiProviderCredentialResolver, AiProviderCredentialResolver>();
+        services.AddScoped<IAiModelDefaultResolver, AiModelDefaultResolver>();
         services.AddSingleton<IAiSecretProtector, AiSecretProtector>();
 
         services.AddSingleton<TokenCounter>();
@@ -181,6 +182,8 @@ public sealed class AIModule : IModule
             sp.GetRequiredService<Infrastructure.Ingestion.EmbeddingService>(),
             sp.GetRequiredService<Starter.Application.Common.Interfaces.ICacheService>(),
             sp.GetRequiredService<Infrastructure.Providers.IAiProviderFactory>(),
+            sp.GetRequiredService<IAiModelDefaultResolver>(),
+            sp.GetRequiredService<ICurrentUserService>(),
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<Infrastructure.Settings.AiRagSettings>>()));
         services.AddScoped<Infrastructure.Retrieval.PostgresKeywordSearchService>();
         services.AddScoped<IKeywordSearchService>(sp => new CircuitBreakingKeywordSearch(

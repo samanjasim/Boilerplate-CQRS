@@ -1,7 +1,10 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Starter.Abstractions.Ai;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Services.Retrieval;
+using Starter.Module.AI.Application.Services.Settings;
+using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Observability;
 using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Settings;
@@ -12,17 +15,23 @@ internal sealed class ContextualQueryResolver : IContextualQueryResolver
 {
     private readonly IAiProviderFactory _factory;
     private readonly ICacheService _cache;
+    private readonly IAiModelDefaultResolver _modelDefaults;
+    private readonly IAiProviderCredentialResolver _providerCredentials;
     private readonly AiRagSettings _settings;
     private readonly ILogger<ContextualQueryResolver> _logger;
 
     public ContextualQueryResolver(
         IAiProviderFactory factory,
         ICacheService cache,
+        IAiModelDefaultResolver modelDefaults,
+        IAiProviderCredentialResolver providerCredentials,
         IOptions<AiRagSettings> settings,
         ILogger<ContextualQueryResolver> logger)
     {
         _factory = factory;
         _cache = cache;
+        _modelDefaults = modelDefaults;
+        _providerCredentials = providerCredentials;
         _settings = settings.Value;
         _logger = logger;
     }
@@ -43,7 +52,17 @@ internal sealed class ContextualQueryResolver : IContextualQueryResolver
             return latestUserMessage;
         }
 
-        var cacheKey = BuildCacheKey(tenantId, latestUserMessage, history, language);
+        var providerState = await ResolveRagHelperProviderAsync(tenantId, _settings.ContextualRewriterModel, 0.2, 200, null, ct);
+        if (providerState is null)
+            return latestUserMessage;
+
+        var cacheKey = BuildCacheKey(
+            tenantId,
+            providerState.Value.ProviderType.ToString(),
+            providerState.Value.Options.Model,
+            latestUserMessage,
+            history,
+            language);
 
         string? cached = null;
         try
@@ -66,7 +85,7 @@ internal sealed class ContextualQueryResolver : IContextualQueryResolver
             return cached;
         }
 
-        var resolved = await TryCallLlmAsync(latestUserMessage, history, language, ct);
+        var resolved = await TryCallLlmAsync(providerState.Value.Provider, providerState.Value.Options, latestUserMessage, history, language, ct);
         if (string.IsNullOrWhiteSpace(resolved))
         {
             _logger.LogDebug("contextualize: llm-empty falling-back original={Original}", latestUserMessage);
@@ -107,6 +126,8 @@ internal sealed class ContextualQueryResolver : IContextualQueryResolver
     }
 
     private async Task<string?> TryCallLlmAsync(
+        IAiProvider provider,
+        AiChatOptions options,
         string latestUserMessage,
         IReadOnlyList<RagHistoryMessage> history,
         string? language,
@@ -114,7 +135,6 @@ internal sealed class ContextualQueryResolver : IContextualQueryResolver
     {
         try
         {
-            var provider = _factory.CreateDefault();
             var langHint = language switch
             {
                 "ar" => "Arabic",
@@ -138,15 +158,8 @@ internal sealed class ContextualQueryResolver : IContextualQueryResolver
                 $"Latest message: {latestUserMessage}\n" +
                 $"Self-contained rewrite:";
 
-            var model = _settings.ContextualRewriterModel ?? _factory.GetDefaultChatModelId();
-            var opts = new AiChatOptions(
-                Model: model,
-                Temperature: 0.2,
-                MaxTokens: 200,
-                SystemPrompt: systemPrompt);
-
             var messages = new List<AiChatMessage> { new("user", userPrompt) };
-            var completion = await provider.ChatAsync(messages, opts, ct);
+            var completion = await provider.ChatAsync(messages, options with { SystemPrompt = systemPrompt }, ct);
 
             return StripSurroundingQuotes(completion.Content);
         }
@@ -155,6 +168,49 @@ internal sealed class ContextualQueryResolver : IContextualQueryResolver
             _logger.LogWarning(ex, "ContextualQueryResolver: LLM call failed; falling back to raw message");
             return null;
         }
+    }
+
+    private async Task<(AiProviderType ProviderType, IAiProvider Provider, AiChatOptions Options)?> ResolveRagHelperProviderAsync(
+        Guid tenantId,
+        string? overrideModel,
+        double temperature,
+        int maxTokens,
+        string? systemPrompt,
+        CancellationToken ct)
+    {
+        var modelResult = await _modelDefaults.ResolveAsync(
+            tenantId,
+            AiAgentClass.RagHelper,
+            explicitProvider: null,
+            explicitModel: overrideModel,
+            explicitTemperature: temperature,
+            explicitMaxTokens: maxTokens,
+            ct);
+        if (modelResult.IsFailure)
+        {
+            _logger.LogWarning("RAG helper model resolution failed: {Error}", modelResult.Error.Description);
+            return null;
+        }
+
+        var credentialResult = await _providerCredentials.ResolveAsync(tenantId, modelResult.Value.Provider, ct);
+        if (credentialResult.IsFailure)
+        {
+            _logger.LogWarning("RAG helper provider credential resolution failed: {Error}", credentialResult.Error.Description);
+            return null;
+        }
+
+        var credential = credentialResult.Value;
+        var provider = _factory.Create(modelResult.Value.Provider);
+        var options = new AiChatOptions(
+            Model: modelResult.Value.Model,
+            Temperature: modelResult.Value.Temperature,
+            MaxTokens: modelResult.Value.MaxTokens,
+            SystemPrompt: systemPrompt,
+            ApiKey: credential.Secret,
+            ProviderCredentialSource: credential.Source,
+            ProviderCredentialId: credential.ProviderCredentialId);
+
+        return (modelResult.Value.Provider, provider, options);
     }
 
     private static string? StripSurroundingQuotes(string? s)
@@ -172,12 +228,12 @@ internal sealed class ContextualQueryResolver : IContextualQueryResolver
 
     private string BuildCacheKey(
         Guid tenantId,
+        string providerType,
+        string model,
         string latestUserMessage,
         IReadOnlyList<RagHistoryMessage> history,
         string? language)
     {
-        var providerType = _factory.GetDefaultProviderType().ToString();
-        var model = _settings.ContextualRewriterModel ?? _factory.GetDefaultChatModelId();
         var lang = language ?? RagLanguageDetector.Detect(latestUserMessage);
 
         var normalizedHistory = history

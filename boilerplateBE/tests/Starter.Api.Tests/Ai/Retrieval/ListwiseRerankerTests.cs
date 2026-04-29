@@ -22,6 +22,8 @@ public sealed class ListwiseRerankerTests
         return new ListwiseReranker(
             factory,
             cache,
+            new FakeAiModelDefaultResolver(),
+            new FakeAiProviderCredentialResolver(),
             Options.Create(settings ?? new AiRagSettings()),
             NullLogger<ListwiseReranker>.Instance);
     }

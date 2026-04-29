@@ -42,6 +42,7 @@ internal sealed class ChatExecutionService(
     ISafetyPresetClauseProvider safetyClauses,
     IPersonaContextAccessor personaContextAccessor,
     IAiProviderCredentialResolver providerCredentialResolver,
+    IAiModelDefaultResolver modelDefaults,
     ILogger<ChatExecutionService> logger) : IChatExecutionService
 {
     private const string AiTokensMetric = "ai_tokens";
@@ -69,7 +70,21 @@ internal sealed class ChatExecutionService(
             state.Assistant, userMessage, state.ProviderMessages, ct);
         var effectiveSystemPrompt = ResolveSystemPrompt(state.Assistant, retrieved, state.Persona);
 
-        var provider = ResolveProvider(state.Assistant);
+        var modelResult = await modelDefaults.ResolveAsync(
+            state.Assistant.TenantId,
+            state.Assistant.ExecutionMode == AssistantExecutionMode.Agent
+                ? AiAgentClass.ToolAgent
+                : AiAgentClass.Chat,
+            state.Assistant.Provider,
+            state.Assistant.Model,
+            state.Assistant.Temperature,
+            state.Assistant.MaxTokens,
+            ct);
+        if (modelResult.IsFailure)
+            return Result.Failure<AiChatReplyDto>(modelResult.Error);
+
+        var modelConfig = modelResult.Value;
+        var provider = modelConfig.Provider;
         var credentialResult = await providerCredentialResolver.ResolveAsync(
             state.Assistant.TenantId,
             provider,
@@ -83,10 +98,10 @@ internal sealed class ChatExecutionService(
             Messages: state.ProviderMessages,
             SystemPrompt: effectiveSystemPrompt,
             ModelConfig: new AgentModelConfig(
-                Provider: provider,
-                Model: state.Assistant.Model ?? "",
-                Temperature: state.Assistant.Temperature,
-                MaxTokens: state.Assistant.MaxTokens),
+                Provider: modelConfig.Provider,
+                Model: modelConfig.Model,
+                Temperature: modelConfig.Temperature,
+                MaxTokens: modelConfig.MaxTokens),
             Tools: state.Tools,
             MaxSteps: stepBudget,
             LoopBreak: LoopBreakPolicy.Default,
@@ -324,7 +339,28 @@ internal sealed class ChatExecutionService(
             state.Assistant, userMessage, state.ProviderMessages, ct);
         var effectiveSystemPrompt = ResolveSystemPrompt(state.Assistant, retrieved, state.Persona);
 
-        var provider = ResolveProvider(state.Assistant);
+        var modelResult = await modelDefaults.ResolveAsync(
+            state.Assistant.TenantId,
+            state.Assistant.ExecutionMode == AssistantExecutionMode.Agent
+                ? AiAgentClass.ToolAgent
+                : AiAgentClass.Chat,
+            state.Assistant.Provider,
+            state.Assistant.Model,
+            state.Assistant.Temperature,
+            state.Assistant.MaxTokens,
+            ct);
+        if (modelResult.IsFailure)
+        {
+            yield return new ChatStreamEvent("error", new
+            {
+                Code = modelResult.Error.Code,
+                Message = modelResult.Error.Description
+            });
+            yield break;
+        }
+
+        var modelConfig = modelResult.Value;
+        var provider = modelConfig.Provider;
         var credentialResult = await providerCredentialResolver.ResolveAsync(
             state.Assistant.TenantId,
             provider,
@@ -345,10 +381,10 @@ internal sealed class ChatExecutionService(
             Messages: state.ProviderMessages,
             SystemPrompt: effectiveSystemPrompt,
             ModelConfig: new AgentModelConfig(
-                Provider: provider,
-                Model: state.Assistant.Model ?? "",
-                Temperature: state.Assistant.Temperature,
-                MaxTokens: state.Assistant.MaxTokens),
+                Provider: modelConfig.Provider,
+                Model: modelConfig.Model,
+                Temperature: modelConfig.Temperature,
+                MaxTokens: modelConfig.MaxTokens),
             Tools: state.Tools,
             MaxSteps: stepBudget,
             LoopBreak: LoopBreakPolicy.Default,

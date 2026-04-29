@@ -44,8 +44,18 @@ internal sealed class OpenAiProvider(
         return configuration["AI:Providers:OpenAI:DefaultModel"] ?? DefaultChatModel;
     }
 
-    private string ResolveEmbeddingModel()
-        => configuration["AI:Providers:OpenAI:EmbeddingModel"] ?? DefaultEmbeddingModel;
+    private string ResolveEmbeddingModel(string? model = null)
+    {
+        if (!string.IsNullOrWhiteSpace(model))
+        {
+            if (model.StartsWith("OpenAI:", StringComparison.OrdinalIgnoreCase))
+                model = model["OpenAI:".Length..];
+
+            return model;
+        }
+
+        return configuration["AI:Providers:OpenAI:EmbeddingModel"] ?? DefaultEmbeddingModel;
+    }
 
     public async Task<AiChatCompletion> ChatAsync(
         IReadOnlyList<AiChatMessage> messages,
@@ -146,20 +156,26 @@ internal sealed class OpenAiProvider(
         }
     }
 
-    public async Task<float[]> EmbedAsync(string text, CancellationToken ct = default)
+    public async Task<float[]> EmbedAsync(
+        string text,
+        CancellationToken ct = default,
+        AiEmbeddingOptions? options = null)
     {
-        var apiKey = GetApiKey();
-        var embeddingModel = ResolveEmbeddingModel();
+        var apiKey = GetApiKey(options?.ApiKey);
+        var embeddingModel = ResolveEmbeddingModel(options?.Model);
         var client = new EmbeddingClient(embeddingModel, new ApiKeyCredential(apiKey), BuildClientOptions());
 
         var result = await client.GenerateEmbeddingAsync(text, cancellationToken: ct);
         return result.Value.ToFloats().ToArray();
     }
 
-    public async Task<float[][]> EmbedBatchAsync(IReadOnlyList<string> texts, CancellationToken ct = default)
+    public async Task<float[][]> EmbedBatchAsync(
+        IReadOnlyList<string> texts,
+        CancellationToken ct = default,
+        AiEmbeddingOptions? options = null)
     {
-        var apiKey = GetApiKey();
-        var embeddingModel = ResolveEmbeddingModel();
+        var apiKey = GetApiKey(options?.ApiKey);
+        var embeddingModel = ResolveEmbeddingModel(options?.Model);
         var client = new EmbeddingClient(embeddingModel, new ApiKeyCredential(apiKey), BuildClientOptions());
 
         var result = await client.GenerateEmbeddingsAsync(texts, cancellationToken: ct);

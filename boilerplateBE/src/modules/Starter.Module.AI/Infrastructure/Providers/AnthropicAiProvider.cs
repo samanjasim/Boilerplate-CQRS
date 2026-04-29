@@ -130,10 +130,16 @@ internal sealed class AnthropicAiProvider(
         }
     }
 
-    public Task<float[]> EmbedAsync(string text, CancellationToken ct = default)
+    public Task<float[]> EmbedAsync(
+        string text,
+        CancellationToken ct = default,
+        AiEmbeddingOptions? options = null)
         => throw new NotSupportedException("Anthropic does not provide an embeddings API. Use OpenAI or Ollama for embeddings.");
 
-    public Task<float[][]> EmbedBatchAsync(IReadOnlyList<string> texts, CancellationToken ct = default)
+    public Task<float[][]> EmbedBatchAsync(
+        IReadOnlyList<string> texts,
+        CancellationToken ct = default,
+        AiEmbeddingOptions? options = null)
         => throw new NotSupportedException("Anthropic does not provide an embeddings API. Use OpenAI or Ollama for embeddings.");
 
     // ── Helpers ──────────────────────────────────────────────────────────────

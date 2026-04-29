@@ -66,7 +66,7 @@
 - Create tests under `boilerplateBE/tests/Starter.Api.Tests/Ai/Settings/`
 - Create `boilerplateBE/tests/Starter.Api.Tests/Ai/AcidTests/Plan5fAcidTests.cs`
 
-No EF migration files are committed in this boilerplate branch. Match the existing AI module pattern: update model/configuration/tests and leave migration generation to downstream apps.
+No EF migration files are committed in this boilerplate branch, and no task should run `dotnet ef migrations add` or create `Migrations/` artifacts. Match the existing AI module pattern: update model/configuration/tests and leave migration generation to downstream apps after the rename script creates a concrete application.
 
 ---
 
@@ -2426,7 +2426,15 @@ git status --short
 
 Expected: only intended 5f implementation files are dirty before the final commit, or clean after the final commit.
 
-- [ ] **Step 2: Search for accidental placeholders**
+- [ ] **Step 2: Verify no EF migration artifacts were created**
+
+```bash
+git status --short | rg -n "Migrations|Migration|ModelSnapshot"
+```
+
+Expected: no output. If this finds generated EF artifacts, remove them from the boilerplate branch and keep only model/configuration/tests.
+
+- [ ] **Step 3: Search for accidental placeholders**
 
 ```bash
 rg -n -e "TB[D]" -e "TO[D]O" -e "PLACEHOLD[E]R" -e "implement[[:space:]]later" -e "fill[[:space:]]in[[:space:]]details" boilerplateBE/src/modules/Starter.Module.AI boilerplateBE/tests/Starter.Api.Tests/Ai docs/superpowers/specs/2026-04-29-ai-plan-5f-admin-ai-settings-design.md
@@ -2434,7 +2442,7 @@ rg -n -e "TB[D]" -e "TO[D]O" -e "PLACEHOLD[E]R" -e "implement[[:space:]]later" -
 
 Expected: no output.
 
-- [ ] **Step 3: Verify 8f forward-link still exists**
+- [ ] **Step 4: Verify 8f forward-link still exists**
 
 ```bash
 rg -n "AiPublicWidget|AiWidgetCredential|8f" docs/superpowers/specs/2026-04-23-ai-module-vision-revised-design.md
@@ -2442,7 +2450,7 @@ rg -n "AiPublicWidget|AiWidgetCredential|8f" docs/superpowers/specs/2026-04-23-a
 
 Expected: output includes the Plan 8f row saying it consumes `AiPublicWidget` and `AiWidgetCredential`.
 
-- [ ] **Step 4: Build backend**
+- [ ] **Step 5: Build backend**
 
 ```bash
 dotnet build boilerplateBE/src/Starter.Api/Starter.Api.csproj
@@ -2450,7 +2458,7 @@ dotnet build boilerplateBE/src/Starter.Api/Starter.Api.csproj
 
 Expected: build succeeds with 0 errors.
 
-- [ ] **Step 5: Run full backend tests one final time**
+- [ ] **Step 6: Run full backend tests one final time**
 
 ```bash
 dotnet test boilerplateBE/tests/Starter.Api.Tests/Starter.Api.Tests.csproj
@@ -2458,7 +2466,7 @@ dotnet test boilerplateBE/tests/Starter.Api.Tests/Starter.Api.Tests.csproj
 
 Expected: PASS.
 
-- [ ] **Step 6: Final commit**
+- [ ] **Step 7: Final commit**
 
 ```bash
 git add boilerplateBE/src boilerplateBE/tests docs

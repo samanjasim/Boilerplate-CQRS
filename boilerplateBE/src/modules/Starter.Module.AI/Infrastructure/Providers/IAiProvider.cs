@@ -12,7 +12,13 @@ internal interface IAiProvider
         AiChatOptions options,
         CancellationToken ct = default);
 
-    Task<float[]> EmbedAsync(string text, CancellationToken ct = default);
+    Task<float[]> EmbedAsync(
+        string text,
+        CancellationToken ct = default,
+        AiEmbeddingOptions? options = null);
 
-    Task<float[][]> EmbedBatchAsync(IReadOnlyList<string> texts, CancellationToken ct = default);
+    Task<float[][]> EmbedBatchAsync(
+        IReadOnlyList<string> texts,
+        CancellationToken ct = default,
+        AiEmbeddingOptions? options = null);
 }

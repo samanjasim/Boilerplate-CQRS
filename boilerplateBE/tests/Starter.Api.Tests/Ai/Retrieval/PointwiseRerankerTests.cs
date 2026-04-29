@@ -22,6 +22,8 @@ public sealed class PointwiseRerankerTests
         return new PointwiseReranker(
             factory,
             cache,
+            new FakeAiModelDefaultResolver(),
+            new FakeAiProviderCredentialResolver(),
             Options.Create(settings ?? new AiRagSettings()),
             NullLogger<PointwiseReranker>.Instance);
     }

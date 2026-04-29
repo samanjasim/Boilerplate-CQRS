@@ -64,11 +64,14 @@ public sealed class QueryIntelligencePipelineTests
         var cache = new FakeCacheService();
         var opts = Options.Create(settings);
 
-        var classifier = new QuestionClassifier(factory, cache, opts, NullLogger<QuestionClassifier>.Instance);
-        var rewriter = new QueryRewriter(factory, cache, opts, NullLogger<QueryRewriter>.Instance);
+        var modelDefaults = new FakeAiModelDefaultResolver();
+        var providerCredentials = new FakeAiProviderCredentialResolver();
 
-        var listwise = new ListwiseReranker(factory, cache, opts, NullLogger<ListwiseReranker>.Instance);
-        var pointwise = new PointwiseReranker(factory, cache, opts, NullLogger<PointwiseReranker>.Instance);
+        var classifier = new QuestionClassifier(factory, cache, modelDefaults, providerCredentials, opts, NullLogger<QuestionClassifier>.Instance);
+        var rewriter = new QueryRewriter(factory, cache, modelDefaults, providerCredentials, opts, NullLogger<QueryRewriter>.Instance);
+
+        var listwise = new ListwiseReranker(factory, cache, modelDefaults, providerCredentials, opts, NullLogger<ListwiseReranker>.Instance);
+        var pointwise = new PointwiseReranker(factory, cache, modelDefaults, providerCredentials, opts, NullLogger<PointwiseReranker>.Instance);
         var selector = new RerankStrategySelector(settings);
         var reranker = new Reranker(selector, listwise, pointwise, opts, NullLogger<Reranker>.Instance);
 

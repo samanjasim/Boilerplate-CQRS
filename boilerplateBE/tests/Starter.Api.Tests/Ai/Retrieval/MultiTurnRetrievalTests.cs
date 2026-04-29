@@ -47,6 +47,8 @@ public sealed class MultiTurnRetrievalTests
         var resolver = new ContextualQueryResolver(
             factory,
             new FakeCacheService(),
+            new FakeAiModelDefaultResolver(),
+            new FakeAiProviderCredentialResolver(),
             Options.Create(settings),
             NullLogger<ContextualQueryResolver>.Instance);
 

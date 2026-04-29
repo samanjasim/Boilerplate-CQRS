@@ -3,9 +3,12 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Starter.Abstractions.Ai;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Services.Retrieval;
+using Starter.Module.AI.Application.Services.Settings;
 using Starter.Module.AI.Domain.Entities;
+using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Observability;
 using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Retrieval.Json;
@@ -17,17 +20,23 @@ internal sealed class PointwiseReranker
 {
     private readonly IAiProviderFactory _factory;
     private readonly ICacheService _cache;
+    private readonly IAiModelDefaultResolver _modelDefaults;
+    private readonly IAiProviderCredentialResolver _providerCredentials;
     private readonly AiRagSettings _settings;
     private readonly ILogger<PointwiseReranker> _logger;
 
     public PointwiseReranker(
         IAiProviderFactory factory,
         ICacheService cache,
+        IAiModelDefaultResolver modelDefaults,
+        IAiProviderCredentialResolver providerCredentials,
         IOptions<AiRagSettings> settings,
         ILogger<PointwiseReranker> logger)
     {
         _factory = factory;
         _cache = cache;
+        _modelDefaults = modelDefaults;
+        _providerCredentials = providerCredentials;
         _settings = settings.Value;
         _logger = logger;
     }
@@ -49,6 +58,22 @@ internal sealed class PointwiseReranker
         var failures = 0;
         var tokensIn = 0;
         var tokensOut = 0;
+        var providerState = await ResolveRagHelperProviderAsync(tenantId, _settings.RerankerModel, 0.0, 64, null, ct);
+        if (providerState is null)
+        {
+            EmitReordered(candidates, candidates);
+            return new RerankResult(
+                Ordered: candidates,
+                StrategyRequested: RerankStrategy.Pointwise,
+                StrategyUsed: RerankStrategy.FallbackRrf,
+                CandidatesIn: candidates.Count,
+                CandidatesScored: 0,
+                CacheHits: 0,
+                LatencyMs: sw.ElapsedMilliseconds,
+                TokensIn: 0,
+                TokensOut: 0,
+                UnusedRatio: 0.0);
+        }
 
         var maxParallel = Math.Max(1, _settings.PointwiseMaxParallelism);
         using var sem = new SemaphoreSlim(maxParallel);
@@ -63,7 +88,7 @@ internal sealed class PointwiseReranker
                 try
                 {
                     var hit = candidates[idx];
-                    var key = BuildPairKey(tenantId, query, hit.ChunkId);
+                    var key = BuildPairKey(tenantId, providerState.Value.ProviderType.ToString(), providerState.Value.Options.Model, query, hit.ChunkId);
                     var cached = await _cache.GetAsync<decimal?>(key, ct);
                     AiRagMetrics.CacheRequests.Add(
                         1,
@@ -85,9 +110,11 @@ internal sealed class PointwiseReranker
 
                     try
                     {
-                        var provider = _factory.CreateDefault();
-                        var (messages, opts) = BuildPrompt(query, chunk);
-                        var completion = await provider.ChatAsync(messages, opts, ct);
+                        var (messages, systemPrompt) = BuildPrompt(query, chunk);
+                        var completion = await providerState.Value.Provider.ChatAsync(
+                            messages,
+                            providerState.Value.Options with { SystemPrompt = systemPrompt },
+                            ct);
                         Interlocked.Add(ref tokensIn, completion.InputTokens);
                         Interlocked.Add(ref tokensOut, completion.OutputTokens);
 
@@ -165,6 +192,49 @@ internal sealed class PointwiseReranker
             UnusedRatio: unusedRatio);
     }
 
+    private async Task<(AiProviderType ProviderType, IAiProvider Provider, AiChatOptions Options)?> ResolveRagHelperProviderAsync(
+        Guid tenantId,
+        string? overrideModel,
+        double temperature,
+        int maxTokens,
+        string? systemPrompt,
+        CancellationToken ct)
+    {
+        var modelResult = await _modelDefaults.ResolveAsync(
+            tenantId,
+            AiAgentClass.RagHelper,
+            explicitProvider: null,
+            explicitModel: overrideModel,
+            explicitTemperature: temperature,
+            explicitMaxTokens: maxTokens,
+            ct);
+        if (modelResult.IsFailure)
+        {
+            _logger.LogWarning("RAG helper model resolution failed: {Error}", modelResult.Error.Description);
+            return null;
+        }
+
+        var credentialResult = await _providerCredentials.ResolveAsync(tenantId, modelResult.Value.Provider, ct);
+        if (credentialResult.IsFailure)
+        {
+            _logger.LogWarning("RAG helper provider credential resolution failed: {Error}", credentialResult.Error.Description);
+            return null;
+        }
+
+        var credential = credentialResult.Value;
+        var provider = _factory.Create(modelResult.Value.Provider);
+        var options = new AiChatOptions(
+            Model: modelResult.Value.Model,
+            Temperature: modelResult.Value.Temperature,
+            MaxTokens: modelResult.Value.MaxTokens,
+            SystemPrompt: systemPrompt,
+            ApiKey: credential.Secret,
+            ProviderCredentialSource: credential.Source,
+            ProviderCredentialId: credential.ProviderCredentialId);
+
+        return (modelResult.Value.Provider, provider, options);
+    }
+
     private static void EmitReordered(
         IReadOnlyList<HybridHit> input,
         IReadOnlyList<HybridHit> output)
@@ -174,7 +244,7 @@ internal sealed class PointwiseReranker
             1, new KeyValuePair<string, object?>("rag.changed", changed));
     }
 
-    private (List<AiChatMessage> messages, AiChatOptions opts) BuildPrompt(
+    private (List<AiChatMessage> messages, string systemPrompt) BuildPrompt(
         string query, AiDocumentChunk chunk)
     {
         var system =
@@ -189,14 +259,7 @@ internal sealed class PointwiseReranker
             .Append("Excerpt (page ").Append(chunk.PageNumber ?? 0).Append("): ").AppendLine(excerpt)
             .ToString();
 
-        var model = _settings.RerankerModel ?? _factory.GetDefaultChatModelId();
-        var opts = new AiChatOptions(
-            Model: model,
-            Temperature: 0.0,
-            MaxTokens: 64,
-            SystemPrompt: system);
-
-        return (new List<AiChatMessage> { new("user", user) }, opts);
+        return (new List<AiChatMessage> { new("user", user) }, system);
     }
 
     private static bool TryParseScore(string content, out decimal score)
@@ -231,10 +294,8 @@ internal sealed class PointwiseReranker
 
     private decimal RrfFallbackScore(int rank) => 1m / (_settings.RrfK + rank + 1);
 
-    private string BuildPairKey(Guid tenantId, string query, Guid chunkId)
+    private string BuildPairKey(Guid tenantId, string provider, string model, string query, Guid chunkId)
     {
-        var provider = _factory.GetDefaultProviderType().ToString();
-        var model = _settings.RerankerModel ?? _factory.GetDefaultChatModelId();
         return RagCacheKeys.PointwiseRerank(tenantId, provider, model, query, chunkId);
     }
 }

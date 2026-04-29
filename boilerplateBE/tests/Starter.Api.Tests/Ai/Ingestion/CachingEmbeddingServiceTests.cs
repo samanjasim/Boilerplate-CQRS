@@ -1,12 +1,15 @@
 using FluentAssertions;
 using Microsoft.Extensions.Options;
+using Moq;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.AI.Application.Services.Ingestion;
+using Starter.Module.AI.Application.Services.Settings;
 using Starter.Abstractions.Ai;
 using Starter.Module.AI.Domain.Enums;
 using Starter.Module.AI.Infrastructure.Ingestion;
 using Starter.Module.AI.Infrastructure.Providers;
 using Starter.Module.AI.Infrastructure.Settings;
+using Starter.Shared.Results;
 using Xunit;
 
 namespace Starter.Api.Tests.Ai.Ingestion;
@@ -69,7 +72,25 @@ public sealed class CachingEmbeddingServiceTests
         ICacheService cache,
         string modelId = "OpenAI:text-embedding-3-small") =>
         new(inner, cache, new StaticEmbeddingModelFactory(modelId),
+            ModelDefaults(modelId).Object,
+            Mock.Of<ICurrentUserService>(),
             Options.Create(new AiRagSettings { EmbeddingCacheTtlSeconds = 60 }));
+
+    private static Mock<IAiModelDefaultResolver> ModelDefaults(string modelId)
+    {
+        var model = modelId.Contains(':') ? modelId[(modelId.IndexOf(':') + 1)..] : modelId;
+        var resolver = new Mock<IAiModelDefaultResolver>();
+        resolver.Setup(x => x.ResolveAsync(
+                It.IsAny<Guid?>(),
+                AiAgentClass.Embedding,
+                It.IsAny<AiProviderType?>(),
+                It.IsAny<string?>(),
+                It.IsAny<double?>(),
+                It.IsAny<int?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success(new ResolvedModelDefault(AiProviderType.OpenAI, model, 0.7, 4096)));
+        return resolver;
+    }
 
     [Fact]
     public async Task Hit_ReturnsCachedVector_WithoutCallingInner()
