@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeftRight,
   Bell,
@@ -29,9 +30,12 @@ import {
 } from 'lucide-react';
 
 import { ROUTES } from '@/config';
+import { API_ENDPOINTS } from '@/config/api.config';
 import { activeModules, isModuleActive } from '@/config/modules.config';
 import { PERMISSIONS } from '@/constants';
-import { usePendingTaskCount } from '@/features/workflow/api';
+import { apiClient } from '@/lib/axios';
+import { queryKeys } from '@/lib/query/keys';
+import type { ApiResponse } from '@/types/api.types';
 import { useFeatureFlag, usePermissions } from '@/hooks';
 import { selectUser, useAuthStore } from '@/stores';
 
@@ -49,6 +53,17 @@ export interface SidebarNavGroup {
   items: SidebarNavItem[];
 }
 
+function useWorkflowPendingTaskCount(enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.workflow.tasks.count(),
+    queryFn: () =>
+      apiClient
+        .get<ApiResponse<number>>(API_ENDPOINTS.WORKFLOW.TASKS_COUNT)
+        .then((r) => r.data.data),
+    enabled,
+  });
+}
+
 /**
  * Builds the sidebar nav as a list of permission/module/flag-gated groups.
  * Empty groups are stripped, so consumers can render the result directly.
@@ -63,7 +78,7 @@ export function useNavGroups(): SidebarNavGroup[] {
   const importsFlag = useFeatureFlag('imports.enabled');
   const exportsFlag = useFeatureFlag('exports.enabled');
 
-  const { data: pendingTaskCount = 0 } = usePendingTaskCount(isModuleActive('workflow'));
+  const { data: pendingTaskCount = 0 } = useWorkflowPendingTaskCount(isModuleActive('workflow'));
 
   const groups: SidebarNavGroup[] = [];
 

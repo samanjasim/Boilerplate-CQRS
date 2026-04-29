@@ -1,21 +1,30 @@
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Modularity;
+using Starter.Infrastructure.Modularity;
 using Starter.Module.Workflow.Constants;
 using Starter.Module.Workflow.Infrastructure.Persistence;
 using Starter.Module.Workflow.Infrastructure.Services;
-using Microsoft.Extensions.Hosting;
 
 namespace Starter.Module.Workflow;
 
-public sealed class WorkflowModule : IModule
+public sealed class WorkflowModule : IModule, IModuleBusContributor
 {
     public string Name => "Starter.Module.Workflow";
     public string DisplayName => "Workflow & Approvals";
     public string Version => "1.0.0";
+    // No hard runtime dependencies — Workflow couples to CommentsActivity and
+    // Communication through capability contracts (ICommentableEntityRegistry,
+    // ITemplateRegistrar) which have null-fallback registrations. The catalog
+    // dependencies array (modules.catalog.json) surfaces this soft coupling
+    // at generation time so users don't accidentally ship a Workflow-only app
+    // with degraded comments/email; ModuleLoader.ResolveOrder enforces only
+    // hard runtime ordering deps. See spec §14 D6.
     public IReadOnlyList<string> Dependencies => [];
 
     public IServiceCollection ConfigureServices(IServiceCollection services, IConfiguration configuration)
@@ -65,6 +74,21 @@ public sealed class WorkflowModule : IModule
                 tags: ["db", "workflow"]);
 
         return services;
+    }
+
+    public void ConfigureBus(IBusRegistrationConfigurator bus)
+    {
+        // Registers a transactional EF outbox against WorkflowDbContext. With UseBusOutbox(),
+        // IPublishEndpoint.Publish and ISendEndpoint.Send calls made while WorkflowDbContext is
+        // the active DbContext are queued in the workflow outbox table and committed in the
+        // same transaction as WorkflowDbContext.SaveChanges. MassTransit's background delivery
+        // service then drains the outbox to the broker.
+        bus.AddEntityFrameworkOutbox<WorkflowDbContext>(o =>
+        {
+            o.QueryDelay = TimeSpan.FromSeconds(1);
+            o.UsePostgres();
+            o.UseBusOutbox();
+        });
     }
 
     public IEnumerable<(string Name, string Description, string Module)> GetPermissions()

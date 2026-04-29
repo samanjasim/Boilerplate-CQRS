@@ -1,5 +1,14 @@
 {
-  "_comment": "Optional modules in the Starter boilerplate. Removable by passing `-Modules None` (strip all), `-Modules commentsActivity,communication` (keep only these), or `-Modules All` (default). Files, Notifications, FeatureFlags, ApiKeys, AuditLogs, and Reports are core and always ship. The `testsFolder` field names the module's test subfolder under tests/Starter.Api.Tests/ so the rename script deletes orphan tests alongside the module.",
+  "_comment": "Module catalog (single source of truth). Used by rename.ps1, ModuleLoader, and architecture tests. Removable by passing -Modules None (strip all), -Modules commentsActivity,communication (keep only these), or -Modules All (default). Files, Notifications, FeatureFlags, ApiKeys, AuditLogs, and Reports are core and always ship. The dependencies array is enforced by both the CLI and ModuleLoader.ResolveOrder at startup; missing dependencies fail loud. The testsFolder field names the module's test subfolder under tests/Starter.Api.Tests/ so the rename script deletes orphan tests alongside the module.",
+  "ai": {
+    "displayName": "AI Integration",
+    "backendModule": "Starter.Module.AI",
+    "testsFolder": "Ai",
+    "configKey": "ai",
+    "required": false,
+    "dependencies": [],
+    "description": "AI assistants, RAG ingestion, agents, providers (OpenAI, Anthropic), eval harness. Implements IAiService; null fallback returns empty results."
+  },
   "billing": {
     "displayName": "Billing",
     "backendModule": "Starter.Module.Billing",
@@ -8,6 +17,7 @@
     "mobileFolder": "billing",
     "configKey": "billing",
     "required": false,
+    "dependencies": [],
     "description": "Subscription plans, payments, free-tier auto-provisioning. Implements IBillingProvider; null fallback returns 501. Frontend slot: tenant-detail-tabs. Mobile: plans list + subscription view."
   },
   "webhooks": {
@@ -16,6 +26,7 @@
     "frontendFeature": "webhooks",
     "configKey": "webhooks",
     "required": false,
+    "dependencies": [],
     "description": "Webhook endpoints, delivery, admin dashboard. Implements IWebhookPublisher; null fallback is a silent no-op. No mobile counterpart (admin-only feature)."
   },
   "importExport": {
@@ -24,6 +35,7 @@
     "frontendFeature": "import-export",
     "configKey": "importExport",
     "required": false,
+    "dependencies": [],
     "description": "Data import/export with async processing. Implements IImportExportRegistry; null fallback returns empty lists. Frontend slot: users-list-toolbar. No mobile counterpart (admin-only feature)."
   },
   "products": {
@@ -32,6 +44,7 @@
     "frontendFeature": "products",
     "configKey": "products",
     "required": false,
+    "dependencies": [],
     "description": "E-commerce product catalog with CRUD, image upload, demo catalog seeding. Uses IQuotaChecker + IWebhookPublisher capabilities. Frontend slots: tenant-detail-tabs, dashboard-cards."
   },
   "commentsActivity": {
@@ -41,6 +54,7 @@
     "testsFolder": "CommentsActivity",
     "configKey": "commentsActivity",
     "required": false,
+    "dependencies": [],
     "description": "Entity-scoped comments, activity feed, reactions, watchers, mentions. Implements ICommentableEntityRegistry, ICommentService, IActivityService, IEntityWatcherService; null fallbacks return empty results. Frontend slot: entity-detail-timeline. No mobile counterpart."
   },
   "communication": {
@@ -50,6 +64,7 @@
     "testsFolder": "Communication",
     "configKey": "communication",
     "required": false,
+    "dependencies": [],
     "description": "Multi-channel messaging: email (SMTP), Slack, Telegram, Discord, Teams; templates, trigger rules, delivery log. Implements IMessageDispatcher, ICommunicationEventNotifier, ITemplateRegistrar; null fallbacks are silent no-ops. Frontend slot: dashboard-cards. No mobile counterpart."
   },
   "workflow": {
@@ -59,6 +74,7 @@
     "testsFolder": "Workflow",
     "configKey": "workflow",
     "required": false,
-    "description": "Configurable state-machine workflows with approval chains, task inbox, and process automation. Implements IWorkflowService; null fallback returns empty results. Frontend: inbox page, admin definitions, entity status panel slot."
+    "dependencies": ["commentsActivity", "communication"],
+    "description": "Configurable state-machine workflows with approval chains, task inbox, and process automation. Depends on commentsActivity (registers WorkflowInstance as commentable entity) and communication (registers email templates via ITemplateRegistrar). Implements IWorkflowService; null fallback returns empty results. Frontend: inbox page, admin definitions, entity status panel slot."
   }
 }

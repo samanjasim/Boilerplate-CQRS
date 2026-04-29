@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Starter.Application;
 using Starter.Infrastructure;
 using Starter.Infrastructure.Identity;
-using Starter.Module.Workflow.Infrastructure;
+using Starter.Infrastructure.Modularity;
 
 namespace Starter.Api;
 
@@ -26,7 +26,16 @@ public partial class Program
 
         services.AddSingleton<IReadOnlyList<Starter.Abstractions.Modularity.IModule>>(orderedModules);
         services.AddApplication(moduleAssemblies);
-        services.AddInfrastructure(config, moduleAssemblies, configureBus: bus => bus.AddWorkflowOutbox());
+        services.AddInfrastructure(
+            config,
+            moduleAssemblies,
+            configureBus: bus =>
+            {
+                foreach (var contributor in orderedModules.OfType<IModuleBusContributor>())
+                {
+                    contributor.ConfigureBus(bus);
+                }
+            });
         services.AddIdentityInfrastructure(config);
 
         foreach (var module in orderedModules)
