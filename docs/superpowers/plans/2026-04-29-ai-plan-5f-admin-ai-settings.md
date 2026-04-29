@@ -1117,6 +1117,16 @@ if (request.PublicRequestsPerMinute is { } publicRpm && publicRpm > entitlements
     return Result.Failure<AiTenantSettingsDto>(AiSettingsErrors.WidgetQuotaExceedsEntitlement(nameof(request.PublicRequestsPerMinute)));
 ```
 
+**Cache invalidation after persist.** `CostCapResolver` caches `EffectiveCaps` for 60 seconds (`CostCapResolver.cs:13`). When tenant self-limits change, the runtime must see the new ceiling on the next request, not 60 s later. The handler must call `ICostCapResolver.InvalidateTenantAsync(tenantId, ct)` after `SaveChangesAsync`. Inject the resolver and add this at the end of the success path:
+
+```csharp
+await context.SaveChangesAsync(ct);
+await costCaps.InvalidateTenantAsync(tenantId, ct);   // ← new line
+return Result.Success(dto);
+```
+
+Add a handler test: `Upsert_Invalidates_CostCap_Cache_For_Tenant()` — assert the cache key for `(tenantId, *)` is removed (or use a Mock<ICostCapResolver> to verify the call).
+
 - [ ] **Step 6: Register resolver**
 
 In `AIModule.ConfigureServices`, add:
@@ -1145,8 +1155,8 @@ git commit -m "feat(ai): add tenant AI settings handlers"
 ## Task 4: Provider Credential Management
 
 **Files:**
-- Create: `boilerplateBE/src/modules/Starter.Module.AI/Application/Services/Settings/IAiCredentialEncryptionService.cs`
-- Create: `boilerplateBE/src/modules/Starter.Module.AI/Infrastructure/Services/Settings/AiCredentialEncryptionService.cs`
+- Create: `boilerplateBE/src/modules/Starter.Module.AI/Application/Services/Settings/IAiSecretProtector.cs`
+- Create: `boilerplateBE/src/modules/Starter.Module.AI/Infrastructure/Services/Settings/AiSecretProtector.cs`
 - Modify: `boilerplateBE/src/modules/Starter.Module.AI/Application/DTOs/AiSettingsDtos.cs`
 - Create: `boilerplateBE/src/modules/Starter.Module.AI/Application/Queries/Settings/ProviderCredentials/GetProviderCredentials/GetProviderCredentialsQuery.cs`
 - Create: `boilerplateBE/src/modules/Starter.Module.AI/Application/Queries/Settings/ProviderCredentials/GetProviderCredentials/GetProviderCredentialsQueryHandler.cs`
@@ -1161,7 +1171,7 @@ git commit -m "feat(ai): add tenant AI settings handlers"
 - Create: `boilerplateBE/src/modules/Starter.Module.AI/Application/Commands/Settings/ProviderCredentials/TestProviderCredential/TestProviderCredentialCommand.cs`
 - Create: `boilerplateBE/src/modules/Starter.Module.AI/Application/Commands/Settings/ProviderCredentials/TestProviderCredential/TestProviderCredentialCommandHandler.cs`
 - Create: `boilerplateBE/tests/Starter.Api.Tests/Ai/Settings/AiProviderCredentialHandlerTests.cs`
-- Create: `boilerplateBE/tests/Starter.Api.Tests/Ai/Settings/AiCredentialEncryptionServiceTests.cs`
+- Create: `boilerplateBE/tests/Starter.Api.Tests/Ai/Settings/AiSecretProtectorTests.cs`
 - Modify: `boilerplateBE/src/modules/Starter.Module.AI/AIModule.cs`
 
 - [ ] **Step 1: Write failing encryption and handler tests**
@@ -1169,7 +1179,8 @@ git commit -m "feat(ai): add tenant AI settings handlers"
 Test names:
 
 ```csharp
-EncryptDecrypt_RoundTrip_Preserves_Secret()
+ProtectUnprotect_RoundTrip_Preserves_Secret()
+Unprotect_Reads_Legacy_Unprefixed_Secret()        // forward-compat with key rotation
 CreateCredential_Fails_When_Byok_Disabled()
 CreateCredential_Revokes_Existing_Active_For_Same_Provider()
 ListCredentials_Returns_Masked_Metadata()
@@ -1177,37 +1188,66 @@ RotateCredential_Replaces_Secret_And_Keeps_Metadata_Masked()
 RevokeCredential_Marks_Credential_Revoked()
 ```
 
-Expected failure: missing AI credential encryption service and provider credential handlers.
+Expected failure: missing AI secret protector and provider credential handlers.
 
 - [ ] **Step 2: Run tests to verify failure**
 
 ```bash
 dotnet test tests/Starter.Api.Tests/Starter.Api.Tests.csproj --filter FullyQualifiedName~AiProviderCredentialHandlerTests
-dotnet test tests/Starter.Api.Tests/Starter.Api.Tests.csproj --filter FullyQualifiedName~AiCredentialEncryptionServiceTests
+dotnet test tests/Starter.Api.Tests/Starter.Api.Tests.csproj --filter FullyQualifiedName~AiSecretProtectorTests
 ```
 
 Expected: FAIL.
 
-- [ ] **Step 3: Add AI credential encryption service**
+- [ ] **Step 3: Add AI secret protector**
 
-Use Data Protection with a separate purpose string:
+Mirrors the existing `WebhookSecretProtector` pattern (purpose-scoped Data Protection + version prefix for forward-compat key rotation). Different purpose string from Webhooks/Communication keeps cryptographic isolation per use-case while keeping API surface and naming consistent across modules.
+
+Interface:
+
+```csharp
+namespace Starter.Module.AI.Application.Services.Settings;
+
+internal interface IAiSecretProtector
+{
+    string Protect(string plaintextSecret);
+    string Unprotect(string storedSecret);
+    string Prefix(string secret);                  // safe display prefix (first 12 chars)
+    string Mask(string keyPrefix);                 // masked render for list APIs
+}
+```
+
+Implementation:
 
 ```csharp
 using Microsoft.AspNetCore.DataProtection;
 
 namespace Starter.Module.AI.Infrastructure.Services.Settings;
 
-internal sealed class AiCredentialEncryptionService : IAiCredentialEncryptionService
+internal sealed class AiSecretProtector : IAiSecretProtector
 {
+    private const string Purpose = "Starter.Module.AI.ProviderCredentials.v1";
+    private const string VersionPrefix = "ai1:";
+
     private readonly IDataProtector _protector;
 
-    public AiCredentialEncryptionService(IDataProtectionProvider dataProtectionProvider)
+    public AiSecretProtector(IDataProtectionProvider provider)
     {
-        _protector = dataProtectionProvider.CreateProtector("AI.ProviderCredentials.v1");
+        _protector = provider.CreateProtector(Purpose);
     }
 
-    public string Encrypt(string secret) => _protector.Protect(secret);
-    public string Decrypt(string encryptedSecret) => _protector.Unprotect(encryptedSecret);
+    public string Protect(string plaintextSecret) =>
+        VersionPrefix + _protector.Protect(plaintextSecret);
+
+    public string Unprotect(string storedSecret)
+    {
+        // Forward-compat: any future v2 prefix can be branched here.
+        // Legacy / unprefixed secrets remain readable until next rotate.
+        if (!storedSecret.StartsWith(VersionPrefix, StringComparison.Ordinal))
+            return _protector.Unprotect(storedSecret);
+
+        return _protector.Unprotect(storedSecret[VersionPrefix.Length..]);
+    }
 
     public string Prefix(string secret)
     {
@@ -1220,19 +1260,7 @@ internal sealed class AiCredentialEncryptionService : IAiCredentialEncryptionSer
 }
 ```
 
-Interface:
-
-```csharp
-namespace Starter.Module.AI.Application.Services.Settings;
-
-internal interface IAiCredentialEncryptionService
-{
-    string Encrypt(string secret);
-    string Decrypt(string encryptedSecret);
-    string Prefix(string secret);
-    string Mask(string keyPrefix);
-}
-```
+Naming rationale: matches `IWebhookSecretProtector` so future readers find one consistent pattern across modules. Don't use `Encrypt/Decrypt` — that name is taken by `Communication.ICredentialEncryptionService` for `Dictionary<string,string>` payloads, which is a different shape.
 
 - [ ] **Step 4: Implement provider credential DTOs**
 
@@ -1270,25 +1298,26 @@ Create/rotate requirements:
 - resolve entitlements
 - if `ByokEnabled == false`, return `AiSettingsErrors.ByokDisabledByPlan`
 - revoke existing active row for same tenant/provider before adding replacement
-- encrypt the submitted secret
-- store prefix only
-- return DTO with masked key
+- protect the submitted secret via `IAiSecretProtector.Protect`
+- store prefix only (`IAiSecretProtector.Prefix`)
+- return DTO with masked key (`IAiSecretProtector.Mask`)
+- **Audit:** every Create/Rotate/Revoke/Test handler must emit an `AuditLog` entry through the existing `IAuditLogService` (mirrors `RegenerateApiKeyCommandHandler`). Action codes: `AiProviderCredential.Created`, `AiProviderCredential.Rotated`, `AiProviderCredential.Revoked`, `AiProviderCredential.Tested`. Entity name: `AiProviderCredential`. Include the credential `Id`, `Provider`, and (where relevant) `KeyPrefix` in the audit detail JSON. **Never** include the plaintext secret. Add a test per command asserting one audit row is written with the right action code.
 
 Test endpoint can mark validated after decrypting successfully. Do not call a paid provider operation in unit tests; provider SDK smoke can be covered by a manual integration check later.
 
-- [ ] **Step 6: Register encryption service**
+- [ ] **Step 6: Register secret protector**
 
 In `AIModule.ConfigureServices`, add:
 
 ```csharp
-services.AddScoped<IAiCredentialEncryptionService, AiCredentialEncryptionService>();
+services.AddSingleton<IAiSecretProtector, AiSecretProtector>();   // matches IWebhookSecretProtector lifetime
 ```
 
 - [ ] **Step 7: Run tests**
 
 ```bash
 dotnet test tests/Starter.Api.Tests/Starter.Api.Tests.csproj --filter FullyQualifiedName~AiProviderCredentialHandlerTests
-dotnet test tests/Starter.Api.Tests/Starter.Api.Tests.csproj --filter FullyQualifiedName~AiCredentialEncryptionServiceTests
+dotnet test tests/Starter.Api.Tests/Starter.Api.Tests.csproj --filter FullyQualifiedName~AiSecretProtectorTests
 ```
 
 Expected: PASS.
@@ -1590,13 +1619,16 @@ internal sealed record ResolvedModelDefault(
 
 internal interface IAiModelDefaultResolver
 {
+    // Temperature/MaxTokens are nullable because Embedding and RagHelper classes
+    // have no "assistant" — call sites in EmbeddingService / QueryRewriter / Reranker
+    // pass null and rely on the tenant default or platform fallback.
     Task<Result<ResolvedModelDefault>> ResolveAsync(
         Guid? tenantId,
         AiAgentClass agentClass,
         AiProviderType? assistantProvider,
         string? assistantModel,
-        double assistantTemperature,
-        int assistantMaxTokens,
+        double? assistantTemperature,
+        int? assistantMaxTokens,
         CancellationToken ct = default);
 }
 ```
@@ -1833,7 +1865,10 @@ git commit -m "feat(ai): add tenant model defaults"
 - Modify: `boilerplateBE/src/modules/Starter.Module.AI/Infrastructure/Runtime/CostCapEnforcingAgentRuntime.cs`
 - Modify: `boilerplateBE/src/modules/Starter.Module.AI/Application/Queries/GetTenantUsage/GetTenantUsageQuery.cs`
 - Modify: `boilerplateBE/src/modules/Starter.Module.AI/Application/Queries/GetTenantUsage/GetTenantUsageQueryHandler.cs`
+- Modify: `boilerplateBE/src/modules/Starter.Module.AI/Application/Queries/GetAgentBudget/GetAgentBudgetQuery.cs` (consumes `EffectiveCaps` shape — must compile after the record extends)
 - Create/modify: tests under `boilerplateBE/tests/Starter.Api.Tests/Ai/Costs/`
+
+> **Sweep before extending the record:** run `rg -n "new EffectiveCaps\\(" boilerplateBE` and update **every** call site listed. Defaults below keep the build green for unrelated test fixtures, but production query handlers must populate platform values explicitly so the UI surfaces the real ceiling.
 
 - [ ] **Step 1: Write failing cost tests**
 
@@ -1848,7 +1883,7 @@ Runtime_Tenant_Source_Claims_Total_Only()
 
 - [ ] **Step 2: Update `EffectiveCaps`**
 
-Change to:
+Change to (defaults of `0m` keep test fixtures and unrelated callers compiling — `0` means "blocked" per the existing class doc-comment, which is the safe default if a caller forgets to populate platform values):
 
 ```csharp
 namespace Starter.Module.AI.Application.Services.Costs;
@@ -1857,9 +1892,11 @@ public sealed record EffectiveCaps(
     decimal MonthlyUsd,
     decimal DailyUsd,
     int Rpm,
-    decimal PlatformMonthlyUsd,
-    decimal PlatformDailyUsd);
+    decimal PlatformMonthlyUsd = 0m,
+    decimal PlatformDailyUsd = 0m);
 ```
+
+After this change, **every** real call site (resolver + display query handlers) must pass the platform values explicitly — `0m` defaults are a build-safety net only, not a substitute for resolver wiring. The sweep above lists them; verify each has been updated before committing.
 
 - [ ] **Step 3: Extend accountant with bucket parameter**
 
@@ -1877,11 +1914,11 @@ public enum CostCapBucket
 
 Update methods to accept `CostCapBucket bucket`, defaulting to `Total` only at call sites where old behavior is intentionally retained.
 
-Redis key format:
+Redis key format — `bucketName` already encodes the bucket, do **not** append the enum a second time. The shape mirrors `CostCapResolver`'s existing cache key (`ai:cap:{tenantId}:{assistantId}`) so ops grep stays predictable:
 
 ```csharp
 var bucketName = bucket == CostCapBucket.PlatformCredit ? "platform-cost" : "cost";
-return $"ai:{bucketName}:{tenantId}:{assistantId}:{window.ToString().ToLowerInvariant()}:{bucket}";
+return $"ai:{bucketName}:{tenantId}:{assistantId}:{window.ToString().ToLowerInvariant()}";
 ```
 
 - [ ] **Step 4: Update cap resolver**
@@ -1990,27 +2027,19 @@ internal interface IAiBrandPromptResolver
 }
 ```
 
-Implementation:
+Implementation — consume `IAiTenantSettingsResolver` (introduced in Task 3) instead of querying `AiDbContext` directly. One reader, one path; SafetyProfileResolver does the same in Step 3 below. This keeps SRP, enables future caching of tenant settings in one place, and means a missing-row default still resolves to `CreateDefault(tenantId)` (which has null brand fields → no clause):
 
 ```csharp
-using Microsoft.EntityFrameworkCore;
 using Starter.Module.AI.Application.Services.Settings;
-using Starter.Module.AI.Infrastructure.Persistence;
 
 namespace Starter.Module.AI.Infrastructure.Services.Settings;
 
-internal sealed class AiBrandPromptResolver(AiDbContext db) : IAiBrandPromptResolver
+internal sealed class AiBrandPromptResolver(IAiTenantSettingsResolver tenantSettings) : IAiBrandPromptResolver
 {
     public async Task<string?> ResolveClauseAsync(Guid? tenantId, CancellationToken ct = default)
     {
-        if (tenantId is null) return null;
-        var settings = await db.AiTenantSettings
-            .AsNoTracking()
-            .IgnoreQueryFilters()
-            .Where(s => s.TenantId == tenantId)
-            .Select(s => new { s.AssistantDisplayName, s.Tone, s.BrandInstructions })
-            .FirstOrDefaultAsync(ct);
-        if (settings is null) return null;
+        if (tenantId is not { } tid) return null;
+        var settings = await tenantSettings.GetOrDefaultAsync(tid, ct);
 
         var lines = new List<string>();
         if (!string.IsNullOrWhiteSpace(settings.AssistantDisplayName))
@@ -2039,13 +2068,23 @@ var preset = assistant.SafetyPresetOverride ?? personaPreset ?? tenantDefault;
 
 Inject `IAiBrandPromptResolver` into `ChatExecutionService`.
 
-After the existing `ResolveSystemPrompt` call, append the brand clause when present:
+After the existing `ResolveSystemPrompt` call, **prepend** the brand clause when present so the assistant prompt is read last and remains authoritative (matches the safety-clause convention at `ResolveSystemPrompt` line 1109: `clause + "\n\n" + basePrompt`). Per spec §6.5: "Do not override explicit assistant specialization." Appending brand AFTER the assistant prompt would let brand instructions override assistant guidance — that is the bug we are avoiding.
 
 ```csharp
 var brandClause = await brandPromptResolver.ResolveClauseAsync(state.Assistant.TenantId, ct);
 var effectiveSystemPrompt = string.IsNullOrWhiteSpace(brandClause)
     ? baseSystemPrompt
-    : $"{baseSystemPrompt}\n\n{brandClause}";
+    : $"{brandClause}\n\n{baseSystemPrompt}";
+```
+
+Also add a test asserting the prepend order:
+
+```csharp
+[Fact]
+public async Task ChatExecution_Brand_Profile_Precedes_Assistant_Prompt()
+{
+    // assert: effectiveSystemPrompt.IndexOf(brandClause) < effectiveSystemPrompt.IndexOf(assistantPrompt)
+}
 ```
 
 - [ ] **Step 5: Register service and run tests**
@@ -2252,9 +2291,35 @@ public sealed class AiSettingsController(ISender mediator)
 
 Add the provider credential, model default, widget, and widget credential actions in the same controller using the command/query types from previous tasks. Keep route names from the design spec exactly.
 
-- [ ] **Step 3: Permission review**
+- [ ] **Step 3: Grant Admin `Ai.ManageSettings`**
 
-Keep existing `Ai.ManageSettings`. Do not create extra permissions unless tests prove a missing distinction. Existing `AIModule.GetDefaultRolePermissions()` already grants SuperAdmin and Admin `Ai.ManageSettings` differently: SuperAdmin has it, Admin currently does not. If tenant admins must use the settings UI in Plan 7b, add `AiPermissions.ManageSettings` to Admin default permissions now.
+Keep existing `Ai.ManageSettings` constant. Do not create extra permissions unless tests prove a missing distinction.
+
+`AIModule.GetDefaultRolePermissions()` (currently at `AIModule.cs:236-292`) grants SuperAdmin `ManageSettings` (`AIModule.cs:248`) but **does not** grant it to Admin (`AIModule.cs:263-283`). The whole point of 5f is that **tenant admins** configure their own AI — spec §7 says "tenant users operate on their own tenant". Without this grant, only SuperAdmin can use the new endpoints, which defeats multi-tenancy.
+
+**Add `AiPermissions.ManageSettings` to the Admin role array** in `AIModule.GetDefaultRolePermissions()`:
+
+```csharp
+yield return ("Admin", [
+    AiPermissions.Chat,
+    AiPermissions.ViewConversations,
+    // ... existing permissions ...
+    AiPermissions.ModerationView,
+    AiPermissions.ManageSettings,   // ← Plan 5f: tenant admins manage their own AI settings
+]);
+```
+
+Add an acid-style test that fails if the grant regresses:
+
+```csharp
+[Fact]
+public void Admin_Default_Permissions_Include_AiManageSettings()
+{
+    var module = new AIModule();
+    var admin = module.GetDefaultRolePermissions().Single(r => r.Role == "Admin");
+    admin.Permissions.Should().Contain(AiPermissions.ManageSettings);
+}
+```
 
 - [ ] **Step 4: Run controller shape tests**
 
@@ -2288,11 +2353,21 @@ Acid_5f_1_Default_Tenant_Policy_Is_PlatformOnly()
 Acid_5f_2_Byok_Disabled_Cannot_Create_Tenant_Provider_Credential()
 Acid_5f_3_TenantKeysRequired_Fails_Before_Provider_Call_When_Key_Missing()
 Acid_5f_4_Byok_Run_Does_Not_Consume_Platform_Credit()
-Acid_5f_5_Widget_Key_Does_Not_Authenticate_Core_Api_Key_Handler()
-Acid_5f_6_Widget_Config_Exists_But_Public_Enforcement_Is_Deferred_To_8f()
+Acid_5f_5a_Widget_Credential_Does_Not_Create_Core_ApiKey_Row()
+Acid_5f_5b_Widget_Credential_Cannot_Authenticate_Core_ApiKey_Handler()
+Acid_5f_6_No_Public_Auth_Surface_Wired_For_Widget_Credentials()
 ```
 
-For `Acid_5f_5`, assert no `ApiKey` row is created when an `AiWidgetCredential` is created. Do not attempt to authenticate a widget key through `ApiKeyAuthenticationHandler`; that handler reads core `ApiKey` prefix rows and should not find one.
+**`Acid_5f_5a`** — assert that creating an `AiWidgetCredential` writes zero rows to the core `ApiKeys` table.
+
+**`Acid_5f_5b`** — positive attack assertion. Create a widget credential, take the returned full key (`pk_ai_*`), simulate an authenticated HTTP call against any core controller using `X-Api-Key: <full key>`, and assert the request returns 401 / fails authentication. The existing `ApiKeyAuthenticationHandler` reads the core `ApiKeys` table by prefix; it must not find a row, and any future regression that mistakenly writes widget keys into core `ApiKeys` will surface here. Use the in-memory test server pattern from prior plans.
+
+**`Acid_5f_6`** — assert the phase boundary structurally, not by hope:
+1. `services.GetServices<IAuthenticationHandler>()` (or `IAuthenticationSchemeProvider.GetAllSchemesAsync()`) contains **no** scheme whose name starts with `"AiWidget"` or whose handler resolves widget credentials.
+2. No controller in `Starter.Module.AI` has an action whose route prefix is `/api/v*/public` or that carries `[AllowAnonymous]` plus widget-credential lookup logic. Scan via reflection.
+3. `AiWidgetCredential` rows are addressable only via `Ai.ManageSettings`-gated handlers — try a `GET` on a hypothetical public endpoint (`/api/v1/public/ai/widgets/{id}/chat`) and assert the route is unmapped (404) rather than 401/403.
+
+These three concrete assertions are what make the boundary load-bearing. Without them the test is decorative.
 
 - [ ] **Step 2: Run acid tests**
 
