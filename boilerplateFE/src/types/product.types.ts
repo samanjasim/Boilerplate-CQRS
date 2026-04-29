@@ -15,6 +15,12 @@ export interface Product {
 
 export type ProductStatus = 'Draft' | 'Active' | 'Archived';
 
+export interface ProductStatusCounts {
+  draft: number;
+  active: number;
+  archived: number;
+}
+
 export interface CreateProductData {
   name: string;
   slug: string;

@@ -1,6 +1,6 @@
 import { apiClient } from '@/lib/axios';
 import { API_ENDPOINTS } from '@/config';
-import type { Product, CreateProductData, UpdateProductData } from '@/types';
+import type { Product, ProductStatusCounts, CreateProductData, UpdateProductData } from '@/types';
 
 export const productsApi = {
   getAll: (params?: Record<string, unknown>) =>
@@ -8,6 +8,11 @@ export const productsApi = {
 
   getById: (id: string) =>
     apiClient.get<{ data: Product }>(API_ENDPOINTS.PRODUCTS.DETAIL(id)).then((r) => r.data.data),
+
+  getStatusCounts: (params?: Record<string, unknown>) =>
+    apiClient
+      .get<{ data: ProductStatusCounts }>(API_ENDPOINTS.PRODUCTS.STATUS_COUNTS, { params })
+      .then((r) => r.data),
 
   create: (data: CreateProductData) =>
     apiClient.post(API_ENDPOINTS.PRODUCTS.LIST, data).then((r) => r.data),
