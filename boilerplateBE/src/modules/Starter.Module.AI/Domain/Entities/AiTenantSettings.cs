@@ -31,7 +31,18 @@ public sealed class AiTenantSettings : AggregateRoot, ITenantEntity
         DefaultSafetyPreset = SafetyPreset.Standard;
     }
 
-    public static AiTenantSettings CreateDefault(Guid tenantId) => new(tenantId);
+    public static AiTenantSettings CreateDefault(Guid tenantId)
+    {
+        ValidateTenantId(tenantId);
+
+        return new AiTenantSettings(tenantId);
+    }
+
+    private static void ValidateTenantId(Guid tenantId)
+    {
+        if (tenantId == Guid.Empty)
+            throw new ArgumentException("TenantId must not be empty.", nameof(tenantId));
+    }
 
     public void UpdatePolicy(ProviderCredentialPolicy policy, SafetyPreset safetyPreset)
     {

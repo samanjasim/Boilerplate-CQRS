@@ -65,11 +65,13 @@ public sealed class AiPublicWidget : AggregateRoot, ITenantEntity
         Guid? createdByUserId,
         string? metadataJson = null)
     {
+        ValidateTenantId(tenantId);
+        var normalizedName = NormalizeName(name);
         ValidateQuotas(monthlyTokenCap, dailyTokenCap, requestsPerMinute);
 
         return new AiPublicWidget(
             tenantId,
-            name,
+            normalizedName,
             allowedOrigins,
             defaultAssistantId,
             defaultPersonaSlug,
@@ -90,9 +92,10 @@ public sealed class AiPublicWidget : AggregateRoot, ITenantEntity
         int? requestsPerMinute,
         string? metadataJson)
     {
+        var normalizedName = NormalizeName(name);
         ValidateQuotas(monthlyTokenCap, dailyTokenCap, requestsPerMinute);
 
-        Name = name.Trim();
+        Name = normalizedName;
         _allowedOrigins = NormalizeOrigins(allowedOrigins);
         DefaultAssistantId = defaultAssistantId;
         DefaultPersonaSlug = NormalizePersonaSlug(defaultPersonaSlug);
@@ -109,6 +112,20 @@ public sealed class AiPublicWidget : AggregateRoot, ITenantEntity
         ModifiedAt = DateTime.UtcNow;
     }
 
+    private static void ValidateTenantId(Guid tenantId)
+    {
+        if (tenantId == Guid.Empty)
+            throw new ArgumentException("TenantId must not be empty.", nameof(tenantId));
+    }
+
+    private static string NormalizeName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Name must not be blank.", nameof(name));
+
+        return name.Trim();
+    }
+
     private static void ValidateQuotas(int? monthlyTokenCap, int? dailyTokenCap, int? requestsPerMinute)
     {
         if (monthlyTokenCap is < 0) throw new ArgumentOutOfRangeException(nameof(monthlyTokenCap));
@@ -121,12 +138,16 @@ public sealed class AiPublicWidget : AggregateRoot, ITenantEntity
             ? AiPersona.AnonymousSlug
             : defaultPersonaSlug.Trim().ToLowerInvariant();
 
-    private static List<string> NormalizeOrigins(IEnumerable<string> origins) =>
-        origins
+    private static List<string> NormalizeOrigins(IEnumerable<string> allowedOrigins)
+    {
+        ArgumentNullException.ThrowIfNull(allowedOrigins);
+
+        return allowedOrigins
             .Select(NormalizeOrigin)
             .Distinct(StringComparer.Ordinal)
             .OrderBy(o => o, StringComparer.Ordinal)
             .ToList();
+    }
 
     private static string NormalizeOrigin(string origin)
     {

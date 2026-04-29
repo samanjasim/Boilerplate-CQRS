@@ -23,6 +23,15 @@ public sealed class AiSettingsDomainTests
     }
 
     [Fact]
+    public void TenantSettings_CreateDefault_Rejects_Empty_Tenant()
+    {
+        var act = () => AiTenantSettings.CreateDefault(Guid.Empty);
+
+        act.Should().Throw<ArgumentException>()
+            .WithParameterName("tenantId");
+    }
+
+    [Fact]
     public void TenantSettings_UpdatePolicy_Rejects_Invalid_Public_Rpm()
     {
         var settings = AiTenantSettings.CreateDefault(Guid.NewGuid());
@@ -88,6 +97,92 @@ public sealed class AiSettingsDomainTests
             "http://example.com",
             "https://example.com",
             "https://example.com:8443");
+    }
+
+    [Fact]
+    public void PublicWidget_Create_Rejects_Empty_Tenant()
+    {
+        var act = () => AiPublicWidget.Create(
+            tenantId: Guid.Empty,
+            name: "Marketing site",
+            allowedOrigins: new[] { "https://example.com" },
+            defaultAssistantId: null,
+            defaultPersonaSlug: "anonymous",
+            monthlyTokenCap: 10_000,
+            dailyTokenCap: 1_000,
+            requestsPerMinute: 20,
+            createdByUserId: Guid.NewGuid());
+
+        act.Should().Throw<ArgumentException>()
+            .WithParameterName("tenantId");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void PublicWidget_Create_Rejects_Blank_Name(string name)
+    {
+        var act = () => AiPublicWidget.Create(
+            tenantId: Guid.NewGuid(),
+            name,
+            allowedOrigins: new[] { "https://example.com" },
+            defaultAssistantId: null,
+            defaultPersonaSlug: "anonymous",
+            monthlyTokenCap: 10_000,
+            dailyTokenCap: 1_000,
+            requestsPerMinute: 20,
+            createdByUserId: Guid.NewGuid());
+
+        act.Should().Throw<ArgumentException>()
+            .WithParameterName("name");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void PublicWidget_Update_Rejects_Blank_Name(string name)
+    {
+        var widget = AiPublicWidget.Create(
+            tenantId: Guid.NewGuid(),
+            name: "Marketing site",
+            allowedOrigins: new[] { "https://example.com" },
+            defaultAssistantId: null,
+            defaultPersonaSlug: "anonymous",
+            monthlyTokenCap: 10_000,
+            dailyTokenCap: 1_000,
+            requestsPerMinute: 20,
+            createdByUserId: Guid.NewGuid());
+
+        var act = () => widget.Update(
+            name,
+            allowedOrigins: new[] { "https://example.com" },
+            defaultAssistantId: null,
+            defaultPersonaSlug: "anonymous",
+            monthlyTokenCap: 10_000,
+            dailyTokenCap: 1_000,
+            requestsPerMinute: 20,
+            metadataJson: null);
+
+        act.Should().Throw<ArgumentException>()
+            .WithParameterName("name");
+    }
+
+    [Fact]
+    public void PublicWidget_Create_Rejects_Null_Allowed_Origins()
+    {
+        var act = () => AiPublicWidget.Create(
+            tenantId: Guid.NewGuid(),
+            name: "Marketing site",
+            allowedOrigins: null!,
+            defaultAssistantId: null,
+            defaultPersonaSlug: "anonymous",
+            monthlyTokenCap: 10_000,
+            dailyTokenCap: 1_000,
+            requestsPerMinute: 20,
+            createdByUserId: Guid.NewGuid());
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("allowedOrigins");
     }
 
     [Theory]
