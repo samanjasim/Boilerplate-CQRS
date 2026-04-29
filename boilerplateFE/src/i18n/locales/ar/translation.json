@@ -1523,7 +1523,29 @@
       "bulkCommentPlaceholder": "تعليق اختياري مطبق على جميع المهام",
       "bulkViewDetails": "عرض التفاصيل",
       "clearSelection": "مسح التحديد",
-      "requiresForm": "تحتوي هذه المهمة على حقول نموذج مطلوبة. افتح المهمة لتعبئة النموذج."
+      "requiresForm": "تحتوي هذه المهمة على حقول نموذج مطلوبة. افتح المهمة لتعبئة النموذج.",
+      "statusCounts": {
+        "overdue": "متأخرة",
+        "overdueEyebrow": "تجاوزت موعد الاستحقاق",
+        "dueToday": "مستحقة اليوم",
+        "dueTodayEyebrow": "ابدأ بمعالجتها أولاً",
+        "upcoming": "قادمة",
+        "upcomingEyebrow": "ضمن الجدول الزمني"
+      },
+      "sla": {
+        "header": "اتفاقية الخدمة",
+        "dueIn": "تستحق خلال {{relative}}",
+        "overdue": "متأخرة بـ {{relative}}",
+        "onTrack": "ضمن الجدول",
+        "noSla": "بدون موعد محدد"
+      },
+      "actOn": "إجراء",
+      "raised": "أُنشئ",
+      "priority": {
+        "high": "أولوية عالية",
+        "medium": "أولوية متوسطة",
+        "low": "أولوية منخفضة"
+      }
     },
     "definitions": {
       "title": "تعريفات سير العمل",
@@ -1541,7 +1563,11 @@
       "activate": "تفعيل",
       "cloneSuccess": "تم نسخ التعريف بنجاح",
       "updateSuccess": "تم تحديث التعريف بنجاح",
-      "emptyDesc": "لا توجد تعريفات لسير العمل"
+      "emptyDesc": "لا توجد تعريفات لسير العمل",
+      "statusValue": {
+        "active": "نشطة",
+        "inactive": "غير نشطة"
+      }
     },
     "approval": {
       "title": "إجراء سير العمل",
@@ -1579,7 +1605,17 @@
       "cancelConfirm": "هل أنت متأكد من إلغاء سير العمل هذا؟",
       "cancelSuccess": "تم إلغاء سير العمل",
       "accessDenied": "الوصول مرفوض",
-      "accessDeniedDesc": "ليس لديك صلاحية لعرض هذه النسخة من سير العمل. يمكن الوصول إليها فقط للمُبادر أو المعتمدين المعيّنين أو المسؤولين."
+      "accessDeniedDesc": "ليس لديك صلاحية لعرض هذه النسخة من سير العمل. يمكن الوصول إليها فقط للمُبادر أو المعتمدين المعيّنين أو المسؤولين.",
+      "statusCounts": {
+        "active": "نشطة",
+        "activeEyebrow": "قيد التنفيذ",
+        "awaiting": "بانتظار إجراء",
+        "awaitingEyebrow": "بانتظار الموافقة",
+        "completed": "مكتملة",
+        "completedEyebrow": "منتهية",
+        "cancelled": "ملغاة",
+        "cancelledEyebrow": "متوقفة أو مُلغاة"
+      }
     },
     "detail": {
       "title": "تعريف سير العمل",
@@ -1595,7 +1631,16 @@
       "resubmit": "إعادة الإرسال",
       "completedAt": "اكتمل",
       "returnedForRevision": "تم الإرجاع للمراجعة",
-      "returnedForRevisionDesc": "تم إرجاع سير العمل هذا للمراجعة. راجع وأعد الإرسال عندما تكون جاهزاً."
+      "returnedForRevisionDesc": "تم إرجاع سير العمل هذا للمراجعة. راجع وأعد الإرسال عندما تكون جاهزاً.",
+      "metadata": {
+        "copy": "نسخ",
+        "copied": "تم النسخ",
+        "instanceId": "معرّف النسخة",
+        "entityId": "معرّف العنصر",
+        "definitionLink": "عرض التعريف",
+        "tenantId": "المستأجر"
+      },
+      "pendingActionTitle": "إجراء مطلوب"
     },
     "resubmitSuccess": "تم إعادة إرسال سير العمل",
     "delegation": {
@@ -1701,6 +1746,12 @@
       "discard": "Discard",
       "stay": "Stay",
       "emptySelection": "Click a state to edit, drag between states to connect, press Delete to remove.",
+      "stateType": {
+        "initial": "حالة بدء",
+        "humanTask": "مهمة بشرية",
+        "final": "حالة نهائية",
+        "other": "حالة"
+      },
       "state": {
         "identity": "Identity",
         "name": "Name",

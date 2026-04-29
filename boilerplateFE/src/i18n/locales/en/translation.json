@@ -1566,7 +1566,29 @@
       "bulkCommentPlaceholder": "Optional comment applied to all tasks",
       "bulkViewDetails": "View details",
       "clearSelection": "Clear selection",
-      "requiresForm": "This task has required form fields. Open the task to fill the form."
+      "requiresForm": "This task has required form fields. Open the task to fill the form.",
+      "statusCounts": {
+        "overdue": "Overdue",
+        "overdueEyebrow": "Past their due date",
+        "dueToday": "Due today",
+        "dueTodayEyebrow": "Triage these first",
+        "upcoming": "Upcoming",
+        "upcomingEyebrow": "On track"
+      },
+      "sla": {
+        "header": "SLA",
+        "dueIn": "Due in {{relative}}",
+        "overdue": "{{relative}} overdue",
+        "onTrack": "On track",
+        "noSla": "No SLA"
+      },
+      "actOn": "Act",
+      "raised": "Raised",
+      "priority": {
+        "high": "High priority",
+        "medium": "Medium priority",
+        "low": "Low priority"
+      }
     },
     "definitions": {
       "title": "Workflow Definitions",
@@ -1584,7 +1606,11 @@
       "activate": "Activate",
       "cloneSuccess": "Definition cloned successfully",
       "updateSuccess": "Definition updated successfully",
-      "emptyDesc": "No workflow definitions found"
+      "emptyDesc": "No workflow definitions found",
+      "statusValue": {
+        "active": "Active",
+        "inactive": "Inactive"
+      }
     },
     "approval": {
       "title": "Workflow Action",
@@ -1622,7 +1648,17 @@
       "cancelConfirm": "Are you sure you want to cancel this workflow?",
       "cancelSuccess": "Workflow cancelled",
       "accessDenied": "Access Denied",
-      "accessDeniedDesc": "You do not have permission to view this workflow instance. Only the initiator, assigned approvers, or administrators can access it."
+      "accessDeniedDesc": "You do not have permission to view this workflow instance. Only the initiator, assigned approvers, or administrators can access it.",
+      "statusCounts": {
+        "active": "Active",
+        "activeEyebrow": "In flight",
+        "awaiting": "Awaiting action",
+        "awaitingEyebrow": "Pending approver",
+        "completed": "Completed",
+        "completedEyebrow": "Finished",
+        "cancelled": "Cancelled",
+        "cancelledEyebrow": "Stopped or rolled back"
+      }
     },
     "detail": {
       "title": "Workflow Definition",
@@ -1638,7 +1674,16 @@
       "resubmit": "Resubmit",
       "completedAt": "Completed",
       "returnedForRevision": "Returned for Revision",
-      "returnedForRevisionDesc": "This workflow was returned for revision. Review and resubmit when ready."
+      "returnedForRevisionDesc": "This workflow was returned for revision. Review and resubmit when ready.",
+      "metadata": {
+        "copy": "Copy",
+        "copied": "Copied",
+        "instanceId": "Instance ID",
+        "entityId": "Entity ID",
+        "definitionLink": "View definition",
+        "tenantId": "Tenant"
+      },
+      "pendingActionTitle": "Action required"
     },
     "resubmitSuccess": "Workflow resubmitted",
     "delegation": {
@@ -1744,6 +1789,12 @@
       "discard": "Discard",
       "stay": "Stay",
       "emptySelection": "Click a state to edit, drag between states to connect, press Delete to remove.",
+      "stateType": {
+        "initial": "Initial state",
+        "humanTask": "Human task",
+        "final": "Final state",
+        "other": "State"
+      },
       "state": {
         "identity": "Identity",
         "name": "Name",

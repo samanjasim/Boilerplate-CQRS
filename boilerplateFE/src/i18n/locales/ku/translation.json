@@ -1427,7 +1427,29 @@
       "bulkCommentPlaceholder": "لێدوانێکی ئارەزوومەندانە بۆ هەموو ئەرکەکان",
       "bulkViewDetails": "بینینی وردەکاری",
       "clearSelection": "پاککردنەوەی دیاریکراو",
-      "requiresForm": "ئەم ئەرکە پێویستی بە خانەی فۆرمە. ئەرکەکە بکەرەوە بۆ پڕکردنەوەی فۆرم."
+      "requiresForm": "ئەم ئەرکە پێویستی بە خانەی فۆرمە. ئەرکەکە بکەرەوە بۆ پڕکردنەوەی فۆرم.",
+      "statusCounts": {
+        "overdue": "بەسەرچوو",
+        "overdueEyebrow": "لە کاتی دیاریکراو تێپەڕیوە",
+        "dueToday": "ئەمڕۆ کۆتایی دێت",
+        "dueTodayEyebrow": "سەرەتا ئەمانە ئەنجام بدە",
+        "upcoming": "داهاتوو",
+        "upcomingEyebrow": "لەسەر ڕێگا"
+      },
+      "sla": {
+        "header": "SLA",
+        "dueIn": "کۆتایی دێت لە {{relative}}",
+        "overdue": "{{relative}} دواکەوتووە",
+        "onTrack": "لەسەر ڕێگا",
+        "noSla": "بێ کات"
+      },
+      "actOn": "کردار",
+      "raised": "دروستکراوە",
+      "priority": {
+        "high": "گرنگیی بەرز",
+        "medium": "گرنگیی مامناوەند",
+        "low": "گرنگیی نزم"
+      }
     },
     "definitions": {
       "title": "پێناسەکانی ڕێڕەوی کار",
@@ -1445,7 +1467,11 @@
       "activate": "چالاککردن",
       "cloneSuccess": "پێناسەکە بە سەرکەوتوویی لەبەرگیرایەوە",
       "updateSuccess": "پێناسەکە بە سەرکەوتوویی نوێکرایەوە",
-      "emptyDesc": "هیچ پێناسەیەکی ڕێڕەوی کار نەدۆزرایەوە"
+      "emptyDesc": "هیچ پێناسەیەکی ڕێڕەوی کار نەدۆزرایەوە",
+      "statusValue": {
+        "active": "چالاک",
+        "inactive": "ناچالاک"
+      }
     },
     "approval": {
       "title": "کرداری ڕێڕەوی کار",
@@ -1483,7 +1509,17 @@
       "cancelConfirm": "دڵنیایت لە هەڵوەشاندنەوەی ئەم ڕێڕەوە؟",
       "cancelSuccess": "ڕێڕەوی کار هەڵوەشێنرایەوە",
       "accessDenied": "مەترسی نییە",
-      "accessDeniedDesc": "مافی بینینی ئەم نموونەی ڕێڕەوی کارت نییە. تەنها دەستپێکەر، پەسەندکەری دیاریکراو، یان بەڕێوەبەران دەتوانن پێیانگەیەن."
+      "accessDeniedDesc": "مافی بینینی ئەم نموونەی ڕێڕەوی کارت نییە. تەنها دەستپێکەر، پەسەندکەری دیاریکراو، یان بەڕێوەبەران دەتوانن پێیانگەیەن.",
+      "statusCounts": {
+        "active": "چالاک",
+        "activeEyebrow": "لە جێبەجێکردندا",
+        "awaiting": "چاوەڕێی کردار",
+        "awaitingEyebrow": "چاوەڕێی پەسەندکردن",
+        "completed": "تەواوبووە",
+        "completedEyebrow": "کۆتایی هاتووە",
+        "cancelled": "هەڵوەشێنراوە",
+        "cancelledEyebrow": "ڕاگیراوە یان گەڕێنراوەتەوە"
+      }
     },
     "detail": {
       "title": "پێناسەی ڕێڕەوی کار",
@@ -1499,7 +1535,16 @@
       "resubmit": "دووبارە ناردنەوە",
       "completedAt": "تەواوبوو",
       "returnedForRevision": "گەڕێنراوەتەوە بۆ پێداچوونەوە",
-      "returnedForRevisionDesc": "ئەم ڕێڕەوە گەڕێنراوەتەوە بۆ پێداچوونەوە. پێداچوونەوە بکە و دووبارە بینێرەوە کاتێک ئامادەیت."
+      "returnedForRevisionDesc": "ئەم ڕێڕەوە گەڕێنراوەتەوە بۆ پێداچوونەوە. پێداچوونەوە بکە و دووبارە بینێرەوە کاتێک ئامادەیت.",
+      "metadata": {
+        "copy": "لەبەرگرتنەوە",
+        "copied": "لەبەرگیرایەوە",
+        "instanceId": "ناسنامەی نموونە",
+        "entityId": "ناسنامەی ئەنتیتی",
+        "definitionLink": "بینینی پێناسە",
+        "tenantId": "بەکارهێنەر"
+      },
+      "pendingActionTitle": "کرداری پێویست"
     },
     "resubmitSuccess": "ڕێڕەوی کار دووبارە نێردرایەوە",
     "delegation": {
@@ -1605,6 +1650,12 @@
       "discard": "Discard",
       "stay": "Stay",
       "emptySelection": "Click a state to edit, drag between states to connect, press Delete to remove.",
+      "stateType": {
+        "initial": "دۆخی سەرەتا",
+        "humanTask": "ئەرکی مرۆیی",
+        "final": "دۆخی کۆتایی",
+        "other": "دۆخ"
+      },
       "state": {
         "identity": "Identity",
         "name": "Name",
