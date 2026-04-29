@@ -289,7 +289,8 @@ public sealed class AIModule : IModule
             AiPermissions.SafetyProfilesManage,
             AiPermissions.AgentsApproveAction,
             AiPermissions.AgentsViewApprovals,
-            AiPermissions.ModerationView
+            AiPermissions.ModerationView,
+            AiPermissions.ManageSettings
         ]);
 
         yield return ("User", [
