@@ -27,7 +27,7 @@ internal sealed class AiModelDefaultResolver(
         int? explicitMaxTokens,
         CancellationToken ct = default)
     {
-        var resolvedEntitlements = await entitlements.ResolveAsync(ct);
+        var resolvedEntitlements = await entitlements.ResolveAsync(tenantId, ct);
 
         if (explicitProvider is { } provider && !string.IsNullOrWhiteSpace(explicitModel))
             return ResolveAllowed(

@@ -20,7 +20,7 @@ internal sealed class GetAiTenantSettingsQueryHandler(
             return Result.Failure<AiTenantSettingsDto>(
                 Error.Validation("AiSettings.TenantIdRequired", "A tenant id is required to read AI tenant settings."));
 
-        var resolvedEntitlements = await entitlements.ResolveAsync(ct);
+        var resolvedEntitlements = await entitlements.ResolveAsync(tenantId.Value, ct);
         var settings = await settingsResolver.GetOrDefaultAsync(tenantId.Value, ct);
         var effectivePolicy = resolvedEntitlements.ByokEnabled
             ? settings.RequestedProviderCredentialPolicy

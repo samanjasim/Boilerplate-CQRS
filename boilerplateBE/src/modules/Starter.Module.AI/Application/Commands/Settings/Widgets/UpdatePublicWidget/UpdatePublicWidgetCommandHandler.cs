@@ -21,7 +21,7 @@ internal sealed class UpdatePublicWidgetCommandHandler(
             return Result.Failure<AiPublicWidgetDto>(
                 Error.Validation("AiSettings.TenantIdRequired", "A tenant id is required to update AI public widgets."));
 
-        var resolvedEntitlements = await entitlements.ResolveAsync(ct);
+        var resolvedEntitlements = await entitlements.ResolveAsync(currentUser.TenantId.Value, ct);
         var entitlementResult = AiPublicWidgetRules.ValidateEntitlements(resolvedEntitlements);
         if (entitlementResult.IsFailure)
             return Result.Failure<AiPublicWidgetDto>(entitlementResult.Error);

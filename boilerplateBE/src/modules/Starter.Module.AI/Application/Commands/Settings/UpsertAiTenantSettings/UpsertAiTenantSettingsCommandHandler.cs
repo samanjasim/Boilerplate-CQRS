@@ -25,7 +25,7 @@ internal sealed class UpsertAiTenantSettingsCommandHandler(
             return Result.Failure<AiTenantSettingsDto>(
                 Error.Validation("AiSettings.TenantIdRequired", "A tenant id is required to update AI tenant settings."));
 
-        var resolvedEntitlements = await entitlements.ResolveAsync(ct);
+        var resolvedEntitlements = await entitlements.ResolveAsync(tenantId.Value, ct);
         var validationResult = ValidateLimits(request, resolvedEntitlements);
         if (validationResult is not null)
             return Result.Failure<AiTenantSettingsDto>(validationResult);

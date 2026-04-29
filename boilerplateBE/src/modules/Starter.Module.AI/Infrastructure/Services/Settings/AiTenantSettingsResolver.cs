@@ -22,7 +22,7 @@ internal sealed class AiTenantSettingsResolver(
     public async Task<ProviderCredentialPolicy> ResolveEffectivePolicyAsync(Guid tenantId, CancellationToken ct = default)
     {
         var settings = await GetOrDefaultAsync(tenantId, ct);
-        var resolvedEntitlements = await entitlements.ResolveAsync(ct);
+        var resolvedEntitlements = await entitlements.ResolveAsync(tenantId, ct);
         return resolvedEntitlements.ByokEnabled
             ? settings.RequestedProviderCredentialPolicy
             : ProviderCredentialPolicy.PlatformOnly;

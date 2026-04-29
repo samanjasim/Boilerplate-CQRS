@@ -333,6 +333,8 @@ public sealed class Plan5fAcidTests
         var resolver = new Mock<IAiEntitlementResolver>();
         resolver.Setup(x => x.ResolveAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(entitlements);
+        resolver.Setup(x => x.ResolveAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(entitlements);
         return resolver;
     }
 

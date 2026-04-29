@@ -24,7 +24,7 @@ internal sealed class AiProviderCredentialResolver(
         if (tenantId is null)
             return ResolvePlatform(provider);
 
-        var resolvedEntitlements = await entitlements.ResolveAsync(ct);
+        var resolvedEntitlements = await entitlements.ResolveAsync(tenantId.Value, ct);
         if (!resolvedEntitlements.ByokEnabled)
             return ResolvePlatform(provider);
 

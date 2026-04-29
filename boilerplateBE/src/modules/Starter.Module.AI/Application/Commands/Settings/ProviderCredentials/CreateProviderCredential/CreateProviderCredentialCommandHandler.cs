@@ -27,7 +27,7 @@ internal sealed class CreateProviderCredentialCommandHandler(
             return Result.Failure<AiProviderCredentialDto>(
                 Error.Validation("AiSettings.TenantIdRequired", "A tenant id is required to create AI provider credentials."));
 
-        var resolvedEntitlements = await entitlements.ResolveAsync(ct);
+        var resolvedEntitlements = await entitlements.ResolveAsync(tenantId.Value, ct);
         if (!resolvedEntitlements.ByokEnabled)
             return Result.Failure<AiProviderCredentialDto>(AiSettingsErrors.ByokDisabledByPlan);
 

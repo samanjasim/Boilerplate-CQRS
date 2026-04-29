@@ -26,7 +26,7 @@ internal sealed class RotateProviderCredentialCommandHandler(
             return Result.Failure<AiProviderCredentialDto>(
                 Error.Validation("AiSettings.TenantIdRequired", "A tenant id is required to rotate AI provider credentials."));
 
-        var resolvedEntitlements = await entitlements.ResolveAsync(ct);
+        var resolvedEntitlements = await entitlements.ResolveAsync(currentUser.TenantId.Value, ct);
         if (!resolvedEntitlements.ByokEnabled)
             return Result.Failure<AiProviderCredentialDto>(AiSettingsErrors.ByokDisabledByPlan);
 

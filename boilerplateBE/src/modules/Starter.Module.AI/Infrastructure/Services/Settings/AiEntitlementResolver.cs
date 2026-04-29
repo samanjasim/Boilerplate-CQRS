@@ -7,23 +7,31 @@ namespace Starter.Module.AI.Infrastructure.Services.Settings;
 internal sealed class AiEntitlementResolver(IFeatureFlagService featureFlags) : IAiEntitlementResolver
 {
     public async Task<AiEntitlementsDto> ResolveAsync(CancellationToken ct = default)
+        => await ResolveAsync(tenantId: null, ct);
+
+    public async Task<AiEntitlementsDto> ResolveAsync(Guid? tenantId, CancellationToken ct = default)
     {
-        var allowedProviders = await featureFlags.GetValueAsync<string[]>("ai.providers.allowed", ct);
-        var allowedModels = await featureFlags.GetValueAsync<string[]>("ai.models.allowed", ct);
+        var allowedProviders = await GetValueAsync<string[]>("ai.providers.allowed", tenantId, ct);
+        var allowedModels = await GetValueAsync<string[]>("ai.models.allowed", tenantId, ct);
 
         return new AiEntitlementsDto(
-            TotalMonthlyUsd: await featureFlags.GetValueAsync<decimal>("ai.cost.tenant_monthly_usd", ct),
-            TotalDailyUsd: await featureFlags.GetValueAsync<decimal>("ai.cost.tenant_daily_usd", ct),
-            PlatformMonthlyUsd: await featureFlags.GetValueAsync<decimal>("ai.cost.platform_monthly_usd", ct),
-            PlatformDailyUsd: await featureFlags.GetValueAsync<decimal>("ai.cost.platform_daily_usd", ct),
-            RequestsPerMinute: await featureFlags.GetValueAsync<int>("ai.agents.requests_per_minute_default", ct),
-            ByokEnabled: await featureFlags.GetValueAsync<bool>("ai.provider_keys.byok_enabled", ct),
-            WidgetsEnabled: await featureFlags.GetValueAsync<bool>("ai.widgets.enabled", ct),
-            WidgetMaxCount: await featureFlags.GetValueAsync<int>("ai.widgets.max_count", ct),
-            WidgetMonthlyTokens: await featureFlags.GetValueAsync<int>("ai.widgets.monthly_tokens", ct),
-            WidgetDailyTokens: await featureFlags.GetValueAsync<int>("ai.widgets.daily_tokens", ct),
-            WidgetRequestsPerMinute: await featureFlags.GetValueAsync<int>("ai.widgets.requests_per_minute", ct),
+            TotalMonthlyUsd: await GetValueAsync<decimal>("ai.cost.tenant_monthly_usd", tenantId, ct),
+            TotalDailyUsd: await GetValueAsync<decimal>("ai.cost.tenant_daily_usd", tenantId, ct),
+            PlatformMonthlyUsd: await GetValueAsync<decimal>("ai.cost.platform_monthly_usd", tenantId, ct),
+            PlatformDailyUsd: await GetValueAsync<decimal>("ai.cost.platform_daily_usd", tenantId, ct),
+            RequestsPerMinute: await GetValueAsync<int>("ai.agents.requests_per_minute_default", tenantId, ct),
+            ByokEnabled: await GetValueAsync<bool>("ai.provider_keys.byok_enabled", tenantId, ct),
+            WidgetsEnabled: await GetValueAsync<bool>("ai.widgets.enabled", tenantId, ct),
+            WidgetMaxCount: await GetValueAsync<int>("ai.widgets.max_count", tenantId, ct),
+            WidgetMonthlyTokens: await GetValueAsync<int>("ai.widgets.monthly_tokens", tenantId, ct),
+            WidgetDailyTokens: await GetValueAsync<int>("ai.widgets.daily_tokens", tenantId, ct),
+            WidgetRequestsPerMinute: await GetValueAsync<int>("ai.widgets.requests_per_minute", tenantId, ct),
             AllowedProviders: allowedProviders,
             AllowedModels: allowedModels);
     }
+
+    private async Task<T> GetValueAsync<T>(string key, Guid? tenantId, CancellationToken ct)
+        => tenantId.HasValue
+            ? await featureFlags.GetValueForTenantAsync<T>(key, tenantId, ct)
+            : await featureFlags.GetValueAsync<T>(key, ct);
 }

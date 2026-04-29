@@ -53,6 +53,35 @@ public sealed class AiTenantSettingsHandlerTests
     }
 
     [Fact]
+    public async Task Get_With_Explicit_TenantId_Uses_That_Tenant_For_Entitlements()
+    {
+        var tenantId = Guid.NewGuid();
+        await using var db = CreateDb(null);
+        var settings = AiTenantSettings.CreateDefault(tenantId);
+        settings.UpdatePolicy(ProviderCredentialPolicy.TenantKeysAllowed, SafetyPreset.Standard);
+        db.AiTenantSettings.Add(settings);
+        await db.SaveChangesAsync();
+
+        var entitlementResolver = new Mock<IAiEntitlementResolver>();
+        entitlementResolver.Setup(x => x.ResolveAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Entitlements(byokEnabled: false));
+        entitlementResolver.Setup(x => x.ResolveAsync(tenantId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Entitlements(byokEnabled: true));
+
+        var handler = new GetAiTenantSettingsQueryHandler(
+            new AiTenantSettingsResolver(db, entitlementResolver.Object),
+            entitlementResolver.Object,
+            CurrentUser(tenantId: null).Object);
+
+        var result = await handler.Handle(new GetAiTenantSettingsQuery(tenantId), default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.RequestedProviderCredentialPolicy.Should().Be(ProviderCredentialPolicy.TenantKeysAllowed);
+        result.Value.EffectiveProviderCredentialPolicy.Should().Be(ProviderCredentialPolicy.TenantKeysAllowed);
+        entitlementResolver.Verify(x => x.ResolveAsync(tenantId, It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+    }
+
+    [Fact]
     public async Task Upsert_Rejects_Total_Monthly_Limit_Above_Entitlement()
     {
         var tenantId = Guid.NewGuid();
@@ -166,6 +195,8 @@ public sealed class AiTenantSettingsHandlerTests
     {
         var resolver = new Mock<IAiEntitlementResolver>();
         resolver.Setup(x => x.ResolveAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(entitlements);
+        resolver.Setup(x => x.ResolveAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(entitlements);
         return resolver;
     }

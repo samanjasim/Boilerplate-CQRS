@@ -81,6 +81,8 @@ public sealed class AiModelDefaultResolverTests
         var entitlementResolver = new Mock<IAiEntitlementResolver>();
         entitlementResolver.Setup(x => x.ResolveAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(entitlements ?? Entitlements());
+        entitlementResolver.Setup(x => x.ResolveAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(entitlements ?? Entitlements());
 
         return new AiModelDefaultResolver(db, entitlementResolver.Object, new StubProviderFactory());
     }

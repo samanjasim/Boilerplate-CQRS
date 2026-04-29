@@ -23,7 +23,7 @@ internal sealed class UpsertModelDefaultCommandHandler(
             return Result.Failure<AiModelDefaultDto>(
                 Error.Validation("AiSettings.TenantIdRequired", "A tenant id is required to update AI model defaults."));
 
-        var resolvedEntitlements = await entitlements.ResolveAsync(ct);
+        var resolvedEntitlements = await entitlements.ResolveAsync(tenantId.Value, ct);
         if (!IsProviderAllowed(resolvedEntitlements.AllowedProviders, request.Provider))
             return Result.Failure<AiModelDefaultDto>(AiSettingsErrors.ProviderNotAllowed(request.Provider.ToString()));
 

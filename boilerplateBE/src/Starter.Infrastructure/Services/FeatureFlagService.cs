@@ -25,9 +25,24 @@ internal sealed class FeatureFlagService(
         return JsonSerializer.Deserialize<T>(value)!;
     }
 
+    public async Task<T> GetValueForTenantAsync<T>(
+        string key,
+        Guid? tenantId,
+        CancellationToken cancellationToken = default)
+    {
+        var value = await GetResolvedValueForTenantAsync(key, tenantId, cancellationToken);
+        return JsonSerializer.Deserialize<T>(value)!;
+    }
+
     public async Task<Dictionary<string, string>> GetAllResolvedAsync(CancellationToken cancellationToken = default)
     {
-        var tenantId = currentUser.TenantId;
+        return await GetAllResolvedForTenantAsync(currentUser.TenantId, cancellationToken);
+    }
+
+    public async Task<Dictionary<string, string>> GetAllResolvedForTenantAsync(
+        Guid? tenantId,
+        CancellationToken cancellationToken = default)
+    {
         var cacheKey = tenantId.HasValue ? $"{CachePrefix}:{tenantId}" : $"{CachePrefix}:platform";
 
         return await cache.GetOrSetAsync(
@@ -52,6 +67,17 @@ internal sealed class FeatureFlagService(
     private async Task<string> GetResolvedValueAsync(string key, CancellationToken cancellationToken)
     {
         var allFlags = await GetAllResolvedAsync(cancellationToken);
+        return allFlags.TryGetValue(key, out var value)
+            ? value
+            : throw new KeyNotFoundException($"Feature flag '{key}' not found.");
+    }
+
+    private async Task<string> GetResolvedValueForTenantAsync(
+        string key,
+        Guid? tenantId,
+        CancellationToken cancellationToken)
+    {
+        var allFlags = await GetAllResolvedForTenantAsync(tenantId, cancellationToken);
         return allFlags.TryGetValue(key, out var value)
             ? value
             : throw new KeyNotFoundException($"Feature flag '{key}' not found.");

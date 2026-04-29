@@ -21,7 +21,7 @@ internal sealed class CreatePublicWidgetCommandHandler(
             return Result.Failure<AiPublicWidgetDto>(
                 Error.Validation("AiSettings.TenantIdRequired", "A tenant id is required to create AI public widgets."));
 
-        var resolvedEntitlements = await entitlements.ResolveAsync(ct);
+        var resolvedEntitlements = await entitlements.ResolveAsync(tenantId.Value, ct);
         var entitlementResult = AiPublicWidgetRules.ValidateEntitlements(resolvedEntitlements);
         if (entitlementResult.IsFailure)
             return Result.Failure<AiPublicWidgetDto>(entitlementResult.Error);
