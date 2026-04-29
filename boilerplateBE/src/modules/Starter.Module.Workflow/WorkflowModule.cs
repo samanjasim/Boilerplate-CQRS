@@ -47,6 +47,7 @@ public sealed class WorkflowModule : IModule, IModuleBusContributor
         });
 
         // Capability service — replaces NullWorkflowService
+        services.AddSingleton(TimeProvider.System);
         services.AddScoped<IWorkflowService, WorkflowEngine>();
 
         services.AddSingleton<IConditionEvaluator, ConditionEvaluator>();

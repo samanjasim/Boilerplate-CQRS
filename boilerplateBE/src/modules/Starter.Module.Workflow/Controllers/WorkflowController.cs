@@ -16,6 +16,7 @@ using Starter.Module.Workflow.Application.Commands.UpdateDefinition;
 using Starter.Module.Workflow.Application.DTOs;
 using Starter.Module.Workflow.Application.Queries.GetActiveDelegation;
 using Starter.Module.Workflow.Application.Queries.GetDelegations;
+using Starter.Module.Workflow.Application.Queries.GetInboxStatusCounts;
 using Starter.Module.Workflow.Application.Queries.GetPendingTaskCount;
 using Starter.Module.Workflow.Application.Queries.GetPendingTasks;
 using Starter.Module.Workflow.Application.Queries.GetWorkflowDefinitionDetail;
@@ -201,6 +202,15 @@ public sealed class WorkflowController(ISender mediator) : BaseApiController(med
     public async Task<IActionResult> GetPendingTaskCount(CancellationToken ct = default)
     {
         var result = await Mediator.Send(new GetPendingTaskCountQuery(), ct);
+        return HandleResult(result);
+    }
+
+    [HttpGet("tasks/status-counts")]
+    [Authorize(Policy = WorkflowPermissions.ActOnTask)]
+    [ProducesResponseType(typeof(ApiResponse<InboxStatusCountsDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetInboxStatusCounts(CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(new GetInboxStatusCountsQuery(), ct);
         return HandleResult(result);
     }
 
