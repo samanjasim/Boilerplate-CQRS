@@ -34,6 +34,16 @@ public static class ModuleLoader
 
         foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
         {
+            // Restrict discovery to assemblies that match the module naming convention
+            // (mirrors the *.Module.* DLL glob above). Without this filter, the test
+            // assembly's FakeModule helpers and any third-party DLL that happens to
+            // implement IModule would be picked up — and a parameterless-ctor failure
+            // on a non-module type would surface as a runtime crash with no useful
+            // context. Real modules ship as Starter.Module.X, so the glob is enough.
+            var assemblyName = assembly.GetName().Name;
+            if (assemblyName is null || !assemblyName.Contains(".Module.", StringComparison.Ordinal))
+                continue;
+
             try
             {
                 var types = assembly.GetTypes()
@@ -56,7 +66,19 @@ public static class ModuleLoader
 
     public static IReadOnlyList<IModule> ResolveOrder(IReadOnlyList<IModule> modules)
     {
-        var moduleMap = modules.ToDictionary(m => m.Name);
+        var moduleMap = new Dictionary<string, IModule>(modules.Count, StringComparer.Ordinal);
+        foreach (var module in modules)
+        {
+            if (!moduleMap.TryAdd(module.Name, module))
+            {
+                throw new InvalidOperationException(
+                    $"Two modules declare the same duplicate Name '{module.Name}'. " +
+                    $"IModule.Name is the lookup key for dependency resolution; duplicates would silently overwrite. " +
+                    $"First-registered type: {moduleMap[module.Name].GetType().FullName}; " +
+                    $"conflict: {module.GetType().FullName}.");
+            }
+        }
+
         var sorted = new List<IModule>();
         var visited = new HashSet<string>();
         var visiting = new HashSet<string>();
