@@ -8,6 +8,7 @@ import type {
   UpdatePlanData,
   ChangePlanData,
   PlanOption,
+  SubscriptionStatusCounts,
 } from '@/types';
 
 export const billingApi = {
@@ -63,6 +64,11 @@ export const billingApi = {
   // Platform admin: all subscriptions
   getAllSubscriptions: (params?: Record<string, unknown>) =>
     apiClient.get(API_ENDPOINTS.BILLING.SUBSCRIPTIONS, { params }).then(r => r.data),
+
+  getSubscriptionStatusCounts: () =>
+    apiClient
+      .get<{ data: SubscriptionStatusCounts }>(API_ENDPOINTS.BILLING.SUBSCRIPTION_STATUS_COUNTS)
+      .then(r => r.data),
 
   // Platform admin: per-tenant usage
   getTenantUsage: (tenantId: string) =>

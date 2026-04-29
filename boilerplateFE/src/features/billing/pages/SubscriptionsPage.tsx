@@ -11,6 +11,7 @@ import {
 import { PageHeader, EmptyState, Pagination, getPersistedPageSize } from '@/components/common';
 import { useAllSubscriptions } from '../api';
 import { InlinePlanSelector } from '../components/InlinePlanSelector';
+import { SubscriptionStatusHero } from '../components/SubscriptionStatusHero';
 import { ROUTES } from '@/config';
 import { formatDate } from '@/utils/format';
 import { STATUS_BADGE_VARIANT } from '@/constants';
@@ -63,6 +64,8 @@ export default function SubscriptionsPage() {
         title={t('billing.subscriptions')}
         subtitle={t('billing.subscriptionsSubtitle')}
       />
+
+      <SubscriptionStatusHero />
 
       {/* Search */}
       <div className="max-w-sm">

@@ -971,6 +971,14 @@
     "noPayments": "لا توجد سجلات مدفوعات",
     "subscriptions": "الاشتراكات",
     "subscriptionsSubtitle": "إدارة جميع اشتراكات المستأجرين",
+    "statusHero": {
+      "active": "نشط",
+      "activeEyebrow": "اشتراك",
+      "trialing": "تجريبي",
+      "trialingEyebrow": "في الفترة التجريبية",
+      "pastDue": "مستحق",
+      "pastDueEyebrow": "يحتاج إلى انتباه"
+    },
     "tenantColumn": "المستأجر",
     "planColumn": "الخطة",
     "usersColumn": "المستخدمون",

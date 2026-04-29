@@ -1019,6 +1019,14 @@
     "editPlanDesc": "Update the plan details below.",
     "subscriptions": "Subscriptions",
     "subscriptionsSubtitle": "Manage all tenant subscriptions",
+    "statusHero": {
+      "active": "Active",
+      "activeEyebrow": "subscriptions",
+      "trialing": "Trialing",
+      "trialingEyebrow": "in trial",
+      "pastDue": "Past-due",
+      "pastDueEyebrow": "needs attention"
+    },
     "tenantColumn": "Tenant",
     "planColumn": "Plan",
     "usersColumn": "Users",

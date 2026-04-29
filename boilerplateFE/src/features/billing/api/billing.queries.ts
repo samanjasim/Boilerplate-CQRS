@@ -144,6 +144,15 @@ export function useAllSubscriptions(params?: Record<string, unknown>) {
   });
 }
 
+export function useSubscriptionStatusCounts() {
+  return useQuery({
+    queryKey: queryKeys.billing.subscriptions.statusCounts(),
+    queryFn: () => billingApi.getSubscriptionStatusCounts(),
+    select: (r) => r.data,
+    staleTime: 30_000,
+  });
+}
+
 export function useTenantUsage(tenantId: string) {
   return useQuery({
     queryKey: queryKeys.billing.usage.tenant(tenantId),
@@ -178,6 +187,7 @@ export function useChangeTenantPlan() {
       queryClient.invalidateQueries({ queryKey: queryKeys.billing.subscription.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.billing.usage.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.billing.payments.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.billing.subscriptions.statusCounts() });
       queryClient.invalidateQueries({ queryKey: ['featureFlags'] });
       toast.success(i18n.t('billing.planChanged'));
     },

@@ -971,6 +971,14 @@
     "noPayments": "هیچ تۆماری پارەدانێک نەدۆزرایەوە",
     "subscriptions": "بەشداریکردنەکان",
     "subscriptionsSubtitle": "بەڕێوەبردنی هەموو بەشداریکردنەکانی کرێچییەکان",
+    "statusHero": {
+      "active": "چالاک",
+      "activeEyebrow": "بەشداربوون",
+      "trialing": "تاقیکردنەوە",
+      "trialingEyebrow": "لە ماوەی تاقیکردنەوە",
+      "pastDue": "دواکەوتوو",
+      "pastDueEyebrow": "پێویستی بە سەرنج هەیە"
+    },
     "tenantColumn": "کرێچی",
     "planColumn": "پلان",
     "usersColumn": "بەکارهێنەران",
