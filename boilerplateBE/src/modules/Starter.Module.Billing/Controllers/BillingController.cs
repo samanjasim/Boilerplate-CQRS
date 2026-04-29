@@ -15,6 +15,7 @@ using Starter.Module.Billing.Application.Queries.GetPlanById;
 using Starter.Module.Billing.Application.Queries.GetPlanOptions;
 using Starter.Module.Billing.Application.Queries.GetPlans;
 using Starter.Module.Billing.Application.Queries.GetSubscription;
+using Starter.Module.Billing.Application.Queries.GetSubscriptionStatusCounts;
 using Starter.Module.Billing.Application.Queries.GetUsage;
 using Starter.Abstractions.Capabilities;
 using Starter.Module.Billing.Constants;
@@ -176,6 +177,18 @@ public sealed class BillingController(ISender mediator) : Starter.Abstractions.W
     {
         var result = await Mediator.Send(new GetAllSubscriptionsQuery(pageNumber, pageSize, searchTerm), ct);
         return HandlePagedResult(result);
+    }
+
+    /// <summary>
+    /// Get subscription status distribution counts (SuperAdmin).
+    /// </summary>
+    [HttpGet("subscriptions/status-counts")]
+    [Authorize(Policy = BillingPermissions.ManageTenantSubscriptions)]
+    [ProducesResponseType(typeof(ApiResponse<SubscriptionStatusCountsDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetSubscriptionStatusCounts(CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(new GetSubscriptionStatusCountsQuery(), ct);
+        return HandleResult(result);
     }
 
     /// <summary>
