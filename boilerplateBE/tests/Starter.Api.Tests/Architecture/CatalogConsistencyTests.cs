@@ -63,11 +63,167 @@ public class CatalogConsistencyTests
             string.Join(", ", problems));
     }
 
+    [Fact]
+    public void Config_keys_are_present_and_unique()
+    {
+        using var doc = JsonDocument.Parse(File.ReadAllText(CatalogPath));
+        var configKeys = new Dictionary<string, string>(StringComparer.Ordinal);
+        var problems = new List<string>();
+
+        foreach (var module in ModuleEntries(doc))
+        {
+            if (!module.Value.TryGetProperty("configKey", out var configKeyProp) ||
+                configKeyProp.ValueKind != JsonValueKind.String ||
+                string.IsNullOrWhiteSpace(configKeyProp.GetString()))
+            {
+                problems.Add($"'{module.Name}' is missing a non-empty configKey");
+                continue;
+            }
+
+            var configKey = configKeyProp.GetString()!;
+            if (configKeys.TryGetValue(configKey, out var owner))
+            {
+                problems.Add($"'{module.Name}' and '{owner}' share configKey '{configKey}'");
+            }
+            else
+            {
+                configKeys[configKey] = module.Name;
+            }
+        }
+
+        problems.Should().BeEmpty(
+            "rename.ps1 emits activeModules keys from configKey, so keys must be stable and unique.");
+    }
+
+    [Fact]
+    public void Declared_backend_module_projects_exist()
+    {
+        using var doc = JsonDocument.Parse(File.ReadAllText(CatalogPath));
+        var repoRoot = GetRepoRoot();
+        var problems = new List<string>();
+
+        foreach (var module in ModuleEntries(doc))
+        {
+            var backendModule = ReadOptionalString(module.Value, "backendModule");
+            if (backendModule is null) continue;
+
+            var expectedPath = Path.Combine(repoRoot, "boilerplateBE", "src", "modules", backendModule);
+            if (!Directory.Exists(expectedPath))
+            {
+                problems.Add($"'{module.Name}.backendModule' points to missing project folder '{expectedPath}'");
+            }
+        }
+
+        problems.Should().BeEmpty(
+            "catalog backendModule values are used by generated-app composition and must resolve in the template.");
+    }
+
+    [Fact]
+    public void Declared_frontend_features_have_module_entrypoints()
+    {
+        using var doc = JsonDocument.Parse(File.ReadAllText(CatalogPath));
+        var repoRoot = GetRepoRoot();
+        var problems = new List<string>();
+
+        foreach (var module in ModuleEntries(doc))
+        {
+            var feature = ReadOptionalString(module.Value, "frontendFeature");
+            if (feature is null) continue;
+
+            var featurePath = Path.Combine(repoRoot, "boilerplateFE", "src", "features", feature);
+            var indexTs = Path.Combine(featurePath, "index.ts");
+            var indexTsx = Path.Combine(featurePath, "index.tsx");
+
+            if (!Directory.Exists(featurePath))
+            {
+                problems.Add($"'{module.Name}.frontendFeature' points to missing folder '{featurePath}'");
+                continue;
+            }
+
+            if (!File.Exists(indexTs) && !File.Exists(indexTsx))
+            {
+                problems.Add($"'{module.Name}.frontendFeature' must expose index.ts or index.tsx in '{featurePath}'");
+            }
+        }
+
+        problems.Should().BeEmpty(
+            "generated modules.config.ts imports selected web modules from their feature entrypoints.");
+    }
+
+    [Fact]
+    public void Declared_mobile_modules_have_matching_folder_and_entrypoint()
+    {
+        using var doc = JsonDocument.Parse(File.ReadAllText(CatalogPath));
+        var repoRoot = GetRepoRoot();
+        var problems = new List<string>();
+
+        foreach (var module in ModuleEntries(doc))
+        {
+            var mobileModule = ReadOptionalString(module.Value, "mobileModule");
+            var mobileFolder = ReadOptionalString(module.Value, "mobileFolder");
+
+            if (mobileModule is null && mobileFolder is null) continue;
+            if (mobileModule is null || mobileFolder is null)
+            {
+                problems.Add($"'{module.Name}' must define both mobileModule and mobileFolder, or neither");
+                continue;
+            }
+
+            var moduleFile = ToSnakeCase(mobileModule) + ".dart";
+            var expectedPath = Path.Combine(repoRoot, "boilerplateMobile", "lib", "modules", mobileFolder, moduleFile);
+
+            if (!File.Exists(expectedPath))
+            {
+                problems.Add($"'{module.Name}' mobile entrypoint missing at '{expectedPath}'");
+            }
+        }
+
+        problems.Should().BeEmpty(
+            "generated modules.config.dart imports selected mobile modules from catalog metadata.");
+    }
+
     private static bool IsLowerCamelCase(string id)
     {
         if (string.IsNullOrEmpty(id)) return false;
         if (!char.IsLower(id[0])) return false;
         return id.All(c => char.IsLetterOrDigit(c));
+    }
+
+    private static IEnumerable<JsonProperty> ModuleEntries(JsonDocument doc) =>
+        doc.RootElement.EnumerateObject().Where(p => !p.Name.StartsWith("_"));
+
+    private static string? ReadOptionalString(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var property)) return null;
+        if (property.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined) return null;
+        if (property.ValueKind != JsonValueKind.String) return null;
+
+        var value = property.GetString();
+        return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
+    private static string ToSnakeCase(string value)
+    {
+        var chars = new List<char>(value.Length + 8);
+        for (var i = 0; i < value.Length; i++)
+        {
+            var c = value[i];
+            if (char.IsUpper(c) && i > 0)
+            {
+                chars.Add('_');
+            }
+
+            chars.Add(char.ToLowerInvariant(c));
+        }
+
+        return new string(chars.ToArray());
+    }
+
+    private static string GetRepoRoot()
+    {
+        var catalog = new FileInfo(CatalogPath);
+        return catalog.Directory?.FullName
+            ?? throw new DirectoryNotFoundException("Unable to resolve repository root from " + CatalogPath);
     }
 
     private static string FindCatalogPath()
