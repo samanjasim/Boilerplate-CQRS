@@ -52,6 +52,7 @@
     "supportedPlatforms": ["backend", "web"],
     "backendModule": "Starter.Module.Products",
     "frontendFeature": "products",
+    "testsFolder": "Products",
     "configKey": "products",
     "required": false,
     "dependencies": [],
