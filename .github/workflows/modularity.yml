@@ -1,0 +1,156 @@
+name: Modularity Killer Tests
+
+# Tier 2.5 Theme 2 — verifies that scripts/rename.ps1 produces a buildable
+# template app for representative module selections. CI-gates the strict
+# dependency check that Tier 1 added so it can't silently regress.
+#
+# Spec: docs/superpowers/specs/2026-04-29-modularity-tier-2-5-hardening.md
+# Plan: docs/superpowers/plans/2026-04-29-modularity-tier-2-5-theme-2.md
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-killer:
+    name: Backend (modules=${{ matrix.label }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: none
+            modules: None
+          - label: all
+            modules: All
+          - label: workflow-chain
+            modules: workflow,commentsActivity,communication
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Generate app via rename.ps1
+        shell: pwsh
+        run: |
+          ./scripts/rename.ps1 `
+            -Name "killerSmoke" `
+            -OutputDir "${{ runner.temp }}" `
+            -Modules "${{ matrix.modules }}" `
+            -IncludeMobile:$false
+
+      - name: Restore + build generated backend
+        working-directory: ${{ runner.temp }}/killerSmoke/killerSmoke-BE
+        run: |
+          dotnet restore
+          dotnet build --no-restore -c Release
+
+      - name: Run generated app's architecture tests
+        working-directory: ${{ runner.temp }}/killerSmoke/killerSmoke-BE
+        run: |
+          dotnet test tests/killerSmoke.Api.Tests/killerSmoke.Api.Tests.csproj \
+            --no-build -c Release \
+            --filter "FullyQualifiedName~Architecture"
+
+  frontend-killer:
+    name: Frontend (modules=${{ matrix.label }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: none
+            modules: None
+          - label: all
+            modules: All
+          - label: workflow-chain
+            modules: workflow,commentsActivity,communication
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Generate app via rename.ps1
+        shell: pwsh
+        run: |
+          ./scripts/rename.ps1 `
+            -Name "killerSmoke" `
+            -OutputDir "${{ runner.temp }}" `
+            -Modules "${{ matrix.modules }}" `
+            -IncludeMobile:$false
+
+      - name: Install + lint + build generated frontend
+        working-directory: ${{ runner.temp }}/killerSmoke/killerSmoke-FE
+        run: |
+          npm install --no-audit --no-fund
+          npm run lint
+          npm run build
+
+  mobile-killer:
+    name: Mobile (modules=${{ matrix.label }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: none
+            modules: None
+          - label: all
+            modules: All
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Generate app via rename.ps1
+        shell: pwsh
+        run: |
+          ./scripts/rename.ps1 `
+            -Name "killerSmoke" `
+            -OutputDir "${{ runner.temp }}" `
+            -Modules "${{ matrix.modules }}" `
+            -IncludeMobile:$true
+
+      - name: pub get + analyze generated mobile app
+        working-directory: ${{ runner.temp }}/killerSmoke/killerSmoke-Mobile
+        run: |
+          flutter pub get
+          flutter analyze
+
+  negative-test:
+    name: Negative — missing dependency must fail rename.ps1
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run rename.ps1 with workflow but not its deps
+        shell: pwsh
+        continue-on-error: true
+        id: rename
+        run: |
+          $ErrorActionPreference = 'Continue'
+          ./scripts/rename.ps1 `
+            -Name "shouldFail" `
+            -OutputDir "${{ runner.temp }}" `
+            -Modules "workflow" `
+            -IncludeMobile:$false
+          "exitcode=$LASTEXITCODE" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Assert exit code was non-zero
+        shell: pwsh
+        run: |
+          if ('${{ steps.rename.outputs.exitcode }}' -eq '0') {
+            throw "rename.ps1 should have failed when 'workflow' was selected without its dependencies (commentsActivity, communication), but it succeeded. Strict mode is broken."
+          }
+          Write-Host "PASS: rename.ps1 correctly rejected the invalid selection."
