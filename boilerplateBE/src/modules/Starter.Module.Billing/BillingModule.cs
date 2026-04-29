@@ -104,6 +104,16 @@ public sealed class BillingModule : IModule
             new { key = "ai.agents.max_count", value = "0", translations = new { en = new { label = "" }, ar = new { label = "" } } },
             new { key = "ai.agents.operational_enabled", value = "false", translations = new { en = new { label = "" }, ar = new { label = "" } } },
             new { key = "ai.agents.requests_per_minute_default", value = "0", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.cost.platform_monthly_usd", value = "0", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.cost.platform_daily_usd", value = "0", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.provider_keys.byok_enabled", value = "false", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.widgets.enabled", value = "false", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.widgets.max_count", value = "0", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.widgets.monthly_tokens", value = "0", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.widgets.daily_tokens", value = "0", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.widgets.requests_per_minute", value = "0", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.providers.allowed", value = "[]", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.models.allowed", value = "[]", translations = new { en = new { label = "" }, ar = new { label = "" } } },
         });
 
         var starterFeatures = JsonSerializer.Serialize(new[]
@@ -129,6 +139,16 @@ public sealed class BillingModule : IModule
             new { key = "ai.agents.max_count", value = "3", translations = new { en = new { label = "Up to 3 AI agents" }, ar = new { label = "حتى 3 وكلاء ذكاء اصطناعي" } } },
             new { key = "ai.agents.operational_enabled", value = "false", translations = new { en = new { label = "" }, ar = new { label = "" } } },
             new { key = "ai.agents.requests_per_minute_default", value = "10", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.cost.platform_monthly_usd", value = "20", translations = new { en = new { label = "$20/mo platform AI credit" }, ar = new { label = "رصيد ذكاء اصطناعي 20$ شهريًا" } } },
+            new { key = "ai.cost.platform_daily_usd", value = "2", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.provider_keys.byok_enabled", value = "false", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.widgets.enabled", value = "false", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.widgets.max_count", value = "0", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.widgets.monthly_tokens", value = "0", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.widgets.daily_tokens", value = "0", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.widgets.requests_per_minute", value = "0", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.providers.allowed", value = "[]", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.models.allowed", value = "[]", translations = new { en = new { label = "" }, ar = new { label = "" } } },
         });
 
         var proFeatures = JsonSerializer.Serialize(new[]
@@ -154,6 +174,16 @@ public sealed class BillingModule : IModule
             new { key = "ai.agents.max_count", value = "20", translations = new { en = new { label = "Up to 20 AI agents" }, ar = new { label = "حتى 20 وكيل ذكاء اصطناعي" } } },
             new { key = "ai.agents.operational_enabled", value = "true", translations = new { en = new { label = "Operational AI agents" }, ar = new { label = "وكلاء الذكاء الاصطناعي التشغيليون" } } },
             new { key = "ai.agents.requests_per_minute_default", value = "60", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.cost.platform_monthly_usd", value = "200", translations = new { en = new { label = "$200/mo platform AI credit" }, ar = new { label = "رصيد ذكاء اصطناعي 200$ شهريًا" } } },
+            new { key = "ai.cost.platform_daily_usd", value = "20", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.provider_keys.byok_enabled", value = "true", translations = new { en = new { label = "Tenant provider keys" }, ar = new { label = "مفاتيح مزود خاصة بالمستأجر" } } },
+            new { key = "ai.widgets.enabled", value = "true", translations = new { en = new { label = "Public AI widgets" }, ar = new { label = "ودجات ذكاء اصطناعي عامة" } } },
+            new { key = "ai.widgets.max_count", value = "3", translations = new { en = new { label = "Up to 3 AI widgets" }, ar = new { label = "حتى 3 ودجات ذكاء اصطناعي" } } },
+            new { key = "ai.widgets.monthly_tokens", value = "50000", translations = new { en = new { label = "50k widget tokens/mo" }, ar = new { label = "50 ألف رمز للودجات شهريًا" } } },
+            new { key = "ai.widgets.daily_tokens", value = "5000", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.widgets.requests_per_minute", value = "30", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.providers.allowed", value = "[]", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.models.allowed", value = "[]", translations = new { en = new { label = "" }, ar = new { label = "" } } },
         });
 
         var enterpriseFeatures = JsonSerializer.Serialize(new[]
@@ -179,6 +209,16 @@ public sealed class BillingModule : IModule
             new { key = "ai.agents.max_count", value = "200", translations = new { en = new { label = "Up to 200 AI agents" }, ar = new { label = "حتى 200 وكيل ذكاء اصطناعي" } } },
             new { key = "ai.agents.operational_enabled", value = "true", translations = new { en = new { label = "Operational AI agents" }, ar = new { label = "وكلاء الذكاء الاصطناعي التشغيليون" } } },
             new { key = "ai.agents.requests_per_minute_default", value = "300", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.cost.platform_monthly_usd", value = "2000", translations = new { en = new { label = "$2,000/mo platform AI credit" }, ar = new { label = "رصيد ذكاء اصطناعي 2,000$ شهريًا" } } },
+            new { key = "ai.cost.platform_daily_usd", value = "200", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.provider_keys.byok_enabled", value = "true", translations = new { en = new { label = "Tenant provider keys" }, ar = new { label = "مفاتيح مزود خاصة بالمستأجر" } } },
+            new { key = "ai.widgets.enabled", value = "true", translations = new { en = new { label = "Public AI widgets" }, ar = new { label = "ودجات ذكاء اصطناعي عامة" } } },
+            new { key = "ai.widgets.max_count", value = "25", translations = new { en = new { label = "Up to 25 AI widgets" }, ar = new { label = "حتى 25 ودجت ذكاء اصطناعي" } } },
+            new { key = "ai.widgets.monthly_tokens", value = "1000000", translations = new { en = new { label = "1M widget tokens/mo" }, ar = new { label = "مليون رمز للودجات شهريًا" } } },
+            new { key = "ai.widgets.daily_tokens", value = "100000", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.widgets.requests_per_minute", value = "120", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.providers.allowed", value = "[]", translations = new { en = new { label = "" }, ar = new { label = "" } } },
+            new { key = "ai.models.allowed", value = "[]", translations = new { en = new { label = "" }, ar = new { label = "" } } },
         });
 
         var plans = new[]

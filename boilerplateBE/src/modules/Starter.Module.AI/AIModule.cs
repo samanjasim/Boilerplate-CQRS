@@ -37,9 +37,11 @@ using Starter.Module.AI.Application.Services.Approvals;
 using Starter.Module.AI.Application.Services.Moderation;
 using Starter.Module.AI.Application.Services.Personas;
 using Starter.Module.AI.Application.Services.Runtime;
+using Starter.Module.AI.Application.Services.Settings;
 using Starter.Module.AI.Infrastructure.Runtime;
 using Starter.Module.AI.Infrastructure.Services.Moderation;
 using Starter.Module.AI.Infrastructure.Services.Personas;
+using Starter.Module.AI.Infrastructure.Services.Settings;
 using Starter.Module.AI.Infrastructure.Settings;
 using Starter.Module.AI.Infrastructure.Persistence.Seed;
 
@@ -146,6 +148,7 @@ public sealed class AIModule : IModule
         services.AddScoped<CurrentAgentRunContextAccessor>();
         services.AddScoped<ICurrentAgentRunContextAccessor>(sp =>
             sp.GetRequiredService<CurrentAgentRunContextAccessor>());
+        services.AddScoped<IAiEntitlementResolver, AiEntitlementResolver>();
 
         services.AddSingleton<TokenCounter>();
 

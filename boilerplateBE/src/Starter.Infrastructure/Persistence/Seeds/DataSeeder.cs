@@ -427,9 +427,19 @@ public static class DataSeeder
             // AI agent identity + cost enforcement (Plan 5d-1)
             FeatureFlag.Create("ai.cost.tenant_monthly_usd", "AI Tenant Monthly USD Cap", "Monthly USD ceiling for AI agent runs per tenant", "0", FlagValueType.Integer, FlagCategory.Ai, true),
             FeatureFlag.Create("ai.cost.tenant_daily_usd", "AI Tenant Daily USD Cap", "Daily USD ceiling for AI agent runs per tenant", "0", FlagValueType.Integer, FlagCategory.Ai, true),
+            FeatureFlag.Create("ai.cost.platform_monthly_usd", "AI Platform Monthly USD Credit", "Monthly USD ceiling for platform-key AI spend per tenant", "0", FlagValueType.Integer, FlagCategory.Ai, true),
+            FeatureFlag.Create("ai.cost.platform_daily_usd", "AI Platform Daily USD Credit", "Daily USD ceiling for platform-key AI spend per tenant", "0", FlagValueType.Integer, FlagCategory.Ai, true),
             FeatureFlag.Create("ai.agents.max_count", "Max AI Agents", "Maximum number of AI agents per tenant", "0", FlagValueType.Integer, FlagCategory.Ai, true),
             FeatureFlag.Create("ai.agents.operational_enabled", "Operational AI Agents Enabled", "Allow event-/cron-triggered AI agents (no human caller)", "false", FlagValueType.Boolean, FlagCategory.Ai, true),
             FeatureFlag.Create("ai.agents.requests_per_minute_default", "Default Agent RPM", "Default per-agent requests-per-minute ceiling", "0", FlagValueType.Integer, FlagCategory.Ai, true),
+            FeatureFlag.Create("ai.provider_keys.byok_enabled", "AI BYOK Enabled", "Allow tenant-owned AI provider keys", "false", FlagValueType.Boolean, FlagCategory.Ai, true),
+            FeatureFlag.Create("ai.widgets.enabled", "AI Public Widgets Enabled", "Allow public AI widgets", "false", FlagValueType.Boolean, FlagCategory.Ai, true),
+            FeatureFlag.Create("ai.widgets.max_count", "Max AI Public Widgets", "Maximum public AI widgets per tenant", "0", FlagValueType.Integer, FlagCategory.Ai, true),
+            FeatureFlag.Create("ai.widgets.monthly_tokens", "AI Widget Monthly Tokens", "Monthly public-widget token ceiling", "0", FlagValueType.Integer, FlagCategory.Ai, true),
+            FeatureFlag.Create("ai.widgets.daily_tokens", "AI Widget Daily Tokens", "Daily public-widget token ceiling", "0", FlagValueType.Integer, FlagCategory.Ai, true),
+            FeatureFlag.Create("ai.widgets.requests_per_minute", "AI Widget RPM", "Default public-widget requests-per-minute ceiling", "0", FlagValueType.Integer, FlagCategory.Ai, true),
+            FeatureFlag.Create("ai.providers.allowed", "Allowed AI Providers", "JSON array of allowed AI providers; empty means all registered providers", "[]", FlagValueType.Json, FlagCategory.Ai, true),
+            FeatureFlag.Create("ai.models.allowed", "Allowed AI Models", "JSON array of allowed AI models; empty means all configured models", "[]", FlagValueType.Json, FlagCategory.Ai, true),
         };
 
         context.Set<FeatureFlag>().AddRange(flags);
