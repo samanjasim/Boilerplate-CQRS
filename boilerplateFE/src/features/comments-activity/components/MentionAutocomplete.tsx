@@ -55,10 +55,7 @@ export const MentionAutocomplete = forwardRef<MentionAutocompleteHandle, Mention
       entityId,
     );
 
-    const users: MentionableUser[] = useMemo(() => {
-      const raw = Array.isArray(data) ? data : (data?.data ?? []);
-      return raw as MentionableUser[];
-    }, [data]);
+    const users: MentionableUser[] = useMemo(() => data?.items ?? [], [data]);
 
     // Reset the keyboard selection whenever the search term or result list
     // changes. Adjust-state-in-render pattern — cheaper than an effect and

@@ -52,11 +52,11 @@ export function EntityTimeline({ entityType, entityId, tenantId }: EntityTimelin
   }>({ data: undefined, filter, page: pageNumber });
 
   if (
-    data?.data &&
-    (lastSync.data !== data.data || lastSync.filter !== filter || lastSync.page !== pageNumber)
+    data?.items &&
+    (lastSync.data !== data.items || lastSync.filter !== filter || lastSync.page !== pageNumber)
   ) {
     const filterChanged = lastSync.filter !== filter;
-    const incoming = data.data;
+    const incoming = data.items;
     setLastSync({ data: incoming, filter, page: pageNumber });
     if (pageNumber === 1 || filterChanged) {
       setAccumulatedItems(incoming);
