@@ -1545,6 +1545,7 @@
         "tenantId": "بەکارهێنەر"
       },
       "pendingActionTitle": "کرداری پێویست",
+      "possibleOutcomes": "ئەنجامە گونجاوەکان",
       "untitledInstance": "بێ ناونیشان #{{shortId}}",
       "tabOverview": "پوختە",
       "tabAnalytics": "شیکاری",

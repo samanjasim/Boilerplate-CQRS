@@ -18,6 +18,7 @@ import { useWorkflowDefinition, useCloneDefinition, useUpdateDefinition } from '
 import { WorkflowAnalyticsTab } from '../components/analytics/WorkflowAnalyticsTab';
 import { DesignerCanvas } from '../components/designer/DesignerCanvas';
 import { useDesignerStore } from '../components/designer/hooks/useDesignerStore';
+import { useAutoLayout } from '../components/designer/hooks/useAutoLayout';
 import { WorkflowStatusHeader } from '../components/WorkflowStatusHeader';
 import type { WorkflowStateConfig, WorkflowTransitionConfig } from '@/types/workflow.types';
 
@@ -29,10 +30,21 @@ function DefinitionCanvasPreview({
   transitions: WorkflowTransitionConfig[];
 }) {
   const load = useDesignerStore((state) => state.load);
+  const setNodesFromLayout = useDesignerStore((state) => state.setNodesFromLayout);
+  const autoLayout = useAutoLayout();
 
   useEffect(() => {
     load(states, transitions);
-  }, [load, states, transitions]);
+    // Templates and freshly-cloned definitions have no uiPosition values; the
+    // store falls back to x=0,y=i*140 which stacks all nodes in a single
+    // column. Always re-layout for the read-only preview so parallel
+    // terminals (Approved + Rejected) land side-by-side.
+    const hasPositions = states.some((s) => s.uiPosition);
+    if (!hasPositions) {
+      const { nodes, edges } = useDesignerStore.getState();
+      setNodesFromLayout(autoLayout(nodes, edges));
+    }
+  }, [load, setNodesFromLayout, autoLayout, states, transitions]);
 
   return <DesignerCanvas readOnly />;
 }

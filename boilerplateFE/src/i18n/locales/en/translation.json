@@ -1684,6 +1684,7 @@
         "tenantId": "Tenant"
       },
       "pendingActionTitle": "Action required",
+      "possibleOutcomes": "Possible outcomes",
       "untitledInstance": "Untitled #{{shortId}}",
       "tabOverview": "Overview",
       "tabAnalytics": "Analytics",

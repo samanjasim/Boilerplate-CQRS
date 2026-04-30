@@ -1,7 +1,9 @@
+import { GitBranch } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { useWorkflowHistory } from '../api';
+import { cn } from '@/lib/utils';
 import { formatDateTime } from '@/utils/format';
 import type { WorkflowStateConfig, WorkflowStepRecord } from '@/types/workflow.types';
 
@@ -70,6 +72,18 @@ function isTerminalType(type?: string) {
   return type === 'Terminal' || type === 'Final';
 }
 
+const POSITIVE_TERMINAL_NAME =
+  /^(approved?|complet(ed)?|passed?|resolv(ed)?|granted|success(ful)?|done|published?|active)$/i;
+const NEGATIVE_TERMINAL_NAME =
+  /^(rejected?|cancell?ed|fail(ed)?|denied|abort(ed)?|error|archived?|expired)$/i;
+
+function isPositiveTerminal(name: string) {
+  return POSITIVE_TERMINAL_NAME.test(name);
+}
+function isNegativeTerminal(name: string) {
+  return NEGATIVE_TERMINAL_NAME.test(name);
+}
+
 export function WorkflowStepTimeline({
   instanceId,
   currentState,
@@ -94,26 +108,33 @@ export function WorkflowStepTimeline({
     );
   }
 
-  // If the workflow reached one of its terminal states, hide the other
-  // (untraversed) terminal siblings — Approved/Rejected don't both belong on
-  // a history view once the decision was made. This matches user mental model:
-  // a timeline is what HAPPENED, not the topology that could've happened.
+  // Once a workflow reaches a terminal, hide the untraversed terminal siblings —
+  // Approved/Rejected don't both belong on a history view once the decision
+  // was made. While the workflow is still active, render the unreached
+  // terminals as a single horizontal "Possible outcomes" group at the bottom
+  // so users see them as parallel branches, not as sequential steps.
   const terminals = states.filter((s) => isTerminalType(s.type));
   const reachedTerminal =
     terminals.find((s) => s.name === currentState
         && (instanceStatus === 'Completed' || instanceStatus === 'Cancelled'))
     ?? terminals.find((s) => records.some((r) => r.toState === s.name));
 
-  const visibleStates = reachedTerminal
+  const sequentialStates = reachedTerminal
     ? states.filter((s) => !isTerminalType(s.type) || s.name === reachedTerminal.name)
-    : states;
+    : states.filter((s) => !isTerminalType(s.type));
+
+  // Show unreached terminals as a horizontal fork group only while the workflow
+  // is still active (no terminal has been reached yet).
+  const futureTerminals = reachedTerminal
+    ? []
+    : terminals;
 
   return (
     <div className="space-y-0">
-      {visibleStates.map((state, index) => {
+      {sequentialStates.map((state, index) => {
         const status = getStepStatus(state.name, currentState, records, instanceStatus);
         const record = getRecordForState(state.name);
-        const isLast = index === visibleStates.length - 1;
+        const isLast = index === sequentialStates.length - 1 && futureTerminals.length === 0;
 
         // Check for parallel info in metadata
         const parallelTotal = record?.metadata?.parallelTotal as number | undefined;
@@ -177,6 +198,41 @@ export function WorkflowStepTimeline({
           </div>
         );
       })}
+      {futureTerminals.length > 0 && (
+        <div className="flex gap-3">
+          <div className="flex flex-col items-center">
+            <GitBranch className="h-3 w-3 mt-1 text-muted-foreground/60 shrink-0" />
+          </div>
+          <div className="pb-1 min-w-0 flex-1">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground/70 mb-2">
+              {t('workflow.detail.possibleOutcomes')}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {futureTerminals.map((terminal) => (
+                <span
+                  key={terminal.name}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs',
+                    isPositiveTerminal(terminal.name) && 'border-emerald-500/40 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400',
+                    isNegativeTerminal(terminal.name) && 'border-destructive/40 bg-destructive/10 text-destructive',
+                    !isPositiveTerminal(terminal.name) && !isNegativeTerminal(terminal.name) && 'border-border bg-muted/40 text-muted-foreground',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'h-1.5 w-1.5 rounded-full',
+                      isPositiveTerminal(terminal.name) && 'bg-emerald-500',
+                      isNegativeTerminal(terminal.name) && 'bg-destructive',
+                      !isPositiveTerminal(terminal.name) && !isNegativeTerminal(terminal.name) && 'bg-muted-foreground/40',
+                    )}
+                  />
+                  {terminal.displayName || terminal.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
