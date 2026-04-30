@@ -117,14 +117,16 @@ export default function TriggerRulesPage() {
                 <TableCell>
                   <div className="flex flex-wrap items-center gap-1">
                     {rule.channelSequence.map((ch, idx) => (
-                      <span key={ch} className="flex items-center gap-1">
+                      <span key={`${idx}-${ch}`} className="flex items-center gap-1">
                         {idx > 0 && (
                           <ChevronRight
                             className="h-3 w-3 text-muted-foreground rtl:rotate-180"
                             aria-label={t('communication.triggerRules.channelSequence.connector')}
                           />
                         )}
-                        <Badge variant="secondary" className="text-xs">{ch}</Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          {t(`communication.channels.channelNames.${ch}`)}
+                        </Badge>
                       </span>
                     ))}
                   </div>

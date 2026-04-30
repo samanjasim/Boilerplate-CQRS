@@ -32,5 +32,5 @@ export const PROVIDER_LOGOS: Record<string, string> = {
 export type KnownProvider = keyof typeof PROVIDER_LOGOS;
 
 export function isKnownProvider(name: string): name is KnownProvider {
-  return name in PROVIDER_LOGOS;
+  return Object.prototype.hasOwnProperty.call(PROVIDER_LOGOS, name);
 }
