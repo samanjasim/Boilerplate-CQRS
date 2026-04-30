@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import { FileText, Mail, Smartphone, Bell, MessageCircle, Inbox } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PageHeader, EmptyState } from '@/components/common';
-import { useMessageTemplates, useTemplateCategories } from '../api';
+import { useMessageTemplates } from '../api';
 import { TemplateEditorDialog } from '../components/TemplateEditorDialog';
+import { TemplateCategoryRail } from '../components/TemplateCategoryRail';
 import { usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
 import type { MessageTemplateDto, NotificationChannel } from '@/types/communication.types';
@@ -23,27 +25,50 @@ const CHANNEL_ICONS: Record<NotificationChannel, typeof Mail> = {
 export default function TemplatesPage() {
   const { t } = useTranslation();
   const { hasPermission } = usePermissions();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
 
-  const { data: categoriesData } = useTemplateCategories();
-  const { data, isLoading, isError } = useMessageTemplates(selectedCategory);
-
-  const templates: MessageTemplateDto[] = data?.data ?? [];
-  const categories: string[] = categoriesData?.data ?? [];
+  // Fetch the full unfiltered list — categories derived client-side.
+  const { data, isLoading, isError } = useMessageTemplates();
+  const templates = useMemo<MessageTemplateDto[]>(() => data?.data ?? [], [data?.data]);
 
   const canManageTemplates = hasPermission(PERMISSIONS.Communication.ManageTemplates);
 
-  // Group templates by category
-  const grouped = templates.reduce<Record<string, MessageTemplateDto[]>>((acc, tpl) => {
-    const bucket = acc[tpl.category] ?? [];
-    bucket.push(tpl);
-    acc[tpl.category] = bucket;
-    return acc;
-  }, {});
+  // Group templates by category. Categories sorted alphabetically; templates within each
+  // category sorted by name.
+  const grouped = useMemo(() => {
+    const buckets = new Map<string, MessageTemplateDto[]>();
+    for (const tpl of templates) {
+      const list = buckets.get(tpl.category) ?? [];
+      list.push(tpl);
+      buckets.set(tpl.category, list);
+    }
+    for (const list of buckets.values()) {
+      list.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    return Array.from(buckets.entries())
+      .map(([name, list]) => ({ name, list }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [templates]);
 
-  const sortedCategories = Object.keys(grouped).sort();
+  const totalCount = templates.length;
+  const categoryDescriptors = grouped.map(({ name, list }) => ({ name, count: list.length }));
+
+  const urlCategory = searchParams.get('category') ?? undefined;
+  const knownCategoryNames = new Set(grouped.map((g) => g.name));
+  const selectedCategory =
+    urlCategory && knownCategoryNames.has(urlCategory) ? urlCategory : undefined;
+
+  const handleSelect = (category: string | undefined) => {
+    const next = new URLSearchParams(searchParams);
+    if (category === undefined) {
+      next.delete('category');
+    } else {
+      next.set('category', category);
+    }
+    setSearchParams(next, { replace: true });
+  };
 
   if (isError) {
     return (
@@ -66,6 +91,11 @@ export default function TemplatesPage() {
     );
   }
 
+  const visibleGroups =
+    selectedCategory === undefined
+      ? grouped
+      : grouped.filter((g) => g.name === selectedCategory);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -73,46 +103,43 @@ export default function TemplatesPage() {
         subtitle={t('communication.templates.subtitle')}
       />
 
-      {/* Category filter tabs */}
-      {categories.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant={selectedCategory === undefined ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setSelectedCategory(undefined)}
-          >
-            {t('communication.templates.allCategories')}
-          </Button>
-          {categories.map((cat) => (
-            <Button
-              key={cat}
-              variant={selectedCategory === cat ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSelectedCategory(cat)}
-            >
-              {cat}
-            </Button>
-          ))}
-        </div>
-      )}
-
-      {templates.length === 0 ? (
+      {totalCount === 0 ? (
         <EmptyState
           icon={FileText}
           title={t('communication.templates.noTemplates')}
           description={t('communication.templates.noTemplatesDescription')}
         />
       ) : (
-        <div className="space-y-8">
-          {sortedCategories.map((category) => {
-            const categoryTemplates = grouped[category];
-            if (!categoryTemplates || categoryTemplates.length === 0) return null;
+        <div className="grid gap-6 lg:grid-cols-[200px_minmax(0,1fr)]">
+          {/* lg+ rail */}
+          <div className="hidden lg:block">
+            <TemplateCategoryRail
+              categories={categoryDescriptors}
+              selectedCategory={selectedCategory}
+              onSelect={handleSelect}
+              totalCount={totalCount}
+              variant="rail"
+            />
+          </div>
 
-            return (
-              <div key={category} className="space-y-3">
+          {/* <lg chip row */}
+          <div className="lg:hidden lg:col-span-2">
+            <TemplateCategoryRail
+              categories={categoryDescriptors}
+              selectedCategory={selectedCategory}
+              onSelect={handleSelect}
+              totalCount={totalCount}
+              variant="chips"
+            />
+          </div>
+
+          {/* Main column */}
+          <div className="space-y-8 min-w-0">
+            {visibleGroups.map(({ name, list }) => (
+              <section key={name} className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-semibold text-foreground">{category}</h3>
-                  <Badge variant="secondary" className="text-xs">{categoryTemplates.length}</Badge>
+                  <h3 className="text-lg font-semibold text-foreground">{name}</h3>
+                  <Badge variant="secondary" className="text-xs">{list.length}</Badge>
                 </div>
 
                 <Table>
@@ -126,7 +153,7 @@ export default function TemplatesPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {categoryTemplates.map((tpl) => {
+                    {list.map((tpl) => {
                       const ChannelIcon = CHANNEL_ICONS[tpl.defaultChannel];
                       return (
                         <TableRow key={tpl.id}>
@@ -173,13 +200,12 @@ export default function TemplatesPage() {
                     })}
                   </TableBody>
                 </Table>
-              </div>
-            );
-          })}
+              </section>
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Template Editor Dialog */}
       <TemplateEditorDialog
         templateId={selectedTemplateId}
         open={!!selectedTemplateId}

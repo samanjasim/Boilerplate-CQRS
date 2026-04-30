@@ -1187,6 +1187,8 @@ Per `docs/architecture/codebase-assessment.md` Track 4, this is PR #3 of the pro
 | #6 | Slice 4 — monetization & data | billing, products, workflow |
 | #7 | Slice 5 — long tail + final lint hardening | api-keys, audit-logs, files, reports, notifications, settings, webhooks, communication, feature-flags, import-export, access |
 
+Note: `origin/main` d986e057 added Phase 5b Communication after this branch was cut. Those files are merged here, but their envelope cleanup is intentionally deferred to the existing Slice 5 `communication` entry; slice 1 remains limited to `comments-activity`.
+
 After PR #7, ESLint rule 3 flips global and Track 4 D1 closes.
 ```
 

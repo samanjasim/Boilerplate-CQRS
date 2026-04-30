@@ -1326,7 +1326,22 @@
         "step": "الخطوة {{current}} من {{total}}",
         "displayNamePlaceholder": "مثال: SMTP الإنتاج"
       },
-      "confirmDelete": "هل أنت متأكد من حذف إعداد هذه القناة؟ لا يمكن التراجع عن هذا الإجراء."
+      "confirmDelete": "هل أنت متأكد من حذف إعداد هذه القناة؟ لا يمكن التراجع عن هذا الإجراء.",
+      "statusCounts": {
+        "active": "نشطة",
+        "activeEyebrow": "تعمل حالياً",
+        "configured": "مهيأة",
+        "configuredEyebrow": "تم إعدادها ولكنها معطلة",
+        "errored": "بها أخطاء",
+        "erroredEyebrow": "يتطلب الانتباه"
+      },
+      "lastTested": {
+        "justNow": "آخر اختبار {{relative}}",
+        "today": "آخر اختبار {{relative}}",
+        "thisWeek": "آخر اختبار {{relative}}",
+        "older": "آخر اختبار {{relative}}",
+        "never": "لم تُختبر مطلقاً"
+      }
     },
     "templates": {
       "title": "القوالب",
@@ -1359,7 +1374,9 @@
         "yourOverride": "تخصيصك",
         "subjectPlaceholder": "سطر موضوع البريد مع {{متغيرات}}",
         "bodyPlaceholder": "محتوى الرسالة مع {{متغيرات}} و{{#شروط}} و{{#حلقات}}"
-      }
+      },
+      "categoryCount_one": "قالب واحد",
+      "categoryCount_other": "{{count}} قوالب"
     },
     "triggerRules": {
       "title": "قواعد التشغيل",
@@ -1393,7 +1410,10 @@
         "selectChannels": "اختر القنوات (بترتيب الاحتياطي)",
         "namePlaceholder": "مثال: بريد ترحيب عند التسجيل"
       },
-      "confirmDelete": "هل أنت متأكد من حذف قاعدة التشغيل هذه؟"
+      "confirmDelete": "هل أنت متأكد من حذف قاعدة التشغيل هذه؟",
+      "channelSequence": {
+        "connector": "ثم"
+      }
     },
     "integrations": {
       "title": "التكاملات",
@@ -1419,7 +1439,15 @@
         "selectType": "اختر المنصة",
         "configureCredentials": "إعداد الاتصال"
       },
-      "confirmDelete": "هل أنت متأكد من حذف هذا التكامل؟"
+      "confirmDelete": "هل أنت متأكد من حذف هذا التكامل؟",
+      "statusCounts": {
+        "active": "نشطة",
+        "activeEyebrow": "تعمل حالياً",
+        "configured": "مهيأة",
+        "configuredEyebrow": "تم إعدادها ولكنها معطلة",
+        "errored": "بها أخطاء",
+        "erroredEyebrow": "يتطلب الانتباه"
+      }
     },
     "preferences": {
       "title": "تفضيلات الإشعارات",
@@ -1477,6 +1505,24 @@
         "Delivered": "تم التسليم",
         "Failed": "فشل",
         "Bounced": "مرتجع"
+      },
+      "statusCounts": {
+        "delivered": "تم التسليم",
+        "deliveredEyebrow": "تم الإرسال بنجاح",
+        "failed": "فشل",
+        "failedEyebrow": "يتطلب الانتباه",
+        "pending": "قيد الانتظار",
+        "pendingEyebrow": "قيد الإرسال",
+        "bounced": "ارتد",
+        "bouncedEyebrow": "تم رفض العنوان"
+      },
+      "window": {
+        "last7Days": "آخر 7 أيام"
+      },
+      "drawer": {
+        "title": "تفاصيل التسليم",
+        "attemptCount_one": "محاولة واحدة",
+        "attemptCount_other": "{{count}} محاولات"
       }
     },
     "dashboard": {
@@ -1487,6 +1533,9 @@
       "deliveryRate": "معدل التسليم",
       "failedDeliveries": "فشل",
       "viewLog": "عرض السجل"
+    },
+    "providers": {
+      "unknown": "مزود {{name}}"
     }
   },
   "workflow": {

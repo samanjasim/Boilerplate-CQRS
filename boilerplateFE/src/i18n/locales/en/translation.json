@@ -1369,7 +1369,22 @@
         "step": "Step {{current}} of {{total}}",
         "displayNamePlaceholder": "e.g. Production SMTP"
       },
-      "confirmDelete": "Are you sure you want to delete this channel configuration? This action cannot be undone."
+      "confirmDelete": "Are you sure you want to delete this channel configuration? This action cannot be undone.",
+      "statusCounts": {
+        "active": "Active",
+        "activeEyebrow": "Currently delivering",
+        "configured": "Configured",
+        "configuredEyebrow": "Set up but disabled",
+        "errored": "Errored",
+        "erroredEyebrow": "Needs attention"
+      },
+      "lastTested": {
+        "justNow": "Tested {{relative}}",
+        "today": "Tested {{relative}}",
+        "thisWeek": "Tested {{relative}}",
+        "older": "Tested {{relative}}",
+        "never": "Never tested"
+      }
     },
     "templates": {
       "title": "Templates",
@@ -1402,7 +1417,9 @@
         "yourOverride": "Your Override",
         "subjectPlaceholder": "Email subject line with {{variables}}",
         "bodyPlaceholder": "Message body with {{variables}}, {{#if conditions}}, and {{#each loops}}"
-      }
+      },
+      "categoryCount_one": "{{count}} template",
+      "categoryCount_other": "{{count}} templates"
     },
     "triggerRules": {
       "title": "Trigger Rules",
@@ -1436,7 +1453,10 @@
         "selectChannels": "Select Channels (in fallback order)",
         "namePlaceholder": "e.g. Welcome Email on Registration"
       },
-      "confirmDelete": "Are you sure you want to delete this trigger rule?"
+      "confirmDelete": "Are you sure you want to delete this trigger rule?",
+      "channelSequence": {
+        "connector": "then"
+      }
     },
     "integrations": {
       "title": "Integrations",
@@ -1462,7 +1482,15 @@
         "selectType": "Select Platform",
         "configureCredentials": "Configure Connection"
       },
-      "confirmDelete": "Are you sure you want to delete this integration?"
+      "confirmDelete": "Are you sure you want to delete this integration?",
+      "statusCounts": {
+        "active": "Active",
+        "activeEyebrow": "Currently delivering",
+        "configured": "Configured",
+        "configuredEyebrow": "Set up but disabled",
+        "errored": "Errored",
+        "erroredEyebrow": "Needs attention"
+      }
     },
     "preferences": {
       "title": "Notification Preferences",
@@ -1520,6 +1548,24 @@
         "Delivered": "Delivered",
         "Failed": "Failed",
         "Bounced": "Bounced"
+      },
+      "statusCounts": {
+        "delivered": "Delivered",
+        "deliveredEyebrow": "Successfully sent",
+        "failed": "Failed",
+        "failedEyebrow": "Needs attention",
+        "pending": "Pending",
+        "pendingEyebrow": "In flight",
+        "bounced": "Bounced",
+        "bouncedEyebrow": "Address rejected"
+      },
+      "window": {
+        "last7Days": "Last 7 days"
+      },
+      "drawer": {
+        "title": "Delivery details",
+        "attemptCount_one": "{{count}} attempt",
+        "attemptCount_other": "{{count}} attempts"
       }
     },
     "dashboard": {
@@ -1530,6 +1576,9 @@
       "deliveryRate": "Delivery Rate",
       "failedDeliveries": "Failed",
       "viewLog": "View Log"
+    },
+    "providers": {
+      "unknown": "Provider {{name}}"
     }
   },
   "workflow": {

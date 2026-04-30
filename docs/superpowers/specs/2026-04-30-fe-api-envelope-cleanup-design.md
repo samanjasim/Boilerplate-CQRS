@@ -1,7 +1,7 @@
 # Frontend API Envelope Cleanup — Design
 
 **Created:** 2026-04-30
-**Branch:** `codex/fe-api-envelope-cleanup` (off latest `origin/main`, b1e2e6e6, with Theme 5 module bootstrap merged)
+**Branch:** `codex/fe-api-envelope-cleanup` (created from `origin/main` b1e2e6e6; refreshed with `origin/main` d986e057 after Phase 5b Communication landed)
 **Roadmap reference:** [`docs/architecture/codebase-assessment.md`](../../architecture/codebase-assessment.md) §Track 4 — "API and Frontend Contract Reliability." The PR sequence table lists this as **PR #3: Frontend API envelope cleanup design + first migration slice**.
 **Risk register:** D1 (High, Open) — *"FE API envelope unwrapping remains inconsistent."*
 
@@ -310,7 +310,11 @@ From [`src/features/comments-activity/api/comments-activity.api.ts`](../../../bo
 
 The survey flagged a likely real bug in `products.getStatusCounts` where the type and runtime shape disagree. This is **not** fixed in slice 1 because products is a separate slice. Logged here so it doesn't get lost; it'll be picked up in the products slice (PR #6).
 
-### 6.4 Verification gate for slice 1
+### 6.4 Mainline Phase 5b Communication adoption (deferred)
+
+`origin/main` d986e057 added the Phase 5b Communication UI and related BE delivery-status-counts endpoint after this branch was cut. The merge is adopted in this branch so the PR is current with main, but Communication remains outside slice 1's migration scope per §1 and §8. The new communication API methods/components still use the pre-helper envelope convention (`apiClient`, `data.data`, and `ApiResponse<T>` consumers) and should be migrated with the existing `communication` entry in Slice 5 (PR #7), alongside any additional Phase 5b communication surfaces that land before that PR.
+
+### 6.5 Verification gate for slice 1
 
 - `npm run lint` clean (rule 1, rule 2, scoped rule 3 for comments-activity).
 - `npm run build` clean (`tsc -b && vite build`).

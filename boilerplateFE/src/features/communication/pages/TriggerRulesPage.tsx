@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Zap, Plus, Pencil, Trash2, Power } from 'lucide-react';
+import { Zap, Plus, Pencil, Trash2, Power, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -115,17 +115,25 @@ export default function TriggerRulesPage() {
                 <TableCell className="text-muted-foreground">{rule.eventName}</TableCell>
                 <TableCell className="text-muted-foreground">{rule.messageTemplateName ?? '—'}</TableCell>
                 <TableCell>
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap items-center gap-1">
                     {rule.channelSequence.map((ch, idx) => (
-                      <Badge key={ch} variant="secondary" className="text-xs">
-                        {idx + 1}. {ch}
-                      </Badge>
+                      <span key={`${idx}-${ch}`} className="flex items-center gap-1">
+                        {idx > 0 && (
+                          <ChevronRight
+                            className="h-3 w-3 text-muted-foreground rtl:rotate-180"
+                            aria-label={t('communication.triggerRules.channelSequence.connector')}
+                          />
+                        )}
+                        <Badge variant="secondary" className="text-xs">
+                          {t(`communication.channels.channelNames.${ch}`)}
+                        </Badge>
+                      </span>
                     ))}
                   </div>
                 </TableCell>
                 <TableCell>
                   <Badge variant={STATUS_BADGE_VARIANT[rule.status] ?? 'secondary'}>
-                    {rule.status}
+                    {t(`communication.channels.status.${rule.status}`)}
                   </Badge>
                 </TableCell>
                 {canManage && (
