@@ -45,6 +45,44 @@ const restrictedImportRule = moduleConfig.restrictedPatterns.length > 0
     }
   : {}
 
+// FE API envelope cleanup — Track 4 PR #3 onward.
+// See docs/superpowers/specs/2026-04-30-fe-api-envelope-cleanup-design.md.
+//
+// Three rules:
+//   Rule 1 (global, day-one): no raw `@/lib/axios` outside the api layer.
+//     Forces non-api feature code (components, queries, hooks) to go through
+//     `@/lib/api`. The api layer itself is allowed.
+//   Rule 2 (per-feature, scoped): no `.data.data` member chains anywhere
+//     inside a migrated feature folder. Cannot be globalized until slice 5
+//     ships — unmigrated features and shared hooks (useListPage.ts) still
+//     read the envelope shape during the transition.
+//   Rule 3 (per-feature, scoped): no raw `@/lib/axios` inside a migrated
+//     feature's `*.api.ts`. Tighter than Rule 1 (which still allows raw
+//     apiClient inside `*.api.ts` to support unmigrated features).
+//
+// Rules 2+3 share the same per-feature `files` block. Slices 2-5 append
+// feature globs to the array.
+const migratedFeatureGlobs = [
+  'src/features/comments-activity/**/*.{ts,tsx}',
+  // future slices:
+  // 'src/features/auth/**/*.{ts,tsx}',
+  // 'src/features/users/**/*.{ts,tsx}',
+  // ...
+]
+
+const noDataDataChain = {
+  selector:
+    'MemberExpression[object.type="MemberExpression"][object.property.name="data"][property.name="data"]',
+  message:
+    "`.data.data` envelope chains are forbidden in migrated features. Use the `api` namespace from `@/lib/api`, which returns the inner payload directly. See docs/superpowers/specs/2026-04-30-fe-api-envelope-cleanup-design.md.",
+}
+
+const noRawAxiosImport = {
+  selector: 'ImportDeclaration[source.value="@/lib/axios"]',
+  message:
+    "Do not import `@/lib/axios` here. Use the typed `api` namespace from `@/lib/api`. Raw apiClient is allowed only inside feature `*.api.ts` files (during migration) and the api module itself.",
+}
+
 export default defineConfig([
   globalIgnores(['dist']),
   {
@@ -68,6 +106,38 @@ export default defineConfig([
     files: moduleConfig.allowlistFiles,
     rules: {
       'no-restricted-imports': 'off',
+    },
+  },
+  {
+    // Rule 1: forbid `@/lib/axios` outside the api layer. Allowed: feature
+    // `*.api.ts` files (during migration) and the api module itself.
+    // Existing leaf component WorkflowPendingTaskBadge.tsx is allowlisted
+    // via inline eslint-disable until slice 4 (workflow migration).
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: [
+      'src/features/**/*.api.ts',
+      'src/lib/api/**',
+      'src/lib/axios/**',
+    ],
+    rules: {
+      'no-restricted-syntax': ['error', noRawAxiosImport],
+    },
+  },
+  {
+    // Rules 2+3: per-migrated-feature. Forbids both raw `@/lib/axios` and
+    // `.data.data` chains inside any file in a migrated feature folder.
+    // Append a glob here when a new slice lands.
+    files: migratedFeatureGlobs,
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'ImportDeclaration[source.value="@/lib/axios"]',
+          message:
+            "Migrated feature: use `@/lib/api`. Raw apiClient requires an explicit eslint-disable allowlist with rationale.",
+        },
+        noDataDataChain,
+      ],
     },
   },
 ])
