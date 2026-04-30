@@ -387,6 +387,14 @@ export function useResendDelivery() {
   });
 }
 
+export function useDeliveryStatusCounts(windowDays = 7) {
+  return useQuery({
+    queryKey: queryKeys.communication.deliveryLogs.statusCounts(windowDays),
+    queryFn: () => communicationApi.getDeliveryStatusCounts(windowDays),
+    staleTime: 30_000,
+  });
+}
+
 // ── Dashboard ──
 
 export function useCommunicationDashboard() {

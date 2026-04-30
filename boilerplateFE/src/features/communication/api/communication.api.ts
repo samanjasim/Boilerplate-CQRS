@@ -26,6 +26,7 @@ import type {
   TestIntegrationConfigResponse,
   DeliveryLogDto,
   DeliveryLogDetailDto,
+  DeliveryStatusCountsDto,
   CommunicationDashboardDto,
 } from '@/types/communication.types';
 import type { NotificationChannel } from '@/types/communication.types';
@@ -151,6 +152,13 @@ export const communicationApi = {
 
   resendDelivery: (id: string) =>
     apiClient.post<{ data: DeliveryLogDto }>(API_ENDPOINTS.COMMUNICATION.DELIVERY_LOGS.RESEND(id)).then(r => r.data),
+
+  getDeliveryStatusCounts: (windowDays = 7) =>
+    apiClient
+      .get<{ data: DeliveryStatusCountsDto }>(API_ENDPOINTS.COMMUNICATION.DELIVERY_LOGS.STATUS_COUNTS, {
+        params: { windowDays },
+      })
+      .then(r => r.data),
 
   // Dashboard
   getCommunicationDashboard: () =>

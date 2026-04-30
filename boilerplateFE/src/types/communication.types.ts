@@ -262,3 +262,11 @@ export interface CommunicationDashboardDto {
   quotaUsed: number | null;
   quotaLimit: number | null;
 }
+
+export interface DeliveryStatusCountsDto {
+  delivered: number;
+  failed: number;
+  pending: number;
+  bounced: number;
+  windowDays: number;
+}

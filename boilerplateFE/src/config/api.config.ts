@@ -193,6 +193,7 @@ export const API_ENDPOINTS = {
       LIST: '/DeliveryLogs',
       DETAIL: (id: string) => `/DeliveryLogs/${id}`,
       RESEND: (id: string) => `/DeliveryLogs/${id}/resend`,
+      STATUS_COUNTS: '/DeliveryLogs/status-counts',
     },
     DASHBOARD: '/CommunicationDashboard',
   },
