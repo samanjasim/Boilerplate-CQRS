@@ -34,7 +34,6 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration,
-        IReadOnlyList<System.Reflection.Assembly>? moduleAssemblies = null,
         Action<IBusRegistrationConfigurator>? configureBus = null)
     {
         QuestPDF.Settings.License = LicenseType.Community;
@@ -42,7 +41,7 @@ public static class DependencyInjection
         services
             .AddPersistence(configuration)
             .AddCaching(configuration)
-            .AddMessaging(configuration, moduleAssemblies, configureBus)
+            .AddMessaging(configuration, configureBus)
             .AddServices()
             .AddCapabilities()
             .AddEmailServices(configuration)
@@ -201,7 +200,6 @@ public static class DependencyInjection
     private static IServiceCollection AddMessaging(
         this IServiceCollection services,
         IConfiguration configuration,
-        IReadOnlyList<System.Reflection.Assembly>? moduleAssemblies = null,
         Action<IBusRegistrationConfigurator>? configureBus = null)
     {
         var rabbitMqEnabled = configuration.GetValue("RabbitMQ:Enabled", true);
@@ -277,17 +275,16 @@ public static class DependencyInjection
                 endpoint.UseConsumeFilter(typeof(LogContextEnrichmentFilter<>), ctx);
             });
 
-            // Auto-discover consumers from core Infrastructure assembly
+            // Auto-discover consumers from core Infrastructure assembly. Modules
+            // are responsible for registering their own consumers via the
+            // IModuleBusContributor contract — the host no longer scans module
+            // assemblies (Tier 2.5 Theme 5 Phase D). The architecture test
+            // ModuleRegistryTests.Modules_with_MassTransit_consumers_implement_IModuleBusContributor
+            // guards drift.
             busConfigurator.AddConsumers(typeof(DependencyInjection).Assembly);
 
-            // Auto-discover consumers from module assemblies
-            if (moduleAssemblies is not null)
-            {
-                foreach (var asm in moduleAssemblies)
-                    busConfigurator.AddConsumers(asm);
-            }
-
-            // Module-provided bus extensions (e.g. additional EF outboxes)
+            // Module-provided bus extensions: consumers, additional EF outboxes,
+            // custom endpoint policies. Iterates IModuleBusContributor implementations.
             configureBus?.Invoke(busConfigurator);
 
             if (!rabbitMqEnabled)

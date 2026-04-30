@@ -1,9 +1,10 @@
 using Starter.Api.Configurations;
 using Starter.Api.Middleware;
+using Starter.Api.Modularity;
 using Starter.Application;
 using Starter.Infrastructure;
 using Starter.Infrastructure.Identity;
-using Starter.Infrastructure.Modularity;
+using Starter.Abstractions.Modularity;
 using Starter.Infrastructure.Persistence.Seeds;
 using Serilog;
 using Serilog.Sinks.OpenTelemetry;
@@ -35,8 +36,11 @@ builder.Host.UseSerilog();
 // Add services
 builder.Services.AddHttpContextAccessor();
 
-// Discover and resolve modules
-var modules = Starter.Abstractions.Modularity.ModuleLoader.DiscoverModules();
+// Generated module registry sourced from modules.catalog.json. Replaces
+// reflection-based DiscoverModules() in production startup; the registry-vs-
+// discovered architecture test guards drift. ModuleLoader.DiscoverModules()
+// remains in place for tests that need runtime introspection.
+var modules = ModuleRegistry.All();
 var orderedModules = Starter.Abstractions.Modularity.ModuleLoader.ResolveOrder(modules);
 var moduleAssemblies = orderedModules.Select(m => m.GetType().Assembly).Distinct().ToList();
 
@@ -47,7 +51,6 @@ builder.Services.AddSingleton<IReadOnlyList<Starter.Abstractions.Modularity.IMod
 builder.Services.AddApplication(moduleAssemblies);
 builder.Services.AddInfrastructure(
     builder.Configuration,
-    moduleAssemblies,
     configureBus: bus =>
     {
         foreach (var contributor in orderedModules.OfType<IModuleBusContributor>())

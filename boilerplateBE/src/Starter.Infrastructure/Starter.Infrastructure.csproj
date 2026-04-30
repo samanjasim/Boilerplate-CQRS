@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Starter.Abstractions\Starter.Abstractions.csproj" />
+    <ProjectReference Include="..\Starter.Abstractions.Messaging\Starter.Abstractions.Messaging.csproj" />
     <ProjectReference Include="..\Starter.Application\Starter.Application.csproj" />
   </ItemGroup>
 

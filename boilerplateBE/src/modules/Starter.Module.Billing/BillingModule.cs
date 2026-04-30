@@ -1,4 +1,5 @@
 using System.Text.Json;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,7 +15,7 @@ using Starter.Module.Billing.Infrastructure.Services;
 
 namespace Starter.Module.Billing;
 
-public sealed class BillingModule : IModule
+public sealed class BillingModule : IModule, IModuleBusContributor
 {
     public string Name => "Starter.Module.Billing";
     public string DisplayName => "Billing";
@@ -51,6 +52,14 @@ public sealed class BillingModule : IModule
         services.AddScoped<IBillingProvider, MockBillingProvider>();
         services.AddAiToolsFromAssembly(typeof(BillingModule).Assembly);
         return services;
+    }
+
+    public void ConfigureBus(IBusRegistrationConfigurator bus)
+    {
+        // Modules own their own bus surface — the host no longer auto-discovers
+        // module consumers, so each module that ships an IConsumer<> must opt in
+        // here. The architecture test ModuleRegistryTests guards this.
+        bus.AddConsumers(typeof(BillingModule).Assembly);
     }
 
     public IEnumerable<(string Name, string Description, string Module)> GetPermissions()

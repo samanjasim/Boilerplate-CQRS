@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Starter.Abstractions.Capabilities;
 using Starter.Abstractions.Modularity;
-using Starter.Infrastructure.Modularity;
 using Starter.Module.Workflow.Constants;
 using Starter.Module.Workflow.Infrastructure.Persistence;
 using Starter.Module.Workflow.Infrastructure.Services;
@@ -78,6 +77,11 @@ public sealed class WorkflowModule : IModule, IModuleBusContributor
 
     public void ConfigureBus(IBusRegistrationConfigurator bus)
     {
+        // Modules own their own bus surface — the host no longer auto-discovers
+        // consumers from module assemblies (Tier 2.5 Theme 5 Phase D), so each
+        // module that ships an IConsumer<> opts in here.
+        bus.AddConsumers(typeof(WorkflowModule).Assembly);
+
         // Registers a transactional EF outbox against WorkflowDbContext. With UseBusOutbox(),
         // IPublishEndpoint.Publish and ISendEndpoint.Send calls made while WorkflowDbContext is
         // the active DbContext are queued in the workflow outbox table and committed in the

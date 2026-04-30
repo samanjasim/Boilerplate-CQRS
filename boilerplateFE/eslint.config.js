@@ -1,9 +1,20 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname, resolve } from 'node:path'
 import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
+
+// Module isolation patterns are generated from modules.catalog.json by
+// `npm run generate:modules` (Tier 2.5 Theme 5). The CI drift gate
+// `verify:modules` fails if this JSON falls behind the catalog.
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const moduleConfig = JSON.parse(
+  readFileSync(resolve(__dirname, 'eslint.config.modules.json'), 'utf8'),
+)
 
 export default defineConfig([
   globalIgnores(['dist']),
@@ -35,22 +46,7 @@ export default defineConfig([
       'no-restricted-imports': ['error', {
         patterns: [
           {
-            group: [
-              '@/features/billing',
-              '@/features/billing/*',
-              '@/features/webhooks',
-              '@/features/webhooks/*',
-              '@/features/import-export',
-              '@/features/import-export/*',
-              '@/features/products',
-              '@/features/products/*',
-              '@/features/comments-activity',
-              '@/features/comments-activity/*',
-              '@/features/communication',
-              '@/features/communication/*',
-              '@/features/workflow',
-              '@/features/workflow/*',
-            ],
+            group: moduleConfig.restrictedPatterns,
             message: 'Do not import optional module features from core. Register routes, nav, slots, and capabilities through src/config/modules.config.ts and src/lib/modules instead.',
           },
         ],
@@ -61,16 +57,7 @@ export default defineConfig([
     // Allowlist: the modules themselves (their own internal imports) and the
     // generated bootstrap config that wires them up. main.tsx is not on this
     // list — it must reach optional modules only via @/config/modules.config.
-    files: [
-      'src/features/billing/**',
-      'src/features/webhooks/**',
-      'src/features/import-export/**',
-      'src/features/products/**',
-      'src/features/comments-activity/**',
-      'src/features/communication/**',
-      'src/features/workflow/**',
-      'src/config/modules.config.ts',
-    ],
+    files: moduleConfig.allowlistFiles,
     rules: {
       'no-restricted-imports': 'off',
     },
