@@ -1,3 +1,4 @@
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,7 +14,7 @@ using Starter.Module.Communication.Infrastructure.Services;
 
 namespace Starter.Module.Communication;
 
-public sealed class CommunicationModule : IModule
+public sealed class CommunicationModule : IModule, IModuleBusContributor
 {
     public string Name => "Starter.Module.Communication";
     public string DisplayName => "Multi-Channel Communication";
@@ -72,6 +73,13 @@ public sealed class CommunicationModule : IModule
         services.AddHostedService<DeliveryLogCleanupJob>();
 
         return services;
+    }
+
+    public void ConfigureBus(IBusRegistrationConfigurator bus)
+    {
+        // Modules own their own bus surface — the host no longer auto-discovers
+        // consumers from module assemblies (Tier 2.5 Theme 5 Phase D).
+        bus.AddConsumers(typeof(CommunicationModule).Assembly);
     }
 
     public IEnumerable<(string Name, string Description, string Module)> GetPermissions()

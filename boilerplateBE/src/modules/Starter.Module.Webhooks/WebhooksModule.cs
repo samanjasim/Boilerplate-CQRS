@@ -1,3 +1,4 @@
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,7 +10,7 @@ using Starter.Module.Webhooks.Infrastructure.Services;
 
 namespace Starter.Module.Webhooks;
 
-public sealed class WebhooksModule : IModule
+public sealed class WebhooksModule : IModule, IModuleBusContributor
 {
     public string Name => "Starter.Module.Webhooks";
     public string DisplayName => "Webhook Management";
@@ -43,6 +44,13 @@ public sealed class WebhooksModule : IModule
         services.AddHostedService<WebhookDeliveryCleanupJob>();
 
         return services;
+    }
+
+    public void ConfigureBus(IBusRegistrationConfigurator bus)
+    {
+        // Modules own their own bus surface — the host no longer auto-discovers
+        // consumers from module assemblies (Tier 2.5 Theme 5 Phase D).
+        bus.AddConsumers(typeof(WebhooksModule).Assembly);
     }
 
     public IEnumerable<(string Name, string Description, string Module)> GetPermissions()

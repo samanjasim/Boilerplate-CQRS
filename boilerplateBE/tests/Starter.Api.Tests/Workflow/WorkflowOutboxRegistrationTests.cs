@@ -2,7 +2,7 @@ using FluentAssertions;
 using MassTransit;
 using MassTransit.EntityFrameworkCoreIntegration;
 using Microsoft.EntityFrameworkCore;
-using Starter.Infrastructure.Modularity;
+using Starter.Abstractions.Modularity;
 using Starter.Module.Workflow;
 using Starter.Module.Workflow.Infrastructure.Persistence;
 using Xunit;

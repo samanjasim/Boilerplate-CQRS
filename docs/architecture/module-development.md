@@ -185,7 +185,7 @@ Follow this checklist when adding a new domain module (e-commerce, CRM, POS, LMS
 
 1. **Create the project** at `boilerplateBE/src/modules/Starter.Module.{Name}/`
 
-2. **Project references** — reference `Starter.Abstractions.Web` (which transitively pulls in `Starter.Abstractions`, `Starter.Application`, `Starter.Domain`, `Starter.Shared`). Plus standard framework packages your module needs (EF Core, MassTransit, etc.). Do NOT reference `Starter.Infrastructure` or any other module project — those edges break the killer test.
+2. **Project references** — reference `Starter.Abstractions.Web` (which transitively pulls in `Starter.Abstractions`, `Starter.Application`, `Starter.Domain`, `Starter.Shared`). If your module ships an `IConsumer<T>` or otherwise needs to register MassTransit infrastructure, also reference `Starter.Abstractions.Messaging` — that's where `IModuleBusContributor` lives (Tier 2.5 Theme 5). Plus standard framework packages your module needs (EF Core, MassTransit, etc.). Do NOT reference `Starter.Infrastructure` or any other module project — those edges break the killer test.
 
    ```xml
    <ItemGroup>
@@ -199,6 +199,8 @@ Follow this checklist when adding a new domain module (e-commerce, CRM, POS, LMS
    </ItemGroup>
    <ItemGroup>
      <ProjectReference Include="..\..\Starter.Abstractions.Web\Starter.Abstractions.Web.csproj" />
+     <!-- Add only if your module ships consumers / needs IModuleBusContributor -->
+     <ProjectReference Include="..\..\Starter.Abstractions.Messaging\Starter.Abstractions.Messaging.csproj" />
    </ItemGroup>
    ```
 
@@ -297,13 +299,37 @@ Follow this checklist when adding a new domain module (e-commerce, CRM, POS, LMS
    ```
 
 6. **Implement `IModule`:**
-   - `ConfigureServices(IServiceCollection, IConfiguration)` — register DbContext + capability implementations + module-private services
+   - `ConfigureServices(IServiceCollection, IConfiguration)` — register DbContext + capability implementations + module-private services. **Do not call `services.AddMassTransit` here** — the host already registers the bus once in `Starter.Infrastructure`; module-side `AddMassTransit` is a duplicate registration that breaks the outbox.
    - `GetPermissions()` — yield `(name, description, module)` tuples for the seeder
    - `GetDefaultRolePermissions()` — map permissions to system roles for the seeder
    - `MigrateAsync(IServiceProvider, CancellationToken)` — call `Database.MigrateAsync()` on the module's own DbContext (the default interface implementation is a no-op, override only if your module has a DbContext)
    - `SeedDataAsync(IServiceProvider)` — seed initial data using the module's own DbContext
 
    Both `MigrateAsync` and `SeedDataAsync` are orchestrated by `DataSeeder.SeedAsync` in `Starter.Infrastructure.Persistence.Seeds`. The order is: core migrate → core seeds → for each module (migrate → seed). Both are gated by `DatabaseSettings:SeedDataOnStartup`.
+
+6a. **Implement `IModuleBusContributor` (only if you ship `IConsumer<T>` or need a per-DbContext outbox).** As of Tier 2.5 Theme 5, the host no longer scans module assemblies for consumers — modules opt in here. Add the contract on the same module class:
+
+   ```csharp
+   using MassTransit;
+   using Starter.Abstractions.Modularity;
+
+   public sealed class {Name}Module : IModule, IModuleBusContributor
+   {
+       // ...
+
+       public void ConfigureBus(IBusRegistrationConfigurator bus)
+       {
+           bus.AddConsumers(typeof({Name}Module).Assembly);
+
+           // Only register a per-DbContext outbox here if your module publishes events
+           // from inside its own DbContext transaction — most modules use
+           // IIntegrationEventCollector against ApplicationDbContext instead. See
+           // WorkflowModule for the per-DbContext outbox example.
+       }
+   }
+   ```
+
+   The architecture test `ModuleRegistryTests.Modules_with_MassTransit_consumers_implement_IModuleBusContributor` fails the build if a module ships an `IConsumer<T>` without declaring the contract — those consumers would otherwise be dead at runtime.
 
 7. **For cross-module needs**, inject from core abstractions:
    - **Tenant/user/role data** → `ITenantReader`, `IUserReader`, `IRoleReader`
@@ -313,7 +339,18 @@ Follow this checklist when adding a new domain module (e-commerce, CRM, POS, LMS
    - **Publishing events** → `IPublishEndpoint` from MassTransit
    - **Subscribing to events** → create `IConsumer<{Event}>` in `Application/EventHandlers/`
 
-8. **Add `ProjectReference`** in `Starter.Api.csproj` and register in `.sln`
+8. **Add `ProjectReference`** in `Starter.Api.csproj` and register in `.sln`.
+
+9. **Add the catalog entry** in `modules.catalog.json` (repo root) and run `npm run generate:modules`. This regenerates four artifacts from a single source of truth:
+
+   | Artifact | Path | Consumed by |
+   |----------|------|-------------|
+   | `ModuleRegistry.g.cs` | `boilerplateBE/src/Starter.Api/Modularity/` | `Program.cs` (replaces reflection-based `ModuleLoader.DiscoverModules()` in production startup) |
+   | `modules.generated.ts` | `boilerplateFE/src/config/` | `modules.config.ts` re-exports it; main.tsx + sidebar + routes consume the public surface |
+   | `modules.config.dart` | `boilerplateMobile/lib/app/` | mobile shell |
+   | `eslint.config.modules.json` | `boilerplateFE/` | `eslint.config.js` reads it for the `no-restricted-imports` patterns |
+
+   CI fails on drift via the `modules-codegen-drift` job in `.github/workflows/modularity.yml`. Never hand-edit the generated files — change the catalog and regenerate.
 
 ### Frontend
 
@@ -355,25 +392,7 @@ Follow this checklist when adding a new domain module (e-commerce, CRM, POS, LMS
    };
    ```
 
-4. **Add import + array entry + flag** to `boilerplateFE/src/config/modules.config.ts`:
-   ```typescript
-   import { myModule } from '@/features/my-feature';
-
-   export const activeModules = {
-     billing: true,
-     webhooks: true,
-     importExport: true,
-     myModule: true,        // ← add the flag (used by Sidebar/routes for explicit checks)
-   } as const;
-
-   const enabledModules: AppModule[] = [
-     billingModule,
-     webhooksModule,
-     importExportModule,
-     myModule,              // ← add the entry (used by registerAllModules at boot)
-   ];
-   ```
-   The `activeModules` flags + the `enabledModules` array stay in sync. The script at `scripts/rename.ps1 -Modules None` strips both when generating a no-modules build.
+4. **Do NOT hand-edit `boilerplateFE/src/config/modules.config.ts` or `modules.generated.ts`.** Instead, add your module to `modules.catalog.json` (repo root) and run `npm run generate:modules`. The generator emits both files: `modules.generated.ts` holds the import + `enabledModules` array + `ModuleName` union + `activeModules` literal + `registerAllModules()`; `modules.config.ts` is a thin re-export shim that callers (`main.tsx`, sidebar, routes) import from. Both `activeModules` flags and the `enabledModules` array stay in sync because both derive from a single `enabledIds` set inside the generated file. `scripts/rename.ps1 -Modules None` regenerates these to a no-modules build.
 
 5. **If your module adds new slots** that don't exist yet, extend `SlotMap` in `src/lib/extensions/slot-map.ts`. Each slot id has a typed prop contract:
    ```typescript
@@ -395,18 +414,25 @@ Follow this checklist when adding a new domain module (e-commerce, CRM, POS, LMS
 
 ### Module manifest
 
-Add an entry to `modules.catalog.json`. The `rename.ps1` script reads this root catalog when generating a fresh app — entries with `required: false` are honored by the `-Modules` parameter (`All`/`None`/comma-separated names).
+Add an entry to `modules.catalog.json`. The catalog is the single source of truth — `npm run generate:modules` reads it to emit `ModuleRegistry.g.cs`, `modules.generated.ts`, `modules.config.dart`, and `eslint.config.modules.json`. The `rename.ps1` script also reads it when generating a fresh app — entries with `required: false` are honored by the `-Modules` parameter (`All`/`None`/comma-separated names).
 
 ```json
 "myModule": {
   "displayName": "My Module",
+  "version": "1.0.0",
+  "supportedPlatforms": ["backend", "web"],   // include "mobile" if you ship a Dart counterpart
   "backendModule": "Starter.Module.MyModule",
   "frontendFeature": "my-feature",
+  "mobileModule": "MyModule",                 // optional, omit if no mobile entry
+  "mobileFolder": "my_module",                // optional, omit if no mobile entry
   "configKey": "myModule",
   "required": false,
+  "dependencies": [],
   "description": "Brief description, ideally mentioning which slot/capability the module participates in."
 }
 ```
+
+After editing, run `npm run generate:modules` to regenerate the four bootstrap artifacts. CI's `modules-codegen-drift` job fails the PR if you skip this step.
 
 Only optional modules live in `modules.catalog.json`. Core features such as Files, Notifications, FeatureFlags, ApiKeys, AuditLogs, and Reports ship with every build and are not in this catalog.
 
@@ -539,7 +565,7 @@ public class MyHandler(ITenantReader tenants) {
 
 ### G.2 "My module needs to react when a tenant is registered"
 
-Create an `IConsumer<TenantRegisteredEvent>` in `Application/EventHandlers/`. MassTransit discovers it automatically. Runs asynchronously via outbox with automatic retry.
+Create an `IConsumer<TenantRegisteredEvent>` in `Application/EventHandlers/` and make sure your module class implements `IModuleBusContributor` calling `bus.AddConsumers(typeof(MyModule).Assembly)` (Tier 2.5 Theme 5 — the host no longer scans module assemblies). MassTransit then runs the consumer asynchronously via the outbox with the default retry policy.
 
 ```csharp
 public class DoSomethingWhenTenantRegistered(MyDbContext db)
@@ -792,42 +818,43 @@ Future tests worth adding (not yet in place):
 
 ### Frontend — `boilerplateFE/eslint.config.js`
 
-The flat config blocks core files from importing module folders, including `import type` (intentional — type coupling is still coupling).
+The flat config blocks core files from importing module folders, including `import type` (intentional — type coupling is still coupling). As of Tier 2.5 Theme 5, the restricted patterns and allowlist files are **generated** from `modules.catalog.json` into `eslint.config.modules.json`; the ESLint config reads the JSON at startup so adding/removing a module re-flows the rule automatically.
 
 ```javascript
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname, resolve } from 'node:path'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const moduleConfig = JSON.parse(
+  readFileSync(resolve(__dirname, 'eslint.config.modules.json'), 'utf8'),
+)
+
 export default defineConfig([
   {
     files: ['**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': ['error', {
-        patterns: [
-          {
-            group: [
-              '@/features/billing', '@/features/billing/*',
-              '@/features/webhooks', '@/features/webhooks/*',
-              '@/features/import-export', '@/features/import-export/*',
-            ],
-            message: 'Do not import module features from core. Use the slot registry (src/lib/extensions) instead.',
-          },
-        ],
+        patterns: [{
+          group: moduleConfig.restrictedPatterns,
+          message: 'Do not import optional module features from core. Register routes, nav, slots, and capabilities through src/config/modules.config.ts and src/lib/modules instead.',
+        }],
       }],
     },
   },
   {
-    // Allowlist: the modules themselves, the bootstrap config, the app entry,
-    // and the routes file (which legitimately imports module pages).
-    files: [
-      'src/features/billing/**',
-      'src/features/webhooks/**',
-      'src/features/import-export/**',
-      'src/config/modules.config.ts',
-      'src/app/main.tsx',
-      'src/routes/routes.tsx',
-    ],
+    // Allowlist: the module folders themselves, plus the generated bootstrap config.
+    files: moduleConfig.allowlistFiles,
     rules: { 'no-restricted-imports': 'off' },
   },
 ])
 ```
+
+Edit `modules.catalog.json` and run `npm run generate:modules` to refresh `eslint.config.modules.json`. The `modules-codegen-drift` CI job fails if the JSON falls out of sync.
+
+### Where messaging contracts live — `Starter.Abstractions.Messaging`
+
+`IModuleBusContributor` (the contract every module implements when it ships an `IConsumer<T>`) lives in `boilerplateBE/src/Starter.Abstractions.Messaging/Modularity/`. This thin project references only `MassTransit` and exists so optional modules can opt into bus configuration without taking a heavy `Starter.Infrastructure` dependency. The host (`Starter.Infrastructure.DependencyInjection`) iterates `IModuleBusContributor` implementations via the `configureBus` callback wired in `Program.cs`. `AbstractionsPurityTests` continues to forbid MassTransit inside the pure `Starter.Abstractions` project — only `Starter.Abstractions.Messaging` carries it.
 
 ---
 

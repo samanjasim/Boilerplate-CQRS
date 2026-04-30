@@ -5,7 +5,9 @@
   "description": "Repo-root tooling for the boilerplate. Hosts code generators that emit cross-platform artifacts (e.g. permission constants from Starter.Shared/Constants/Permissions.cs into FE/mobile mirrors). The boilerplateFE/ and boilerplateMobile/ subprojects keep their own package.json for app-level dependencies.",
   "scripts": {
     "generate:permissions": "tsx scripts/generators/permissions.ts",
-    "verify:permissions": "tsx scripts/generators/permissions.ts --check"
+    "verify:permissions": "tsx scripts/generators/permissions.ts --check",
+    "generate:modules": "tsx scripts/generators/modules.ts",
+    "verify:modules": "tsx scripts/generators/modules.ts --check"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

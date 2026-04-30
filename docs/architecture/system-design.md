@@ -578,15 +578,15 @@ If the Billing module is **not installed**, step 6 still finds the OutboxMessage
 
 ## 9. Module loading at startup
 
-`Program.cs` orchestrates module discovery and registration in this order:
+`Program.cs` orchestrates module registration in this order. As of Tier 2.5 Theme 5, production startup uses the generated `ModuleRegistry.All()` — sourced from `modules.catalog.json` via `npm run generate:modules` — instead of reflection-based filesystem discovery. `ModuleLoader.DiscoverModules()` is preserved for tests that need runtime introspection; the architecture test `ModuleRegistryTests.ModuleRegistry_All_returns_the_same_module_set_as_DiscoverModules` keeps the two views in lock-step.
 
 ```
-1. var modules = ModuleLoader.DiscoverModules();
-     // Walks the bin/ directory looking for *.Module.*.dll, loads each into the AppDomain,
-     // scans for IModule implementations, returns the instances.
+1. var modules = ModuleRegistry.All();
+     // Generated static list of `new Starter.Module.X.XModule()` instances.
+     // Source: modules.catalog.json. Regenerate with `npm run generate:modules`.
 
 2. var orderedModules = ModuleLoader.ResolveOrder(modules);
-     // Topological sort by IModule.Dependencies. None of the current 3 modules have deps.
+     // Topological sort by IModule.Dependencies.
 
 3. var moduleAssemblies = orderedModules.Select(m => m.GetType().Assembly).Distinct().ToList();
 
@@ -596,10 +596,18 @@ If the Billing module is **not installed**, step 6 still finds the OutboxMessage
 5. builder.Services.AddApplication(moduleAssemblies);
      // MediatR scans core + module assemblies for handlers, validators, behaviors.
 
-6. builder.Services.AddInfrastructure(builder.Configuration, moduleAssemblies);
-     // Persistence, caching, MassTransit (with module assembly scanning for consumers),
-     // capability null fallbacks (TryAddScoped/TryAddSingleton — modules will replace), readers,
-     // email/sms/realtime/storage/health.
+6. builder.Services.AddInfrastructure(
+       builder.Configuration,
+       configureBus: bus =>
+       {
+           foreach (var contributor in orderedModules.OfType<IModuleBusContributor>())
+               contributor.ConfigureBus(bus);
+       });
+     // Persistence, caching, MassTransit (host registers the bus + core consumers; modules
+     // register their own consumers + per-DbContext outboxes via IModuleBusContributor —
+     // the host no longer scans module assemblies for consumers).
+     // Capability null fallbacks (TryAddScoped/TryAddSingleton — modules will replace),
+     // readers, email/sms/realtime/storage/health.
 
 7. builder.Services.AddIdentityInfrastructure(builder.Configuration);
      // JWT, password hashing, TOTP, refresh tokens.

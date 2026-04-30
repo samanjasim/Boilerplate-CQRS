@@ -22,6 +22,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Starter.Abstractions.Web\Starter.Abstractions.Web.csproj" />
+    <ProjectReference Include="..\..\Starter.Abstractions.Messaging\Starter.Abstractions.Messaging.csproj" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Starter.Api.Tests" />

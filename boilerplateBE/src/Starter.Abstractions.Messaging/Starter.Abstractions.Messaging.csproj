@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Pure messaging contracts. Hosts a tiny set of interfaces that modules implement
+    to participate in the host's MassTransit bus configuration without depending on
+    Starter.Infrastructure (which would drag EF Core, Redis, MinIO, OTel, etc. into
+    every module package — see Tier 2.5 Theme 5 plan §Phase D).
+
+    Allowed dependencies:
+      - MassTransit (the only signature type — IBusRegistrationConfigurator — lives there)
+      - Starter.Abstractions (for namespace/companion contracts like IModule)
+
+    Forbidden:
+      - Any other Starter.* project reference
+      - EF Core, ASP.NET Core, transports, or any infrastructure framework
+  -->
+  <ItemGroup>
+    <PackageReference Include="MassTransit" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Starter.Abstractions\Starter.Abstractions.csproj" />
+  </ItemGroup>
+</Project>

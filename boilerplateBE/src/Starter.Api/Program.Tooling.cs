@@ -1,9 +1,10 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Starter.Api.Modularity;
 using Starter.Application;
 using Starter.Infrastructure;
 using Starter.Infrastructure.Identity;
-using Starter.Infrastructure.Modularity;
+using Starter.Abstractions.Modularity;
 
 namespace Starter.Api;
 
@@ -20,7 +21,8 @@ public partial class Program
         IServiceCollection services,
         IConfiguration config)
     {
-        var modules = Starter.Abstractions.Modularity.ModuleLoader.DiscoverModules();
+        // Same generated registry the API host uses (Tier 2.5 Theme 5).
+        var modules = ModuleRegistry.All();
         var orderedModules = Starter.Abstractions.Modularity.ModuleLoader.ResolveOrder(modules);
         var moduleAssemblies = orderedModules.Select(m => m.GetType().Assembly).Distinct().ToList();
 
@@ -28,7 +30,6 @@ public partial class Program
         services.AddApplication(moduleAssemblies);
         services.AddInfrastructure(
             config,
-            moduleAssemblies,
             configureBus: bus =>
             {
                 foreach (var contributor in orderedModules.OfType<IModuleBusContributor>())
