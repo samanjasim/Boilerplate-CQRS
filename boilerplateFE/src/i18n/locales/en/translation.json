@@ -1804,6 +1804,8 @@
         "initial": "Initial state",
         "humanTask": "Human task",
         "final": "Final state",
+        "terminalSuccess": "Successful outcome",
+        "terminalDanger": "Negative outcome",
         "other": "State"
       },
       "state": {

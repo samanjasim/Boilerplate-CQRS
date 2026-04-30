@@ -1761,6 +1761,8 @@
         "initial": "حالة بدء",
         "humanTask": "مهمة بشرية",
         "final": "حالة نهائية",
+        "terminalSuccess": "نتيجة ناجحة",
+        "terminalDanger": "نتيجة سلبية",
         "other": "حالة"
       },
       "state": {

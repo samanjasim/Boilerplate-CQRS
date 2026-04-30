@@ -66,6 +66,10 @@ function FormDataDisplay({ formData }: { formData: Record<string, unknown> }) {
   );
 }
 
+function isTerminalType(type?: string) {
+  return type === 'Terminal' || type === 'Final';
+}
+
 export function WorkflowStepTimeline({
   instanceId,
   currentState,
@@ -90,12 +94,26 @@ export function WorkflowStepTimeline({
     );
   }
 
+  // If the workflow reached one of its terminal states, hide the other
+  // (untraversed) terminal siblings — Approved/Rejected don't both belong on
+  // a history view once the decision was made. This matches user mental model:
+  // a timeline is what HAPPENED, not the topology that could've happened.
+  const terminals = states.filter((s) => isTerminalType(s.type));
+  const reachedTerminal =
+    terminals.find((s) => s.name === currentState
+        && (instanceStatus === 'Completed' || instanceStatus === 'Cancelled'))
+    ?? terminals.find((s) => records.some((r) => r.toState === s.name));
+
+  const visibleStates = reachedTerminal
+    ? states.filter((s) => !isTerminalType(s.type) || s.name === reachedTerminal.name)
+    : states;
+
   return (
     <div className="space-y-0">
-      {states.map((state, index) => {
+      {visibleStates.map((state, index) => {
         const status = getStepStatus(state.name, currentState, records, instanceStatus);
         const record = getRecordForState(state.name);
-        const isLast = index === states.length - 1;
+        const isLast = index === visibleStates.length - 1;
 
         // Check for parallel info in metadata
         const parallelTotal = record?.metadata?.parallelTotal as number | undefined;

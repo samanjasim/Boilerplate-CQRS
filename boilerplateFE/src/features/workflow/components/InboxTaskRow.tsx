@@ -1,4 +1,5 @@
-import { AlertCircle, Clock } from 'lucide-react';
+import { AlertCircle, CalendarClock, Clock, MinusCircle } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,25 +18,27 @@ interface InboxTaskRowProps {
   onAct: (task: PendingTaskSummary) => void;
 }
 
-const PRIORITY_DOT: Record<SlaPressure, string> = {
-  overdue: 'bg-destructive',
-  dueToday: 'bg-[var(--state-warn-fg)]',
-  onTrack: 'bg-muted-foreground/40',
-  noSla: 'bg-muted-foreground/20',
+// Inset left stripe — gives every row an at-a-glance severity colour without
+// changing layout (uses box-shadow so the cell border-box stays intact).
+const ROW_STRIPE: Record<SlaPressure, string> = {
+  overdue: 'shadow-[inset_4px_0_0_hsl(var(--destructive))]',
+  dueToday: 'shadow-[inset_4px_0_0_var(--state-warn-fg)]',
+  onTrack: 'shadow-[inset_4px_0_0_hsl(142_71%_45%)]',
+  noSla: 'shadow-[inset_4px_0_0_hsl(var(--border))]',
 };
 
 const PRESSURE_CHIP: Record<SlaPressure, string> = {
-  overdue: 'border-destructive/30 bg-destructive/10 text-destructive',
-  dueToday: 'border-[var(--state-warn-border)] bg-[var(--state-warn-bg)] text-[var(--state-warn-fg)]',
-  onTrack: 'border-border bg-muted/50 text-muted-foreground',
-  noSla: 'border-border bg-muted/30 text-muted-foreground/70',
+  overdue: 'border-destructive/40 bg-destructive/15 text-destructive font-semibold',
+  dueToday: 'border-[var(--state-warn-border)] bg-[var(--state-warn-bg)] text-[var(--state-warn-fg)] font-semibold',
+  onTrack: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+  noSla: 'border-border bg-muted/40 text-muted-foreground',
 };
 
-const SLA_BAR_FILL: Record<SlaPressure, string> = {
-  overdue: 'bg-destructive',
-  dueToday: 'bg-[var(--state-warn-fg)]',
-  onTrack: 'bg-emerald-500',
-  noSla: 'bg-muted-foreground/20',
+const PRESSURE_ICON: Record<SlaPressure, ReactNode> = {
+  overdue: <AlertCircle className="h-3.5 w-3.5" />,
+  dueToday: <CalendarClock className="h-3.5 w-3.5" />,
+  onTrack: <Clock className="h-3.5 w-3.5" />,
+  noSla: <MinusCircle className="h-3.5 w-3.5" />,
 };
 
 export function InboxTaskRow({
@@ -52,7 +55,7 @@ export function InboxTaskRow({
 
   return (
     <TableRow data-pressure={sla.pressure}>
-      <TableCell className="w-[40px]">
+      <TableCell className={cn('w-[40px]', ROW_STRIPE[sla.pressure])}>
         <Checkbox
           checked={selected}
           disabled={!bulkEligible}
@@ -62,52 +65,34 @@ export function InboxTaskRow({
         />
       </TableCell>
       <TableCell>
-        <div className="flex items-start gap-2">
-          <span
-            className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', PRIORITY_DOT[sla.pressure])}
-            aria-hidden
-          />
-          <div className="min-w-0 flex-1 space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="max-w-[260px] truncate font-medium text-foreground">
-                {requestLabel}
-              </span>
-              <Badge
-                variant="outline"
-                className="border-[var(--active-border)] text-[var(--tinted-fg)]"
-              >
-                {task.definitionName}
+        <div className="min-w-0 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="max-w-[280px] truncate font-medium text-foreground">
+              {requestLabel}
+            </span>
+            <Badge
+              variant="outline"
+              className="border-[var(--active-border)] text-[var(--tinted-fg)]"
+            >
+              {task.definitionName}
+            </Badge>
+            {task.isDelegated && (
+              <Badge variant="secondary">
+                {t('workflow.delegation.badgeFrom', { name: task.delegatedFromDisplayName })}
               </Badge>
-              {task.isDelegated && (
-                <Badge variant="secondary">
-                  {t('workflow.delegation.badgeFrom', { name: task.delegatedFromDisplayName })}
-                </Badge>
-              )}
-            </div>
-            <div className="text-xs text-muted-foreground">{task.stepName}</div>
-            {sla.fillPercent !== null && (
-              <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  className={cn('h-full transition-all', SLA_BAR_FILL[sla.pressure])}
-                  style={{ width: `${sla.fillPercent}%` }}
-                />
-              </div>
             )}
           </div>
+          <div className="text-xs text-muted-foreground">{task.stepName}</div>
         </div>
       </TableCell>
-      <TableCell className="w-[180px]">
+      <TableCell className="w-[200px]">
         <span
           className={cn(
-            'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs',
+            'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs',
             PRESSURE_CHIP[sla.pressure],
           )}
         >
-          {sla.pressure === 'overdue' ? (
-            <AlertCircle className="h-3 w-3" />
-          ) : (
-            <Clock className="h-3 w-3" />
-          )}
+          {PRESSURE_ICON[sla.pressure]}
           {pressureLabel}
         </span>
       </TableCell>

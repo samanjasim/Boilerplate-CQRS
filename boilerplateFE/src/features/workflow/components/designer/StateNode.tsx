@@ -7,7 +7,9 @@ import { cn } from '@/lib/utils';
 import type { StateNode as StateNodeType } from './hooks/useDesignerStore';
 import { useDesignerStore } from './hooks/useDesignerStore';
 
-const TYPE_TINT: Record<string, { dot: string; ring: string; tooltipKey: string }> = {
+type Tint = { dot: string; ring: string; tooltipKey: string };
+
+const TYPE_TINT: Record<string, Tint> = {
   Initial: {
     dot: 'bg-emerald-500',
     ring: 'border-emerald-500/40 bg-emerald-50 ring-emerald-500/40 dark:bg-emerald-950/20',
@@ -18,22 +20,44 @@ const TYPE_TINT: Record<string, { dot: string; ring: string; tooltipKey: string 
     ring: 'border-primary/40 bg-[var(--active-bg)]/40 ring-primary/40',
     tooltipKey: 'workflow.designer.stateType.humanTask',
   },
-  Final: {
-    dot: 'bg-muted-foreground/60',
-    ring: 'border-border bg-muted/40',
-    tooltipKey: 'workflow.designer.stateType.final',
-  },
-  Terminal: {
-    dot: 'bg-muted-foreground/60',
-    ring: 'border-border bg-muted/40',
-    tooltipKey: 'workflow.designer.stateType.final',
-  },
 };
-const FALLBACK_TINT = {
+
+const TERMINAL_SUCCESS: Tint = {
+  dot: 'bg-emerald-600',
+  ring: 'border-emerald-500/50 bg-emerald-50 ring-emerald-500/40 dark:bg-emerald-950/25',
+  tooltipKey: 'workflow.designer.stateType.terminalSuccess',
+};
+const TERMINAL_DANGER: Tint = {
+  dot: 'bg-destructive',
+  ring: 'border-destructive/45 bg-destructive/10 ring-destructive/40',
+  tooltipKey: 'workflow.designer.stateType.terminalDanger',
+};
+const TERMINAL_NEUTRAL: Tint = {
+  dot: 'bg-muted-foreground/60',
+  ring: 'border-border bg-muted/40',
+  tooltipKey: 'workflow.designer.stateType.final',
+};
+
+const FALLBACK_TINT: Tint = {
   dot: 'bg-muted-foreground/40',
   ring: 'border-border bg-card',
   tooltipKey: 'workflow.designer.stateType.other',
 };
+
+const POSITIVE_TERMINAL_NAME =
+  /^(approved?|complet(ed)?|passed?|resolv(ed)?|granted|success(ful)?|done|published?|active)$/i;
+const NEGATIVE_TERMINAL_NAME =
+  /^(rejected?|cancell?ed|fail(ed)?|denied|abort(ed)?|error|archived?|expired)$/i;
+
+function pickTint(type: string, name: string): Tint {
+  if (TYPE_TINT[type]) return TYPE_TINT[type];
+  if (type === 'Terminal' || type === 'Final') {
+    if (POSITIVE_TERMINAL_NAME.test(name)) return TERMINAL_SUCCESS;
+    if (NEGATIVE_TERMINAL_NAME.test(name)) return TERMINAL_DANGER;
+    return TERMINAL_NEUTRAL;
+  }
+  return FALLBACK_TINT;
+}
 
 function StateNodeInner({ data, id, selected }: NodeProps<StateNodeType>) {
   const { t } = useTranslation();
@@ -45,7 +69,7 @@ function StateNodeInner({ data, id, selected }: NodeProps<StateNodeType>) {
     const prefix = `states[${index}]`;
     return s.issues.some(i => i.path.startsWith(prefix));
   });
-  const tint = TYPE_TINT[data.type] ?? FALLBACK_TINT;
+  const tint = pickTint(data.type, data.name);
 
   return (
     <div
