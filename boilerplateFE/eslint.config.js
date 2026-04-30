@@ -16,6 +16,35 @@ const moduleConfig = JSON.parse(
   readFileSync(resolve(__dirname, 'eslint.config.modules.json'), 'utf8'),
 )
 
+// Forbid core code from importing optional module folders directly.
+// Cross-module composition must go through the module registry
+// (`src/lib/modules`) so routes, nav, slots, and capabilities stay
+// tree-shakeable AND architecturally isolated.
+//
+// This rule blocks `import type` as well as runtime `import`. That
+// is intentional: even type-only imports couple core code to a
+// module's shape, so renaming a field in the module would break
+// core compilation. The spirit of the boundary is "core knows
+// nothing about module internals" - type imports violate that.
+// If a core file genuinely needs a shared shape, move the shape to
+// `src/types/` or add it to the module registry contract.
+//
+// When `restrictedPatterns` is empty (e.g. `rename.ps1 -Modules None`),
+// ESLint rejects a zero-length `group`, so we drop the rule entirely.
+// There are no optional modules to guard against in that build.
+const restrictedImportRule = moduleConfig.restrictedPatterns.length > 0
+  ? {
+      'no-restricted-imports': ['error', {
+        patterns: [
+          {
+            group: moduleConfig.restrictedPatterns,
+            message: 'Do not import optional module features from core. Register routes, nav, slots, and capabilities through src/config/modules.config.ts and src/lib/modules instead.',
+          },
+        ],
+      }],
+    }
+  : {}
+
 export default defineConfig([
   globalIgnores(['dist']),
   {
@@ -30,28 +59,7 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
-    rules: {
-      // Forbid core code from importing optional module folders directly.
-      // Cross-module composition must go through the module registry
-      // (`src/lib/modules`) so routes, nav, slots, and capabilities stay
-      // tree-shakeable AND architecturally isolated.
-      //
-      // This rule blocks `import type` as well as runtime `import`. That
-      // is intentional: even type-only imports couple core code to a
-      // module's shape, so renaming a field in the module would break
-      // core compilation. The spirit of the boundary is "core knows
-      // nothing about module internals" - type imports violate that.
-      // If a core file genuinely needs a shared shape, move the shape to
-      // `src/types/` or add it to the module registry contract.
-      'no-restricted-imports': ['error', {
-        patterns: [
-          {
-            group: moduleConfig.restrictedPatterns,
-            message: 'Do not import optional module features from core. Register routes, nav, slots, and capabilities through src/config/modules.config.ts and src/lib/modules instead.',
-          },
-        ],
-      }],
-    },
+    rules: restrictedImportRule,
   },
   {
     // Allowlist: the modules themselves (their own internal imports) and the
