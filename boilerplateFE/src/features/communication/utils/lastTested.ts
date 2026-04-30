@@ -44,3 +44,14 @@ export function deriveLastTestedState(
     chipClass: CHIP_CLASS_BY_TONE[tone],
   };
 }
+
+/** Maps a `LastTestedTone` to the i18n key suffix used by `communication.channels.lastTested.*`. */
+export function toneToKey(tone: LastTestedTone): string {
+  switch (tone) {
+    case 'fresh': return 'justNow';
+    case 'today': return 'today';
+    case 'week': return 'thisWeek';
+    case 'older': return 'older';
+    case 'never': return 'never';
+  }
+}

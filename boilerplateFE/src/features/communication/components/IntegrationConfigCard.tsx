@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { STATUS_BADGE_VARIANT } from '@/constants/status';
 import { ProviderLogo } from './ProviderLogo';
-import { deriveLastTestedState } from '../utils/lastTested';
+import { deriveLastTestedState, toneToKey } from '../utils/lastTested';
 import type { IntegrationConfigDto } from '@/types/communication.types';
 
 interface IntegrationConfigCardProps {
@@ -48,7 +48,7 @@ export function IntegrationConfigCard({
             className="shrink-0"
           >
             {isErrored && <AlertCircle className="h-3 w-3 ltr:mr-1 rtl:ml-1" />}
-            {config.status}
+            {t(`communication.channels.status.${config.status}`)}
           </Badge>
         </div>
       </CardHeader>
@@ -83,14 +83,4 @@ export function IntegrationConfigCard({
       </CardContent>
     </Card>
   );
-}
-
-function toneToKey(tone: ReturnType<typeof deriveLastTestedState>['tone']): string {
-  switch (tone) {
-    case 'fresh': return 'justNow';
-    case 'today': return 'today';
-    case 'week': return 'thisWeek';
-    case 'older': return 'older';
-    case 'never': return 'never';
-  }
 }

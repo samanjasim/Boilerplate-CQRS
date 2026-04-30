@@ -131,7 +131,7 @@ export default function TriggerRulesPage() {
                 </TableCell>
                 <TableCell>
                   <Badge variant={STATUS_BADGE_VARIANT[rule.status] ?? 'secondary'}>
-                    {rule.status}
+                    {t(`communication.channels.status.${rule.status}`)}
                   </Badge>
                 </TableCell>
                 {canManage && (

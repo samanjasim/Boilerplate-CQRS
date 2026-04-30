@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { STATUS_BADGE_VARIANT } from '@/constants/status';
 import { ProviderLogo } from './ProviderLogo';
-import { deriveLastTestedState } from '../utils/lastTested';
+import { deriveLastTestedState, toneToKey } from '../utils/lastTested';
 import type { ChannelConfigDto } from '@/types/communication.types';
 
 interface ChannelConfigCardProps {
@@ -102,14 +102,4 @@ export function ChannelConfigCard({
       </CardContent>
     </Card>
   );
-}
-
-function toneToKey(tone: ReturnType<typeof deriveLastTestedState>['tone']): string {
-  switch (tone) {
-    case 'fresh': return 'justNow';
-    case 'today': return 'today';
-    case 'week': return 'thisWeek';
-    case 'older': return 'older';
-    case 'never': return 'never';
-  }
 }
