@@ -187,6 +187,8 @@ export const queryKeys = {
       all: ['communication', 'delivery-logs'] as const,
       list: (params?: Record<string, unknown>) => ['communication', 'delivery-logs', 'list', params] as const,
       detail: (id: string) => ['communication', 'delivery-logs', 'detail', id] as const,
+      statusCounts: (windowDays?: number) =>
+        ['communication', 'delivery-logs', 'status-counts', windowDays ?? 7] as const,
     },
     dashboard: () => ['communication', 'dashboard'] as const,
   },
