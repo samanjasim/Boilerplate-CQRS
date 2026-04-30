@@ -1230,7 +1230,22 @@
         "step": "Step {{current}} of {{total}}",
         "displayNamePlaceholder": "e.g. Production SMTP"
       },
-      "confirmDelete": "Are you sure you want to delete this channel configuration? This action cannot be undone."
+      "confirmDelete": "Are you sure you want to delete this channel configuration? This action cannot be undone.",
+      "statusCounts": {
+        "active": "چالاک",
+        "activeEyebrow": "ئێستا دەنێرێت",
+        "configured": "ڕێکخراو",
+        "configuredEyebrow": "ڕێکخراوە بەڵام ناچالاکە",
+        "errored": "هەڵە تێدایە",
+        "erroredEyebrow": "پێویستی بە سەرنجە"
+      },
+      "lastTested": {
+        "justNow": "تاقیکراوەتەوە {{relative}}",
+        "today": "تاقیکراوەتەوە {{relative}}",
+        "thisWeek": "تاقیکراوەتەوە {{relative}}",
+        "older": "تاقیکراوەتەوە {{relative}}",
+        "never": "هەرگیز تاقینەکراوەتەوە"
+      }
     },
     "templates": {
       "title": "Templates",
@@ -1263,7 +1278,9 @@
         "yourOverride": "Your Override",
         "subjectPlaceholder": "Email subject line with {{variables}}",
         "bodyPlaceholder": "Message body with {{variables}}, {{#if conditions}}, and {{#each loops}}"
-      }
+      },
+      "categoryCount_one": "یەک قاڵب",
+      "categoryCount_other": "{{count}} قاڵب"
     },
     "triggerRules": {
       "title": "Trigger Rules",
@@ -1297,7 +1314,10 @@
         "selectChannels": "Select Channels (in fallback order)",
         "namePlaceholder": "e.g. Welcome Email on Registration"
       },
-      "confirmDelete": "Are you sure you want to delete this trigger rule?"
+      "confirmDelete": "Are you sure you want to delete this trigger rule?",
+      "channelSequence": {
+        "connector": "پاشان"
+      }
     },
     "integrations": {
       "title": "Integrations",
@@ -1323,7 +1343,15 @@
         "selectType": "Select Platform",
         "configureCredentials": "Configure Connection"
       },
-      "confirmDelete": "Are you sure you want to delete this integration?"
+      "confirmDelete": "Are you sure you want to delete this integration?",
+      "statusCounts": {
+        "active": "چالاک",
+        "activeEyebrow": "ئێستا دەنێرێت",
+        "configured": "ڕێکخراو",
+        "configuredEyebrow": "ڕێکخراوە بەڵام ناچالاکە",
+        "errored": "هەڵە تێدایە",
+        "erroredEyebrow": "پێویستی بە سەرنجە"
+      }
     },
     "preferences": {
       "title": "Notification Preferences",
@@ -1381,6 +1409,24 @@
         "Delivered": "Delivered",
         "Failed": "Failed",
         "Bounced": "Bounced"
+      },
+      "statusCounts": {
+        "delivered": "گەیشتوو",
+        "deliveredEyebrow": "بە سەرکەوتوویی نێردرا",
+        "failed": "شکستی هێنا",
+        "failedEyebrow": "پێویستی بە سەرنجە",
+        "pending": "چاوەڕوان",
+        "pendingEyebrow": "لە ناردندایە",
+        "bounced": "گەڕاوەتەوە",
+        "bouncedEyebrow": "ناونیشان ڕەتکرایەوە"
+      },
+      "window": {
+        "last7Days": "٧ ڕۆژی ڕابردوو"
+      },
+      "drawer": {
+        "title": "وردەکارییەکانی گەیاندن",
+        "attemptCount_one": "یەک هەوڵ",
+        "attemptCount_other": "{{count}} هەوڵ"
       }
     },
     "dashboard": {
@@ -1391,6 +1437,9 @@
       "deliveryRate": "Delivery Rate",
       "failedDeliveries": "Failed",
       "viewLog": "View Log"
+    },
+    "providers": {
+      "unknown": "دابینکەری {{name}}"
     }
   },
   "workflow": {
