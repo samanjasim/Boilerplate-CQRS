@@ -1,47 +1,88 @@
-import { apiClient } from '@/lib/axios';
+import { api } from '@/lib/api';
 import { API_ENDPOINTS } from '@/config';
 import type {
+  Comment,
   CreateCommentData,
   EditCommentData,
+  MentionableUser,
+  ReactionSummary,
+  TimelineItem,
   ToggleReactionData,
+  WatchStatus,
 } from '@/types/comments-activity.types';
+import type { PagedResult } from '@/types';
+
+interface TimelineParams {
+  entityType: string;
+  entityId: string;
+  filter?: string;
+  pageNumber?: number;
+  pageSize?: number;
+}
+
+interface CommentsParams {
+  entityType: string;
+  entityId: string;
+  pageNumber?: number;
+  pageSize?: number;
+}
+
+interface MentionableUsersParams {
+  search?: string;
+  pageSize?: number;
+  entityType?: string;
+  entityId?: string;
+}
+
+interface WatchTargetParams {
+  entityType: string;
+  entityId: string;
+}
 
 export const commentsActivityApi = {
-  getTimeline: (params: { entityType: string; entityId: string; filter?: string; pageNumber?: number; pageSize?: number }) =>
-    apiClient.get(API_ENDPOINTS.COMMENTS_ACTIVITY.TIMELINE, { params }).then((r) => r.data),
+  getTimeline: (params: TimelineParams): Promise<PagedResult<TimelineItem>> =>
+    api.paged<TimelineItem>(API_ENDPOINTS.COMMENTS_ACTIVITY.TIMELINE, params),
 
-  getComments: (params: { entityType: string; entityId: string; pageNumber?: number; pageSize?: number }) =>
-    apiClient.get(API_ENDPOINTS.COMMENTS_ACTIVITY.COMMENTS, { params }).then((r) => r.data),
+  getComments: (params: CommentsParams): Promise<PagedResult<Comment>> =>
+    api.paged<Comment>(API_ENDPOINTS.COMMENTS_ACTIVITY.COMMENTS, params),
 
-  addComment: (data: CreateCommentData) =>
-    apiClient.post(API_ENDPOINTS.COMMENTS_ACTIVITY.COMMENTS, data).then((r) => r.data),
+  addComment: (data: CreateCommentData): Promise<Comment> =>
+    api.post<Comment>(API_ENDPOINTS.COMMENTS_ACTIVITY.COMMENTS, data),
 
-  editComment: (data: EditCommentData) =>
-    apiClient.put(API_ENDPOINTS.COMMENTS_ACTIVITY.COMMENT_DETAIL(data.id), data).then((r) => r.data),
+  editComment: (data: EditCommentData): Promise<Comment> =>
+    api.put<Comment>(API_ENDPOINTS.COMMENTS_ACTIVITY.COMMENT_DETAIL(data.id), data),
 
-  deleteComment: (id: string) =>
-    apiClient.delete(API_ENDPOINTS.COMMENTS_ACTIVITY.COMMENT_DETAIL(id)).then((r) => r.data),
+  deleteComment: (id: string): Promise<void> =>
+    api.delete<void>(API_ENDPOINTS.COMMENTS_ACTIVITY.COMMENT_DETAIL(id)),
 
-  toggleReaction: (commentId: string, data: ToggleReactionData) =>
-    apiClient.post(API_ENDPOINTS.COMMENTS_ACTIVITY.COMMENT_REACTIONS(commentId), data).then((r) => r.data),
+  toggleReaction: (commentId: string, data: ToggleReactionData): Promise<ReactionSummary[]> =>
+    api.post<ReactionSummary[]>(
+      API_ENDPOINTS.COMMENTS_ACTIVITY.COMMENT_REACTIONS(commentId),
+      data,
+    ),
 
-  removeReaction: (commentId: string, reactionType: string) =>
-    apiClient.delete(API_ENDPOINTS.COMMENTS_ACTIVITY.COMMENT_REACTION(commentId, reactionType)).then((r) => r.data),
+  removeReaction: (commentId: string, reactionType: string): Promise<ReactionSummary[]> =>
+    api.delete<ReactionSummary[]>(
+      API_ENDPOINTS.COMMENTS_ACTIVITY.COMMENT_REACTION(commentId, reactionType),
+    ),
 
-  getWatchStatus: (params: { entityType: string; entityId: string }) =>
-    apiClient.get(API_ENDPOINTS.COMMENTS_ACTIVITY.WATCHERS_STATUS, { params }).then((r) => r.data),
+  getWatchStatus: (params: WatchTargetParams): Promise<WatchStatus> =>
+    api.get<WatchStatus>(API_ENDPOINTS.COMMENTS_ACTIVITY.WATCHERS_STATUS, params),
 
-  watch: (data: { entityType: string; entityId: string }) =>
-    apiClient.post(API_ENDPOINTS.COMMENTS_ACTIVITY.WATCHERS, data).then((r) => r.data),
+  watch: (data: WatchTargetParams): Promise<void> =>
+    api.post<void>(API_ENDPOINTS.COMMENTS_ACTIVITY.WATCHERS, data),
 
-  unwatch: (params: { entityType: string; entityId: string }) =>
-    apiClient.delete(API_ENDPOINTS.COMMENTS_ACTIVITY.WATCHERS, { params }).then((r) => r.data),
+  // BE reads from query string on DELETE; api.delete doesn't accept params,
+  // so build the URL inline. One callsite — not worth widening api.delete's
+  // signature.
+  unwatch: (params: WatchTargetParams): Promise<void> => {
+    const qs = new URLSearchParams({
+      entityType: params.entityType,
+      entityId: params.entityId,
+    }).toString();
+    return api.delete<void>(`${API_ENDPOINTS.COMMENTS_ACTIVITY.WATCHERS}?${qs}`);
+  },
 
-  getMentionableUsers: (params: {
-    search?: string;
-    pageSize?: number;
-    entityType?: string;
-    entityId?: string;
-  }) =>
-    apiClient.get(API_ENDPOINTS.COMMENTS_ACTIVITY.MENTIONABLE_USERS, { params }).then((r) => r.data),
+  getMentionableUsers: (params: MentionableUsersParams): Promise<PagedResult<MentionableUser>> =>
+    api.paged<MentionableUser>(API_ENDPOINTS.COMMENTS_ACTIVITY.MENTIONABLE_USERS, params),
 };

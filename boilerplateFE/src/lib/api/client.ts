@@ -74,7 +74,7 @@ async function unwrapPaged<T>(
 }
 
 export const api = {
-  get: <T>(url: string, params?: Record<string, unknown>, options?: ApiOptions): Promise<T> =>
+  get: <T>(url: string, params?: object, options?: ApiOptions): Promise<T> =>
     unwrapJson<T>(apiClient.get<ApiResponse<T>>(url, buildConfig(options, { params }))),
 
   post: <T>(url: string, body?: unknown, options?: ApiOptions): Promise<T> =>
@@ -89,10 +89,10 @@ export const api = {
   delete: <T>(url: string, options?: ApiOptions): Promise<T> =>
     unwrapJson<T>(apiClient.delete<ApiResponse<T>>(url, buildConfig(options))),
 
-  paged: <T>(url: string, params?: Record<string, unknown>, options?: ApiOptions): Promise<PagedResult<T>> =>
+  paged: <T>(url: string, params?: object, options?: ApiOptions): Promise<PagedResult<T>> =>
     unwrapPaged<T>(apiClient.get<PaginatedResponse<T>>(url, buildConfig(options, { params }))),
 
-  download: async (url: string, params?: Record<string, unknown>, options?: ApiOptions): Promise<Blob> => {
+  download: async (url: string, params?: object, options?: ApiOptions): Promise<Blob> => {
     try {
       const response = await apiClient.get<Blob>(
         url,
