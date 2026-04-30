@@ -41,6 +41,11 @@ export interface PaginationParams {
   pageSize?: number;
 }
 
+export interface PagedResult<T> {
+  items: T[];
+  pagination: PaginationMeta;
+}
+
 export interface SortParams {
   sortBy?: string;
   sortDescending?: boolean;
