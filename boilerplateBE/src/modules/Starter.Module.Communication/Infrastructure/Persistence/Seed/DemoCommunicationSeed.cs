@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Starter.Application.Common.Interfaces;
 using Starter.Module.Communication.Domain.Entities;
 using Starter.Module.Communication.Domain.Enums;
+using Starter.Module.Communication.Infrastructure.Services;
 
 namespace Starter.Module.Communication.Infrastructure.Persistence.Seed;
 
@@ -20,14 +21,21 @@ namespace Starter.Module.Communication.Infrastructure.Persistence.Seed;
 /// </summary>
 internal static class DemoCommunicationSeed
 {
-    private const string DemoCredentialsJson = "{\"placeholder\":\"demo-data-only\"}";
-
     public static async Task SeedAsync(
         CommunicationDbContext context,
         IApplicationDbContext appDb,
+        ICredentialEncryptionService encryption,
         ILogger logger,
         CancellationToken cancellationToken = default)
     {
+        // Demo credentials are still placeholder values, but they must be wrapped
+        // through the same data-protection pipeline as production credentials so the
+        // list endpoints can decrypt them without throwing CryptographicException.
+        var demoCredentials = encryption.Encrypt(new Dictionary<string, string>
+        {
+            ["placeholder"] = "demo-data-only",
+        });
+
         var demoSlugs = new[] { "acme", "globex", "initech" };
         var demoTenants = await appDb.Tenants
             .IgnoreQueryFilters()
@@ -59,8 +67,8 @@ internal static class DemoCommunicationSeed
                 .AnyAsync(d => d.TenantId == tenant.Id, cancellationToken);
             if (alreadySeeded) continue;
 
-            var channels = SeedChannels(context, tenant.Id, tenant.Slug);
-            var integrations = SeedIntegrations(context, tenant.Id, tenant.Slug);
+            var channels = SeedChannels(context, tenant.Id, tenant.Slug, demoCredentials);
+            var integrations = SeedIntegrations(context, tenant.Id, tenant.Slug, demoCredentials);
             await context.SaveChangesAsync(cancellationToken);
             totalChannels += channels;
             totalIntegrations += integrations;
@@ -86,7 +94,7 @@ internal static class DemoCommunicationSeed
             totalChannels, totalIntegrations, totalRules, totalLogs, demoTenants.Count);
     }
 
-    private static int SeedChannels(CommunicationDbContext context, Guid tenantId, string slug)
+    private static int SeedChannels(CommunicationDbContext context, Guid tenantId, string slug, string demoCredentials)
     {
         var rows = new (NotificationChannel Channel, ChannelProvider Provider, string Name, bool IsDefault, bool Active, bool ErrorState, TimeSpan? TestedAgo)[]
         {
@@ -111,7 +119,7 @@ internal static class DemoCommunicationSeed
         var seeded = 0;
         foreach (var r in rows)
         {
-            var cfg = ChannelConfig.Create(tenantId, r.Channel, r.Provider, r.Name, DemoCredentialsJson, r.IsDefault);
+            var cfg = ChannelConfig.Create(tenantId, r.Channel, r.Provider, r.Name, demoCredentials, r.IsDefault);
             if (!r.Active) cfg.Deactivate();
             if (r.ErrorState) cfg.RecordTestResult(false, "Demo: simulated provider auth failure");
             else if (r.TestedAgo.HasValue) cfg.RecordTestResult(true, "Demo: ok");
@@ -124,7 +132,7 @@ internal static class DemoCommunicationSeed
         return seeded;
     }
 
-    private static int SeedIntegrations(CommunicationDbContext context, Guid tenantId, string slug)
+    private static int SeedIntegrations(CommunicationDbContext context, Guid tenantId, string slug, string demoCredentials)
     {
         var rows = new (IntegrationType Type, string Name, bool Active, bool ErrorState, TimeSpan? TestedAgo)[]
         {
@@ -138,7 +146,7 @@ internal static class DemoCommunicationSeed
         var seeded = 0;
         foreach (var r in rows)
         {
-            var cfg = IntegrationConfig.Create(tenantId, r.Type, r.Name, DemoCredentialsJson);
+            var cfg = IntegrationConfig.Create(tenantId, r.Type, r.Name, demoCredentials);
             if (!r.Active) cfg.Deactivate();
             if (r.ErrorState) cfg.RecordTestResult(false, "Demo: simulated webhook 401");
             else if (r.TestedAgo.HasValue) cfg.RecordTestResult(true, "Demo: ok");

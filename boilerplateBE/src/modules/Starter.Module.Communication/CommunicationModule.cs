@@ -146,6 +146,9 @@ public sealed class CommunicationModule : IModule, IModuleBusContributor
         // Phase 5b manual-QA fodder: only fires when the host opts in via
         // DatabaseSettings:SeedDemoCommunicationData. Idempotent per tenant.
         if (configuration.GetValue<bool>("DatabaseSettings:SeedDemoCommunicationData"))
-            await DemoCommunicationSeed.SeedAsync(context, appDb, logger, cancellationToken);
+        {
+            var encryption = scope.ServiceProvider.GetRequiredService<ICredentialEncryptionService>();
+            await DemoCommunicationSeed.SeedAsync(context, appDb, encryption, logger, cancellationToken);
+        }
     }
 }
