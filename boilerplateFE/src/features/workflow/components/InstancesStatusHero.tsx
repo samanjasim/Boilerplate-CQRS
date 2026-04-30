@@ -9,6 +9,20 @@ interface InstancesStatusHeroProps {
   state?: string;
 }
 
+function HeroSkeleton() {
+  return (
+    <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {[0, 1, 2, 3].map((i) => (
+        <div
+          key={i}
+          aria-hidden
+          className="h-[108px] w-full animate-pulse rounded-lg border border-border/50 bg-muted/40"
+        />
+      ))}
+    </div>
+  );
+}
+
 export function InstancesStatusHero({
   startedByUserId,
   entityType,
@@ -21,7 +35,8 @@ export function InstancesStatusHero({
     state,
   });
 
-  if (isLoading || !data) return null;
+  if (isLoading && !data) return <HeroSkeleton />;
+  if (!data) return null;
 
   const cards = [
     {

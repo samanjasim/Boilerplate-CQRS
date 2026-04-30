@@ -33,13 +33,13 @@ function getStepStatus(
 }
 
 const dotStyles: Record<StepStatus, string> = {
-  completed: 'bg-foreground/50',
-  current: 'bg-primary',
+  completed: 'bg-muted-foreground',
+  current: 'bg-primary shadow-[var(--glow-primary-sm)]',
   future: 'bg-muted-foreground/30',
 };
 
 const lineStyles: Record<StepStatus, string> = {
-  completed: 'bg-foreground/50',
+  completed: 'bg-muted-foreground',
   current: 'bg-primary',
   future: 'bg-border',
 };

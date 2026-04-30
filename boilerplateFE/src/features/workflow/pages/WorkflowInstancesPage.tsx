@@ -78,6 +78,10 @@ export default function WorkflowInstancesPage() {
         }
       />
 
+      {/* Hero shows the full status breakdown under the same scope (user + entity type)
+          as the table, not narrowed by the status select — the select is for table-view
+          filtering, the hero is for distribution. Passing statusFilter here would zero
+          out 3/4 buckets whenever the user picks a specific status. */}
       <InstancesStatusHero
         startedByUserId={startedByUserId}
         entityType={entityTypeFilter || undefined}
