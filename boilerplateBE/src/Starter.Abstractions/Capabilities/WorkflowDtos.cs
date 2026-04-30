@@ -34,7 +34,8 @@ public sealed record WorkflowInstanceSummary(
     string Status, DateTime StartedAt, DateTime? CompletedAt,
     Guid? StartedByUserId = null, string? StartedByDisplayName = null,
     string? EntityDisplayName = null,
-    bool CanResubmit = false);
+    bool CanResubmit = false,
+    Guid? TenantId = null);
 
 public sealed record WorkflowDefinitionSummary(
     Guid Id, string Name, string? DisplayName, string EntityType, int StepCount,
