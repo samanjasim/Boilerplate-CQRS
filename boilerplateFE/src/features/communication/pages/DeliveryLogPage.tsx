@@ -13,7 +13,7 @@ import { getPersistedPageSize } from '@/components/common/pagination-utils';
 import { usePermissions } from '@/hooks';
 import { PERMISSIONS, STATUS_BADGE_VARIANT } from '@/constants';
 import { useDeliveryLogs, useResendDelivery } from '../api';
-import { DeliveryDetailModal } from '../components/DeliveryDetailModal';
+import { DeliveryDetailDrawer } from '../components/DeliveryDetailDrawer';
 import type { DeliveryLogDto } from '@/types/communication.types';
 
 export default function DeliveryLogPage() {
@@ -197,7 +197,7 @@ export default function DeliveryLogPage() {
       )}
 
       {selectedId && (
-        <DeliveryDetailModal
+        <DeliveryDetailDrawer
           id={selectedId}
           open={!!selectedId}
           onOpenChange={(open) => {
