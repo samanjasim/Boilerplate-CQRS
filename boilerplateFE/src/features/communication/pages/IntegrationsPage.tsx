@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { formatDistanceToNow } from 'date-fns';
-import { Link2, Plus, Pencil, Trash2, Send } from 'lucide-react';
+import { Link2, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import { PageHeader, EmptyState, ConfirmDialog } from '@/components/common';
 import {
@@ -13,8 +11,10 @@ import {
   useTestIntegrationConfig,
 } from '../api';
 import { IntegrationSetupDialog } from '../components/IntegrationSetupDialog';
+import { IntegrationsStatusHero } from '../components/IntegrationsStatusHero';
+import { IntegrationConfigCard } from '../components/IntegrationConfigCard';
 import { usePermissions } from '@/hooks';
-import { PERMISSIONS, STATUS_BADGE_VARIANT } from '@/constants';
+import { PERMISSIONS } from '@/constants';
 import type { IntegrationConfigDto, IntegrationType } from '@/types/communication.types';
 
 const INTEGRATION_TYPE_ORDER: IntegrationType[] = ['Slack', 'Telegram', 'Discord', 'MicrosoftTeams'];
@@ -84,6 +84,8 @@ export default function IntegrationsPage() {
         }
       />
 
+      <IntegrationsStatusHero configs={configs} />
+
       {configs.length === 0 ? (
         <EmptyState
           icon={Link2}
@@ -113,66 +115,18 @@ export default function IntegrationsPage() {
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {typeConfigs.map((cfg) => (
-                    <Card key={cfg.id}>
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <CardTitle className="text-base">{cfg.displayName}</CardTitle>
-                            <p className="text-sm text-muted-foreground">
-                              {t(`communication.integrations.types.${cfg.integrationType}`)}
-                            </p>
-                          </div>
-                          <Badge variant={STATUS_BADGE_VARIANT[cfg.status] ?? 'secondary'}>
-                            {cfg.status}
-                          </Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          {/* Last tested */}
-                          <div className="text-sm text-muted-foreground">
-                            <span className="font-medium">{t('communication.channels.fields.lastTested')}:</span>{' '}
-                            {cfg.lastTestedAt
-                              ? formatDistanceToNow(new Date(cfg.lastTestedAt), { addSuffix: true })
-                              : '\u2014'}
-                          </div>
-
-                          {/* Actions */}
-                          {canManage && (
-                            <div className="flex gap-1 pt-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                title={t('communication.integrations.testButton')}
-                                onClick={() => testMutation.mutate(cfg.id)}
-                                disabled={testMutation.isPending}
-                              >
-                                <Send className="h-4 w-4" />
-                              </Button>
-
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setEditTarget(cfg);
-                                  setSetupOpen(true);
-                                }}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setDeleteTarget(cfg)}
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <IntegrationConfigCard
+                      key={cfg.id}
+                      config={cfg}
+                      canManage={canManage}
+                      onTest={() => testMutation.mutate(cfg.id)}
+                      onEdit={() => {
+                        setEditTarget(cfg);
+                        setSetupOpen(true);
+                      }}
+                      onDelete={() => setDeleteTarget(cfg)}
+                      isTestPending={testMutation.isPending}
+                    />
                   ))}
                 </div>
               </div>
