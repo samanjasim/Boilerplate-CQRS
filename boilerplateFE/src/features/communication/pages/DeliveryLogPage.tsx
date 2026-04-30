@@ -12,9 +12,20 @@ import { PageHeader, EmptyState, Pagination } from '@/components/common';
 import { getPersistedPageSize } from '@/components/common/pagination-utils';
 import { usePermissions } from '@/hooks';
 import { PERMISSIONS, STATUS_BADGE_VARIANT } from '@/constants';
+import { cn } from '@/lib/utils';
 import { useDeliveryLogs, useResendDelivery } from '../api';
 import { DeliveryDetailDrawer } from '../components/DeliveryDetailDrawer';
-import type { DeliveryLogDto } from '@/types/communication.types';
+import { DeliveryLogStatusHero } from '../components/DeliveryLogStatusHero';
+import type { DeliveryLogDto, DeliveryStatus } from '@/types/communication.types';
+
+const ROW_STRIPE_BY_STATUS: Record<DeliveryStatus, string> = {
+  Delivered: 'border-s-[var(--color-emerald-500)]',
+  Failed: 'border-s-destructive',
+  Bounced: 'border-s-destructive',
+  Pending: 'border-s-[var(--active-bg)]',
+  Queued: 'border-s-[var(--active-bg)]',
+  Sending: 'border-s-[var(--active-bg)]',
+};
 
 export default function DeliveryLogPage() {
   const { t } = useTranslation();
@@ -53,6 +64,8 @@ export default function DeliveryLogPage() {
         title={t('communication.deliveryLog.title')}
         subtitle={t('communication.deliveryLog.subtitle')}
       />
+
+      <DeliveryLogStatusHero />
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
@@ -134,7 +147,10 @@ export default function DeliveryLogPage() {
               {logs.map((log) => (
                 <TableRow
                   key={log.id}
-                  className="cursor-pointer"
+                  className={cn(
+                    'cursor-pointer border-s-[3px]',
+                    ROW_STRIPE_BY_STATUS[log.status] ?? 'border-s-transparent',
+                  )}
                   onClick={() => setSelectedId(log.id)}
                 >
                   <TableCell className="whitespace-nowrap text-sm">
