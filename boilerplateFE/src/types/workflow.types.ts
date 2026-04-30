@@ -135,6 +135,7 @@ export interface WorkflowInstanceSummary {
   startedByDisplayName: string | null;
   entityDisplayName: string | null;
   canResubmit: boolean;
+  tenantId: string | null;
 }
 
 export interface InboxStatusCounts {

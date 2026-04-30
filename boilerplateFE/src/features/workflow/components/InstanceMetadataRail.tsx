@@ -72,11 +72,9 @@ export function InstanceMetadataRail({
 }: InstanceMetadataRailProps) {
   const { t } = useTranslation();
   const statusVariant = STATUS_BADGE_VARIANT[instance.status] ?? 'outline';
-  const displayTitle = instance.entityDisplayName ?? `${instance.entityId.slice(0, 8)}...`;
-  const tenantId =
-    'tenantId' in instance
-      ? (instance as WorkflowInstanceSummary & { tenantId?: string | null }).tenantId
-      : null;
+  const displayTitle =
+    instance.entityDisplayName ??
+    t('workflow.detail.untitledInstance', { shortId: instance.entityId.slice(0, 8) });
 
   const chips: StatusHeaderChip[] = [
     { icon: <GitBranch className="h-3 w-3" />, label: instance.definitionName, tinted: true },
@@ -145,7 +143,7 @@ export function InstanceMetadataRail({
             </div>
           )}
 
-          {isSuperAdmin && tenantId && (
+          {isSuperAdmin && instance.tenantId && (
             <div className="mt-2 border-t border-border pt-2">
               <div className="text-[10px] uppercase tracking-wide text-muted-foreground/70">
                 {t('workflow.detail.metadata.tenantId')}
@@ -154,7 +152,7 @@ export function InstanceMetadataRail({
                 variant="outline"
                 className="border-[var(--active-border)] text-[var(--tinted-fg)]"
               >
-                {tenantId}
+                {instance.tenantId}
               </Badge>
             </div>
           )}

@@ -1641,6 +1641,7 @@
         "tenantId": "المستأجر"
       },
       "pendingActionTitle": "إجراء مطلوب",
+      "untitledInstance": "بدون عنوان رقم {{shortId}}",
       "tabOverview": "نظرة عامة",
       "tabAnalytics": "التحليلات",
       "viewRawJson": "عرض JSON الخام"
