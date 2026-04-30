@@ -29,9 +29,9 @@ type SheetSide = 'end' | 'bottom';
 type SheetWidth = 'sm' | 'md' | 'lg';
 
 const SIDE_CLASSES: Record<SheetSide, string> = {
-  end: 'inset-y-0 inset-inline-end-0 h-full border-l rtl:border-l-0 rtl:border-r data-[state=open]:translate-x-0 data-[state=closed]:translate-x-full rtl:data-[state=closed]:-translate-x-full',
+  end: 'inset-y-0 inset-inline-end-0 h-full border-s border-[var(--border-strong)] data-[state=open]:translate-x-0 data-[state=closed]:translate-x-full rtl:data-[state=closed]:-translate-x-full',
   bottom:
-    'inset-x-0 bottom-0 max-h-[90vh] rounded-t-2xl border-t data-[state=open]:translate-y-0 data-[state=closed]:translate-y-full',
+    'inset-x-0 bottom-0 max-h-[90vh] rounded-t-2xl border-t border-[var(--border-strong)] data-[state=open]:translate-y-0 data-[state=closed]:translate-y-full',
 };
 
 const WIDTH_CLASSES: Record<SheetWidth, string> = {
@@ -61,7 +61,7 @@ const SheetContent = React.forwardRef<
       <DialogPrimitive.Content
         ref={ref}
         className={cn(
-          'fixed z-50 flex flex-col gap-4 bg-background shadow-xl border',
+          'fixed z-50 flex flex-col gap-4 surface-glass-strong shadow-float',
           'transition-transform duration-300 ease-out',
           'p-6 w-full',
           SIDE_CLASSES[side],
@@ -71,12 +71,20 @@ const SheetContent = React.forwardRef<
         )}
         {...props}
       >
+        {/* Copper accent stripe along the leading edge — subtle J4 brand cue */}
+        {side === 'end' && (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 inset-inline-start-0 w-[2px] bg-gradient-to-b from-[var(--active-bg)] via-[var(--active-border)] to-transparent"
+          />
+        )}
         {children}
         {showClose && (
           <SheetClose
             className={cn(
-              'absolute top-4 inline-end-4 rounded-md p-1.5 opacity-70 transition-opacity',
-              'hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring',
+              'absolute top-4 inline-end-4 z-10 rounded-lg p-1.5 text-muted-foreground transition-colors',
+              'hover:text-[var(--active-text)] hover:bg-[var(--active-bg)]',
+              'focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:pointer-events-none',
             )}
           >
             <X className="h-4 w-4" />
@@ -94,7 +102,7 @@ const SheetHeader = ({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn('flex flex-col gap-1.5 text-start', className)}
+    className={cn('flex flex-col gap-1.5 text-start pe-10', className)}
     {...props}
   />
 );
@@ -106,7 +114,7 @@ const SheetTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn('text-lg font-semibold text-foreground', className)}
+    className={cn('text-lg font-semibold leading-none tracking-tight gradient-text', className)}
     {...props}
   />
 ));
