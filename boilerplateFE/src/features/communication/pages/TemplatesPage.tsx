@@ -31,7 +31,7 @@ export default function TemplatesPage() {
 
   // Fetch the full unfiltered list — categories derived client-side.
   const { data, isLoading, isError } = useMessageTemplates();
-  const templates: MessageTemplateDto[] = data?.data ?? [];
+  const templates = useMemo<MessageTemplateDto[]>(() => data?.data ?? [], [data?.data]);
 
   const canManageTemplates = hasPermission(PERMISSIONS.Communication.ManageTemplates);
 

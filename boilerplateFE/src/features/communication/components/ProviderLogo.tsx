@@ -28,7 +28,6 @@ export function ProviderLogo({ provider, size = 'md', className }: ProviderLogoP
           className,
         )}
         // Logo strings are static, hardcoded SVG with no user input — safe to inject
-        // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: svg }}
       />
     );
