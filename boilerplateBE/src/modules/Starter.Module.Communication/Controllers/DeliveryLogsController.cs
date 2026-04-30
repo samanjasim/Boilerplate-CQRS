@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Starter.Module.Communication.Application.Commands.ResendDelivery;
 using Starter.Module.Communication.Application.Queries.GetDeliveryLogById;
 using Starter.Module.Communication.Application.Queries.GetDeliveryLogs;
+using Starter.Module.Communication.Application.Queries.GetDeliveryStatusCounts;
 using Starter.Module.Communication.Constants;
 using Starter.Module.Communication.Domain.Enums;
 
@@ -60,6 +61,20 @@ public sealed class DeliveryLogsController(ISender mediator) : Starter.Abstracti
     public async Task<IActionResult> Resend(Guid id, CancellationToken ct = default)
     {
         var result = await Mediator.Send(new ResendDeliveryCommand(id), ct);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Get delivery status counts grouped over a recent window (default 7 days).
+    /// </summary>
+    [HttpGet("status-counts")]
+    [Authorize(Policy = CommunicationPermissions.ViewDeliveryLog)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetStatusCounts(
+        [FromQuery] int windowDays = 7,
+        CancellationToken ct = default)
+    {
+        var result = await Mediator.Send(new GetDeliveryStatusCountsQuery(windowDays), ct);
         return HandleResult(result);
     }
 }

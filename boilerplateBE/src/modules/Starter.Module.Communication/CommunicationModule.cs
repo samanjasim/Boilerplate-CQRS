@@ -43,6 +43,7 @@ public sealed class CommunicationModule : IModule
         services.AddDataProtection();
         services.AddSingleton<ICredentialEncryptionService, CredentialEncryptionService>();
         services.AddSingleton<ITemplateEngine, StubbleTemplateEngine>();
+        services.AddSingleton(TimeProvider.System);
 
         // Channel providers
         services.AddScoped<IChannelProvider, SmtpEmailProvider>();
