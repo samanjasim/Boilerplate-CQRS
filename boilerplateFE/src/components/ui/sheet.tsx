@@ -28,16 +28,31 @@ SheetOverlay.displayName = DialogPrimitive.Overlay.displayName;
 type SheetSide = 'end' | 'bottom';
 type SheetWidth = 'sm' | 'md' | 'lg';
 
+// Drawer floats off the screen edges (top/bottom/trailing) so it reads as a
+// panel rather than a flush slide-out. The inline-end inset uses a screen-edge
+// gap that survives RTL via `inset-inline-end-*`. Closed state translates by
+// 100% + the gap so the drawer fully clears the viewport during the slide-out.
 const SIDE_CLASSES: Record<SheetSide, string> = {
-  end: 'inset-y-0 inset-inline-end-0 h-full border-s border-[var(--border-strong)] data-[state=open]:translate-x-0 data-[state=closed]:translate-x-full rtl:data-[state=closed]:-translate-x-full',
-  bottom:
-    'inset-x-0 bottom-0 max-h-[90vh] rounded-t-2xl border-t border-[var(--border-strong)] data-[state=open]:translate-y-0 data-[state=closed]:translate-y-full',
+  end: [
+    'top-3 bottom-3 inset-inline-end-3 sm:top-4 sm:bottom-4 sm:inset-inline-end-4',
+    'rounded-2xl border border-[var(--border-strong)]',
+    'data-[state=open]:translate-x-0',
+    'data-[state=closed]:translate-x-[calc(100%+1.5rem)]',
+    'rtl:data-[state=closed]:-translate-x-[calc(100%+1.5rem)]',
+  ].join(' '),
+  bottom: [
+    'inset-x-3 bottom-3 max-h-[calc(90vh-1.5rem)]',
+    'rounded-2xl border border-[var(--border-strong)]',
+    'data-[state=open]:translate-y-0',
+    'data-[state=closed]:translate-y-[calc(100%+1.5rem)]',
+  ].join(' '),
 };
 
 const WIDTH_CLASSES: Record<SheetWidth, string> = {
-  sm: 'sm:w-[400px]',
-  md: 'sm:w-[480px]',
-  lg: 'sm:w-[560px]',
+  // sm: viewport-minus-gap on phones, fixed width above the breakpoint.
+  sm: 'w-[calc(100vw-1.5rem)] sm:w-[400px]',
+  md: 'w-[calc(100vw-1.5rem)] sm:w-[480px]',
+  lg: 'w-[calc(100vw-1.5rem)] sm:w-[560px]',
 };
 
 interface SheetContentProps
@@ -61,9 +76,9 @@ const SheetContent = React.forwardRef<
       <DialogPrimitive.Content
         ref={ref}
         className={cn(
-          'fixed z-50 flex flex-col gap-4 surface-glass-strong shadow-float',
+          'fixed z-50 flex flex-col gap-4 surface-glass-strong shadow-float overflow-hidden',
           'transition-transform duration-300 ease-out',
-          'p-6 w-full',
+          'p-6',
           SIDE_CLASSES[side],
           side === 'end' && WIDTH_CLASSES[width],
           'data-[state=open]:animate-in data-[state=closed]:animate-out',
