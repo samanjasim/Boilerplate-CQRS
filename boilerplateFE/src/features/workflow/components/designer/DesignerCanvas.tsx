@@ -49,8 +49,8 @@ function DesignerCanvasInner({ readOnly = false }: Props) {
         proOptions={{ hideAttribution: true }}
       >
         <Background gap={14} size={1} color="hsl(var(--border))" />
-        <MiniMap pannable zoomable />
-        <Controls showInteractive={false} />
+        {!readOnly && <MiniMap pannable zoomable />}
+        {!readOnly && <Controls showInteractive={false} />}
       </ReactFlow>
     </div>
   );
