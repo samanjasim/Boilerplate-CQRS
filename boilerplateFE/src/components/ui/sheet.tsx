@@ -29,12 +29,12 @@ type SheetSide = 'end' | 'bottom';
 type SheetWidth = 'sm' | 'md' | 'lg';
 
 // Drawer floats off the screen edges (top/bottom/trailing) so it reads as a
-// panel rather than a flush slide-out. The inline-end inset uses a screen-edge
-// gap that survives RTL via `inset-inline-end-*`. Closed state translates by
-// 100% + the gap so the drawer fully clears the viewport during the slide-out.
+// panel rather than a flush slide-out. The inline-end inset uses Tailwind's
+// `end-*` logical utility so it survives RTL automatically. Closed state
+// translates by 100% + the gap so the drawer fully clears the viewport.
 const SIDE_CLASSES: Record<SheetSide, string> = {
   end: [
-    'top-3 bottom-3 inset-inline-end-3 sm:top-4 sm:bottom-4 sm:inset-inline-end-4',
+    'top-3 bottom-3 end-3 sm:top-4 sm:bottom-4 sm:end-4',
     'rounded-2xl border border-[var(--border-strong)]',
     'data-[state=open]:translate-x-0',
     'data-[state=closed]:translate-x-[calc(100%+1.5rem)]',
@@ -78,7 +78,7 @@ const SheetContent = React.forwardRef<
         className={cn(
           'fixed z-50 flex flex-col gap-4 surface-glass-strong shadow-float overflow-hidden',
           'transition-transform duration-300 ease-out',
-          'p-6',
+          'p-6 sm:px-8',
           SIDE_CLASSES[side],
           side === 'end' && WIDTH_CLASSES[width],
           'data-[state=open]:animate-in data-[state=closed]:animate-out',
@@ -90,14 +90,14 @@ const SheetContent = React.forwardRef<
         {side === 'end' && (
           <span
             aria-hidden
-            className="pointer-events-none absolute inset-y-0 inset-inline-start-0 w-[2px] bg-gradient-to-b from-[var(--active-bg)] via-[var(--active-border)] to-transparent"
+            className="pointer-events-none absolute inset-y-0 start-0 w-[2px] bg-gradient-to-b from-[var(--active-bg)] via-[var(--active-border)] to-transparent"
           />
         )}
         {children}
         {showClose && (
           <SheetClose
             className={cn(
-              'absolute top-4 inline-end-4 z-10 rounded-lg p-1.5 text-muted-foreground transition-colors',
+              'absolute top-4 end-4 z-10 rounded-lg p-1.5 text-muted-foreground transition-colors',
               'hover:text-[var(--active-text)] hover:bg-[var(--active-bg)]',
               'focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:pointer-events-none',
             )}
@@ -152,7 +152,7 @@ const SheetBody = ({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn('flex-1 overflow-y-auto -mx-6 px-6', className)}
+    className={cn('flex-1 overflow-y-auto -mx-6 px-6 sm:-mx-8 sm:px-8', className)}
     {...props}
   />
 );
