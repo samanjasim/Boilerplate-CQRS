@@ -9,6 +9,7 @@ using Starter.Abstractions.Modularity;
 using Starter.Infrastructure.Modularity;
 using Starter.Module.Workflow.Constants;
 using Starter.Module.Workflow.Infrastructure.Persistence;
+using Starter.Module.Workflow.Infrastructure.Persistence.Seeds;
 using Starter.Module.Workflow.Infrastructure.Services;
 
 namespace Starter.Module.Workflow;
@@ -47,6 +48,7 @@ public sealed class WorkflowModule : IModule, IModuleBusContributor
         });
 
         // Capability service — replaces NullWorkflowService
+        services.AddSingleton(TimeProvider.System);
         services.AddScoped<IWorkflowService, WorkflowEngine>();
 
         services.AddSingleton<IConditionEvaluator, ConditionEvaluator>();
@@ -588,5 +590,10 @@ public sealed class WorkflowModule : IModule, IModuleBusContributor
                     new("BoardVote", "Failed", "Reject"),
                 ]),
             ct: cancellationToken);
+
+        // Seed a demo fixture of instances + tasks spanning every status / SLA
+        // bucket the redesigned Phase 5a inbox + instance list surfaces. Idempotent;
+        // skips after the first run via a marker entity type.
+        await WorkflowDemoInstanceSeeder.SeedAsync(services, cancellationToken);
     }
 }

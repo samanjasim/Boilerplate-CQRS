@@ -80,6 +80,7 @@ internal sealed class GetWorkflowInstanceByIdQueryHandler(
             instance.StartedByUserId,
             displayName,
             instance.EntityDisplayName,
-            canResubmit));
+            canResubmit,
+            instance.TenantId));
     }
 }

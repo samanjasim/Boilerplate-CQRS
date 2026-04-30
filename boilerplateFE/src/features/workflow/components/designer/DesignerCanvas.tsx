@@ -48,9 +48,9 @@ function DesignerCanvasInner({ readOnly = false }: Props) {
         fitViewOptions={{ padding: 0.2 }}
         proOptions={{ hideAttribution: true }}
       >
-        <Background />
-        <MiniMap pannable zoomable />
-        <Controls showInteractive={false} />
+        <Background gap={14} size={1} color="hsl(var(--border))" />
+        {!readOnly && <MiniMap pannable zoomable />}
+        {!readOnly && <Controls showInteractive={false} />}
       </ReactFlow>
     </div>
   );

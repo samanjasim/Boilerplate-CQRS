@@ -12,7 +12,7 @@ export function SidePanel({ readOnly = false }: Props) {
   const selection = useDesignerStore(s => s.selection);
 
   return (
-    <aside className="w-[360px] shrink-0 border-l border-border bg-card overflow-auto">
+    <aside className="surface-glass w-[360px] shrink-0 overflow-auto border-l border-border">
       {selection.kind === 'state' && <StateEditor stateName={selection.name} readOnly={readOnly} />}
       {selection.kind === 'transition' && <TransitionEditor edgeId={selection.id} readOnly={readOnly} />}
       {selection.kind === 'empty' && (

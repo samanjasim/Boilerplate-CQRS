@@ -81,7 +81,11 @@ function TransitionEdgeInner({
   const conditional = data?.condition != null;
   const auto = data?.type?.toLowerCase() === 'auto';
 
-  const stroke = conditional ? 'hsl(var(--accent-foreground))' : 'hsl(var(--muted-foreground))';
+  const stroke = selected
+    ? 'hsl(var(--primary))'
+    : conditional
+      ? 'hsl(var(--accent-foreground))'
+      : 'hsl(var(--muted-foreground))';
   const dash = auto ? '6 3' : undefined;
 
   return (

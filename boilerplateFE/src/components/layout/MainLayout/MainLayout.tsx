@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { type CSSProperties, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Outlet, useLocation } from 'react-router-dom';
 
@@ -73,6 +73,7 @@ export function MainLayout() {
     <div
       className="aurora-canvas min-h-screen bg-background overflow-clip"
       data-page-style="dense"
+      style={{ '--shell-header-h': '3rem' } as CSSProperties}
     >
       <ScrollToTopOnNavigate />
       <Sidebar />

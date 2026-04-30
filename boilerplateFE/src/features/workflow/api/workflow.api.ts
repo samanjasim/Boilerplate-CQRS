@@ -16,6 +16,9 @@ import type {
   BatchExecuteTasksRequest,
   BatchExecuteResult,
   WorkflowAnalytics,
+  InboxStatusCounts,
+  InstanceStatusCounts,
+  WorkflowInstanceStatusCountsParams,
 } from '@/types/workflow.types';
 
 export const workflowApi = {
@@ -63,6 +66,11 @@ export const workflowApi = {
       .get<ApiResponse<WorkflowInstanceSummary[]>>(API_ENDPOINTS.WORKFLOW.INSTANCES, { params })
       .then((r) => r.data.data),
 
+  getInstanceStatusCounts: (params?: WorkflowInstanceStatusCountsParams): Promise<InstanceStatusCounts> =>
+    apiClient
+      .get<ApiResponse<InstanceStatusCounts>>(API_ENDPOINTS.WORKFLOW.INSTANCES_STATUS_COUNTS, { params })
+      .then((r) => r.data.data),
+
   getInstanceById: (instanceId: string): Promise<WorkflowInstanceSummary> =>
     apiClient
       .get<ApiResponse<WorkflowInstanceSummary>>(API_ENDPOINTS.WORKFLOW.INSTANCE_BY_ID(instanceId))
@@ -99,6 +107,11 @@ export const workflowApi = {
   getPendingTaskCount: (): Promise<number> =>
     apiClient
       .get<ApiResponse<number>>(API_ENDPOINTS.WORKFLOW.TASKS_COUNT)
+      .then((r) => r.data.data),
+
+  getInboxStatusCounts: (): Promise<InboxStatusCounts> =>
+    apiClient
+      .get<ApiResponse<InboxStatusCounts>>(API_ENDPOINTS.WORKFLOW.TASKS_STATUS_COUNTS)
       .then((r) => r.data.data),
 
   executeTask: (taskId: string, data: ExecuteTaskRequest): Promise<boolean> =>

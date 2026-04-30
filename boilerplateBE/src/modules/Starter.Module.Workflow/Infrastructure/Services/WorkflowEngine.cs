@@ -928,7 +928,8 @@ internal sealed class WorkflowEngine(
                 i.StartedByUserId,
                 userLookup.TryGetValue(i.StartedByUserId, out var name) ? name : null,
                 i.EntityDisplayName,
-                canResubmit);
+                canResubmit,
+                i.TenantId);
         }).ToList();
     }
 

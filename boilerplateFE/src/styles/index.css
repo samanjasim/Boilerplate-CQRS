@@ -49,6 +49,9 @@
     --active-text: hsl(var(--primary));
     --active-border: hsl(var(--primary));
     --active-bg-strong: color-mix(in srgb, hsl(var(--primary)) 20%, transparent);
+    --state-warn-bg: color-mix(in srgb, var(--color-amber-500) 18%, hsl(var(--background)));
+    --state-warn-fg: color-mix(in srgb, var(--color-amber-700) 90%, hsl(var(--foreground)));
+    --state-warn-border: color-mix(in srgb, var(--color-amber-500) 35%, transparent);
     --hover-bg: hsl(var(--secondary));
     --gradient-from: var(--color-primary-700);
     --gradient-to: var(--color-primary-500);
@@ -127,6 +130,9 @@
     --active-text: hsl(var(--primary));
     --active-border: hsl(var(--primary));
     --active-bg-strong: color-mix(in srgb, hsl(var(--primary)) 25%, transparent);
+    --state-warn-bg: color-mix(in srgb, var(--color-amber-400) 12%, hsl(var(--background)));
+    --state-warn-fg: color-mix(in srgb, var(--color-amber-200) 90%, hsl(var(--foreground)));
+    --state-warn-border: color-mix(in srgb, var(--color-amber-400) 30%, transparent);
     --hover-bg: hsl(var(--secondary));
     --gradient-from: var(--color-primary-800);
     --gradient-to: var(--color-primary-600);

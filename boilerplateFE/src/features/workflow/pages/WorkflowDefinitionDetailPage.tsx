@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
@@ -8,13 +8,46 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Workflow as WorkflowIcon } from 'lucide-react';
-import { PageHeader } from '@/components/common';
+import { Layers, Workflow as WorkflowIcon } from 'lucide-react';
 import { usePermissions } from '@/hooks';
 import { PERMISSIONS } from '@/constants';
+import { STATUS_BADGE_VARIANT } from '@/constants/status';
 import { ROUTES } from '@/config';
+import { JsonView } from '@/features/audit-logs/components/JsonView';
 import { useWorkflowDefinition, useCloneDefinition, useUpdateDefinition } from '../api';
 import { WorkflowAnalyticsTab } from '../components/analytics/WorkflowAnalyticsTab';
+import { DesignerCanvas } from '../components/designer/DesignerCanvas';
+import { useDesignerStore } from '../components/designer/hooks/useDesignerStore';
+import { useAutoLayout } from '../components/designer/hooks/useAutoLayout';
+import { WorkflowStatusHeader } from '../components/WorkflowStatusHeader';
+import type { WorkflowStateConfig, WorkflowTransitionConfig } from '@/types/workflow.types';
+
+function DefinitionCanvasPreview({
+  states,
+  transitions,
+}: {
+  states: WorkflowStateConfig[];
+  transitions: WorkflowTransitionConfig[];
+}) {
+  const load = useDesignerStore((state) => state.load);
+  const setNodesFromLayout = useDesignerStore((state) => state.setNodesFromLayout);
+  const autoLayout = useAutoLayout();
+
+  useEffect(() => {
+    load(states, transitions);
+    // Templates and freshly-cloned definitions have no uiPosition values; the
+    // store falls back to x=0,y=i*140 which stacks all nodes in a single
+    // column. Always re-layout for the read-only preview so parallel
+    // terminals (Approved + Rejected) land side-by-side.
+    const hasPositions = states.some((s) => s.uiPosition);
+    if (!hasPositions) {
+      const { nodes, edges } = useDesignerStore.getState();
+      setNodesFromLayout(autoLayout(nodes, edges));
+    }
+  }, [load, setNodesFromLayout, autoLayout, states, transitions]);
+
+  return <DesignerCanvas readOnly />;
+}
 
 export default function WorkflowDefinitionDetailPage() {
   const { t } = useTranslation();
@@ -28,6 +61,7 @@ export default function WorkflowDefinitionDetailPage() {
   const { hasPermission } = usePermissions();
   const [editName, setEditName] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const [showRawJson, setShowRawJson] = useState(false);
 
   if (isLoading) {
     return (
@@ -41,6 +75,8 @@ export default function WorkflowDefinitionDetailPage() {
 
   const canViewAnalytics = hasPermission(PERMISSIONS.Workflows.ViewAnalytics);
   const showAnalyticsTab = canViewAnalytics && !def.isTemplate;
+  const definitionTitle = def.name;
+  const definitionStepCount = def.states?.length ?? 0;
 
   const handleEdit = () => {
     setEditName(def.name);
@@ -75,6 +111,42 @@ export default function WorkflowDefinitionDetailPage() {
           </CardContent>
         </Card>
       )}
+
+      <section className="space-y-3">
+        <Card variant="glass">
+          <CardContent className="p-0">
+            <div className="h-[420px] max-h-[60vh]">
+              <DefinitionCanvasPreview
+                states={def.states ?? []}
+                transitions={def.transitions ?? []}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="space-y-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowRawJson((value) => !value)}
+          >
+            {t('workflow.detail.viewRawJson')}
+          </Button>
+          {showRawJson && (
+            <Card>
+              <CardContent className="py-4">
+                <JsonView
+                  payload={JSON.stringify({
+                    states: def.states ?? [],
+                    transitions: def.transitions ?? [],
+                  })}
+                />
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </section>
 
       {/* States list */}
       <section className="space-y-3">
@@ -113,7 +185,7 @@ export default function WorkflowDefinitionDetailPage() {
                     )}
                     {state.formFields && state.formFields.length > 0 && (
                       <div className="mt-2 space-y-1">
-                        <p className="text-xs font-medium text-muted-foreground">{t('workflow.forms.required', 'Form Fields')}:</p>
+                        <p className="text-xs font-medium text-muted-foreground">{t('workflow.forms.fields')}:</p>
                         <div className="flex flex-wrap gap-1.5">
                           {state.formFields.map((f) => (
                             <Badge key={f.name} variant="outline" className="text-xs">
@@ -126,12 +198,16 @@ export default function WorkflowDefinitionDetailPage() {
                     {state.sla && (
                       <div className="mt-2">
                         <p className="text-xs text-muted-foreground">
-                          <span className="font-medium">{t('workflow.sla.overdue', 'SLA')}:</span>
+                          <span className="font-medium">{t('workflow.sla.title')}:</span>
                           {state.sla.reminderAfterHours != null && (
-                            <span className="ms-1">Reminder after {state.sla.reminderAfterHours}h</span>
+                            <span className="ms-1">
+                              {t('workflow.sla.reminderAfterHours', { hours: state.sla.reminderAfterHours })}
+                            </span>
                           )}
                           {state.sla.escalateAfterHours != null && (
-                            <span className="ms-1">Escalate after {state.sla.escalateAfterHours}h</span>
+                            <span className="ms-1">
+                              {t('workflow.sla.escalateAfterHours', { hours: state.sla.escalateAfterHours })}
+                            </span>
                           )}
                         </p>
                       </div>
@@ -139,8 +215,13 @@ export default function WorkflowDefinitionDetailPage() {
                     {state.parallel && (
                       <div className="mt-2">
                         <p className="text-xs text-muted-foreground">
-                          <span className="font-medium">{t('workflow.parallel.progress', 'Parallel')}:</span>
-                          <span className="ms-1">{state.parallel.mode} — {state.parallel.assignees.length} assignee(s)</span>
+                          <span className="font-medium">{t('workflow.parallel.title')}:</span>
+                          <span className="ms-1">
+                            {t('workflow.parallel.assigneeCount', {
+                              mode: state.parallel.mode,
+                              count: state.parallel.assignees.length,
+                            })}
+                          </span>
                         </p>
                       </div>
                     )}
@@ -163,11 +244,20 @@ export default function WorkflowDefinitionDetailPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={def.name}
-        breadcrumbs={[
-          { to: '/workflows/definitions', label: t('workflow.definitions.title') },
-          { label: def?.name ?? t('common.loading') },
+      <WorkflowStatusHeader
+        title={definitionTitle}
+        status={def.isActive
+          ? t('workflow.definitions.statusValue.active')
+          : t('workflow.definitions.statusValue.inactive')}
+        statusVariant={STATUS_BADGE_VARIANT[def.isActive ? 'Active' : 'Inactive'] ?? 'outline'}
+        chips={[
+          { icon: <Layers className="h-3 w-3" />, label: def.entityType, tinted: true },
+          { label: `${t('workflow.definitions.steps')}: ${definitionStepCount}` },
+          {
+            label: def.isTemplate
+              ? t('workflow.definitions.systemTemplate')
+              : t('workflow.definitions.customized'),
+          },
         ]}
         actions={
           <div className="flex items-center gap-2">
@@ -206,30 +296,11 @@ export default function WorkflowDefinitionDetailPage() {
         }
       />
 
-      {/* Header info */}
-      <Card>
-        <CardContent className="py-5">
-          <div className="flex flex-wrap items-center gap-3">
-            <Badge variant="secondary">{def.entityType}</Badge>
-            <Badge variant={def.isTemplate ? 'outline' : 'default'}>
-              {def.isTemplate
-                ? t('workflow.definitions.systemTemplate')
-                : t('workflow.definitions.customized')}
-            </Badge>
-            {def.isActive ? (
-              <Badge variant="default">{t('workflow.status.active')}</Badge>
-            ) : (
-              <Badge variant="secondary">{t('common.inactive')}</Badge>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
       {showAnalyticsTab ? (
         <Tabs defaultValue="overview">
           <TabsList>
-            <TabsTrigger value="overview">{t('workflow.detail.tabOverview', 'Overview')}</TabsTrigger>
-            <TabsTrigger value="analytics">{t('workflow.detail.tabAnalytics', 'Analytics')}</TabsTrigger>
+            <TabsTrigger value="overview">{t('workflow.detail.tabOverview')}</TabsTrigger>
+            <TabsTrigger value="analytics">{t('workflow.detail.tabAnalytics')}</TabsTrigger>
           </TabsList>
           <TabsContent value="overview" className="space-y-4 mt-4">
             {overviewContent}

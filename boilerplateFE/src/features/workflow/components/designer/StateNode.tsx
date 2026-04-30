@@ -1,21 +1,66 @@
 import { memo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { AlertTriangle, Clock, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import type { StateNode as StateNodeType } from './hooks/useDesignerStore';
 import { useDesignerStore } from './hooks/useDesignerStore';
 
-// Terminal covers every end-state — Approved, Rejected, Cancelled, etc. A
-// green accent implies success and is misleading on Rejected; use a neutral
-// slate tone so the state's name carries the outcome semantics.
-const TYPE_COLOR: Record<string, string> = {
-  Initial: 'bg-blue-500',
-  HumanTask: 'bg-amber-500',
-  SystemAction: 'bg-purple-500',
-  Terminal: 'bg-slate-500',
+type Tint = { dot: string; ring: string; tooltipKey: string };
+
+const TYPE_TINT: Record<string, Tint> = {
+  Initial: {
+    dot: 'bg-emerald-500',
+    ring: 'border-emerald-500/40 bg-emerald-50 ring-emerald-500/40 dark:bg-emerald-950/20',
+    tooltipKey: 'workflow.designer.stateType.initial',
+  },
+  HumanTask: {
+    dot: 'bg-primary',
+    ring: 'border-primary/40 bg-[var(--active-bg)]/40 ring-primary/40',
+    tooltipKey: 'workflow.designer.stateType.humanTask',
+  },
 };
 
+const TERMINAL_SUCCESS: Tint = {
+  dot: 'bg-emerald-600',
+  ring: 'border-emerald-500/50 bg-emerald-50 ring-emerald-500/40 dark:bg-emerald-950/25',
+  tooltipKey: 'workflow.designer.stateType.terminalSuccess',
+};
+const TERMINAL_DANGER: Tint = {
+  dot: 'bg-destructive',
+  ring: 'border-destructive/45 bg-destructive/10 ring-destructive/40',
+  tooltipKey: 'workflow.designer.stateType.terminalDanger',
+};
+const TERMINAL_NEUTRAL: Tint = {
+  dot: 'bg-muted-foreground/60',
+  ring: 'border-border bg-muted/40',
+  tooltipKey: 'workflow.designer.stateType.final',
+};
+
+const FALLBACK_TINT: Tint = {
+  dot: 'bg-muted-foreground/40',
+  ring: 'border-border bg-card',
+  tooltipKey: 'workflow.designer.stateType.other',
+};
+
+const POSITIVE_TERMINAL_NAME =
+  /^(approved?|complet(ed)?|passed?|resolv(ed)?|granted|success(ful)?|done|published?|active)$/i;
+const NEGATIVE_TERMINAL_NAME =
+  /^(rejected?|cancell?ed|fail(ed)?|denied|abort(ed)?|error|archived?|expired)$/i;
+
+function pickTint(type: string, name: string): Tint {
+  if (TYPE_TINT[type]) return TYPE_TINT[type];
+  if (type === 'Terminal' || type === 'Final') {
+    if (POSITIVE_TERMINAL_NAME.test(name)) return TERMINAL_SUCCESS;
+    if (NEGATIVE_TERMINAL_NAME.test(name)) return TERMINAL_DANGER;
+    return TERMINAL_NEUTRAL;
+  }
+  return FALLBACK_TINT;
+}
+
 function StateNodeInner({ data, id, selected }: NodeProps<StateNodeType>) {
+  const { t } = useTranslation();
   // Match issue paths shaped like `states[<index>].*` against this node's index
   // in the store (issue paths are indexed, not named).
   const hasError = useDesignerStore(s => {
@@ -24,27 +69,36 @@ function StateNodeInner({ data, id, selected }: NodeProps<StateNodeType>) {
     const prefix = `states[${index}]`;
     return s.issues.some(i => i.path.startsWith(prefix));
   });
-  const color = TYPE_COLOR[data.type] ?? 'bg-muted';
+  const tint = pickTint(data.type, data.name);
 
   return (
     <div
-      className={[
-        'rounded-xl border bg-card shadow-card w-[220px] text-sm',
-        selected ? 'ring-2 ring-primary' : 'border-border',
-      ].join(' ')}
+      title={t(tint.tooltipKey)}
+      className={cn(
+        'w-[220px] rounded-xl border-2 text-sm shadow-card transition-shadow',
+        tint.ring,
+        selected && 'shadow-[var(--glow-primary-sm)] ring-2',
+      )}
       data-state-type={data.type}
     >
-      <div className={['h-1.5 rounded-t-xl', color].join(' ')} />
       <div className="p-3 space-y-1.5">
         <div className="flex items-start justify-between gap-1.5">
           <div className="min-w-0">
-            <div className="font-semibold text-foreground truncate">
-              {data.displayName || data.name}
+            <div className="flex items-center gap-2 font-semibold text-foreground">
+              <span className={cn('h-2 w-2 shrink-0 rounded-full', tint.dot)} />
+              <span className="truncate">
+                {data.displayName || data.name}
+              </span>
             </div>
-            <div className="text-[11px] text-muted-foreground truncate">{data.name}</div>
+            <div className="text-[11px] text-muted-foreground truncate">
+              {data.name}
+            </div>
           </div>
           {hasError && (
-            <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" aria-label="validation errors" />
+            <AlertTriangle
+              className="h-3.5 w-3.5 shrink-0 text-destructive"
+              aria-label={t('workflow.designer.validationErrors')}
+            />
           )}
         </div>
 
@@ -60,7 +114,7 @@ function StateNodeInner({ data, id, selected }: NodeProps<StateNodeType>) {
           {data.sla && (data.sla.reminderAfterHours != null || data.sla.escalateAfterHours != null) && (
             <Badge variant="secondary" className="text-[10px] gap-1">
               <Clock className="h-3 w-3" />
-              SLA
+              {t('workflow.sla.title')}
             </Badge>
           )}
         </div>
