@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { API_ENDPOINTS } from '@/config/api.config';
+// eslint-disable-next-line no-restricted-syntax -- pre-migration leaf; folded into workflow slice (PR #6) per docs/superpowers/specs/2026-04-30-fe-api-envelope-cleanup-design.md §8
 import { apiClient } from '@/lib/axios';
 import { queryKeys } from '@/lib/query/keys';
 import type { ApiResponse } from '@/types/api.types';

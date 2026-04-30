@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query/keys';
 import { commentsActivityApi } from './comments-activity.api';
+import type { PagedResult } from '@/types';
 import type {
   Comment,
   CreateCommentData,
@@ -13,8 +14,6 @@ import i18n from '@/i18n';
 
 // Error toasts come from the global axios interceptor — mutations only add
 // side-effects (cache invalidation, optimistic updates) here.
-
-type PagedResponse<T> = { data: T[]; [key: string]: unknown };
 
 function toggleReactionOnList(comments: Comment[] | undefined, commentId: string, reactionType: string): Comment[] | undefined {
   if (!comments) return comments;
@@ -152,35 +151,35 @@ export function useToggleReaction() {
       await queryClient.cancelQueries({ queryKey: queryKeys.commentsActivity.comments.all });
       await queryClient.cancelQueries({ queryKey: queryKeys.commentsActivity.timeline.all });
 
-      const commentSnapshots = queryClient.getQueriesData<PagedResponse<Comment>>({
+      const commentSnapshots = queryClient.getQueriesData<PagedResult<Comment>>({
         queryKey: queryKeys.commentsActivity.comments.all,
       });
-      const timelineSnapshots = queryClient.getQueriesData<PagedResponse<TimelineItem>>({
+      const timelineSnapshots = queryClient.getQueriesData<PagedResult<TimelineItem>>({
         queryKey: queryKeys.commentsActivity.timeline.all,
       });
 
-      queryClient.setQueriesData<PagedResponse<Comment>>(
+      queryClient.setQueriesData<PagedResult<Comment>>(
         { queryKey: queryKeys.commentsActivity.comments.all },
         (old) => {
-          if (!old?.data) return old;
-          const next = toggleReactionOnList(old.data, commentId, reactionType);
-          return next === old.data ? old : { ...old, data: next ?? [] };
+          if (!old?.items) return old;
+          const next = toggleReactionOnList(old.items, commentId, reactionType);
+          return next === old.items ? old : { ...old, items: next ?? [] };
         },
       );
 
-      queryClient.setQueriesData<PagedResponse<TimelineItem>>(
+      queryClient.setQueriesData<PagedResult<TimelineItem>>(
         { queryKey: queryKeys.commentsActivity.timeline.all },
         (old) => {
-          if (!old?.data) return old;
+          if (!old?.items) return old;
           let changed = false;
-          const next = old.data.map((item) => {
+          const next = old.items.map((item) => {
             if (item.type !== 'comment' || !item.comment) return item;
             const updated = toggleReactionOnComment(item.comment, commentId, reactionType);
             if (updated === item.comment) return item;
             changed = true;
             return { ...item, comment: updated };
           });
-          return changed ? { ...old, data: next } : old;
+          return changed ? { ...old, items: next } : old;
         },
       );
 
