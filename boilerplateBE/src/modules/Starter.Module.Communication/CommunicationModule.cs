@@ -133,6 +133,7 @@ public sealed class CommunicationModule : IModule, IModuleBusContributor
         using var scope = services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<CommunicationDbContext>();
         var appDb = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
+        var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
         var loggerFactory = scope.ServiceProvider.GetRequiredService<ILoggerFactory>();
         var logger = loggerFactory.CreateLogger("Communication.Seed");
         await SystemTemplateRegistrar.SeedAsync(context, logger);
@@ -141,5 +142,10 @@ public sealed class CommunicationModule : IModule, IModuleBusContributor
         // approval categories marked as required InApp notifications. New tenants
         // pick up the rows via CommunicationTenantEventHandler.Handle(TenantCreatedEvent).
         await RequiredNotificationSeed.SeedAllTenantsAsync(context, appDb, logger, cancellationToken);
+
+        // Phase 5b manual-QA fodder: only fires when the host opts in via
+        // DatabaseSettings:SeedDemoCommunicationData. Idempotent per tenant.
+        if (configuration.GetValue<bool>("DatabaseSettings:SeedDemoCommunicationData"))
+            await DemoCommunicationSeed.SeedAsync(context, appDb, logger, cancellationToken);
     }
 }
