@@ -1,0 +1,29 @@
+{
+  "restrictedPatterns": [
+    "@/features/billing",
+    "@/features/billing/*",
+    "@/features/comments-activity",
+    "@/features/comments-activity/*",
+    "@/features/communication",
+    "@/features/communication/*",
+    "@/features/import-export",
+    "@/features/import-export/*",
+    "@/features/products",
+    "@/features/products/*",
+    "@/features/webhooks",
+    "@/features/webhooks/*",
+    "@/features/workflow",
+    "@/features/workflow/*"
+  ],
+  "allowlistFiles": [
+    "src/features/billing/**",
+    "src/features/comments-activity/**",
+    "src/features/communication/**",
+    "src/features/import-export/**",
+    "src/features/products/**",
+    "src/features/webhooks/**",
+    "src/features/workflow/**",
+    "src/config/modules.config.ts",
+    "src/config/modules.generated.ts"
+  ]
+}

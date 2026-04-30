@@ -4,7 +4,7 @@ Use this skill when building a new optional module for the Boilerplate-CQRS solu
 
 ## When to Use
 
-When the user asks to add a new feature module (e.g., "add an Orders module", "build Inventory module"). A module is an optional, self-contained vertical slice that can be toggled on/off via `scripts/modules.json` and removed entirely by `rename.ps1 -Modules`.
+When the user asks to add a new feature module (e.g., "add an Orders module", "build Inventory module"). A module is an optional, self-contained vertical slice that can be toggled on/off via `modules.catalog.json` and removed entirely by `rename.ps1 -Modules`.
 
 ## Pre-Flight
 
@@ -51,7 +51,7 @@ Starter.Module.{Name}/
 
 ### 1.2 Project File (.csproj)
 
-Reference `Starter.Abstractions.Web` only. Never reference other modules or core Application/Infrastructure/Domain projects.
+Reference `Starter.Abstractions.Web` (always) and `Starter.Abstractions.Messaging` (only if your module ships at least one `IConsumer<T>` or otherwise needs to register MassTransit infrastructure). Never reference other modules or core Application/Infrastructure/Domain projects.
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
@@ -66,18 +66,24 @@ Reference `Starter.Abstractions.Web` only. Never reference other modules or core
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Starter.Abstractions.Web\Starter.Abstractions.Web.csproj" />
+    <!-- Add this only if your module ships an IConsumer<T> or registers an
+         additional EF outbox. The interface IModuleBusContributor lives here. -->
+    <ProjectReference Include="..\..\Starter.Abstractions.Messaging\Starter.Abstractions.Messaging.csproj" />
   </ItemGroup>
 </Project>
 ```
 
 ### 1.3 Module Class ({Name}Module.cs)
 
-Implements `IModule`. This is the module's entry point — DI registration, permissions, migrations, and seed data.
+Implements `IModule` (always) and `IModuleBusContributor` (only if your module ships at least one `IConsumer<T>`). This is the module's entry point — DI registration, permissions, migrations, seed data, and bus wiring.
+
+> **Why `IModuleBusContributor`?** Tier 2.5 Theme 5 removed the host's auto-discovery of consumers from module assemblies. Modules now own their bus surface — `bus.AddConsumers(typeof({Name}Module).Assembly)` opts your assembly into MassTransit's discovery. The architecture test `ModuleRegistryTests.Modules_with_MassTransit_consumers_implement_IModuleBusContributor` fails the build if you forget. Skip the interface if your module has zero consumers.
 
 ```csharp
+using MassTransit;                          // only if implementing IModuleBusContributor
 using Starter.Abstractions.Modularity;
 
-public sealed class {Name}Module : IModule
+public sealed class {Name}Module : IModule, IModuleBusContributor   // drop the second interface if no consumers
 {
     public string Name => "{Name}";
     public string DisplayName => "{Display Name}";
@@ -104,13 +110,27 @@ public sealed class {Name}Module : IModule
         // FluentValidation validators from this assembly
         services.AddValidatorsFromAssembly(typeof({Name}Module).Assembly);
 
-        // MassTransit consumers from this assembly
-        services.AddMassTransit(x => x.AddConsumers(typeof({Name}Module).Assembly));
+        // NOTE: do NOT call services.AddMassTransit here — the host already
+        // registers the bus once in Starter.Infrastructure. Consumer registration
+        // happens in ConfigureBus below via IModuleBusContributor.
 
         // Usage metric calculator (if quota tracking needed)
         services.AddScoped<IUsageMetricCalculator, {Name}UsageMetricCalculator>();
 
         return services;
+    }
+
+    // Implement only if your module ships at least one IConsumer<T>.
+    // Without this hook, the host won't see your consumers — they will be dead at runtime.
+    public void ConfigureBus(IBusRegistrationConfigurator bus)
+    {
+        bus.AddConsumers(typeof({Name}Module).Assembly);
+
+        // If your module has its own DbContext AND publishes events from inside it,
+        // also register a per-DbContext outbox here. Most modules do NOT need this —
+        // events published from MediatR handlers run against ApplicationDbContext's
+        // outbox via IIntegrationEventCollector. See WorkflowModule for the
+        // module-DbContext-outbox example.
     }
 
     public IEnumerable<(string Name, string Description, string Module)> GetPermissions()
@@ -188,23 +208,45 @@ public sealed class {Name}DbContext : DbContext, IModuleDbContext
 }
 ```
 
-### 1.6 Solution Wiring (3 files to modify)
+### 1.6 Solution Wiring (3 files to modify + 1 catalog edit + codegen)
 
-**Starter.sln** — Add project entry + NestedProjects mapping under the `modules` folder GUID `{FA170C0A-17C4-CD5A-EA12-445AFE5E2D23}`:
+**Starter.sln** — Add project entry + NestedProjects mapping under the `modules` folder GUID `{FA170C0A-17C4-CD5A-EA12-445AFE5E2D23}`. Easiest path:
 
 ```
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Starter.Module.{Name}", "src\modules\Starter.Module.{Name}\Starter.Module.{Name}.csproj", "{NEW-GUID}"
-EndProject
+dotnet sln Starter.sln add src/modules/Starter.Module.{Name}/Starter.Module.{Name}.csproj
 ```
 
-In GlobalSection(ProjectConfigurationPlatforms), add Debug/Release entries for the new GUID.
-In GlobalSection(NestedProjects), add `{NEW-GUID} = {FA170C0A-17C4-CD5A-EA12-445AFE5E2D23}`.
+…then move the new `Project(…)`/`EndProject` block under the `modules` folder by editing the `NestedProjects` section so the new GUID maps to `{FA170C0A-17C4-CD5A-EA12-445AFE5E2D23}`.
 
 **Starter.Api.csproj** — Add one `<ProjectReference>`:
 
 ```xml
 <ProjectReference Include="..\modules\Starter.Module.{Name}\Starter.Module.{Name}.csproj" />
 ```
+
+**`modules.catalog.json`** (repo root) — Add the new entry. The catalog feeds three generated artifacts (BE `ModuleRegistry.g.cs`, FE `modules.generated.ts`, mobile `modules.config.dart`, plus `eslint.config.modules.json`). See section [7. Module Manifest](#72-frontend-up-to-8-files) for the full schema.
+
+```json
+"{name}": {
+  "displayName": "{Display Name}",
+  "version": "1.0.0",
+  "supportedPlatforms": ["backend", "web"],
+  "backendModule": "Starter.Module.{Name}",
+  "frontendFeature": "{name}",
+  "configKey": "{name}",
+  "required": false,
+  "dependencies": [],
+  "description": "..."
+}
+```
+
+**Regenerate the bootstrap artifacts** from the catalog:
+
+```bash
+npm run generate:modules        # writes ModuleRegistry.g.cs, modules.generated.ts, modules.config.dart, eslint.config.modules.json
+```
+
+CI fails on drift (`modules-codegen-drift` job in `.github/workflows/modularity.yml`) so this step is mandatory — never hand-edit the four generated files.
 
 **Checkpoint:** `dotnet build` must pass with 0 warnings, 0 errors.
 
@@ -900,26 +942,25 @@ Already covered in Phase 1.6:
 1. `boilerplateBE/Starter.sln` — Project entry + NestedProjects
 2. `boilerplateBE/src/Starter.Api/Starter.Api.csproj` — ProjectReference
 
-### 7.2 Frontend (up to 8 files)
+### 7.2 Frontend (up to 7 files)
 
-3. **`scripts/modules.json`** — Add module entry:
+3. **`modules.catalog.json`** (repo root) — Add module entry. This is the single source of truth that the codegen consumes for BE registry, FE generated config, mobile config, and ESLint patterns. Always run `npm run generate:modules` after editing.
+
 ```json
 "{name}": {
   "displayName": "{Display Name}",
+  "version": "1.0.0",
+  "supportedPlatforms": ["backend", "web"],
   "backendModule": "Starter.Module.{Name}",
   "frontendFeature": "{name}",
   "configKey": "{name}",
   "required": false,
+  "dependencies": [],
   "description": "Brief description of what this module provides"
 }
 ```
 
-4. **`src/config/modules.config.ts`** — Import + register:
-```typescript
-import { {name}Module } from '@/features/{name}';
-// In activeModules: {name}: true
-// In enabledModules array: {name}Module
-```
+> **Do NOT hand-edit** `src/config/modules.config.ts`, `src/config/modules.generated.ts`, `boilerplateBE/src/Starter.Api/Modularity/ModuleRegistry.g.cs`, `boilerplateMobile/lib/app/modules.config.dart`, or `eslint.config.modules.json`. They are regenerated from the catalog by `npm run generate:modules`. CI fails on drift.
 
 5. **`src/config/api.config.ts`** — Add endpoint constants:
 ```typescript
@@ -977,7 +1018,7 @@ import { {name}Module } from '@/features/{name}';
 | Rule | Details |
 |------|---------|
 | **No direct module-to-module references** | Never `using Starter.Module.Billing` from Products. Use abstraction interfaces. |
-| **No core project references** | Module `.csproj` only references `Starter.Abstractions.Web`. Never `Starter.Application`, `Starter.Infrastructure`, `Starter.Domain`. |
+| **No core project references** | Module `.csproj` only references `Starter.Abstractions.Web` (always) and `Starter.Abstractions.Messaging` (only if implementing `IModuleBusContributor`). Never `Starter.Application`, `Starter.Infrastructure`, `Starter.Domain`, `Starter.Abstractions` directly — those flow transitively. |
 | **No shared DbContext** | Each module has its own `DbContext`. Never inject or reference `ApplicationDbContext`. |
 | **Cross-module data via Readers** | Need tenant names? Use `ITenantReader`. Need user info? Use `IUserReader`. Never join across contexts. |
 | **Cross-module side effects via Capabilities** | Need webhooks? Use `IWebhookPublisher`. Need quota check? Use `IQuotaChecker`. These are null-safe (no-op if provider module not installed). |
@@ -1096,5 +1137,6 @@ After completing the module, run these checks:
 | File URL not resolving | Use `useFileUrl(id)` with `enabled: !!id` guard |
 | Slug uniqueness scoped wrong | Check with `IgnoreQueryFilters()` + `TenantId == tenantId` |
 | Event handler runs twice | Always check idempotency with `AnyAsync()` before creating |
-| Module not auto-discovered | Ensure assembly name matches `*.Module.*.dll` pattern |
+| Module not in `ModuleRegistry.All()` | Add the entry to `modules.catalog.json` and run `npm run generate:modules`. The CI drift gate fails if you forget. |
+| Module's consumers don't fire at runtime | Module ships `IConsumer<T>` but doesn't implement `IModuleBusContributor` + `bus.AddConsumers(typeof({Name}Module).Assembly)`. Architecture test `ModuleRegistryTests.Modules_with_MassTransit_consumers_implement_IModuleBusContributor` catches this. |
 | Routes 404 after module disabled | Replace lazy imports with `NullPage` stub in `routes.tsx` |

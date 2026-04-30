@@ -163,6 +163,28 @@ jobs:
       - name: Verify codegen is up to date
         run: npm run verify:permissions
 
+  modules-codegen-drift:
+    # Tier 2.5 Theme 5 — guards the modules.catalog.json → BE/FE/mobile/eslint
+    # bootstrap codegen. Regenerates from the catalog and asserts the four
+    # checked-in artifacts match: ModuleRegistry.g.cs, modules.generated.ts,
+    # modules.config.dart, eslint.config.modules.json. Drift means a contributor
+    # edited the catalog without running `npm run generate:modules`.
+    name: Modules codegen drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install root devDependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Verify codegen is up to date
+        run: npm run verify:modules
+
   negative-test:
     name: Negative — missing dependency must fail rename.ps1
     runs-on: ubuntu-latest

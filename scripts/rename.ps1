@@ -282,6 +282,10 @@ function Write-WebModulesConfig {
 
     if (-not (Test-Path $TargetFE)) { return }
 
+    # Tier 2.5 Theme 5: rename emits modules.generated.ts (the structured registry)
+    # and a thin modules.config.ts shim that re-exports it. Mirrors the source
+    # repo's split — keeps callers importing `@/config/modules.config` unchanged.
+
     $imports = @()
     $enabled = @()
     foreach ($moduleId in @($IncludedOptional)) {
@@ -292,53 +296,178 @@ function Write-WebModulesConfig {
         $enabled += "  $symbol,"
     }
 
+    # Filter to web-supported modules only — backend-only entries (e.g. AI)
+    # never appear in FE bootstrap output. Mirrors the source generator at
+    # scripts/generators/modules.ts (webEntries filter).
     $moduleNameUnion = @()
-    $allIds = @($AllOptional | ForEach-Object { $Catalog.$_.configKey })
+    $derivedFlags = @()
+    $allIds = @()
+    foreach ($moduleId in @($AllOptional)) {
+        $module = $Catalog.$moduleId
+        $platforms = @()
+        if ($module.supportedPlatforms) { $platforms = @($module.supportedPlatforms) }
+        if (-not ($platforms -contains "web")) { continue }
+        $allIds += $module.configKey
+    }
     for ($i = 0; $i -lt $allIds.Count; $i++) {
         $moduleNameUnion += "  | '$($allIds[$i])'"
     }
-
-    $derivedFlags = @()
     foreach ($id in $allIds) {
         $derivedFlags += "  $($id): isModuleActive('$id'),"
     }
 
+    $generatedLines = @()
+    $generatedLines += "// AUTO-GENERATED — DO NOT EDIT."
+    $generatedLines += "// Regenerate (in the source repo) with ``npm run generate:modules``."
+    $generatedLines += "// In generated apps, this file is rewritten by scripts/rename.ps1."
+    $generatedLines += "//"
+    $generatedLines += "// Source: modules.catalog.json"
+    $generatedLines += ""
+    $generatedLines += "import { registerWebModules, type WebModule } from '@/lib/modules';"
+    $generatedLines += $imports
+    $generatedLines += ""
+    $generatedLines += "export type ModuleName ="
+    $generatedLines += $moduleNameUnion
+    $generatedLines += "  ;"
+    $generatedLines += ""
+    $generatedLines += "export const enabledModules: WebModule[] = ["
+    $generatedLines += $enabled
+    $generatedLines += "];"
+    $generatedLines += ""
+    $generatedLines += "const enabledIds = new Set<string>(enabledModules.map((m) => m.id));"
+    $generatedLines += ""
+    $generatedLines += "export function isModuleActive(module: ModuleName): boolean {"
+    $generatedLines += "  return enabledIds.has(module);"
+    $generatedLines += "}"
+    $generatedLines += ""
+    $generatedLines += "export const activeModules: Readonly<Record<ModuleName, boolean>> = Object.freeze({"
+    $generatedLines += $derivedFlags
+    $generatedLines += "}) as Readonly<Record<ModuleName, boolean>>;"
+    $generatedLines += ""
+    $generatedLines += "export function registerAllModules(): void {"
+    $generatedLines += "  registerWebModules(enabledModules);"
+    $generatedLines += "}"
+
+    $configDir = Join-Path (Join-Path $TargetFE "src") "config"
+    $generatedPath = Join-Path $configDir "modules.generated.ts"
+    Set-Content -Path $generatedPath -Value ($generatedLines -join [Environment]::NewLine) -NoNewline
+
+    $shimLines = @()
+    $shimLines += "/**"
+    $shimLines += " * Public module-bootstrap entry point. Re-exports the generated registry."
+    $shimLines += " * Do not hand-edit; the source of truth is modules.catalog.json + the generator."
+    $shimLines += " */"
+    $shimLines += "export {"
+    $shimLines += "  enabledModules,"
+    $shimLines += "  isModuleActive,"
+    $shimLines += "  activeModules,"
+    $shimLines += "  registerAllModules,"
+    $shimLines += "  type ModuleName,"
+    $shimLines += "} from './modules.generated';"
+
+    $modulesConfigTsPath = Join-Path $configDir "modules.config.ts"
+    Set-Content -Path $modulesConfigTsPath -Value ($shimLines -join [Environment]::NewLine) -NoNewline
+}
+
+function Write-EslintModulesConfig {
+    param(
+        [object]$Catalog,
+        [string[]]$IncludedOptional,
+        [string]$TargetFE
+    )
+
+    if (-not (Test-Path $TargetFE)) { return }
+
+    # Tier 2.5 Theme 5: eslint.config.js reads this JSON to know which feature
+    # paths the no-restricted-imports rule should guard. Generated apps must
+    # ship a JSON that lists only their included modules — otherwise the rule
+    # complains about imports from feature folders the rename script deleted.
+
+    $restricted = @()
+    $allowlist = @()
+    foreach ($moduleId in @($IncludedOptional)) {
+        $module = $Catalog.$moduleId
+        if (-not $module.frontendFeature) { continue }
+        $restricted += "@/features/$($module.frontendFeature)"
+        $restricted += "@/features/$($module.frontendFeature)/*"
+        $allowlist += "src/features/$($module.frontendFeature)/**"
+    }
+    $allowlist += "src/config/modules.config.ts"
+    $allowlist += "src/config/modules.generated.ts"
+
+    $payload = [ordered]@{
+        restrictedPatterns = $restricted
+        allowlistFiles     = $allowlist
+    }
+    $json = ($payload | ConvertTo-Json -Depth 5)
+
+    $eslintModulesPath = Join-Path $TargetFE "eslint.config.modules.json"
+    Set-Content -Path $eslintModulesPath -Value ($json + [Environment]::NewLine) -NoNewline
+}
+
+function Write-BackendModuleRegistry {
+    param(
+        [object]$Catalog,
+        [string[]]$IncludedOptional,
+        [string]$TargetBE,
+        [string]$Name
+    )
+
+    if (-not (Test-Path $TargetBE)) { return }
+
+    # Tier 2.5 Theme 5: Program.cs (renamed from Starter.* to {Name}.*) calls
+    # ModuleRegistry.All() — a generated static type that returns instantiated
+    # IModule instances for the apps's selected modules. Source ships with all
+    # modules; rename.ps1 prunes deleted ones here so dotnet build succeeds.
+
+    $instances = @()
+    foreach ($moduleId in @($IncludedOptional)) {
+        $module = $Catalog.$moduleId
+        if (-not $module.backendModule) { continue }
+        # `Starter.Module.AI` → `{Name}.Module.AI.AIModule`. The XModule class
+        # convention is enforced in source by ModuleRegistryTests + the parser.
+        $renamedNs = $module.backendModule -replace "^Starter", $Name
+        $shortName = ($module.backendModule -split "\.")[-1]
+        $instances += "            new $renamedNs.$($shortName)Module(),"
+    }
+
     $contentLines = @()
-    $contentLines += $imports
-    if ($imports.Count -gt 0) { $contentLines += "" }
-    $contentLines += "import { registerWebModules, type WebModule } from '@/lib/modules';"
+    $contentLines += "// AUTO-GENERATED — DO NOT EDIT."
+    $contentLines += "// Regenerate (in the source repo) with ``npm run generate:modules``."
+    $contentLines += "// In generated apps, this file is rewritten by scripts/rename.ps1."
+    $contentLines += "//"
+    $contentLines += "// Source: modules.catalog.json"
     $contentLines += ""
-    $contentLines += "/**"
-    $contentLines += " * Optional module registry generated by rename.ps1 from modules.catalog.json."
-    $contentLines += " * Do not hand-edit generated apps; change the catalog or generator instead."
-    $contentLines += " *"
-    $contentLines += " * enabledModules is the single source of truth. isModuleActive() and the"
-    $contentLines += " * activeModules literal are both derived from it, so the two cannot drift."
-    $contentLines += " */"
-    $contentLines += "export type ModuleName ="
-    $contentLines += $moduleNameUnion
-    $contentLines += "  ;"
+    $contentLines += "using $Name.Abstractions.Modularity;"
     $contentLines += ""
-    $contentLines += "export const enabledModules: WebModule[] = ["
-    $contentLines += $enabled
-    $contentLines += "];"
+    $contentLines += "namespace $Name.Api.Modularity;"
     $contentLines += ""
-    $contentLines += "const enabledIds = new Set<string>(enabledModules.map((m) => m.id));"
-    $contentLines += ""
-    $contentLines += "export function isModuleActive(module: ModuleName): boolean {"
-    $contentLines += "  return enabledIds.has(module);"
-    $contentLines += "}"
-    $contentLines += ""
-    $contentLines += "export const activeModules: Readonly<Record<ModuleName, boolean>> = Object.freeze({"
-    $contentLines += $derivedFlags
-    $contentLines += "});"
-    $contentLines += ""
-    $contentLines += "export function registerAllModules(): void {"
-    $contentLines += "  registerWebModules(enabledModules);"
+    $contentLines += "/// <summary>"
+    $contentLines += "/// Generated module registry. Used by the API host instead of the"
+    $contentLines += "/// reflection-based <c>ModuleLoader.DiscoverModules()</c> at production"
+    $contentLines += "/// startup. Discover remains for tests that need runtime introspection."
+    $contentLines += "/// </summary>"
+    $contentLines += "public static class ModuleRegistry"
+    $contentLines += "{"
+    $contentLines += "    public static IReadOnlyList<IModule> All()"
+    $contentLines += "    {"
+    if ($instances.Count -eq 0) {
+        $contentLines += "        return System.Array.Empty<IModule>();"
+    } else {
+        $contentLines += "        return new IModule[]"
+        $contentLines += "        {"
+        $contentLines += $instances
+        $contentLines += "        };"
+    }
+    $contentLines += "    }"
     $contentLines += "}"
 
-    $modulesConfigTsPath = Join-Path (Join-Path (Join-Path $TargetFE "src") "config") "modules.config.ts"
-    Set-Content -Path $modulesConfigTsPath -Value ($contentLines -join [Environment]::NewLine) -NoNewline
+    $registryDir = Join-Path (Join-Path (Join-Path $TargetBE "src") "$Name.Api") "Modularity"
+    if (-not (Test-Path $registryDir)) {
+        New-Item -ItemType Directory -Path $registryDir -Force | Out-Null
+    }
+    $registryPath = Join-Path $registryDir "ModuleRegistry.g.cs"
+    Set-Content -Path $registryPath -Value ($contentLines -join [Environment]::NewLine) -NoNewline
 }
 
 function Write-MobileModulesConfig {
@@ -801,6 +930,17 @@ if ($null -ne $modulesConfig) {
         -AllOptional $allOptional `
         -IncludedOptional $includedOptional `
         -TargetFE $TargetFE
+
+    Write-EslintModulesConfig `
+        -Catalog $modulesConfig `
+        -IncludedOptional $includedOptional `
+        -TargetFE $TargetFE
+
+    Write-BackendModuleRegistry `
+        -Catalog $modulesConfig `
+        -IncludedOptional $includedOptional `
+        -TargetBE $TargetBE `
+        -Name $Name
 
     Write-MobileModulesConfig `
         -Catalog $modulesConfig `
